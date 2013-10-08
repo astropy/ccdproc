@@ -60,9 +60,11 @@ def subtract_overscan(ccd, overscan, median=False, model=None):
         yarr=np.arange(len(oscan))
         of(yarr, oscan)
         oscan=model(yarr)
+        oscan=np.reshape(oscan,(oscan.size,1))
+    else:
+        oscan=np.reshape(oscan, oscan.shape+(1,))
 
-    #reshape oscan to subtract off the original data
-    oscan.shape=(oscan.size,1)
+    #subtract the overscan 
     ccd.data = ccd.data - oscan
     return ccd
 
@@ -108,10 +110,12 @@ def flat_correct(ccd, flat):
     """
     #normalize the flat
     flat.data = flat.data / flat.data.mean()
-    flat.uncertainty.array = flat.uncertainty.array / flat.data.mean()
-    #ccd.divide(flat)
-    ccd.data = ccd.data / flat.data
-    ccd.uncertainty.array = ((ccd.uncertainty.array/ccd.data)**2 + (flat.uncertainty.array/flat.data)**2)**0.5
+    if flat.uncertainty is not None:
+        flat.uncertainty.array = flat.uncertainty.array / flat.data.mean()
+
+    #divide through the flat
+    ccd.divide(flat)
+
     return ccd
 
 def sigma_func (arr):

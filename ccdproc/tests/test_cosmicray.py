@@ -8,8 +8,8 @@ from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest, raises
 from astropy.utils import NumpyRNGContext
 
-from ccddata import CCDData, electrons, fromFITS, toFITS
-from ccdproc import *
+from ..ccddata import CCDData, electrons, fromFITS, toFITS
+from ..ccdproc import *
 
 import os
 
@@ -32,7 +32,6 @@ def test_cosmicray_clean_scalarbackground():
            cd.data[y,x]=crflux[i]
         testdata=1.0*cd.data
     cc=cosmicray_clean(cd, 5, cosmicray_median, crargs=(11,), background=scale, bargs=(),rbox=11, gbox=0)
-    writeout(cc, 'temp2.fits')
     assert abs(cc.data.std()-scale)<0.1
     assert (testdata-cc.data > 0).sum()==ncrays
 
@@ -52,7 +51,6 @@ def test_cosmicray_clean():
     cc=cd #currently here because of lacking a copy command for NDData
     for i in range(5):
         cc=cosmicray_clean(cc, 5.0, cosmicray_median, crargs=(11,), background=background_variance_box, bargs=(25,), rbox=11)
-    writeout(cc, 'temp2.fits')
     assert abs(cc.data.std()-scale)<0.1
     assert (testdata-cc.data > 0).sum()==30
 
@@ -104,13 +102,3 @@ def test_background_variance_filter_fail():
     bd=background_variance_filter(cd, 0.5)
 
 
-if __name__=='__main__':
-   import profile 
-   #profile.run('test_cosmicray_median()')
-   test_cosmicray_clean_scalarbackground()
-   test_cosmicray_clean()
-   #test_cosmicray_median()
-   #test_background_variance_box()
-   #test_background_variance_box_fail()
-   #test_background_variance_filter()
-   #test_background_variance_filter_fail()

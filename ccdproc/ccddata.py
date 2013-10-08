@@ -153,8 +153,6 @@ class CCDData(NDData):
 
         var=(self.data+readnoise**2)**0.5
         self.uncertainty=StdDevUncertainty(var)
-        self.uncertainty.parent_nddata
-
 
 
 def fromFITS(hdu, units=None):

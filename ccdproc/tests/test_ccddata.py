@@ -8,7 +8,7 @@ from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest, raises
 from astropy.utils import NumpyRNGContext
 
-from ccddata import CCDData, electrons, fromFITS
+from ..ccddata import CCDData, electrons, fromFITS
 
 def test_ccddata_empty():
     with pytest.raises(TypeError):
