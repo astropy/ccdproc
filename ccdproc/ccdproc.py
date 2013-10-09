@@ -6,6 +6,7 @@ import numpy as np
 from ccddata import CCDData, electrons
 
 from astropy import units as u
+from astropy.units.quantity import Quantity
 from astropy.nddata.nduncertainty import StdDevUncertainty
 from astropy import modeling as models
 from astropy import stats
@@ -79,16 +80,20 @@ def gain_correct(ccd, gain):
        ccd: CCDData object 
           Data to have variance frame corrected
 
-       gain:  float
+       gain:  float or quantity
           gain value for the image expressed in electrions per adu
+
  
        Returns
        -------
        ccd:  CCDData object
           CCDData object with gain corrected
     """
-    ccd.data = ccd.data * gain 
-    ccd.unit = electrons
+    if isinstance(gain, Quantity):
+        ccd.data = ccd.data * gain.value
+        ccd.unit = ccd.unit * gain.unit
+    else:
+        ccd.data = ccd.data * gain 
     return ccd
 
 

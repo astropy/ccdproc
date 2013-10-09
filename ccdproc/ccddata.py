@@ -7,6 +7,7 @@ from astropy.io import fits
 from astropy.utils.compat.odict import OrderedDict
 from astropy import units as u
 
+adu = u.def_unit('ADU')
 electrons = u.def_unit('electrons')
 photons = u.def_unit('photons')
 

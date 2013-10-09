@@ -4,20 +4,14 @@
 import numpy as np
 from astropy.io import fits
 from astropy import modeling as models
+from astropy.units.quantity import Quantity
 
 from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest, raises
 from astropy.utils import NumpyRNGContext
 
-from ..ccddata import CCDData, electrons, fromFITS, toFITS
+from ..ccddata import CCDData, electrons, adu, fromFITS, toFITS
 from ..ccdproc import *
-
-def writeout(cd, outfile):
-    import os
-    hdu = toFITS(cd)
-    if os.path.isfile(outfile): os.remove(outfile)
-    hdu.writeto(outfile)
-
 
 #tests for overscan
 def test_subtract_overscan_mean():
@@ -85,7 +79,6 @@ def test_flat_correct():
         data=2*np.ones((size,size))
         flat = CCDData(data, meta=fits.header.Header())
     ccd=flat_correct(ccd, flat)
-    writeout(ccd, 'temp.fits')
 
 #test for variance and for flat correction
 def test_flat_correct_variance():
@@ -101,10 +94,32 @@ def test_flat_correct_variance():
         flat = CCDData(data, meta=fits.header.Header(), unit=electrons)
         flat.create_variance(0.5)
     ccd=flat_correct(ccd, flat)
-    writeout(ccd, 'temp.fits')
+
 
 
 
 
 #tests for gain correction
+def test_gain_correct():
+    with NumpyRNGContext(125):
+        size = 100
+        scale = 1
+        #create the basic data array
+        data=np.random.normal(loc=0, size=(size,size),  scale=scale)
+        ccd = CCDData(data, meta=fits.header.Header())
+        #create the overscan region
+    ccd=gain_correct(ccd, gain=3)
+    assert_array_equal(ccd.data, 3*data)
 
+def test_gain_correct_quantity():
+    with NumpyRNGContext(125):
+        size = 100
+        scale = 1
+        #create the basic data array
+        data=np.random.normal(loc=0, size=(size,size),  scale=scale)
+        ccd = CCDData(data, meta=fits.header.Header(), unit=adu)
+        #create the overscan region
+    g=Quantity(3, electrons/adu)
+    ccd=gain_correct(ccd, gain=g)
+    assert_array_equal(ccd.data, 3*data)
+    assert ccd.unit==electrons
