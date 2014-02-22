@@ -19,8 +19,9 @@ import pylab as pl
 def subtract_overscan(ccd, overscan, median=False, model=None):
     """Subtract the overscan region from an image.  This will first
 
-       has an uncertainty plane which gives the variance for the data.  The function
-       assumes that the ccd is in electrons and the readnoise is in the same units
+       has an uncertainty plane which gives the variance for the data.  The
+       function assumes that the ccd is in electrons and the readnoise is in
+       the same units.
 
        Parameters
        ----------
@@ -40,7 +41,8 @@ def subtract_overscan(ccd, overscan, median=False, model=None):
        Raises
        ------
        TypeError:
-          A TypeError is raised if either ccd or overscan  are not the correct objects
+          A TypeError is raised if either ccd or overscan are not the correct
+          objects
 
        Returns
        -------
@@ -177,27 +179,30 @@ def setbox(x, y, mbox, xmax, ymax):
 
 
 def background_variance_box(data, bbox):
-    """Determine the background variance with a box size of bbox. The algorithm steps through the image
-       and calculates the variance within each box.   It returns an array with the pixels in each box
-       filled with the variance value.
+    """
+    Determine the background variance with a box size of bbox.
 
-       Parameters
-       ----------
-       data: numpy ndarray or Mask arary object
-          Data to measure background variance
+    The algorithm steps through the image
+    and calculates the variance within each box. It returns an array with the
+    pixels in each box filled with the variance value.
 
-       bbox:  int
-          Box size for calculating background variance
+    Parameters
+    ----------
+    data: numpy ndarray or Mask arary object
+       Data to measure background variance
 
-       Raises
-       ------
-       ValueError:
-          A value error is raised if bbox is less than 1
+    bbox:  int
+       Box size for calculating background variance
 
-       Returns
-       -------
-       background: numpy ndarray or Mask arary object
-          An array with the measured background variance in each pixel
+    Raises
+    ------
+    ValueError:
+       A value error is raised if bbox is less than 1
+
+    Returns
+    -------
+    background: numpy ndarray or Mask arary object
+       An array with the measured background variance in each pixel
 
     """
     # Check to make sure the background box is an appropriate size
@@ -217,25 +222,27 @@ def background_variance_box(data, bbox):
 
 
 def background_variance_filter(data, bbox):
-    """Determine the background variance for each pixel from a box with size of bbox.
+    """
+    Determine the background variance for each pixel from a box with size of
+    bbox.
 
-       Parameters
-       ----------
-       data: numpy ndarray or Mask arary object
-          Data to measure background variance
+    Parameters
+    ----------
+    data: numpy ndarray or Mask arary object
+        Data to measure background variance
 
-       bbox:  int
-          Box size for calculating background variance
+    bbox:  int
+        Box size for calculating background variance
 
-       Raises
-       ------
-       ValueError:
-          A value error is raised if bbox is less than 1
+    Raises
+    ------
+    ValueError:
+        A value error is raised if bbox is less than 1
 
-       Returns
-       -------
-       background: numpy ndarray or Mask arary object
-          An array with the measured background variance in each pixel
+    Returns
+    -------
+    background: numpy ndarray or Mask arary object
+        An array with the measured background variance in each pixel
 
     """
     # Check to make sure the background box is an appropriate size
@@ -246,31 +253,33 @@ def background_variance_filter(data, bbox):
 
 
 def cosmicray_median(data, thresh,  background=None, mbox=11):
-    """Identify cosmic rays through median technique.  The median technique identifies
-       cosmic rays by identifying pixels by subtracting a median image from the initial
-       data array
+    """
+    Identify cosmic rays through median technique. The median technique
+    identifies cosmic rays by identifying pixels by subtracting a median image
+    from the initial data array
 
-       ccd: numpy ndarray or Mask arary object
-          Data to have cosmic ray cleans
+    ccd: numpy ndarray or Mask arary object
+        Data to have cosmic ray cleans
 
-       thresh:  float
-          Threshhold for detecting cosmic rays
+    thresh:  float
+        Threshhold for detecting cosmic rays
 
-       background: None, float, or ndarray
-          Background variance level.   If None, the task will use the standard deviation of
-          the data.   If an ndarray, it should have the same shape as data.
+    background: None, float, or ndarray
+        Background variance level.   If None, the task will use the standard
+        deviation of the data.   If an ndarray, it should have the same shape
+        as data.
 
-       mbox:  int
-          Median box for detecting cosmic rays
+    mbox:  int
+        Median box for detecting cosmic rays
 
 
-       Notes
-       -----
-       Similar implimentation to crmedian in iraf.imred.crutil.crmedian
+    Notes
+    -----
+    Similar implimentation to crmedian in iraf.imred.crutil.crmedian
 
-       Returns
-       -------
-       crarr: numpy ndarray
+    Returns
+    -------
+    crarr: numpy ndarray
           A boolean ndarray with the cosmic rays identified
 
     """
@@ -287,54 +296,59 @@ def cosmicray_median(data, thresh,  background=None, mbox=11):
     return crarr
 
 
-def cosmicray_clean(ccddata, thresh, cr_func, crargs=(), background=None, bargs=(), gbox=0, rbox=0):
-    """Cosmic ray clean a ccddata object.  This process will apply a cosmic ray cleaning
-       method, cr_func, to a data set.  The cosmic rays will be identified based on being
-       above a threshold, thresh, above the background.  The background can either be supplied
-       by a function
+def cosmicray_clean(ccddata, thresh, cr_func, crargs=(),
+                    background=None, bargs=(), gbox=0, rbox=0):
+    """
+    Cosmic ray clean a ccddata object.  This process will apply a cosmic ray
+    cleaning method, cr_func, to a data set.  The cosmic rays will be
+    identified based on being above a threshold, thresh, above the background.
+    The background can either be supplied by a function
 
     ccddata: CCDData object
-      Data to have cosmic ray cleans
+        Data to have cosmic ray cleans
 
     thresh:  float
-       Threshhold for detecting cosmic rays
+        Threshhold for detecting cosmic rays
 
     cr_func:  function
-       Function for identifying cosmic rays
+        Function for identifying cosmic rays
 
     cargs:  tuple
-       This countains any extra arguments needed for the cosmic ray function
+        This countains any extra arguments needed for the cosmic ray function
 
     background: None, float, ndarray, or function
-       Background variance level.   If None, the task will use the standard deviation of
-       the data.   If an ndarray, it should have the same shape as data.
+        Background variance level.   If None, the task will use the standard
+        deviation of the data.   If an ndarray, it should have the same shape
+        as data.
 
     bargs:  tuple
-       If background is a function, any extra arguments that are needed should be passed
-       via bargs
+        If background is a function, any extra arguments that are needed
+        should be passed via bargs.
 
     gbox:  int
-       Box size to grow cosmic rays. If zero, no growing will be done.
+        Box size to grow cosmic rays. If zero, no growing will be done.
 
     rbox:  int
-       Median box for calculating replacement values.  If zero, no pixels will be replaced.
+        Median box for calculating replacement values.  If zero, no pixels
+        will be replaced.
 
 
     Returns
     -------
     ccddata: CCDData obejct
-       A CCDData object with cosmic rays cleaned.  The ccddata.mask object will be updated
-       to flag cosmic rays in the mask.   If replace is set, then the ccddata object will
-       be replaced with median of the surrounding unmasked pixels
+        A CCDData object with cosmic rays cleaned.  The ccddata.mask object
+        will be updated to flag cosmic rays in the mask.   If replace is set,
+        then the ccddata object will be replaced with median of the
+        surrounding unmasked pixels.
 
     Examples
     --------
 
     This will use the median method to clean cosmic rays based on a background
-    estimated in a box around the image.  It will then replace bad pixel value with the median of
-    the pixels in an 11 pixel wide box around the bad pixel.
+    estimated in a box around the image.  It will then replace bad pixel value
+    with the median of the pixels in an 11 pixel wide box around the bad pixel.
 
-        >>> from ccdproc import background_variance_box,cosmicray_median, cosmicray_clean
+        >>> from ccdproc import background_variance_box, cosmicray_median, cosmicray_clean
         >>> cosmicray_clean(ccddata, 10, cosmicray_median, crargs(11,),
                background=background_variance_box, bargs=(25,), rbox=11)
 

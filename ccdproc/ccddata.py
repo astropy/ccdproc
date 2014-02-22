@@ -17,7 +17,8 @@ class CCDData(NDData):
     """A class describing basic CCD data
 
     The CCDData class is based on the NDData object and includes a data array,
-    variance frame, mask frame, meta data, units, and WCS information for a single CCD image.
+    variance frame, mask frame, meta data, units, and WCS information for a
+    single CCD image.
 
     Parameters
     -----------
@@ -125,15 +126,15 @@ class CCDData(NDData):
                 self._uncertainty = value
                 self._uncertainty._parent_nddata = self
             else:
-                raise TypeError(
-                    "Uncertainty must be an instance of a NDUncertainty object")
+                raise TypeError("Uncertainty must be an instance of a "
+                                "NDUncertainty object")
         else:
             self._uncertainty = value
 
     def create_variance(self, readnoise):
         """Create a variance frame.  The function will update the uncertainty
-           plane which gives the variance for the data.  The function assumes that
-           the ccd is in electrons and the readnoise is in the same units
+           plane which gives the variance for the data.  The function assumes
+           that the ccd is in electrons and the readnoise is in the same units
 
         Parameters
         ----------

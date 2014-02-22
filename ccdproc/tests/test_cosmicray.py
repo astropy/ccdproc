@@ -56,7 +56,8 @@ def test_cosmicray_clean():
     cc = cd  # currently here because of lacking a copy command for NDData
     for i in range(5):
         cc = cosmicray_clean(cc, 5.0, cosmicray_median, crargs=(11,),
-                             background=background_variance_box, bargs=(25,), rbox=11)
+                             background=background_variance_box,
+                             bargs=(25,), rbox=11)
     assert abs(cc.data.std() - scale) < 0.1
     assert (testdata - cc.data > 0).sum() == 30
 
