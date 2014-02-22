@@ -20,7 +20,7 @@ import glob
 import os
 from setuptools import setup, find_packages
 
-#A dirty hack to get around some early import/configurations ambiguities
+# A dirty hack to get around some early import/configurations ambiguities
 if sys.version_info[0] >= 3:
     import builtins
 else:
@@ -36,7 +36,10 @@ from astropy.version_helpers import get_git_devstr, generate_version_py
 # Set affiliated package-specific settings
 PACKAGENAME = 'ccdproc'
 DESCRIPTION = 'Astropy affiliated package for basic CCD processing'
-LONG_DESCRIPTION = 'The ccdproc package is a collection of code that will be helpful in basic CCD processing.  These steps will allow reduction of basic CCD data as either a stand alone processing or as part of a pipeline. '
+LONG_DESCRIPTION = ('The ccdproc package is a collection of code that will '
+                    'be helpful in basic CCD processing.  These steps will '
+                    'allow reduction of basic CCD data as either a stand '
+                    'alone processing or as part of a pipeline.')
 AUTHOR = 'Steven Crawford'
 AUTHOR_EMAIL = 'crawford@saao.ac.za'
 LICENSE = 'BSD'
@@ -95,8 +98,8 @@ setup(name=PACKAGENAME,
       package_dir=package_dirs,
       ext_modules=extensions,
       scripts=scripts,
-      requires=['astropy'],
-      install_requires=['astropy'],
+      requires=['astropy>=0.3'],
+      install_requires=['astropy>=0.3'],
       provides=[PACKAGENAME],
       author=AUTHOR,
       author_email=AUTHOR_EMAIL,
