@@ -2,15 +2,16 @@
 
 #this indicates whether or not we are in the package's setup.py
 try:
-    _PACKAGE_SETUP_
+    _ASTROPY_SETUP_
 except NameError:
     from sys import version_info
     if version_info[0] >= 3:
         import builtins
     else:
         import __builtin__ as builtins
-    builtins._PACKAGE_SETUP_ = False
+    builtins._ASTROPY_SETUP_ = False
     del version_info
+    del builtins
 
 try:
     from .version import version as __version__
@@ -83,6 +84,12 @@ def test(package=None, test_path=None, args=None, plugins=None,
         this adds extra run time to the test suite.  Works only on
         platforms with a working `lsof` command.
 
+    parallel : int, optional
+        When provided, run the tests in parallel on the specified
+        number of CPUs.  If parallel is negative, it will use the all
+        the cores on the machine.  Requires the `pytest-xdist` plugin
+        is installed. Only available when using Astropy 0.3 or later.
+
     kwargs
         Any additional keywords passed into this function will be passed
         on to the astropy test runner.  This allows use of test-related
@@ -101,7 +108,7 @@ def test(package=None, test_path=None, args=None, plugins=None,
         remote_data=remote_data, pep8=pep8, pdb=pdb,
         coverage=coverage, open_files=open_files, **kwargs)
 
-if not _PACKAGE_SETUP_:
+if not _ASTROPY_SETUP_:
 
     import os
     from warnings import warn
