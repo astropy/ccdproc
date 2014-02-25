@@ -10,10 +10,12 @@ __pycache__
 *.c
 
 # Other generated files
-*/version.py
+ccdproc/version.py
+ccdproc/cython_version.py
 
 # Sphinx
 _build
+docs/api
 
 # Packages/installer info
 *.egg
@@ -30,13 +32,18 @@ develop-eggs
 lib
 distribute-*.tar.gz
 
+# test coverage
+.coverage
+htmlcov
+
 # Other
 .*.swp
 *~
+.tox
+
 
 # Mac OSX
 .DS_Store
-.tox
 nosetests.xml
 
 # Translations
