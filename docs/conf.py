@@ -46,19 +46,19 @@ rst_epilog += """
 # -- Project information ------------------------------------------------------
 
 # This does not *have* to match the package name, but typically does
-project = u'Packagename'
-author = u'The Packagename Developers'
-copyright = u'2012, ' + author
+project = u'ccdproc'
+author = u'Steve Crawford'
+copyright = u'2013-2014, ' + author
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 
-import packagename
+import ccdproc
 # The short X.Y version.
-version = packagename.__version__.split('-', 1)[0]
+version = ccdproc.__version__.split('-', 1)[0]
 # The full version, including alpha/beta/rc tags.
-release = packagename.__version__
+release = ccdproc.__version__
 
 
 # -- Options for HTML output ---------------------------------------------------
