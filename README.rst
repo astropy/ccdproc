@@ -1,5 +1,7 @@
-Scripts
+ccdproc
 =======
 
-This directory contains command-line scripts for the affiliated package.
-
+.. _Astropy: http://www.astropy.org/
+.. _git: http://git-scm.com/
+.. _github: http://github.com
+.. _Cython: http://cython.org/
