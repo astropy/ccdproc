@@ -1,9 +1,21 @@
-*.py[cod]
-
-# C extensions
+# Compiled files
+*.py[co]
+*.a
+*.o
 *.so
+__pycache__
 
-# Packages
+# Ignore .c files by default to avoid including generated code. If you want to
+# add a non-generated .c extension, use `git add -f filename.c`.
+*.c
+
+# Other generated files
+*/version.py
+
+# Sphinx
+_build
+
+# Packages/installer info
 *.egg
 *.egg-info
 dist
@@ -16,13 +28,14 @@ sdist
 develop-eggs
 .installed.cfg
 lib
-lib64
+distribute-*.tar.gz
 
-# Installer logs
-pip-log.txt
+# Other
+.*.swp
+*~
 
-# Unit test / coverage reports
-.coverage
+# Mac OSX
+.DS_Store
 .tox
 nosetests.xml
 
