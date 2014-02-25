@@ -1,7 +1,8 @@
 include README.rst
 
-include distribute_setup.py
-recursive-include packagename *.pyx *.c
+include ez_setup.py
+include setuptools_bootstrap.py
+recursive-include ccdproc *.pyx *.c
 
 recursive-include docs *
 recursive-include licenses *
