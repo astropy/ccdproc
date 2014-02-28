@@ -20,10 +20,12 @@ from astropy.setup_helpers import (register_commands, adjust_compiler,
                                    get_debug_option)
 from astropy.version_helpers import get_git_devstr, generate_version_py
 
+import ccdproc
+
 # Set affiliated package-specific settings
 PACKAGENAME = 'ccdproc'
 DESCRIPTION = 'Astropy affiliated package for basic CCD processing'
-LONG_DESCRIPTION = 'The ccdproc package is a collection of code that will be helpful in basic CCD processing.  These steps will allow reduction of basic CCD data as either a stand alone processing or as part of a pipeline. '
+LONG_DESCRIPTION = ccdproc.__doc__
 AUTHOR = 'Steven Crawford'
 AUTHOR_EMAIL = 'crawford@saao.ac.za'
 LICENSE = 'BSD'

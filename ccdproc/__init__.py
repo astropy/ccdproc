@@ -1,5 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
+"""
+The ccdproc package is a collection of code that will be helpful in basic CCD
+processing. These steps will allow reduction of basic CCD data as either a
+stand-alone processing or as part of a pipeline.
+"""
 # this indicates whether or not we are in the package's setup.py
 try:
     _ASTROPY_SETUP_
