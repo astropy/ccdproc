@@ -10,8 +10,8 @@ from astropy.tests.helper import pytest, raises
 from astropy.utils import NumpyRNGContext
 from astropy.units.quantity import Quantity
 
-from ccddata import CCDData, adu, electrons, fromFITS, toFITS
-from ccdproc import *
+from ..ccddata import CCDData, adu, electrons, fromFITS, toFITS
+from ..ccdproc import *
 
 
 def writeout(cd, outfile):
