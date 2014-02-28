@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-#This module implements the base CCDData class.
+# This module implements the base CCDData class.
 
 from astropy.nddata import NDData
 from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
@@ -11,11 +11,14 @@ adu = u.def_unit('ADU')
 electrons = u.def_unit('electrons')
 photons = u.def_unit('photons')
 
+
 class CCDData(NDData):
+
     """A class describing basic CCD data
-      
-    The CCDData class is based on the NDData object and includes a data array, 
-    variance frame, mask frame, meta data, units, and WCS information for a single CCD image. 
+
+    The CCDData class is based on the NDData object and includes a data array,
+    variance frame, mask frame, meta data, units, and WCS information for a
+    single CCD image.
 
     Parameters
     -----------
@@ -40,7 +43,8 @@ class CCDData(NDData):
         either as a Numpy array of any type with a shape matching that of the
         data, or as a `~astropy.nddata.FlagCollection` instance which has a
         shape matching that of the data.
-       wcs : undefined, optional
+
+    wcs : undefined, optional
         WCS-object containing the world coordinate system for the data.
 
         .. warning::
@@ -87,14 +91,14 @@ class CCDData(NDData):
         >>> plt.imshow(x)
 
     """
- 
+
     @property
     def header(self):
-        return self._meta  
+        return self._meta
 
     @header.setter
     def header(self, value):
-        self.meta = value 
+        self.meta = value
 
     @property
     def meta(self):
@@ -116,7 +120,6 @@ class CCDData(NDData):
     def uncertainty(self):
         return self._uncertainty
 
-
     @uncertainty.setter
     def uncertainty(self, value):
         if value is not None:
@@ -124,19 +127,19 @@ class CCDData(NDData):
                 self._uncertainty = value
                 self._uncertainty._parent_nddata = self
             else:
-                raise TypeError("Uncertainty must be an instance of a NDUncertainty object")
+                raise TypeError("Uncertainty must be an instance of a "
+                                "NDUncertainty object")
         else:
             self._uncertainty = value
 
-
     def create_variance(self, readnoise):
         """Create a variance frame.  The function will update the uncertainty
-           plane which gives the variance for the data.  The function assumes that 
-           the ccd is in electrons and the readnoise is in the same units
+           plane which gives the variance for the data.  The function assumes
+           that the ccd is in electrons and the readnoise is in the same units.
 
         Parameters
         ----------
-        readnoise:  float 
+        readnoise:  float
           readnoise for each pixel
 
         Raises
@@ -149,24 +152,24 @@ class CCDData(NDData):
         ccd:  CCDData object
           CCDData object with uncertainty created
         """
-        if self.unit!=electrons:
-           raise TypeError('CCDData object is not in electrons')
+        if self.unit != electrons:
+            raise TypeError('CCDData object is not in electrons')
 
-        var=(self.data+readnoise**2)**0.5
-        self.uncertainty=StdDevUncertainty(var)
+        var = (self.data + readnoise ** 2) ** 0.5
+        self.uncertainty = StdDevUncertainty(var)
 
 
 def fromFITS(hdu, units=None):
     """Creates a CCDData object from a FITS file
-      
+
        Parameter
        ---------
        hdu: astropy.io.fits object
           FITS object fo the CCDData object
 
        units: astropy.units object
-          Unit describing the data 
- 
+          Unit describing the data
+
        Raises
        -------
        ValueError
@@ -175,21 +178,22 @@ def fromFITS(hdu, units=None):
        Returns
        -------
        ccddata: ccddata.CCDData object
-          
+
     """
-    if len(hdu)>1: 
-       raise ValueError('Multi-Exenstion FITS files are not supported')
-    
+    if len(hdu) > 1:
+        raise ValueError('Multi-Exenstion FITS files are not supported')
+
     return CCDData(hdu[0].data, meta=hdu[0].header)
+
 
 def toFITS(ccddata):
     """Creates an HDUList object from a CCDData object
-      
+
        Parameter
        ---------
        ccddata: CCDData object
-          CCDData object to create FITS file 
- 
+          CCDData object to create FITS file
+
        Raises
        -------
        ValueError
@@ -198,7 +202,7 @@ def toFITS(ccddata):
        Returns
        -------
        hdulist: astropy.io.fits.HDUList object
-          
+
     """
     hdu = fits.PrimaryHDU(ccddata.data, ccddata.header)
     hdulist = fits.HDUList([hdu])
