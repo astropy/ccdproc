@@ -8,7 +8,7 @@ from ccddata import CCDData, electrons
 from astropy import units as u
 from astropy.units.quantity import Quantity
 from astropy.nddata.nduncertainty import StdDevUncertainty
-from astropy import modeling as models
+from astropy.modeling import fitting
 from astropy import stats
 
 from scipy import ndimage
@@ -57,10 +57,10 @@ def subtract_overscan(ccd, overscan, median=False, model=None):
        oscan=np.mean(overscan.data,axis=1)
 
     if model is not None:
-        of=models.fitting.LinearLSQFitter(model)
+        of=fitting.LinearLSQFitter()
         yarr=np.arange(len(oscan))
-        of(yarr, oscan)
-        oscan=model(yarr)
+        oscan = of(model, yarr, oscan)
+        oscan = oscan(yarr)
         oscan=np.reshape(oscan,(oscan.size,1))
     else:
         oscan=np.reshape(oscan, oscan.shape+(1,))

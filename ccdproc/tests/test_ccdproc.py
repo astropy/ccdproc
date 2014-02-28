@@ -3,7 +3,7 @@
 
 import numpy as np
 from astropy.io import fits
-from astropy import modeling as models
+from astropy.modeling import models
 from astropy.units.quantity import Quantity
 
 from numpy.testing import assert_array_equal
@@ -55,7 +55,7 @@ def test_subtract_overscan_model():
         yscan,xscan = np.mgrid[0:size, 0:size]/10.0 + 300.0
         ccd.data = ccd.data + yscan
     oscan = ccd[:,0:10]
-    ccd=subtract_overscan(ccd, oscan, median=False, model=models.polynomial.Poly1DModel(2))
+    ccd=subtract_overscan(ccd, oscan, median=False, model=models.Polynomial1D(2))
     assert abs(ccd.data.mean())<0.1
 
 @raises(TypeError)
