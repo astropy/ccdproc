@@ -6,7 +6,7 @@ from astropy.io import fits
 from astropy import modeling as models
 
 from numpy.testing import assert_array_equal
-from astropy.tests.helper import pytest, raises
+from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 from astropy.units.quantity import Quantity
 

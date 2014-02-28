@@ -7,7 +7,7 @@ from astropy.modeling import models
 from astropy.units.quantity import Quantity
 
 from numpy.testing import assert_array_equal
-from astropy.tests.helper import pytest, raises
+from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
 from ..ccddata import CCDData, electrons, adu, fromFITS, toFITS
@@ -64,14 +64,9 @@ def test_subtract_overscan_model():
     assert abs(ccd.data.mean()) < 0.1
 
 
-@raises(TypeError)
 def test_sutract_overscan_ccd_failt():
-    subtract_overscan(3, oscan, median=False, model=None)
-
-
-@raises(TypeError)
-def test_sutract_overscan_ccd_failt():
-    subtract_overscan(np.zeros((10, 10)), 3, median=False, model=None)
+    with pytest.raises(TypeError):
+        subtract_overscan(np.zeros((10, 10)), 3, median=False, model=None)
 
 
 # test for flat correction
