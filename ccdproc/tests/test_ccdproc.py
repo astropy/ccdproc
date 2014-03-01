@@ -64,7 +64,11 @@ def test_subtract_overscan_model():
     assert abs(ccd.data.mean()) < 0.1
 
 
-def test_sutract_overscan_ccd_failt():
+def test_subtract_overscan_ccd_fails():
+    # do we get an error if the *image* is neither an nor an array?
+    with pytest.raises(TypeError):
+        subtract_overscan(3, np.zeros((5, 5)))
+    # do we get an error if the *overscan* is not an image or an array?
     with pytest.raises(TypeError):
         subtract_overscan(np.zeros((10, 10)), 3, median=False, model=None)
 
