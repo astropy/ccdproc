@@ -47,7 +47,7 @@ def subtract_overscan(ccd, overscan, median=False, model=None):
     ccd :  CCDData object
         CCDData object with overscan subtracted
     """
-    if not (isinstance(ccd, CCDData) or isinstance(overscan, np.ndarray)):
+    if not (isinstance(ccd, CCDData) or isinstance(ccd, np.ndarray)):
         raise TypeError('ccddata is not a CCDData or ndarray object')
     if not (isinstance(overscan, CCDData) or isinstance(overscan, np.ndarray)):
         raise TypeError('overscan is not a CCDData or ndarray object')
