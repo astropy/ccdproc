@@ -1,13 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # This module implements the base CCDPROC functions
-import inspect
 import numpy as np
 
-from ccddata import CCDData, electrons
+from ccddata import CCDData
 
-from astropy import units as u
 from astropy.units.quantity import Quantity
-from astropy.nddata.nduncertainty import StdDevUncertainty
 from astropy.modeling import fitting
 from astropy import stats
 

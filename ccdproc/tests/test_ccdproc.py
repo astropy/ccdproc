@@ -10,7 +10,7 @@ from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
-from ..ccddata import CCDData, electrons, adu, fromFITS, toFITS
+from ..ccddata import CCDData, electrons, adu
 from ..ccdproc import *
 
 # tests for overscan

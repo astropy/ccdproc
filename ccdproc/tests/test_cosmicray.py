@@ -8,7 +8,7 @@ from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
-from ..ccddata import CCDData, electrons, fromFITS, toFITS
+from ..ccddata import CCDData, toFITS
 from ..ccdproc import *
 
 import os

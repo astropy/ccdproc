@@ -4,7 +4,6 @@
 import numpy as np
 from astropy.io import fits
 
-from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
