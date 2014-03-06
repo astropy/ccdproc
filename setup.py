@@ -8,7 +8,7 @@ import sys
 import setuptools_bootstrap
 from setuptools import setup
 
-#A dirty hack to get around some early import/configurations ambiguities
+# A dirty hack to get around some early import/configurations ambiguities
 if sys.version_info[0] >= 3:
     import builtins
 else:
@@ -20,10 +20,12 @@ from astropy.setup_helpers import (register_commands, adjust_compiler,
                                    get_debug_option)
 from astropy.version_helpers import get_git_devstr, generate_version_py
 
+import ccdproc
+
 # Set affiliated package-specific settings
 PACKAGENAME = 'ccdproc'
 DESCRIPTION = 'Astropy affiliated package for basic CCD processing'
-LONG_DESCRIPTION = 'The ccdproc package is a collection of code that will be helpful in basic CCD processing.  These steps will allow reduction of basic CCD data as either a stand alone processing or as part of a pipeline. '
+LONG_DESCRIPTION = ccdproc.__doc__
 AUTHOR = 'Steven Crawford'
 AUTHOR_EMAIL = 'crawford@saao.ac.za'
 LICENSE = 'BSD'
@@ -67,7 +69,7 @@ try:
     # Add the project-global data
     package_info['package_data'][PACKAGENAME] = ['data/*']
 
-except ImportError: # compatibility with Astropy 0.2 - can be removed in cases
+except ImportError:  # compatibility with Astropy 0.2 - can be removed in cases
                     # where Astropy 0.2 is no longer supported
 
     from setuptools import find_packages
@@ -92,7 +94,8 @@ except ImportError: # compatibility with Astropy 0.2 - can be removed in cases
     # data.  See the docstring for setup_helpers.update_package_files for
     # more details.
     update_package_files(PACKAGENAME, package_info['ext_modules'],
-                         package_info['package_data'], package_info['packages'],
+                         package_info['package_data'], package_info[
+                             'packages'],
                          package_info['package_dir'])
 
 setup(name=PACKAGENAME,
@@ -111,4 +114,4 @@ setup(name=PACKAGENAME,
       zip_safe=False,
       use_2to3=True,
       **package_info
-)
+      )
