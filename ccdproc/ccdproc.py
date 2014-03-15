@@ -13,8 +13,6 @@ from astropy import stats
 
 from scipy import ndimage
 
-import pylab as pl
-
 
 def subtract_overscan(ccd, overscan, median=False, model=None):
     """
