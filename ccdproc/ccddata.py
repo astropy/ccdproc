@@ -139,17 +139,17 @@ class CCDData(NDData):
 
         Parameters
         ----------
-        readnoise:  float
+        readnoise :  float
           readnoise for each pixel
 
         Raises
         ------
-        TypeError:
+        TypeError :
           raises TypeError if units are not in electrons
 
         Returns
         -------
-        ccd:  CCDData object
+        ccd :  CCDData object
           CCDData object with uncertainty created
         """
         if self.unit != electrons:
@@ -162,12 +162,12 @@ class CCDData(NDData):
 def fromFITS(hdu, units=None):
     """Creates a CCDData object from a FITS file
 
-       Parameter
-       ---------
-       hdu: astropy.io.fits object
+       Parameters
+       ----------
+       hdu : astropy.io.fits object
           FITS object fo the CCDData object
 
-       units: astropy.units object
+       units : astropy.units object
           Unit describing the data
 
        Raises
@@ -177,7 +177,7 @@ def fromFITS(hdu, units=None):
 
        Returns
        -------
-       ccddata: ccddata.CCDData object
+       ccddata : ccddata.CCDData object
 
     """
     if len(hdu) > 1:
@@ -189,9 +189,9 @@ def fromFITS(hdu, units=None):
 def toFITS(ccddata):
     """Creates an HDUList object from a CCDData object
 
-       Parameter
-       ---------
-       ccddata: CCDData object
+       Parameters
+       ----------
+       ccddata : CCDData object
           CCDData object to create FITS file
 
        Raises
@@ -201,7 +201,7 @@ def toFITS(ccddata):
 
        Returns
        -------
-       hdulist: astropy.io.fits.HDUList object
+       hdulist : astropy.io.fits.HDUList object
 
     """
     hdu = fits.PrimaryHDU(ccddata.data, ccddata.header)

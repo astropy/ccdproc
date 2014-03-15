@@ -40,13 +40,13 @@ def subtract_overscan(ccd, overscan, median=False, model=None):
 
     Raises
     ------
-    TypeError:
+    TypeError
         A TypeError is raised if either ccd or overscan are not the correct
         objects.
 
     Returns
     -------
-    ccd:  CCDData object
+    ccd :  CCDData object
         CCDData object with overscan subtracted
     """
     if not (isinstance(ccd, CCDData) or isinstance(overscan, np.ndarray)):
@@ -78,16 +78,16 @@ def gain_correct(ccd, gain):
 
        Parameters
        ----------
-       ccd: CCDData object
+       ccd : CCDData object
           Data to have variance frame corrected
 
-       gain:  float or quantity
+       gain :  float or quantity
           gain value for the image expressed in electrions per adu
 
 
        Returns
        -------
-       ccd:  CCDData object
+       ccd :  CCDData object
           CCDData object with gain corrected
     """
     if isinstance(gain, Quantity):
@@ -103,15 +103,15 @@ def flat_correct(ccd, flat):
 
        Parameters
        ----------
-       ccd: CCDData object
+       ccd : CCDData object
           Data to be flatfield corrected
 
-       flat: CCDData object
+       flat : CCDData object
           Flatfield to apply to the data
 
        Returns
        -------
-       ccd:  CCDData object
+       ccd :  CCDData object
           CCDData object with flat corrected
     """
     # normalize the flat
@@ -126,9 +126,19 @@ def flat_correct(ccd, flat):
 
 
 def sigma_func(arr):
-    """Robust method for calculating the variance of an array.  sigma_func uses
-       the median absolute deviation to determine the variance.
+    """
+    Robust method for calculating the variance of an array. ``sigma_func`` uses
+    the median absolute deviation to determine the variance.
 
+    Parameters
+    ----------
+    arr : ccdproc.CCDData or np.array
+        Array whose variance is to be calculated.
+
+    Returns
+    -------
+    float
+        variance of array
     """
     return 1.4826 * stats.median_absolute_deviation(arr)
 
@@ -140,34 +150,34 @@ def setbox(x, y, mbox, xmax, ymax):
 
        Parameters
        ----------
-       x: int
+       x : int
            Central x-position of box
 
-       y: int
+       y : int
            Central y-position of box
 
-       mbox: int
+       mbox : int
            Width of box
 
-       xmax: int
+       xmax : int
            Maximum x value
 
-       ymax: int
+       ymax : int
            Maximum y value
 
         Returns
         -------
-        x1:  int
-           Lower x cornder of box
-        x2:  int
-           Upper x cornder of box
-        y1:  int
-           Lower y cornder of box
-        y1:  int
-           Upper y cornder of box
+        x1 :  int
+           Lower x corner of box
 
+        x2 :  int
+           Upper x corner of box
 
+        y1 :  int
+           Lower y corner of box
 
+        y2 :  int
+           Upper y corner of box
     """
     mbox = max(int(0.5 * mbox), 1)
     y1 = max(0, y - mbox)
@@ -195,7 +205,7 @@ def background_variance_box(data, bbox):
 
     Raises
     ------
-    ValueError :
+    ValueError
         A value error is raised if bbox is less than 1
 
     Returns
@@ -227,20 +237,20 @@ def background_variance_filter(data, bbox):
 
     Parameters
     ----------
-    data: numpy ndarray or Mask arary object
+    data : numpy ndarray or Mask arary object
         Data to measure background variance
 
-    bbox:  int
+    bbox :  int
         Box size for calculating background variance
 
     Raises
     ------
-    ValueError:
+    ValueError
         A value error is raised if bbox is less than 1
 
     Returns
     -------
-    background: numpy ndarray or Mask arary object
+    background : numpy ndarray or Mask arary object
         An array with the measured background variance in each pixel
 
     """
@@ -256,6 +266,9 @@ def cosmicray_median(data, thresh,  background=None, mbox=11):
     Identify cosmic rays through median technique.  The median technique
     identifies cosmic rays by identifying pixels by subtracting a median image
     from the initial data array.
+
+    Parameters
+    ----------
 
     ccd : numpy ndarray or Mask arary object
         Data to have cosmic ray cleans
@@ -302,6 +315,9 @@ def cosmicray_clean(ccddata, thresh, cr_func, crargs=(),
     cleaning method, cr_func, to a data set.  The cosmic rays will be
     identified based on being above a threshold, thresh, above the background.
     The background can either be supplied by a function
+
+    Parameters
+    ----------
 
     ccddata : CCDData object
         Data to have cosmic ray cleans
