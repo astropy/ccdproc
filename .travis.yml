@@ -72,10 +72,8 @@ install:
    - if [[ $SETUP_CMD == build_sphinx* ]]; then pip -q install matplotlib --use-mirrors; fi
 
    - if [[ $ASTROPY_VERSION == stable ]]; then $PIP_WHEEL_COMMAND --find-links=$WHEELHOUSE_HUB/numpy-$NUMPY_VERSION astropy; fi
-   - if [[ $ASTROPY_VERSION == development ]]; then
-        pip install --use-wheel --find-links=http://wheels.astropy.org cython 
-        pip -q install git+http://github.com/astropy/astropy.git#egg=astropy;
-     fi
+   - if [[ $ASTROPY_VERSION == development ]]; then pip install --use-wheel --find-links=http://wheels.astropy.org cython; fi
+   - if [[ $ASTROPY_VERSION == development ]]; then pip -q install git+http://github.com/astropy/astropy.git#egg=astropy; fi
 
 script:
    - python setup.py $SETUP_CMD
