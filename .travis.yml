@@ -3,7 +3,7 @@ language: python
 python:
     #- 2.6
     #- 2.7
-    - 3.2
+    #- 3.2
     - 3.3
 
 env:
@@ -23,7 +23,11 @@ env:
 matrix:
     exclude:
       - python: 3.2
-        env: NUMPY_VERSION=( 1.5.1 1.7.1 1.8.0)
+        env: NUMPY_VERSION=1.5.1
+      - python: 3.2
+        env: NUMPY_VERSION=1.7.1
+      - python: 3.2
+        env: NUMPY_VERSION=1.8.0
       - python: 3.3
         env: NUMPY_VERSION=1.5.1
       - python: 3.3
