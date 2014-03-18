@@ -10,9 +10,10 @@ env:
     # try all python versions with the latest stable numpy and astropy
     global:
       - WHEELHOUSE_HUB=http://physics.mnstate.edu/craig/wheelhouse
-      - PIP_WHEEL_COMMAND="pip install --use-wheel --no-index"
+      - PIP_WHEEL_STRICT_NUMPY="pip install --use-wheel --no-index"
       - SETUP_CMD='test'
       - ASTROPY_VERSION=stable
+      - PIP_WHEEL_FLEX_NUMPY="pip install --use-wheel --find-links=http://wheels.astropy.org --find-links=http://wheels2.astropy.org"
     matrix:
       - NUMPY_VERSION=1.5.1
       - NUMPY_VERSION=1.6.2
@@ -33,9 +34,9 @@ matrix:
         env: NUMPY_VERSION=1.6.2
 
     include:
-        # - python: 2.7
-        #   # opdeps needed because the matplotlib sphinx extension requires them
-        #   env: ASTROPY_VERSION=development NUMPY_VERSION=1.7.1 SETUP_CMD='build_sphinx -w -n'
+        - python: 2.7
+          # opdeps needed because the matplotlib sphinx extension requires them
+          env: NUMPY_VERSION=1.7.1 SETUP_CMD='build_sphinx -w -n'
 
         # # try alternate numpy versions with the latest stable astropy
         # - python: 2.7
@@ -49,8 +50,8 @@ matrix:
         # try latest developer version of astropy
         - python: 2.7
           env: ASTROPY_VERSION=development NUMPY_VERSION=1.8.0 SETUP_CMD='test'
-        - python: 3.3
-          env: ASTROPY_VERSION=development NUMPY_VERSION=1.8.0 SETUP_CMD='test'
+        #- python: 3.3
+        #  env: ASTROPY_VERSION=development NUMPY_VERSION=1.8.0 SETUP_CMD='test'
 
 before_install:
    # We do this to make sure we get the dependencies so pip works below
@@ -63,16 +64,14 @@ before_install:
 
 install:
    - export PYTHONIOENCODING=UTF8 # just in case
-   # - pip -q install --upgrade "numpy==$NUMPY_VERSION" --use-mirrors
-   # - pip -q install --upgrade Cython --use-mirrors
-   # - pip install --upgrade scipy
-   - $PIP_WHEEL_COMMAND --find-links=$WHEELHOUSE_HUB/numpy-$NUMPY_VERSION numpy scipy
+   - export WHEELHOUSE_SPOKE=$WHEELHOUSE_HUB/numpy-$NUMPY_VERSION
+   - $PIP_WHEEL_STRICT_NUMPY --find-links=$WHEELHOUSE_SPOKE numpy scipy
 
-   - if [[ $SETUP_CMD == build_sphinx* ]]; then pip -q install sphinx==1.1.3 --use-mirrors; fi
-   - if [[ $SETUP_CMD == build_sphinx* ]]; then pip -q install matplotlib --use-mirrors; fi
+   - if [[ $SETUP_CMD == build_sphinx* ]]; then $PIP_WHEEL_FLEX_NUMPY install sphinx>=1.2; fi
+   - if [[ $SETUP_CMD == build_sphinx* ]]; then $PIP_WHEEL_FLEX_NUMPY install matplotlib; fi
 
-   - if [[ $ASTROPY_VERSION == stable ]]; then $PIP_WHEEL_COMMAND --find-links=$WHEELHOUSE_HUB/numpy-$NUMPY_VERSION astropy; fi
-   - if [[ $ASTROPY_VERSION == development ]]; then pip install --use-wheel --find-links=http://wheels.astropy.org cython; fi
+   - if [[ $ASTROPY_VERSION == stable ]]; then $PIP_WHEEL_STRICT_NUMPY --find-links=$WHEELHOUSE_SPOKE astropy; fi
+   - if [[ $ASTROPY_VERSION == development ]]; then $PIP_WHEEL_FLEX_NUMPY install cython; fi
    - if [[ $ASTROPY_VERSION == development ]]; then pip -q install git+http://github.com/astropy/astropy.git#egg=astropy; fi
 
 script:
