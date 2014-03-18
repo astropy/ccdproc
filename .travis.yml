@@ -67,11 +67,11 @@ install:
    - export WHEELHOUSE_SPOKE=$WHEELHOUSE_HUB/numpy-$NUMPY_VERSION
    - $PIP_WHEEL_STRICT_NUMPY --find-links=$WHEELHOUSE_SPOKE numpy scipy
 
-   - if [[ $SETUP_CMD == build_sphinx* ]]; then $PIP_WHEEL_FLEX_NUMPY install sphinx>=1.2; fi
-   - if [[ $SETUP_CMD == build_sphinx* ]]; then $PIP_WHEEL_FLEX_NUMPY install matplotlib; fi
+   - if [[ $SETUP_CMD == build_sphinx* ]]; then $PIP_WHEEL_FLEX_NUMPY sphinx>=1.2; fi
+   - if [[ $SETUP_CMD == build_sphinx* ]]; then $PIP_WHEEL_FLEX_NUMPY matplotlib; fi
 
    - if [[ $ASTROPY_VERSION == stable ]]; then $PIP_WHEEL_STRICT_NUMPY --find-links=$WHEELHOUSE_SPOKE astropy; fi
-   - if [[ $ASTROPY_VERSION == development ]]; then $PIP_WHEEL_FLEX_NUMPY install cython; fi
+   - if [[ $ASTROPY_VERSION == development ]]; then $PIP_WHEEL_FLEX_NUMPY cython; fi
    - if [[ $ASTROPY_VERSION == development ]]; then pip -q install git+http://github.com/astropy/astropy.git#egg=astropy; fi
 
 script:
