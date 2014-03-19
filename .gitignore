@@ -10,8 +10,10 @@ __pycache__
 *.c
 
 # Other generated files
-ccdproc/version.py
 ccdproc/cython_version.py
+*/version.py
+htmlcov
+.coverage
 
 # Sphinx
 _build
