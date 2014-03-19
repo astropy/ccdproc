@@ -1,78 +1,76 @@
 language: python
 
 python:
-    #- 2.6
-    #- 2.7
+    - 2.6
+    - 2.7
     - 3.2
     - 3.3
 
 env:
-    # try all python versions with the latest stable numpy and astropy
     global:
       - WHEELHOUSE_HUB=http://physics.mnstate.edu/craig/wheelhouse
       - PIP_WHEEL_STRICT_NUMPY="pip install --use-wheel --no-index"
       - SETUP_CMD='test'
       - ASTROPY_VERSION=stable
       - PIP_WHEEL_FLEX_NUMPY="pip install --use-wheel --find-links=http://wheels.astropy.org --find-links=http://wheels2.astropy.org"
+
+    # Try all python versions with all supported numpy,
+    # latest stable scipy and astropy.
     matrix:
-      - NUMPY_VERSION=( 1.5.1 1.8.0 )
-      #- NUMPY_VERSION=1.6.2
-      #- NUMPY_VERSION=1.7.1
-      #- NUMPY_VERSION=1.8.0
+      - NUMPY_VERSION=1.5.1
+      - NUMPY_VERSION=1.6.2
+      - NUMPY_VERSION=1.7.1
+      - NUMPY_VERSION=1.8.0
 
 matrix:
     exclude:
-      - python: 3.2
-        env: NUMPY_VERSION=1.5.1
-      - python: 3.2
-        env: NUMPY_VERSION=1.7.1
-      - python: 3.2
-        env: NUMPY_VERSION=1.8.0
-      - python: 3.3
-        env: NUMPY_VERSION=1.5.1
-      - python: 3.3
-        env: NUMPY_VERSION=1.6.2
+        - python: 3.2
+          env: NUMPY_VERSION=1.5.1
+        - python: 3.2
+          env: NUMPY_VERSION=1.7.1
+        - python: 3.2
+          env: NUMPY_VERSION=1.8.0
+        - python: 3.3
+          env: NUMPY_VERSION=1.5.1
+        - python: 3.3
+          env: NUMPY_VERSION=1.6.2
 
     include:
+        # one documentation build
         - python: 2.7
           # removed option "-w" to prevent warnings from being elevated to errors.
           env: NUMPY_VERSION=1.7.1 SETUP_CMD='build_sphinx -n'
 
-        # # try alternate numpy versions with the latest stable astropy
-        # - python: 2.7
-        #   env: ASTROPY_VERSION=stable NUMPY_VERSION=1.6.2 SETUP_CMD='test'
-        # - python: 2.7
-        #   env: ASTROPY_VERSION=stable NUMPY_VERSION=1.5.1 SETUP_CMD='test'
-        # - python: 3.2
-        #   env: ASTROPY_VERSION=stable NUMPY_VERSION=1.6.2 SETUP_CMD='test'
-        # # numpy < 1.6 does not work on py 3.x
-
-        # try latest developer version of astropy
+        # try latest development version of astropy with latest python 2.7 and 3.x releases
         - python: 2.7
           env: ASTROPY_VERSION=development NUMPY_VERSION=1.8.0 SETUP_CMD='test'
-        #- python: 3.3
-        #  env: ASTROPY_VERSION=development NUMPY_VERSION=1.8.0 SETUP_CMD='test'
+        - python: 3.3
+          env: ASTROPY_VERSION=development NUMPY_VERSION=1.8.0 SETUP_CMD='test'
 
 before_install:
-   # We do this to make sure we get the dependencies so pip works below
-   - sudo apt-get update -qq
-   #- sudo apt-get install -qq python-numpy python-sphinx cython libatlas-dev liblapack-dev gfortran python-scipy
-   #- if [[ $SETUP_CMD == build_sphinx* ]]; then sudo apt-get install -qq python-sphinx graphviz texlive-latex-extra dvipng python-matplotlib; fi
    - pip install --upgrade setuptools
    - pip install --upgrade pip
    - pip install wheel
-
+   - if [[ $SETUP_CMD == build_sphinx* ]]; then sudo apt-get graphviz; fi
 install:
    - export PYTHONIOENCODING=UTF8 # just in case
+
+   # numpy version-specific wheelhouse
    - export WHEELHOUSE_SPOKE=$WHEELHOUSE_HUB/numpy-$NUMPY_VERSION
+
+   # ll tests need numpy and scipy
    - $PIP_WHEEL_STRICT_NUMPY --find-links=$WHEELHOUSE_SPOKE numpy scipy
 
-   - if [[ $SETUP_CMD == build_sphinx* ]]; then $PIP_WHEEL_FLEX_NUMPY sphinx>=1.2; fi
-   - if [[ $SETUP_CMD == build_sphinx* ]]; then $PIP_WHEEL_FLEX_NUMPY matplotlib; fi
-
+   # tests with astropy stable use wheels
    - if [[ $ASTROPY_VERSION == stable ]]; then $PIP_WHEEL_STRICT_NUMPY --find-links=$WHEELHOUSE_SPOKE astropy; fi
+
+   # build development astropy from source -- requires cython
    - if [[ $ASTROPY_VERSION == development ]]; then $PIP_WHEEL_FLEX_NUMPY cython; fi
    - if [[ $ASTROPY_VERSION == development ]]; then pip -q install git+http://github.com/astropy/astropy.git#egg=astropy; fi
+
+   # documentation build has a couple of additional requirements
+   - if [[ $SETUP_CMD == build_sphinx* ]]; then $PIP_WHEEL_FLEX_NUMPY sphinx>=1.2; fi
+   - if [[ $SETUP_CMD == build_sphinx* ]]; then $PIP_WHEEL_FLEX_NUMPY matplotlib; fi
 
 script:
    - python setup.py $SETUP_CMD
