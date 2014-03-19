@@ -65,7 +65,7 @@ install:
    - have_numpy=$(pip freeze | grep numpy)
    #- pip uninstall --yes -q numpy scipy
    # Install from wheels, no building from source
-   - $PIP_WHEEL_STRICT_NUMPY --find-links=$WHEELHOUSE_SPOKE --force-reinstall numpy scipy
+   - $PIP_WHEEL_STRICT_NUMPY --find-links=$WHEELHOUSE_SPOKE --upgrade --force-reinstall numpy scipy
 
    # tests with astropy stable use wheels
    - if [[ $ASTROPY_VERSION == stable ]]; then $PIP_WHEEL_STRICT_NUMPY --find-links=$WHEELHOUSE_SPOKE astropy; fi
