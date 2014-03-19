@@ -54,8 +54,8 @@ matrix:
           env: ASTROPY_VERSION=development NUMPY_VERSION=$LATEST_NUMPY_STABLE SETUP_CMD='test'
 
         # get test coverage from a python 2.7 build with the latest stable numpy
-        # - python: 2.7
-        #  env: ASTROPY_VERSION=stable NUMPY_VERSION=$LATEST_NUMPY_STABLE SETUP_CMD='test --coverage'
+        - python: 2.7
+          env: ASTROPY_VERSION=stable NUMPY_VERSION=$LATEST_NUMPY_STABLE SETUP_CMD='test --coverage'
 
 before_install:
     - pip install --upgrade setuptools
