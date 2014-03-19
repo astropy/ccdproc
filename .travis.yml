@@ -52,13 +52,18 @@ before_install:
    - pip install --upgrade pip
    - pip install wheel
    - if [[ $SETUP_CMD == build_sphinx* ]]; then sudo apt-get graphviz; fi
+
 install:
    - export PYTHONIOENCODING=UTF8 # just in case
 
    # numpy version-specific wheelhouse
    - export WHEELHOUSE_SPOKE=$WHEELHOUSE_HUB/numpy-$NUMPY_VERSION
 
-   # ll tests need numpy and scipy
+   # all tests need numpy and scipy...what versions, if any, do we have?
+   - pip freeze
+   # first remove any installed numpy/scipy to maintain control over versions
+   - pip uninstall -q numpy scipy
+   # Install from wheels, no building from source
    - $PIP_WHEEL_STRICT_NUMPY --find-links=$WHEELHOUSE_SPOKE numpy scipy
 
    # tests with astropy stable use wheels
