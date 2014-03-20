@@ -4,11 +4,11 @@
 import numpy as np
 from astropy.io import fits
 
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
-from ..ccddata import CCDData, electrons, fromFITS, toFITS
+from ..ccddata import CCDData, toFITS
 from ..ccdproc import *
 
 import os
@@ -21,7 +21,7 @@ def writeout(cd, outfile):
     hdu.writeto(outfile)
 
 
-def test_cosmicray_clean_scalarbackground():
+def test_cosmicray_clean_scalar_background():
     with NumpyRNGContext(125):
         scale = 5.3
         size = 100
@@ -36,6 +36,25 @@ def test_cosmicray_clean_scalarbackground():
         testdata = 1.0 * cd.data
     cc = cosmicray_clean(cd, 5, cosmicray_median, crargs=(11,),
                          background=scale, bargs=(), rbox=11, gbox=0)
+    assert abs(cc.data.std() - scale) < 0.1
+    assert (testdata - cc.data > 0).sum() == ncrays
+
+
+def test_cosmicray_clean_no_background():
+    with NumpyRNGContext(125):
+        scale = 5.3
+        size = 100
+        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
+        cd = CCDData(data, meta=fits.header.Header())
+        ncrays = 30
+        crrays = np.random.random_integers(0, size - 1, size=(ncrays, 2))
+        crflux = 10 * scale * np.random.random(30) + 5 * scale
+        for i in range(ncrays):
+            y, x = crrays[i]
+            cd.data[y, x] = crflux[i]
+        testdata = 1.0 * cd.data
+    cc = cosmicray_clean(cd, 5, cosmicray_median, crargs=(11,),
+                         background=None, bargs=(), rbox=11, gbox=0)
     assert abs(cc.data.std() - scale) < 0.1
     assert (testdata - cc.data > 0).sum() == ncrays
 
@@ -60,6 +79,24 @@ def test_cosmicray_clean():
                              rbox=11)
     assert abs(cc.data.std() - scale) < 0.1
     assert (testdata - cc.data > 0).sum() == 30
+
+
+def test_cosmicray_clean_rbox_zero_replaces_no_pixels():
+    with NumpyRNGContext(125):
+        scale = 5.3
+        size = 100
+        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
+        cd = CCDData(data, meta=fits.header.Header())
+        ncrays = 30
+        crrays = np.random.random_integers(0, size - 1, size=(ncrays, 2))
+        crflux = 10 * scale * np.random.random(30) + 5 * scale
+        for i in range(ncrays):
+            y, x = crrays[i]
+            cd.data[y, x] = crflux[i]
+        testdata = 1.0 * cd.data
+    cc = cosmicray_clean(cd, 5, cosmicray_median, crargs=(11,),
+                         background=scale, bargs=(), rbox=0, gbox=0)
+    assert_allclose(cc, testdata)
 
 
 def test_cosmicray_median():

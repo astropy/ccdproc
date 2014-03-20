@@ -1,0 +1,7 @@
+[run]
+branch = True
+omit = 
+    ccdproc/__init__*
+    ccdproc/conftest.py
+    ccdproc/*tests/*
+    ccdproc/*version*

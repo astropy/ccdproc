@@ -10,7 +10,7 @@ from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
-from ..ccddata import CCDData, electrons, adu, fromFITS, toFITS
+from ..ccddata import CCDData, electrons, adu
 from ..ccdproc import *
 
 # tests for overscan
@@ -64,7 +64,11 @@ def test_subtract_overscan_model():
     assert abs(ccd.data.mean()) < 0.1
 
 
-def test_sutract_overscan_ccd_failt():
+def test_subtract_overscan_ccd_fails():
+    # do we get an error if the *image* is neither an nor an array?
+    with pytest.raises(TypeError):
+        subtract_overscan(3, np.zeros((5, 5)))
+    # do we get an error if the *overscan* is not an image or an array?
     with pytest.raises(TypeError):
         subtract_overscan(np.zeros((10, 10)), 3, median=False, model=None)
 

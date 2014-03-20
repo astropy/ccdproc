@@ -1,13 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # This module implements the base CCDPROC functions
-import inspect
 import numpy as np
 
-from ccddata import CCDData, electrons
+from ccddata import CCDData
 
-from astropy import units as u
 from astropy.units.quantity import Quantity
-from astropy.nddata.nduncertainty import StdDevUncertainty
 from astropy.modeling import fitting
 from astropy import stats
 
@@ -47,7 +44,7 @@ def subtract_overscan(ccd, overscan, median=False, model=None):
     ccd :  CCDData object
         CCDData object with overscan subtracted
     """
-    if not (isinstance(ccd, CCDData) or isinstance(overscan, np.ndarray)):
+    if not (isinstance(ccd, CCDData) or isinstance(ccd, np.ndarray)):
         raise TypeError('ccddata is not a CCDData or ndarray object')
     if not (isinstance(overscan, CCDData) or isinstance(overscan, np.ndarray)):
         raise TypeError('overscan is not a CCDData or ndarray object')

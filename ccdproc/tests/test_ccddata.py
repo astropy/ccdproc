@@ -4,11 +4,10 @@
 import numpy as np
 from astropy.io import fits
 
-from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
-from ..ccddata import CCDData, electrons, fromFITS
+from ..ccddata import CCDData, electrons, fromFITS, toFITS
 
 
 def test_ccddata_empty():
@@ -85,6 +84,26 @@ def test_create_variance():
     assert cd.uncertainty.array.shape == (10, 10)
     assert cd.uncertainty.array.size == 100
     assert cd.uncertainty.array.dtype == np.dtype(float)
+
+
+def test_setting_bad_uncertainty_raises_error():
+    cd = CCDData(np.ones((100, 100)))
+    with pytest.raises(TypeError):
+        # Uncertainty is supposed to be an instance of NDUncertainty
+        cd.uncertainty = 10
+
+
+def test_create_variance_with_bad_image_units_raises_error():
+    cd = CCDData(np.ones((100, 100)))
+    with pytest.raises(TypeError):
+        cd.create_variance(10)
+
+
+def test_toFITS():
+    cd = CCDData(np.ones((100, 100)), meta={'observer': 'Edwin Hubble'})
+    fits_hdulist = toFITS(cd)
+    assert isinstance(fits_hdulist, fits.HDUList)
+
 
 if __name__ == '__main__':
     test_ccddata_empty()
