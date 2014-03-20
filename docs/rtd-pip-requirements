@@ -1,0 +1,4 @@
+numpy>=1.7
+numpydoc
+matplotlib
+astropy>=0.3
