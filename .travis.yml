@@ -41,17 +41,17 @@ matrix:
 
     include:
         # one documentation build
-        - python: 2.7
+        #- python: 2.7
           # Removed option "-w" to
           # prevent warnings from being elevated to errors.
-          env: NUMPY_VERSION=$LATEST_NUMPY_STABLE SETUP_CMD='build_sphinx -n'
+        #  env: NUMPY_VERSION=$LATEST_NUMPY_STABLE SETUP_CMD='build_sphinx -n'
 
         # Try latest development version of astropy with latest python 2.7 and
         # 3.x releases
-        - python: 2.7
-          env: ASTROPY_VERSION=development NUMPY_VERSION=$LATEST_NUMPY_STABLE SETUP_CMD='test'
-        - python: 3.3
-          env: ASTROPY_VERSION=development NUMPY_VERSION=$LATEST_NUMPY_STABLE SETUP_CMD='test'
+        #- python: 2.7
+        #  env: ASTROPY_VERSION=development NUMPY_VERSION=$LATEST_NUMPY_STABLE SETUP_CMD='test'
+        #- python: 3.3
+        #  env: ASTROPY_VERSION=development NUMPY_VERSION=$LATEST_NUMPY_STABLE SETUP_CMD='test'
 
         # get test coverage from a python 2.7 build
         # for now need the development version of astropy
