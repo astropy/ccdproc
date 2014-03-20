@@ -5,7 +5,7 @@ import numpy as np
 from astropy.io import fits
 
 from numpy.testing import assert_array_equal
-from astropy.tests.helper import pytest, raises
+from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
 from ..ccddata import CCDData, electrons, fromFITS, toFITS
@@ -88,12 +88,12 @@ def test_background_variance_box():
     assert abs(bd.mean() - scale) < 0.10
 
 
-@raises(ValueError)
 def test_background_variance_box_fail():
     with NumpyRNGContext(123):
         scale = 5.3
         cd = np.random.normal(loc=0, size=(100, 100), scale=scale)
-    bd = background_variance_box(cd, 0.5)
+    with pytest.raises(ValueError):
+        bd = background_variance_box(cd, 0.5)
 
 
 def test_background_variance_filter():
@@ -104,9 +104,9 @@ def test_background_variance_filter():
     assert abs(bd.mean() - scale) < 0.10
 
 
-@raises(ValueError)
 def test_background_variance_filter_fail():
     with NumpyRNGContext(123):
         scale = 5.3
         cd = np.random.normal(loc=0, size=(100, 100), scale=scale)
-    bd = background_variance_filter(cd, 0.5)
+    with pytest.raises(ValueError):
+        bd = background_variance_filter(cd, 0.5)

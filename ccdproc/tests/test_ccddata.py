@@ -5,7 +5,7 @@ import numpy as np
 from astropy.io import fits
 
 from numpy.testing import assert_array_equal
-from astropy.tests.helper import pytest, raises
+from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
 from ..ccddata import CCDData, electrons, fromFITS
@@ -36,13 +36,13 @@ def test_fromFITS():
     assert cd.meta == hdu.header
 
 
-@raises(ValueError)
 def test_fromMEF():
     with NumpyRNGContext(123):
         nd = np.random.random((10, 10))
     hdu = fits.PrimaryHDU(nd)
     hdulist = fits.HDUList([hdu, hdu])
-    cd = fromFITS(hdulist)
+    with pytest.raises(ValueError):
+        cd = fromFITS(hdulist)
 
 
 def test_metafromheader():
@@ -72,10 +72,10 @@ def test_header2meta():
     assert d1.header['OBSERVER'] == 'Edwin Hubble'
 
 
-@raises(TypeError)
 def test_metafromstring_fail():
     hdr = 'this is not a valid header'
-    d1 = CCDData(np.ones((5, 5)), meta=hdr)
+    with pytest.raises(TypeError):
+        d1 = CCDData(np.ones((5, 5)), meta=hdr)
 
 
 def test_create_variance():
