@@ -13,6 +13,8 @@ from ..ccdproc import *
 
 import os
 
+DATA_SCALE = 5.3
+NCRAYS = 30
 
 def writeout(cd, outfile):
     hdu = toFITS(cd)
@@ -21,100 +23,80 @@ def writeout(cd, outfile):
     hdu.writeto(outfile)
 
 
-def test_cosmicray_clean_scalar_background():
+def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
+    size = data.shape[0]
     with NumpyRNGContext(125):
-        scale = 5.3
-        size = 100
-        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
-        cd = CCDData(data, meta=fits.header.Header())
-        ncrays = 30
         crrays = np.random.random_integers(0, size - 1, size=(ncrays, 2))
-        crflux = 10 * scale * np.random.random(30) + 5 * scale
+        # use (threshold + 1) below to make sure cosmic ray is well above the
+        # threshold no matter what the random number generator returns
+        crflux = 10 * scale * np.random.random(NCRAYS) + (threshold + 1) * scale
         for i in range(ncrays):
             y, x = crrays[i]
-            cd.data[y, x] = crflux[i]
-        testdata = 1.0 * cd.data
-    cc = cosmicray_clean(cd, 5, cosmicray_median, crargs=(11,),
-                         background=scale, bargs=(), rbox=11, gbox=0)
+            data.data[y, x] = crflux[i]
+
+
+@pytest.mark.data_scale(DATA_SCALE)
+@pytest.mark.parametrize("background_type", [
+                         (DATA_SCALE),
+                         (None)])
+def test_cosmicray_clean_scalar_background(ccd_data, background_type):
+    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
+    threshold = 5
+    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
+    testdata = 1.0 * ccd_data.data
+    cc = cosmicray_clean(ccd_data, 5, cosmicray_median, crargs=(11,),
+                         background=background_type, bargs=(), rbox=11, gbox=0)
     assert abs(cc.data.std() - scale) < 0.1
-    assert (testdata - cc.data > 0).sum() == ncrays
+    assert ((testdata - cc.data) > 0).sum() == NCRAYS
 
 
-def test_cosmicray_clean_no_background():
-    with NumpyRNGContext(125):
-        scale = 5.3
-        size = 100
-        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
-        cd = CCDData(data, meta=fits.header.Header())
-        ncrays = 30
-        crrays = np.random.random_integers(0, size - 1, size=(ncrays, 2))
-        crflux = 10 * scale * np.random.random(30) + 5 * scale
-        for i in range(ncrays):
-            y, x = crrays[i]
-            cd.data[y, x] = crflux[i]
-        testdata = 1.0 * cd.data
-    cc = cosmicray_clean(cd, 5, cosmicray_median, crargs=(11,),
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_clean_no_background(ccd_data):
+    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
+    threshold = 5
+    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
+    testdata = 1.0 * ccd_data.data
+    cc = cosmicray_clean(ccd_data, 5, cosmicray_median, crargs=(11,),
                          background=None, bargs=(), rbox=11, gbox=0)
     assert abs(cc.data.std() - scale) < 0.1
-    assert (testdata - cc.data > 0).sum() == ncrays
+    assert ((testdata - cc.data) > 0).sum() == NCRAYS
 
 
-def test_cosmicray_clean():
-    with NumpyRNGContext(125):
-        scale = 5.3
-        size = 100
-        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
-        cd = CCDData(data, meta=fits.header.Header())
-        ncrays = 30
-        crrays = np.random.random_integers(0, size - 1, size=(ncrays, 2))
-        crflux = 1000 * scale * np.random.random(30) + 5 * scale
-        for i in range(ncrays):
-            y, x = crrays[i]
-            cd.data[y, x] = crflux[i]
-        testdata = 1.0 * cd.data
-    cc = cd  # currently here because of lacking a copy command for NDData
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_clean(ccd_data):
+    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
+    threshold = 5
+    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
+    testdata = 1.0 * ccd_data.data
+    cc = ccd_data  # currently here because no copy command for NDData
     for i in range(5):
         cc = cosmicray_clean(cc, 5.0, cosmicray_median, crargs=(11,),
                              background=background_variance_box, bargs=(25,),
                              rbox=11)
     assert abs(cc.data.std() - scale) < 0.1
-    assert (testdata - cc.data > 0).sum() == 30
+    assert (testdata - cc.data > 0).sum() == NCRAYS
 
 
-def test_cosmicray_clean_rbox_zero_replaces_no_pixels():
-    with NumpyRNGContext(125):
-        scale = 5.3
-        size = 100
-        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
-        cd = CCDData(data, meta=fits.header.Header())
-        ncrays = 30
-        crrays = np.random.random_integers(0, size - 1, size=(ncrays, 2))
-        crflux = 10 * scale * np.random.random(30) + 5 * scale
-        for i in range(ncrays):
-            y, x = crrays[i]
-            cd.data[y, x] = crflux[i]
-        testdata = 1.0 * cd.data
-    cc = cosmicray_clean(cd, 5, cosmicray_median, crargs=(11,),
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_clean_rbox_zero_replaces_no_pixels(ccd_data):
+    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
+    threshold = 5
+    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
+
+    testdata = 1.0 * ccd_data.data
+    cc = cosmicray_clean(ccd_data, 5, cosmicray_median, crargs=(11,),
                          background=scale, bargs=(), rbox=0, gbox=0)
     assert_allclose(cc, testdata)
 
 
-def test_cosmicray_median():
-    with NumpyRNGContext(125):
-        scale = 5.3
-        size = 100
-        cd = np.random.normal(loc=0, size=(size, size), scale=scale)
-        ncrays = 30
-        crrays = np.random.random_integers(0, size - 1, size=(ncrays, 2))
-        crflux = 10 * scale * np.random.random(30) + 5 * scale
-        for i in range(ncrays):
-            y, x = crrays[i]
-            cd[y, x] = crflux[i]
-
-    crarr = cosmicray_median(cd, 5, mbox=11, background=scale)
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_median(ccd_data):
+    threshold = 5
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    crarr = cosmicray_median(ccd_data, 5, mbox=11, background=DATA_SCALE)
 
     # check the number of cosmic rays detected
-    assert crarr.sum() == ncrays
+    assert crarr.sum() == NCRAYS
 
 
 def test_background_variance_box():
