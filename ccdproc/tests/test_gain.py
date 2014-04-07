@@ -9,6 +9,7 @@ from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 from astropy.units.quantity import Quantity
+import astropy.units as u
 
 from ..ccddata import CCDData, adu, electrons, fromFITS, toFITS
 from ..ccdproc import *
@@ -23,31 +24,15 @@ def writeout(cd, outfile):
 
 
 # tests for overscan
-def test_gain_correct():
-    with NumpyRNGContext(125):
-        size = 100
-        scale = 1
-        # create the basic data array
-        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
-        ccd = CCDData(data, meta=fits.header.Header())
-        # create the overscan region
-    ccd = gain_correct(ccd, gain=3)
-    assert_array_equal(ccd.data, 3 * data)
+def test_gain_correct(ccd_data):
+    orig_data = ccd_data.data
+    ccd = gain_correct(ccd_data, gain=3)
+    assert_array_equal(ccd.data, 3 * orig_data)
 
 
-def test_gain_correct_quantity():
-    with NumpyRNGContext(125):
-        size = 100
-        scale = 1
-        # create the basic data array
-        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
-        ccd = CCDData(data, meta=fits.header.Header(), unit=adu)
-        # create the overscan region
-    g = Quantity(3, electrons / adu)
-    ccd = gain_correct(ccd, gain=g)
-    assert_array_equal(ccd.data, 3 * data)
+def test_gain_correct_quantity(ccd_data):
+    orig_data = ccd_data.data
+    g = Quantity(3, electrons / u.adu)
+    ccd = gain_correct(ccd_data, gain=g)
+    assert_array_equal(ccd.data, 3 * orig_data)
     assert ccd.unit == electrons
-
-
-test_gain_correct()
-test_gain_correct_quantity()

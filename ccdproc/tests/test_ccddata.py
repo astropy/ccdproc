@@ -15,18 +15,16 @@ def test_ccddata_empty():
         CCDData()  # empty initializer should fail
 
 
-def test_ccddata_simple():
-    with NumpyRNGContext(123):
-        cd = CCDData(np.random.random((10, 10)))
-    assert cd.shape == (10, 10)
-    assert cd.size == 100
-    assert cd.dtype == np.dtype(float)
+@pytest.mark.data_size(10)
+def test_ccddata_simple(ccd_data):
+    assert ccd_data.shape == (10, 10)
+    assert ccd_data.size == 100
+    assert ccd_data.dtype == np.dtype(float)
 
 
-def test_fromFITS():
-    with NumpyRNGContext(123):
-        nd = np.random.random((10, 10))
-    hdu = fits.PrimaryHDU(nd)
+@pytest.mark.data_size(10)
+def test_fromFITS(ccd_data):
+    hdu = fits.PrimaryHDU(ccd_data)
     hdulist = fits.HDUList([hdu])
     cd = fromFITS(hdulist)
     assert cd.shape == (10, 10)
@@ -35,16 +33,14 @@ def test_fromFITS():
     assert cd.meta == hdu.header
 
 
-def test_fromMEF():
-    with NumpyRNGContext(123):
-        nd = np.random.random((10, 10))
-    hdu = fits.PrimaryHDU(nd)
+def test_fromMEF(ccd_data):
+    hdu = fits.PrimaryHDU(ccd_data)
     hdulist = fits.HDUList([hdu, hdu])
     with pytest.raises(ValueError):
         cd = fromFITS(hdulist)
 
 
-def test_metafromheader():
+def test_metafromheader(ccd_data):
     hdr = fits.header.Header()
     hdr.set('observer', 'Edwin Hubble')
     hdr.set('exptime', '3600')
@@ -77,31 +73,29 @@ def test_metafromstring_fail():
         d1 = CCDData(np.ones((5, 5)), meta=hdr)
 
 
-def test_create_variance():
-    with NumpyRNGContext(123):
-        cd = CCDData(np.random.random((10, 10)), unit=electrons)
-    cd.create_variance(5)
-    assert cd.uncertainty.array.shape == (10, 10)
-    assert cd.uncertainty.array.size == 100
-    assert cd.uncertainty.array.dtype == np.dtype(float)
+@pytest.mark.data_size(10)
+def test_create_variance(ccd_data):
+    ccd_data.unit = electrons
+    ccd_data.create_variance(5)
+    assert ccd_data.uncertainty.array.shape == (10, 10)
+    assert ccd_data.uncertainty.array.size == 100
+    assert ccd_data.uncertainty.array.dtype == np.dtype(float)
 
 
-def test_setting_bad_uncertainty_raises_error():
-    cd = CCDData(np.ones((100, 100)))
+def test_setting_bad_uncertainty_raises_error(ccd_data):
     with pytest.raises(TypeError):
         # Uncertainty is supposed to be an instance of NDUncertainty
-        cd.uncertainty = 10
+        ccd_data.uncertainty = 10
 
 
-def test_create_variance_with_bad_image_units_raises_error():
-    cd = CCDData(np.ones((100, 100)))
+def test_create_variance_with_bad_image_units_raises_error(ccd_data):
     with pytest.raises(TypeError):
-        cd.create_variance(10)
+        ccd_data.create_variance(10)
 
 
-def test_toFITS():
-    cd = CCDData(np.ones((100, 100)), meta={'observer': 'Edwin Hubble'})
-    fits_hdulist = toFITS(cd)
+def test_toFITS(ccd_data):
+    ccd_data.meta = {'observer': 'Edwin Hubble'}
+    fits_hdulist = toFITS(ccd_data)
     assert isinstance(fits_hdulist, fits.HDUList)
 
 
