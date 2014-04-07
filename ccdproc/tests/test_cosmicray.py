@@ -16,6 +16,7 @@ import os
 DATA_SCALE = 5.3
 NCRAYS = 30
 
+
 def writeout(cd, outfile):
     hdu = toFITS(cd)
     if os.path.isfile(outfile):
@@ -29,7 +30,8 @@ def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
         crrays = np.random.random_integers(0, size - 1, size=(ncrays, 2))
         # use (threshold + 1) below to make sure cosmic ray is well above the
         # threshold no matter what the random number generator returns
-        crflux = 10 * scale * np.random.random(NCRAYS) + (threshold + 1) * scale
+        crflux = (10 * scale * np.random.random(NCRAYS) +
+                  (threshold + 1) * scale)
         for i in range(ncrays):
             y, x = crrays[i]
             data.data[y, x] = crflux[i]
