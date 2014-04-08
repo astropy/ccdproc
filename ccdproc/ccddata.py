@@ -111,14 +111,18 @@ class CCDData(NDData):
     @meta.setter
     def meta(self, value):
         if value is None:
-            self._meta = OrderedDict()
+            self._meta = fits.Header()
         elif isinstance(value, fits.Header):
             self._meta = value
         else:
+            h = fits.Header()
             try:
-                self._meta = OrderedDict(value)
-            except ValueError:
+                for k, v in value.iteritems():
+                    h[k] = v
+            except (ValueError, AttributeError):
                 raise TypeError('NDData meta attribute must be dict-like')
+            self._meta = h
+
 
     @property
     def uncertainty(self):

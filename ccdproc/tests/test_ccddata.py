@@ -38,6 +38,11 @@ def test_fromFITS(ccd_data):
     assert cd.meta == hdu.header
 
 
+def test_ccddata_meta_is_fits_header(ccd_data):
+    ccd_data.meta = {'OBSERVER': 'Edwin Hubble'}
+    assert isinstance(ccd_data.meta, fits.Header)
+
+
 def test_fromMEF(ccd_data):
     hdu = fits.PrimaryHDU(ccd_data)
     hdulist = fits.HDUList([hdu, hdu])
