@@ -91,6 +91,10 @@ class CCDData(NDData):
         >>> plt.imshow(x)
 
     """
+    def __init__(self, *args, **kwd):
+        super(CCDData, self).__init__(*args, **kwd)
+        if self.unit is None:
+            raise ValueError("Unit for CCDData must be specified")
 
     @property
     def header(self):
@@ -183,7 +187,7 @@ def fromFITS(hdu, units=None):
     if len(hdu) > 1:
         raise ValueError('Multi-Exenstion FITS files are not supported')
 
-    return CCDData(hdu[0].data, meta=hdu[0].header)
+    return CCDData(hdu[0].data, meta=hdu[0].header, unit=units)
 
 
 def toFITS(ccddata):

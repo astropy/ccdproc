@@ -15,6 +15,11 @@ def test_ccddata_empty():
         CCDData()  # empty initializer should fail
 
 
+def test_ccddata_must_have_unit():
+    with pytest.raises(ValueError):
+        CCDData(np.zeros([100, 100]))
+
+
 @pytest.mark.data_size(10)
 def test_ccddata_simple(ccd_data):
     assert ccd_data.shape == (10, 10)
@@ -26,7 +31,7 @@ def test_ccddata_simple(ccd_data):
 def test_fromFITS(ccd_data):
     hdu = fits.PrimaryHDU(ccd_data)
     hdulist = fits.HDUList([hdu])
-    cd = fromFITS(hdulist)
+    cd = fromFITS(hdulist, units=electrons)
     assert cd.shape == (10, 10)
     assert cd.size == 100
     assert cd.dtype == np.dtype(float)
@@ -45,14 +50,14 @@ def test_metafromheader(ccd_data):
     hdr.set('observer', 'Edwin Hubble')
     hdr.set('exptime', '3600')
 
-    d1 = CCDData(np.ones((5, 5)), meta=hdr)
+    d1 = CCDData(np.ones((5, 5)), meta=hdr, unit=electrons)
     assert d1.meta['OBSERVER'] == 'Edwin Hubble'
     assert d1.header['OBSERVER'] == 'Edwin Hubble'
 
 
 def test_metafromdict():
     dic = {'OBSERVER': 'Edwin Hubble', 'EXPTIME': 3600}
-    d1 = CCDData(np.ones((5, 5)), meta=dic)
+    d1 = CCDData(np.ones((5, 5)), meta=dic, unit=electrons)
     assert d1.meta['OBSERVER'] == 'Edwin Hubble'
 
 
@@ -61,7 +66,7 @@ def test_header2meta():
     hdr.set('observer', 'Edwin Hubble')
     hdr.set('exptime', '3600')
 
-    d1 = CCDData(np.ones((5, 5)))
+    d1 = CCDData(np.ones((5, 5)), unit=electrons)
     d1.header = hdr
     assert d1.meta['OBSERVER'] == 'Edwin Hubble'
     assert d1.header['OBSERVER'] == 'Edwin Hubble'
