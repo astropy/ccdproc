@@ -5,10 +5,10 @@ import numpy as np
 from astropy.io import fits
 from astropy.modeling import models
 from astropy.units.quantity import Quantity
+import astropy.units as u
 
 from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
-from astropy.utils import NumpyRNGContext
 
 from ..ccddata import CCDData, electrons, adu
 from ..ccdproc import *
@@ -16,52 +16,35 @@ from ..ccdproc import *
 # tests for overscan
 
 
-def test_subtract_overscan_mean():
-    with NumpyRNGContext(125):
-        size = 100
-        scale = 1
-        # create the basic data array
-        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
-        ccd = CCDData(data, meta=fits.header.Header())
-        # create the overscan region
-        oscan = 300.0
-        ccd.data = ccd.data + oscan
-    oscan = ccd[:, 0:10]
-    ccd = subtract_overscan(ccd, oscan, median=False, model=None)
-    assert abs(ccd.data.mean()) < 0.1
+def test_subtract_overscan_mean(ccd_data):
+    # create the overscan region
+    oscan = 300.0
+    ccd_data.data = ccd_data.data + oscan
+    oscan = ccd_data[:, 0:10]
+    ccd_data = subtract_overscan(ccd_data, oscan, median=False, model=None)
+    assert abs(ccd_data.data.mean()) < 0.1
 
 
-def test_subtract_overscan_median():
-    with NumpyRNGContext(125):
-        size = 100
-        scale = 1
-        # create the basic data array
-        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
-        ccd = CCDData(data, meta=fits.header.Header())
-        # create the overscan region
-        oscan = 300.0
-        ccd.data = ccd.data + oscan
-    oscan = ccd[:, 0:10]
-    ccd = subtract_overscan(ccd, oscan, median=True, model=None)
-    assert abs(ccd.data.mean()) < 0.1
+def test_subtract_overscan_median(ccd_data):
+    # create the overscan region
+    oscan = 300.0
+    ccd_data.data = ccd_data.data + oscan
+    oscan = ccd_data[:, 0:10]
+    ccd_data = subtract_overscan(ccd_data, oscan, median=True, model=None)
+    assert abs(ccd_data.data.mean()) < 0.1
 
 # tests for gain correction
 
 
-def test_subtract_overscan_model():
-    with NumpyRNGContext(125):
-        size = 100
-        scale = 1
-        # create the basic data array
-        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
-        ccd = CCDData(data, meta=fits.header.Header())
-        # create the overscan region
-        yscan, xscan = np.mgrid[0:size, 0:size] / 10.0 + 300.0
-        ccd.data = ccd.data + yscan
-    oscan = ccd[:, 0:10]
-    ccd = subtract_overscan(
-        ccd, oscan, median=False, model=models.Polynomial1D(2))
-    assert abs(ccd.data.mean()) < 0.1
+def test_subtract_overscan_model(ccd_data):
+    # create the overscan region
+    size = ccd_data.shape[0]
+    yscan, xscan = np.mgrid[0:size, 0:size] / 10.0 + 300.0
+    ccd_data.data = ccd_data.data + yscan
+    oscan = ccd_data[:, 0:10]
+    ccd_data = subtract_overscan(
+        ccd_data, oscan, median=False, model=models.Polynomial1D(2))
+    assert abs(ccd_data.data.mean()) < 0.1
 
 
 def test_subtract_overscan_ccd_fails():
@@ -74,58 +57,42 @@ def test_subtract_overscan_ccd_fails():
 
 
 # test for flat correction
-def test_flat_correct():
-    with NumpyRNGContext(125):
-        size = 100
-        scale = 10
-        # create the basic data array
-        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
-        ccd = CCDData(data, meta=fits.header.Header())
-        # create the flat
-        data = 2 * np.ones((size, size))
-        flat = CCDData(data, meta=fits.header.Header())
-    ccd = flat_correct(ccd, flat)
+@pytest.mark.data_scale(10)
+def test_flat_correct(ccd_data):
+    size = ccd_data.shape[0]
+
+    # create the flat
+    data = 2 * np.ones((size, size))
+    flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
+    ccd_data = flat_correct(ccd_data, flat)
 
 # test for variance and for flat correction
 
 
-def test_flat_correct_variance():
-    with NumpyRNGContext(125):
-        size = 100
-        scale = 10
-        # create the basic data array
-        data = np.random.normal(loc=300, size=(size, size),  scale=scale)
-        ccd = CCDData(data, meta=fits.header.Header(), unit=electrons)
-        ccd.create_variance(5)
-        # create the flat
-        data = 2 * np.ones((size, size))
-        flat = CCDData(data, meta=fits.header.Header(), unit=electrons)
-        flat.create_variance(0.5)
-    ccd = flat_correct(ccd, flat)
+@pytest.mark.data_scale(10)
+@pytest.mark.data_mean(300)
+def test_flat_correct_variance(ccd_data):
+    size = ccd_data.shape[0]
+    ccd_data.unit = electrons
+    ccd_data.create_variance(5)
+    # create the flat
+    data = 2 * np.ones((size, size))
+    flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
+    flat.create_variance(0.5)
+    ccd_data = flat_correct(ccd_data, flat)
 
 
 # tests for gain correction
-def test_gain_correct():
-    with NumpyRNGContext(125):
-        size = 100
-        scale = 1
-        # create the basic data array
-        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
-        ccd = CCDData(data, meta=fits.header.Header())
-        # create the overscan region
-    ccd = gain_correct(ccd, gain=3)
-    assert_array_equal(ccd.data, 3 * data)
+def test_gain_correct(ccd_data):
+    init_data = ccd_data.data
+    ccd_data = gain_correct(ccd_data, gain=3)
+    assert_array_equal(ccd_data.data, 3 * init_data)
 
 
-def test_gain_correct_quantity():
-    with NumpyRNGContext(125):
-        size = 100
-        scale = 1
-        # create the basic data array
-        data = np.random.normal(loc=0, size=(size, size),  scale=scale)
-        ccd = CCDData(data, meta=fits.header.Header(), unit=adu)
-        # create the overscan region
-    g = Quantity(3, electrons / adu)
-    ccd = gain_correct(ccd, gain=g)
-    assert_array_equal(ccd.data, 3 * data)
-    assert ccd.unit == electrons
+def test_gain_correct_quantity(ccd_data):
+    init_data = ccd_data.data
+    g = Quantity(3, electrons / u.adu)
+    ccd_data = gain_correct(ccd_data, gain=g)
+
+    assert_array_equal(ccd_data.data, 3 * init_data)
+    assert ccd_data.unit == electrons

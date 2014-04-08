@@ -3,3 +3,4 @@
 # no matter how it is invoked within the source tree.
 
 from astropy.tests.pytest_plugins import *
+from .tests.pytest_fixtures import *
