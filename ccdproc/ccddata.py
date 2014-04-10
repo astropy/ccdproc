@@ -3,9 +3,10 @@
 
 from astropy.nddata import NDData
 from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
-from astropy.io import fits
+from astropy.io import fits, registry
 from astropy.utils.compat.odict import OrderedDict
 from astropy import units as u
+import astropy
 
 adu = u.def_unit('ADU')
 electrons = u.def_unit('electrons')
@@ -166,52 +167,45 @@ class CCDData(NDData):
         var = (self.data + readnoise ** 2) ** 0.5
         self.uncertainty = StdDevUncertainty(var)
 
+    def to_hdu(self):
+        """Creates an HDUList object from a CCDData object
 
-def fromFITS(hdu, units=None):
-    """Creates a CCDData object from a FITS file
+           Raises
+           -------
+           ValueError
+              Multi-Exenstion FITS files are not supported
 
-       Parameters
-       ----------
-       hdu : astropy.io.fits object
-          FITS object fo the CCDData object
+           Returns
+           -------
+           hdulist : astropy.io.fits.HDUList object
 
-       units : astropy.units object
-          Unit describing the data
-
-       Raises
-       -------
-       ValueError
-          Multi-Exenstion FITS files are not supported
-
-       Returns
-       -------
-       ccddata : ccddata.CCDData object
-
-    """
-    if len(hdu) > 1:
-        raise ValueError('Multi-Exenstion FITS files are not supported')
-
-    return CCDData(hdu[0].data, meta=hdu[0].header, unit=units)
+        """
+        hdu = fits.PrimaryHDU(self.data, self.header)
+        hdulist = fits.HDUList([hdu])
+        return hdulist
 
 
-def toFITS(ccddata):
-    """Creates an HDUList object from a CCDData object
+def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
+    unsupport_open_keywords = {
+        'do_not_scale_image_data': ('Image data must be scaled to perform '
+                                    'ccdproc operations.'),
+        'scale_back': 'Scale information is not preserved.'
+    }
+    for key, msg in unsupport_open_keywords.iteritems():
+        if key in kwd:
+            prefix = 'Unsupported keyword: {0}.'.format(key)
+            raise TypeError(' '.join([prefix, msg]))
+    hdus = fits.open(filename, **kwd)
+    ccd_data = CCDData(hdus[hdu].data, meta=hdus[hdu].header, unit=unit)
+    hdus.close()
+    return ccd_data
 
-       Parameters
-       ----------
-       ccddata : CCDData object
-          CCDData object to create FITS file
 
-       Raises
-       -------
-       ValueError
-          Multi-Exenstion FITS files are not supported
+def fits_ccddata_writer(ccd_data, filename, **kwd):
+    hdu = fits.PrimaryHDU(data=ccd_data.data, header=ccd_data.header)
+    hdu.writeto(filename, **kwd)
 
-       Returns
-       -------
-       hdulist : astropy.io.fits.HDUList object
 
-    """
-    hdu = fits.PrimaryHDU(ccddata.data, ccddata.header)
-    hdulist = fits.HDUList([hdu])
-    return hdulist
+registry.register_reader('fits', CCDData, fits_ccddata_reader)
+registry.register_writer('fits', CCDData, fits_ccddata_writer)
+registry.register_identifier('fits', CCDData, fits.connect.is_fits)
