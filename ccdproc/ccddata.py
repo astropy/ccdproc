@@ -80,6 +80,7 @@ class CCDData(NDData):
         >>> x = NDData([1,2,3])
         >>> np.asarray(x)
         array([1, 2, 3])
+
     If the `NDData` object has a `mask`, `numpy.asarray` will return a
     Numpy masked array.
 
@@ -186,6 +187,32 @@ class CCDData(NDData):
 
 
 def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
+    """
+    Generate a CCDData object from a FITS file
+
+    Parameters
+    ----------
+
+    filename : str
+        Name of fits file.
+
+    hdu : int, optional
+        FITS extension from which CCDData should be initialized.
+
+    unit : astropy.units.Unit
+        Units of the image data
+
+    kwd :
+        Any additional keyword parameters are passed through to the FITS reader
+        in :mod:`astropy.io.fits`; see Notes for additional discussion.
+
+    Notes
+    -----
+
+    FITS files that contained scaled data (e.g. unsigned integer images) will
+    be scaled and the keywords used to manage scaled data in
+    :mod:`astropy.io.fits` are disabled.
+    """
     unsupport_open_keywords = {
         'do_not_scale_image_data': ('Image data must be scaled to perform '
                                     'ccdproc operations.'),
@@ -202,6 +229,18 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
 
 
 def fits_ccddata_writer(ccd_data, filename, **kwd):
+    """
+    Write CCDData object to FITS file
+
+    Parameters
+    ----------
+
+    filename : str
+        Name of file
+
+    kwd :
+        All additional keywords are passed to :py:mod:`astropy.io.fits`
+    """
     hdu = fits.PrimaryHDU(data=ccd_data.data, header=ccd_data.header)
     hdu.writeto(filename, **kwd)
 
