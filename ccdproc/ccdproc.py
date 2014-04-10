@@ -394,3 +394,58 @@ def cosmicray_clean(ccddata, thresh, cr_func, crargs=(),
         mdata = ndimage.median_filter(data, rbox)
         ccddata.data[ccddata.mask > 0] = mdata[ccddata.mask > 0]
     return ccddata
+
+
+class Keyword(object):
+    """
+    """
+    def __init__(self, name, unit=None, value=None):
+        self._name = name
+        self._unit = unit
+        self.value = value
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def unit(self):
+        return self._unit
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        if value is None:
+            self._value = value
+        elif isinstance(value, Quantity):
+            self._unit = value.unit
+            self._value = value
+        elif isinstance(value, basestring):
+            if self.unit is not None:
+                raise ValueError("Keyword with a unit cannot have a "
+                                 "string value.")
+            else:
+                self._value = value
+        else:
+            if self.unit is None:
+                raise ValueError("No unit provided. Set value with "
+                                 "an astropy.units.Quantity")
+            self._value = value * self.unit
+
+    def value_from(self, header):
+        """
+        Set value of keyword from FITS header
+
+        Parameters
+        ----------
+
+        header : astropy.io.fits.Header
+            FITS header containing a value for this keyword
+        """
+
+        value_from_header = header[self.name]
+        self.value = value_from_header
+        return self.value
