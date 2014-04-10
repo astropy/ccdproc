@@ -11,16 +11,8 @@ from astropy.utils import NumpyRNGContext
 from astropy.units.quantity import Quantity
 import astropy.units as u
 
-from ..ccddata import CCDData, adu, electrons, fromFITS, toFITS
+from ..ccddata import electrons
 from ..ccdproc import *
-
-
-def writeout(cd, outfile):
-    import os
-    hdu = toFITS(cd)
-    if os.path.isfile(outfile):
-        os.remove(outfile)
-    hdu.writeto(outfile)
 
 
 # tests for overscan

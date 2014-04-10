@@ -8,20 +8,12 @@ from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
-from ..ccddata import CCDData, toFITS
 from ..ccdproc import *
 
 import os
 
 DATA_SCALE = 5.3
 NCRAYS = 30
-
-
-def writeout(cd, outfile):
-    hdu = toFITS(cd)
-    if os.path.isfile(outfile):
-        os.remove(outfile)
-    hdu.writeto(outfile)
 
 
 def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
