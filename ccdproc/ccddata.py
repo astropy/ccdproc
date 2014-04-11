@@ -1,6 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # This module implements the base CCDData class.
 
+import copy
+
 from astropy.nddata import NDData
 from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
 from astropy.io import fits, registry
@@ -184,6 +186,12 @@ class CCDData(NDData):
         hdu = fits.PrimaryHDU(self.data, self.header)
         hdulist = fits.HDUList([hdu])
         return hdulist
+
+    def copy(self):
+        """
+        Return a copy of the CCDData object
+        """
+        return copy.deepcopy(self)
 
 
 def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):

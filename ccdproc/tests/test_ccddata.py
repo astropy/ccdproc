@@ -140,6 +140,13 @@ def test_to_hdu(ccd_data):
     assert isinstance(fits_hdulist, fits.HDUList)
 
 
+def test_copy(ccd_data):
+    ccd_copy = ccd_data.copy()
+    np.testing.assert_array_equal(ccd_copy.data, ccd_data.data)
+    assert ccd_copy.unit == ccd_data.unit
+    assert ccd_copy.meta == ccd_data.meta
+
+
 if __name__ == '__main__':
     test_ccddata_empty()
     test_ccddata_simple()
