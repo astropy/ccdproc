@@ -114,24 +114,10 @@ def test_metafromstring_fail():
         d1 = CCDData(np.ones((5, 5)), meta=hdr)
 
 
-@pytest.mark.data_size(10)
-def test_create_variance(ccd_data):
-    ccd_data.unit = electrons
-    ccd_data.create_variance(5)
-    assert ccd_data.uncertainty.array.shape == (10, 10)
-    assert ccd_data.uncertainty.array.size == 100
-    assert ccd_data.uncertainty.array.dtype == np.dtype(float)
-
-
 def test_setting_bad_uncertainty_raises_error(ccd_data):
     with pytest.raises(TypeError):
         # Uncertainty is supposed to be an instance of NDUncertainty
         ccd_data.uncertainty = 10
-
-
-def test_create_variance_with_bad_image_units_raises_error(ccd_data):
-    with pytest.raises(TypeError):
-        ccd_data.create_variance(10)
 
 
 def test_to_hdu(ccd_data):

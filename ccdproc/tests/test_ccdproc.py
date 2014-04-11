@@ -15,9 +15,57 @@ from astropy.tests.helper import pytest
 from ..ccddata import CCDData, electrons, adu
 from ..ccdproc import *
 
+
+# test creating variance
+# success expected if u_image * u_gain = u_readnoise
+@pytest.mark.parametrize('u_image,u_gain,u_readnoise,expect_succes', [
+                         (electrons, None, electrons, True),
+                         (electrons, electrons, electrons, False),
+                         (u.adu, electrons / u.adu, electrons, True),
+                         (electrons, None, u.dimensionless_unscaled, False),
+                         (electrons, u.dimensionless_unscaled, electrons, True),
+                         (u.adu, u.dimensionless_unscaled, electrons, False),
+                         (u.adu, u.photon / u.adu, electrons, False),
+                         ])
+@pytest.mark.data_size(10)
+def test_create_variance(ccd_data, u_image, u_gain, u_readnoise,
+                         expect_succes):
+    ccd_data.unit = u_image
+    if u_gain:
+        gain = 2.0 * u_gain
+    else:
+        gain = None
+    readnoise = 5 * u_readnoise
+    if expect_succes:
+        ccd_var = create_variance(ccd_data, gain=gain, readnoise=readnoise)
+        assert ccd_var.uncertainty.array.shape == (10, 10)
+        assert ccd_var.uncertainty.array.size == 100
+        assert ccd_var.uncertainty.array.dtype == np.dtype(float)
+        if gain:
+            expected_var = np.sqrt(2 * ccd_data.data + 5 ** 2) / 2
+        else:
+            expected_var = np.sqrt(ccd_data.data + 5 ** 2)
+        np.testing.assert_array_equal(ccd_var.uncertainty.array,
+                                      expected_var)
+        assert ccd_var.unit == ccd_data.unit
+    else:
+        with pytest.raises(u.UnitsError):
+            ccd_var = create_variance(ccd_data, gain=gain, readnoise=readnoise)
+
+
+def test_create_variance_keywords_must_have_unit(ccd_data):
+    # gain must have units if provided
+    with pytest.raises(TypeError):
+        create_variance(ccd_data, gain=3)
+    # readnoise must have units
+    with pytest.raises(TypeError):
+        create_variance(ccd_data, readnoise=5)
+    # readnoise must be provided
+    with pytest.raises(ValueError):
+        create_variance(ccd_data)
+
+
 # tests for overscan
-
-
 def test_subtract_overscan_mean(ccd_data):
     # create the overscan region
     oscan = 300.0
@@ -70,8 +118,8 @@ def test_flat_correct(ccd_data):
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     ccd_data = flat_correct(ccd_data, flat)
 
-# test for variance and for flat correction
 
+# test for variance and for flat correction
 
 # this xfail needs to get pulled out ASAP...
 @pytest.mark.xfail('TRAVIS' in os.environ, reason='needs astropy fix')
@@ -80,11 +128,11 @@ def test_flat_correct(ccd_data):
 def test_flat_correct_variance(ccd_data):
     size = ccd_data.shape[0]
     ccd_data.unit = electrons
-    ccd_data.create_variance(5)
+    ccd_data = create_variance(ccd_data, readnoise=5 * electrons)
     # create the flat
     data = 2 * np.ones((size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
-    flat.create_variance(0.5)
+    flat = create_variance(flat, readnoise=0.5 * electrons)
     ccd_data = flat_correct(ccd_data, flat)
 
 

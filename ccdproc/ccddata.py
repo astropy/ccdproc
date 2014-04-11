@@ -144,32 +144,6 @@ class CCDData(NDData):
         else:
             self._uncertainty = value
 
-    def create_variance(self, readnoise):
-        """Create a variance frame.  The function will update the uncertainty
-           plane which gives the variance for the data.  The function assumes
-           that the ccd is in electrons and the readnoise is in the same units.
-
-        Parameters
-        ----------
-        readnoise :  float
-          readnoise for each pixel
-
-        Raises
-        ------
-        TypeError :
-          raises TypeError if units are not in electrons
-
-        Returns
-        -------
-        ccd :  CCDData object
-          CCDData object with uncertainty created
-        """
-        if self.unit != electrons:
-            raise TypeError('CCDData object is not in electrons')
-
-        var = (self.data + readnoise ** 2) ** 0.5
-        self.uncertainty = StdDevUncertainty(var)
-
     def to_hdu(self):
         """Creates an HDUList object from a CCDData object
 

@@ -5,10 +5,72 @@ import numpy as np
 from ccddata import CCDData
 
 from astropy.units.quantity import Quantity
+from astropy import units as u
 from astropy.modeling import fitting
 from astropy import stats
+from astropy.nddata import StdDevUncertainty
 
 from scipy import ndimage
+
+
+def create_variance(ccd_data, gain=None, readnoise=None):
+    """
+    Create a variance frame.  The function will update the uncertainty
+    plane which gives the variance for the data.  The function assumes
+    that the ccd is in electrons and the readnoise is in the same units.
+
+    Parameters
+    ----------
+
+    ccd_data : ccdproc.CCDData
+        Data whose variance will be calculated.
+
+    gain : astropy.units.Quantity, optional
+        Gain of the CCD; necessary only if `ccd_data` and `readnoise` are not
+        in the same units. In that case, the units of `gain` should be those
+        that convert `ccd_data.data` to the same units as `readnoise`.
+
+    readnoise :  astropy.units.Quantity
+        Read noise per pixel.
+
+    Raises
+    ------
+    UnitsError :
+        Raised if `readnoise` units are not equal to product of `gain` and
+        `ccd_data` units.
+
+    Returns
+    -------
+    ccd :  CCDData object
+        CCDData object with uncertainty created; uncertainty is in the same
+        units as the data in the parameter `ccd_data`.
+
+    """
+    if gain is not None and not isinstance(gain, Quantity):
+        raise TypeError('gain must be a astropy.units.Quantity')
+
+    if readnoise is None:
+        raise ValueError('Must provide a readnoise.')
+
+    if not isinstance(readnoise, Quantity):
+        raise TypeError('readnoise must be a astropy.units.Quantity')
+
+    if gain is None:
+        gain = 1.0 * u.dimensionless_unscaled
+
+    if gain.unit * ccd_data.unit != readnoise.unit:
+        raise u.UnitsError("Units of data, gain and readnoise do not match")
+
+    # Need to convert Quantity to plain number because NDData data is not
+    # a Quantity. All unit checking should happen prior to this point.
+    gain_value = gain / gain.unit
+    readnoise_value = readnoise / readnoise.unit
+
+    var = (gain_value * ccd_data.data + readnoise_value ** 2) ** 0.5
+    ccd = ccd_data.copy()
+    # ensure variance and image data have same unit
+    ccd.uncertainty = StdDevUncertainty(var / gain_value)
+    return ccd
 
 
 def subtract_overscan(ccd, overscan, median=False, model=None):
