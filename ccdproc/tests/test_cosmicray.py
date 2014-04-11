@@ -45,18 +45,6 @@ def test_cosmicray_clean_scalar_background(ccd_data, background_type):
 
 
 @pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_clean_no_background(ccd_data):
-    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
-    threshold = 5
-    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
-    testdata = 1.0 * ccd_data.data
-    cc = cosmicray_clean(ccd_data, 5, cosmicray_median, crargs=(11,),
-                         background=None, bargs=(), rbox=11, gbox=0)
-    assert abs(cc.data.std() - scale) < 0.1
-    assert ((testdata - cc.data) > 0).sum() == NCRAYS
-
-
-@pytest.mark.data_scale(DATA_SCALE)
 def test_cosmicray_clean(ccd_data):
     scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
     threshold = 5
