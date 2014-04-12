@@ -70,8 +70,8 @@ def test_subtract_overscan_mean(ccd_data):
     # create the overscan region
     oscan = 300.0
     ccd_data.data = ccd_data.data + oscan
-    oscan = ccd_data[:, 0:10]
-    ccd_data = subtract_overscan(ccd_data, oscan, median=False, model=None)
+    ccd_data = subtract_overscan(ccd_data, section='[:, 0:10]',
+                                 median=False, model=None)
     assert abs(ccd_data.data.mean()) < 0.1
 
 
@@ -79,8 +79,8 @@ def test_subtract_overscan_median(ccd_data):
     # create the overscan region
     oscan = 300.0
     ccd_data.data = ccd_data.data + oscan
-    oscan = ccd_data[:, 0:10]
-    ccd_data = subtract_overscan(ccd_data, oscan, median=True, model=None)
+    ccd_data = subtract_overscan(ccd_data, section='[:, 0:10]',
+                                 median=True, model=None)
     assert abs(ccd_data.data.mean()) < 0.1
 
 # tests for gain correction
@@ -91,9 +91,8 @@ def test_subtract_overscan_model(ccd_data):
     size = ccd_data.shape[0]
     yscan, xscan = np.mgrid[0:size, 0:size] / 10.0 + 300.0
     ccd_data.data = ccd_data.data + yscan
-    oscan = ccd_data[:, 0:10]
-    ccd_data = subtract_overscan(
-        ccd_data, oscan, median=False, model=models.Polynomial1D(2))
+    ccd_data = subtract_overscan(ccd_data, section='[:, 0:10]',
+                                 median=False, model=models.Polynomial1D(2))
     assert abs(ccd_data.data.mean()) < 0.1
 
 

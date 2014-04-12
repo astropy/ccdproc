@@ -2,8 +2,6 @@
 # This module implements the base CCDPROC functions
 import numpy as np
 
-from ccddata import CCDData
-
 from astropy.units.quantity import Quantity
 from astropy import units as u
 from astropy.modeling import fitting
@@ -11,6 +9,9 @@ from astropy import stats
 from astropy.nddata import StdDevUncertainty
 
 from scipy import ndimage
+
+from ccddata import CCDData
+from .utils.slices import slice_from_string
 
 
 def create_variance(ccd_data, gain=None, readnoise=None):
@@ -73,7 +74,7 @@ def create_variance(ccd_data, gain=None, readnoise=None):
     return ccd
 
 
-def subtract_overscan(ccd, overscan, median=False, model=None):
+def subtract_overscan(ccd, section=None, median=False, model=None):
     """
     Subtract the overscan region from an image.  This will first
     has an uncertainty plane which gives the variance for the data. The
@@ -85,8 +86,9 @@ def subtract_overscan(ccd, overscan, median=False, model=None):
     ccd : CCDData object
         Data to have variance frame corrected
 
-    overscan :  CCDData object
-        section from CCDData object that is defined as the overscan region
+    section :  str
+        Region of `ccd` from which the overscan is extracted. See below for
+        examples.
 
     median :  boolean
         If true, takes the median of each line.  Otherwise, uses the mean
@@ -108,8 +110,11 @@ def subtract_overscan(ccd, overscan, median=False, model=None):
     """
     if not (isinstance(ccd, CCDData) or isinstance(ccd, np.ndarray)):
         raise TypeError('ccddata is not a CCDData or ndarray object')
-    if not (isinstance(overscan, CCDData) or isinstance(overscan, np.ndarray)):
-        raise TypeError('overscan is not a CCDData or ndarray object')
+
+    if not isinstance(section, basestring):
+        raise TypeError('overscan is not a string')
+
+    overscan = ccd[slice_from_string(section)]
 
     if median:
         oscan = np.median(overscan.data, axis=1)
