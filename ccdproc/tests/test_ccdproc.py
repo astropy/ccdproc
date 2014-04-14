@@ -105,6 +105,18 @@ def test_subtract_overscan_ccd_fails():
         subtract_overscan(np.zeros((10, 10)), 3, median=False, model=None)
 
 
+def test_trim_image_requires_section(ccd_data):
+    with pytest.raises(ValueError):
+        trim_image(ccd_data)
+
+
+@pytest.mark.data_size(50)
+def test_trim_image(ccd_data):
+    trimmed = trim_image(ccd_data, section='[20:40,:]')
+    assert trimmed.shape == (20, 50)
+    np.testing.assert_array_equal(trimmed.data, ccd_data[20:40, :])
+
+
 # this xfail needs to get pulled out ASAP...
 @pytest.mark.xfail('TRAVIS' in os.environ, reason='needs astropy fix')
 # test for flat correction

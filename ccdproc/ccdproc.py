@@ -169,7 +169,12 @@ def trim_image(ccd, section=None):
         below and full details are at
         :func:`~ccdproc.utils.slices.slice_from_string`
     """
-    pass
+    if section is None:
+        raise ValueError("Must specify a section to trim. To keep the "
+                         "entire image, try section='[:,:]'")
+    trimmed = ccd.copy()
+    trimmed.data = trimmed.data[slice_from_string(section)]
+    return trimmed
 
 
 def gain_correct(ccd, gain):
