@@ -87,8 +87,9 @@ def subtract_overscan(ccd, section=None, median=False, model=None):
         Data to have variance frame corrected
 
     section :  str
-        Region of `ccd` from which the overscan is extracted. See below for
-        examples.
+        Region of `ccd` from which the overscan is extracted; an example is
+        below and full details are at
+        :func:`~ccdproc.utils.slices.slice_from_string`
 
     median :  boolean
         If true, takes the median of each line.  Otherwise, uses the mean
@@ -107,6 +108,24 @@ def subtract_overscan(ccd, section=None, median=False, model=None):
     -------
     ccd :  CCDData object
         CCDData object with overscan subtracted
+
+    Examples
+    --------
+
+    The format of the `section` string follow the same rules as writing slices
+    in Numpy.
+
+    >>> import numpy as np
+    >>> from astropy import units as u
+    >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
+
+    The statement below uses all rows of columns 90 through 99 as the
+    overscan.
+
+    >>> no_scan = subtract_overscan(arr1, section='[:, 90:100]')
+    >>> assert (no_scan.data == 0).all()
+
+    Spaces are stripped out of the `section` string.
     """
     if not (isinstance(ccd, CCDData) or isinstance(ccd, np.ndarray)):
         raise TypeError('ccddata is not a CCDData or ndarray object')
@@ -133,6 +152,24 @@ def subtract_overscan(ccd, section=None, median=False, model=None):
     # subtract the overscan
     ccd.data = ccd.data - oscan
     return ccd
+
+
+def trim_image(ccd, section=None):
+    """
+    Trim the image to the dimensions indicated by `section`
+
+    Parameters
+    ----------
+
+    ccd : ccdproc.CCDData
+        CCD image to be trimmed
+
+    section : str
+        Region of `ccd` from which the overscan is extracted; an example is
+        below and full details are at
+        :func:`~ccdproc.utils.slices.slice_from_string`
+    """
+    pass
 
 
 def gain_correct(ccd, gain):
