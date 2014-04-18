@@ -117,6 +117,36 @@ def test_trim_image(ccd_data):
     np.testing.assert_array_equal(trimmed.data, ccd_data[20:40, :])
 
 
+def test_subtract_bias(ccd_data):
+    data_avg = ccd_data.data.mean()
+    bias_level = 5.0
+    ccd_data.data = ccd_data.data + bias_level
+    ccd_data.header['key'] = 'value'
+    master_bias_array = np.zeros_like(ccd_data.data) + bias_level
+    master_bias = CCDData(master_bias_array, unit=ccd_data.unit)
+    no_bias = subtract_bias(ccd_data, master_bias)
+    # Does the data we are left with have the correct average?
+    np.testing.assert_almost_equal(no_bias.data.mean(), data_avg)
+    # The test below is *NOT* really the desired outcome. Just here to make
+    # sure a real test gets added when something is done with the metadata.
+    assert no_bias.header == ccd_data.header
+    del no_bias.header['key']
+    assert len(ccd_data.header) > 0
+    assert no_bias.header is not ccd_data.header
+
+
+@pytest.mark.data_size(50)
+def test_subtract_bias_fails(ccd_data):
+    # Should fail if shapes don't match
+    bias = CCDData(np.array([200, 200]), unit=u.adu)
+    with pytest.raises(ValueError):
+        subtract_bias(ccd_data, bias)
+    # should fail because units don't match
+    bias = CCDData(np.zeros_like(ccd_data), unit=u.meter)
+    with pytest.raises(ValueError):
+        subtract_bias(ccd_data, bias)
+
+
 # this xfail needs to get pulled out ASAP...
 @pytest.mark.xfail('TRAVIS' in os.environ, reason='needs astropy fix')
 # test for flat correction

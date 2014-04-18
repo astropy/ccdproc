@@ -177,6 +177,24 @@ def trim_image(ccd, section=None):
     return trimmed
 
 
+def subtract_bias(ccd, master):
+    """
+    Subtract master bias from image
+
+    Parameters
+    ----------
+
+    ccd : CCDData
+        Image from which bias will be subtracted
+
+    master : CCDData
+        Master image to be subtracted from `ccd`
+    """
+    result = ccd.subtract(master)
+    result.meta = ccd.meta.copy()
+    return result
+
+
 def gain_correct(ccd, gain):
     """Correct the gain in the image.
 
