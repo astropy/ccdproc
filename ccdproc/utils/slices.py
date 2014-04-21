@@ -3,7 +3,7 @@ Define untility functions and classes for ccdproc
 """
 
 
-def slice_from_string(string):
+def slice_from_string(string, fits_convention=False):
     """
     Convert a string to a tuple of slices
 
@@ -12,6 +12,11 @@ def slice_from_string(string):
 
     string : str
         A string that can be converted to a slice.
+
+    fits_convention : bool, optional
+        If True, assume the input string follows the FITS convention for
+        indexing: the indeing is one-based (not zero-based) and the first
+        axis is that which changes most rapidly as the index increases.
 
     Returns
     -------
@@ -67,4 +72,32 @@ def slice_from_string(string):
         a_slice = slice(*slice_args)
         slices.append(a_slice)
 
+    if fits_convention:
+        slices = _defitsify_slice(slices)
+
     return tuple(slices)
+
+
+def _defitsify_slice(slices):
+    """
+    Convert a FITS-style slice specification into a python slice.
+
+    This means two things:
+    + Subtract 1 from starting index because in the FITS
+      specification arrays are one-based.
+    + Do **not** subtract 1 from the ending index because the python
+      convention for a slice is for the last value to be one less than the
+      stop value. In other words, this subtraction is already built into
+      python.
+    + Reverse the order of the slices, because the FITS specification dictates
+      that the first axis is the one along which the index varies most rapidly
+      (aka FORTRAN order).
+    """
+
+    python_slice = []
+    for a_slice in slices[::-1]:
+        new_start = a_slice.start - 1 if a_slice.start is not None else None
+        new_slice = slice(new_start, a_slice.stop, a_slice.step)
+        python_slice.append(new_slice)
+
+    return python_slice

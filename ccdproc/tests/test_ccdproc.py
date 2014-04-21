@@ -66,43 +66,79 @@ def test_create_variance_keywords_must_have_unit(ccd_data):
 
 
 # tests for overscan
-def test_subtract_overscan_mean(ccd_data):
+@pytest.mark.parametrize('median,model', [
+                         (False, None),
+                         (True, None), ])
+def test_subtract_overscan_mean(ccd_data, median, model):
     # create the overscan region
-    oscan = 300.0
-    ccd_data.data = ccd_data.data + oscan
-    ccd_data = subtract_overscan(ccd_data, section='[:, 0:10]',
-                                 median=False, model=None)
-    assert abs(ccd_data.data.mean()) < 0.1
+    oscan = 300.
+    oscan_region = (slice(None), slice(0, 10))  # indices 0 through 9
+    fits_section = '[1:10, :]'
+    science_region = (slice(None), slice(10, None))
+    ccd_data.data[oscan_region] = oscan
+    # Add a fake sky background so the "science" part of the image has a
+    # different average than the "overscan" part.
+    sky = 10.
+    original_mean = ccd_data.data[science_region].mean()
+    ccd_data.data[science_region] += oscan + sky
+    # Test once using the overscan argument to specify the overscan region
+    ccd_data_overscan = subtract_overscan(ccd_data,
+                                          overscan=ccd_data[:, 0:10],
+                                          median=median, model=model)
+    # Is the mean of the "science" region the sum of sky and the mean the
+    # "science" section had before backgrounds were added?
+    np.testing.assert_almost_equal(
+        ccd_data_overscan.data[science_region].mean(),
+        sky + original_mean)
+    # Is the overscan region zero?
+    assert (ccd_data_overscan.data[oscan_region] == 0).all()
+
+    # Now do what should be the same subtraction, with the overscan specified
+    # with the fits_section
+    ccd_data_fits_section = subtract_overscan(ccd_data,
+                                              fits_section=fits_section,
+                                              median=median, model=model)
+    # Is the mean of the "science" region the sum of sky and the mean the
+    # "science" section had before backgrounds were added?
+    np.testing.assert_almost_equal(
+        ccd_data_fits_section.data[science_region].mean(),
+        sky + original_mean)
+    # Is the overscan region zero?
+    assert (ccd_data_fits_section.data[oscan_region] == 0).all()
+
+    # Do both ways of subtracting overscan give exactly the same result?
+    np.testing.assert_array_equal(ccd_data_overscan[science_region],
+                                  ccd_data_fits_section[science_region])
 
 
-def test_subtract_overscan_median(ccd_data):
-    # create the overscan region
-    oscan = 300.0
-    ccd_data.data = ccd_data.data + oscan
-    ccd_data = subtract_overscan(ccd_data, section='[:, 0:10]',
-                                 median=True, model=None)
-    assert abs(ccd_data.data.mean()) < 0.1
-
-# tests for gain correction
-
-
+# A more substantial test of overscan modeling
 def test_subtract_overscan_model(ccd_data):
     # create the overscan region
     size = ccd_data.shape[0]
     yscan, xscan = np.mgrid[0:size, 0:size] / 10.0 + 300.0
     ccd_data.data = ccd_data.data + yscan
-    ccd_data = subtract_overscan(ccd_data, section='[:, 0:10]',
+    ccd_data = subtract_overscan(ccd_data, overscan=ccd_data[:, 0:10],
                                  median=False, model=models.Polynomial1D(2))
     assert abs(ccd_data.data.mean()) < 0.1
 
 
-def test_subtract_overscan_ccd_fails():
-    # do we get an error if the *image* is neither an nor an array?
+def test_subtract_overscan_fails(ccd_data):
+    # do we get an error if the *image* is neither CCDData nor an array?
     with pytest.raises(TypeError):
         subtract_overscan(3, np.zeros((5, 5)))
     # do we get an error if the *overscan* is not an image or an array?
     with pytest.raises(TypeError):
         subtract_overscan(np.zeros((10, 10)), 3, median=False, model=None)
+    # Do we get an error if we specify both overscan and fits_section?
+    with pytest.raises(TypeError):
+        subtract_overscan(ccd_data, overscan=ccd_data[0:10],
+                          fits_section='[1:10]')
+    # do we raise an error if we specify neither overscan nor fits_section?
+    with pytest.raises(TypeError):
+        subtract_overscan(ccd_data)
+    # Does a fits_section which is not a string raise an error?
+    with pytest.raises(TypeError):
+        subtract_overscan(ccd_data, fits_section=5)
 
 
 def test_trim_image_requires_section(ccd_data):

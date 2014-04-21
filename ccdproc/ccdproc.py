@@ -74,7 +74,8 @@ def create_variance(ccd_data, gain=None, readnoise=None):
     return ccd
 
 
-def subtract_overscan(ccd, section=None, median=False, model=None):
+def subtract_overscan(ccd, overscan=None, fits_section=None,
+                      median=False, model=None):
     """
     Subtract the overscan region from an image.  This will first
     has an uncertainty plane which gives the variance for the data. The
@@ -83,20 +84,24 @@ def subtract_overscan(ccd, section=None, median=False, model=None):
 
     Parameters
     ----------
-    ccd : CCDData object
+    ccd : CCDData
         Data to have variance frame corrected
 
-    section :  str
-        Region of `ccd` from which the overscan is extracted; an example is
-        below and full details are at
-        :func:`~ccdproc.utils.slices.slice_from_string`
+    overscan : CCDData
+        Slice from `ccd` that contains the overscan. Must provide either
+        this argument or `FITS_section`.
 
-    median :  boolean
+    fits_section :  str
+        Region of `ccd` from which the overscan is extracted, using the FITS
+        conventions for index order and index start. An example is below and
+        full details are at :func:`~ccdproc.utils.slices.slice_from_string`.
+
+    median :  bool, optional
         If true, takes the median of each line.  Otherwise, uses the mean
 
-    model :  astropy.model object
+    model :  astropy.model object, optional
         Model to fit to the data.  If None, returns the values calculated
-        by the median or the mean
+        by the median or the mean.
 
     Raises
     ------
@@ -112,7 +117,7 @@ def subtract_overscan(ccd, section=None, median=False, model=None):
     Examples
     --------
 
-    The format of the `section` string follow the same rules as writing slices
+    The format of the `FITS_section` string follow the rules as writing slices
     in Numpy.
 
     >>> import numpy as np
@@ -130,10 +135,18 @@ def subtract_overscan(ccd, section=None, median=False, model=None):
     if not (isinstance(ccd, CCDData) or isinstance(ccd, np.ndarray)):
         raise TypeError('ccddata is not a CCDData or ndarray object')
 
-    if not isinstance(section, basestring):
+    if ((overscan is not None and fits_section is not None) or
+            (overscan is None and fits_section is None)):
+        raise TypeError('Specify either overscan or fits_section')
+
+    if (overscan is not None) and (not isinstance(overscan, CCDData)):
+        raise TypeError('overscan is not a CCDData object')
+
+    if (fits_section is not None) and not isinstance(fits_section, basestring):
         raise TypeError('overscan is not a string')
 
-    overscan = ccd[slice_from_string(section)]
+    if fits_section is not None:
+        overscan = ccd[slice_from_string(fits_section, fits_convention=True)]
 
     if median:
         oscan = np.median(overscan.data, axis=1)
