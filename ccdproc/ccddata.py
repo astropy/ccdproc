@@ -10,9 +10,9 @@ from astropy.utils.compat.odict import OrderedDict
 from astropy import units as u
 import astropy
 
-adu = u.def_unit('ADU')
+adu = u.adu
 electrons = u.def_unit('electrons')
-photons = u.def_unit('photons')
+photon = u.photon
 
 
 class CCDData(NDData):
