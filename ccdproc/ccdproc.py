@@ -18,7 +18,7 @@ def create_variance(ccd_data, gain=None, readnoise=None):
     """
     Create a variance frame.  The function will update the uncertainty
     plane which gives the variance for the data.  The function assumes
-    that the ccd is in electrons and the readnoise is in the same units.
+    that the ccd is in electron and the readnoise is in the same units.
 
     Parameters
     ----------
@@ -79,7 +79,7 @@ def subtract_overscan(ccd, overscan=None, fits_section=None,
     """
     Subtract the overscan region from an image.  This will first
     has an uncertainty plane which gives the variance for the data. The
-    function assumes that the ccd is in electrons and the readnoise is in the
+    function assumes that the ccd is in electron and the readnoise is in the
     same units.
 
     Parameters

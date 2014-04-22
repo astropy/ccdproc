@@ -12,20 +12,20 @@ import astropy.units as u
 from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
 
-from ..ccddata import CCDData, electrons, adu
+from ..ccddata import CCDData, electron, adu
 from ..ccdproc import *
 
 
 # test creating variance
 # success expected if u_image * u_gain = u_readnoise
 @pytest.mark.parametrize('u_image,u_gain,u_readnoise,expect_succes', [
-                         (electrons, None, electrons, True),
-                         (electrons, electrons, electrons, False),
-                         (u.adu, electrons / u.adu, electrons, True),
-                         (electrons, None, u.dimensionless_unscaled, False),
-                         (electrons, u.dimensionless_unscaled, electrons, True),
-                         (u.adu, u.dimensionless_unscaled, electrons, False),
-                         (u.adu, u.photon / u.adu, electrons, False),
+                         (electron, None, electron, True),
+                         (electron, electron, electron, False),
+                         (u.adu, electron / u.adu, electron, True),
+                         (electron, None, u.dimensionless_unscaled, False),
+                         (electron, u.dimensionless_unscaled, electron, True),
+                         (u.adu, u.dimensionless_unscaled, electron, False),
+                         (u.adu, u.photon / u.adu, electron, False),
                          ])
 @pytest.mark.data_size(10)
 def test_create_variance(ccd_data, u_image, u_gain, u_readnoise,
@@ -277,12 +277,12 @@ def test_flat_correct(ccd_data):
 @pytest.mark.data_mean(300)
 def test_flat_correct_variance(ccd_data):
     size = ccd_data.shape[0]
-    ccd_data.unit = electrons
-    ccd_data = create_variance(ccd_data, readnoise=5 * electrons)
+    ccd_data.unit = electron
+    ccd_data = create_variance(ccd_data, readnoise=5 * electron)
     # create the flat
     data = 2 * np.ones((size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
-    flat = create_variance(flat, readnoise=0.5 * electrons)
+    flat = create_variance(flat, readnoise=0.5 * electron)
     ccd_data = flat_correct(ccd_data, flat)
 
 
@@ -295,8 +295,8 @@ def test_gain_correct(ccd_data):
 
 def test_gain_correct_quantity(ccd_data):
     init_data = ccd_data.data
-    g = Quantity(3, electrons / u.adu)
+    g = Quantity(3, electron / u.adu)
     ccd_data = gain_correct(ccd_data, gain=g)
 
     assert_array_equal(ccd_data.data, 3 * init_data)
-    assert ccd_data.unit == electrons
+    assert ccd_data.unit == electron

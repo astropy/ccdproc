@@ -11,7 +11,7 @@ from astropy import units as u
 import astropy
 
 adu = u.adu
-electrons = u.def_unit('electrons')
+electron = u.def_unit('electron')
 photon = u.photon
 
 

@@ -7,7 +7,7 @@ from astropy.io import fits
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
-from ..ccddata import CCDData, electrons
+from ..ccddata import CCDData, electron
 
 
 def test_ccddata_empty():
@@ -33,7 +33,7 @@ def test_initialize_from_FITS(ccd_data, tmpdir):
     hdulist = fits.HDUList([hdu])
     filename = tmpdir.join('afile.fits').strpath
     hdulist.writeto(filename)
-    cd = CCDData.read(filename, unit=electrons)
+    cd = CCDData.read(filename, unit=electron)
     assert cd.shape == (10, 10)
     assert cd.size == 100
     assert np.issubdtype(cd.data.dtype, np.float)
@@ -74,10 +74,10 @@ def test_fromMEF(ccd_data, tmpdir):
     filename = tmpdir.join('afile.fits').strpath
     hdulist.writeto(filename)
     # by default, we reading from the first extension
-    cd = CCDData.read(filename, unit=electrons)
+    cd = CCDData.read(filename, unit=electron)
     np.testing.assert_array_equal(cd.data, ccd_data.data)
     # but reading from the second should work too
-    cd = CCDData.read(filename, hdu=1, unit=electrons)
+    cd = CCDData.read(filename, hdu=1, unit=electron)
     np.testing.assert_array_equal(cd.data, 2 * ccd_data.data)
 
 
@@ -86,14 +86,14 @@ def test_metafromheader(ccd_data):
     hdr.set('observer', 'Edwin Hubble')
     hdr.set('exptime', '3600')
 
-    d1 = CCDData(np.ones((5, 5)), meta=hdr, unit=electrons)
+    d1 = CCDData(np.ones((5, 5)), meta=hdr, unit=electron)
     assert d1.meta['OBSERVER'] == 'Edwin Hubble'
     assert d1.header['OBSERVER'] == 'Edwin Hubble'
 
 
 def test_metafromdict():
     dic = {'OBSERVER': 'Edwin Hubble', 'EXPTIME': 3600}
-    d1 = CCDData(np.ones((5, 5)), meta=dic, unit=electrons)
+    d1 = CCDData(np.ones((5, 5)), meta=dic, unit=electron)
     assert d1.meta['OBSERVER'] == 'Edwin Hubble'
 
 
@@ -102,7 +102,7 @@ def test_header2meta():
     hdr.set('observer', 'Edwin Hubble')
     hdr.set('exptime', '3600')
 
-    d1 = CCDData(np.ones((5, 5)), unit=electrons)
+    d1 = CCDData(np.ones((5, 5)), unit=electron)
     d1.header = hdr
     assert d1.meta['OBSERVER'] == 'Edwin Hubble'
     assert d1.header['OBSERVER'] == 'Edwin Hubble'
