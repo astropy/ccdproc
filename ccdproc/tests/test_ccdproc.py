@@ -141,16 +141,24 @@ def test_subtract_overscan_fails(ccd_data):
         subtract_overscan(ccd_data, fits_section=5)
 
 
-def test_trim_image_requires_section(ccd_data):
-    with pytest.raises(ValueError):
-        trim_image(ccd_data)
+def test_trim_image_fits_section_requires_string(ccd_data):
+    with pytest.raises(TypeError):
+        trim_image(ccd_data, fits_section=5)
 
 
 @pytest.mark.data_size(50)
-def test_trim_image(ccd_data):
-    trimmed = trim_image(ccd_data, section='[20:40,:]')
-    assert trimmed.shape == (20, 50)
-    np.testing.assert_array_equal(trimmed.data, ccd_data[20:40, :])
+def test_trim_image_fits_section(ccd_data):
+    trimmed = trim_image(ccd_data, fits_section='[20:40,:]')
+    # FITS reverse order, bounds are inclusive and starting index is 1-based
+    assert trimmed.shape == (50, 21)
+    np.testing.assert_array_equal(trimmed.data, ccd_data[:, 19:40])
+
+
+@pytest.mark.data_size(50)
+def test_trim_image_no_section(ccd_data):
+    trimmed = trim_image(ccd_data[:, 19:40])
+    assert trimmed.shape == (50, 21)
+    np.testing.assert_array_equal(trimmed.data, ccd_data[:, 19:40])
 
 
 def test_subtract_bias(ccd_data):

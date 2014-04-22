@@ -89,12 +89,12 @@ def subtract_overscan(ccd, overscan=None, fits_section=None,
 
     overscan : CCDData
         Slice from `ccd` that contains the overscan. Must provide either
-        this argument or `FITS_section`.
+        this argument or `fits_section`, but not both.
 
     fits_section :  str
         Region of `ccd` from which the overscan is extracted, using the FITS
-        conventions for index order and index start. An example is below and
-        full details are at :func:`~ccdproc.utils.slices.slice_from_string`.
+        conventions for index order and index start. See Notes and Examples
+        below. Must provide either this argument or `overscan`, but not both.
 
     median :  bool, optional
         If true, takes the median of each line.  Otherwise, uses the mean
@@ -114,11 +114,24 @@ def subtract_overscan(ccd, overscan=None, fits_section=None,
     ccd :  CCDData object
         CCDData object with overscan subtracted
 
+
+    Notes
+    -----
+
+    The format of the `fits_section` string follow the rules for slices that
+    are consistent with the FITS standard (v3) and IRAF usage of keywords like
+    TRIMSEC and BIASSEC. Its indexes are one-based, instead of the
+    python-standard zero-based, and the first index is the one that increases
+    most rapidly as you move through the array in memory order, opposite the
+    python ordering.
+
+    The 'fits_section' argument is provided as a convenience for those who are
+    processing files that contain TRIMSEC and BIASSEC. The preferred, more
+    pythonic, way of specifying the overscan is to do it by indexing the data
+    array directly with the `overscan` argument.
+
     Examples
     --------
-
-    The format of the `FITS_section` string follow the rules as writing slices
-    in Numpy.
 
     >>> import numpy as np
     >>> from astropy import units as u
@@ -127,17 +140,22 @@ def subtract_overscan(ccd, overscan=None, fits_section=None,
     The statement below uses all rows of columns 90 through 99 as the
     overscan.
 
-    >>> no_scan = subtract_overscan(arr1, section='[:, 90:100]')
+    >>> no_scan = subtract_overscan(arr1, overscan=arr1[:, 90:100])
     >>> assert (no_scan.data == 0).all()
 
-    Spaces are stripped out of the `section` string.
+    This statement does the same as the above, but with a FITS-style section.
+
+    >>> no_scan = subtract_overscan(arr1, fits_section='[91:100, :]')
+    >>> assert (no_scan.data == 0).all()
+
+    Spaces are stripped out of the `fits_section` string.
     """
     if not (isinstance(ccd, CCDData) or isinstance(ccd, np.ndarray)):
         raise TypeError('ccddata is not a CCDData or ndarray object')
 
     if ((overscan is not None and fits_section is not None) or
             (overscan is None and fits_section is None)):
-        raise TypeError('Specify either overscan or fits_section')
+        raise TypeError('Specify either overscan or fits_section, but not both')
 
     if (overscan is not None) and (not isinstance(overscan, CCDData)):
         raise TypeError('overscan is not a CCDData object')
@@ -167,7 +185,7 @@ def subtract_overscan(ccd, overscan=None, fits_section=None,
     return ccd
 
 
-def trim_image(ccd, section=None):
+def trim_image(ccd, fits_section=None):
     """
     Trim the image to the dimensions indicated by `section`
 
@@ -175,18 +193,55 @@ def trim_image(ccd, section=None):
     ----------
 
     ccd : ccdproc.CCDData
-        CCD image to be trimmed
+        CCD image to be trimmed, sliced if desired.
 
-    section : str
-        Region of `ccd` from which the overscan is extracted; an example is
-        below and full details are at
-        :func:`~ccdproc.utils.slices.slice_from_string`
+    fits_section : str
+        Region of `ccd` from which the overscan is extracted; see 
+        :func:`subtract_overscan` for details.
+
+    Returns
+    -------
+
+    trimmed_ccd : CCDData
+        Trimmed image.
+
+    Examples
+    --------
+
+    Given an array that is 100x100,
+
+    >>> import numpy as np
+    >>> from astropy import units as u
+    >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
+
+    the syntax for trimming this to keep all of the first index but only the
+    first 90 rows of the second index is
+
+    >>> trimmed = trim_image(arr1[:, :90])
+    >>> trimmed.shape
+    (100, 90)
+    >>> trimmed.data[0, 0] = 2
+    >>> arr1.data[0, 0]
+    1.0
+
+    This both trims *and makes a copy* of the image.
+
+    Indexing the image directly does *not* do the same thing, quite:
+
+    >>> not_really_trimmed = arr1[:, :90]
+    >>> not_really_trimmed.data[0, 0] = 2
+    >>> arr1.data[0, 0]
+    2.0
+
+    In this case, `not_really_trimmed` is a view of the underlying array
+    `arr1`, not a copy.
     """
-    if section is None:
-        raise ValueError("Must specify a section to trim. To keep the "
-                         "entire image, try section='[:,:]'")
+    if fits_section is not None and not isinstance(fits_section, basestring):
+        raise TypeError("fits_section must be a string.")
     trimmed = ccd.copy()
-    trimmed.data = trimmed.data[slice_from_string(section)]
+    if fits_section:
+        trimmed.data = trimmed.data[slice_from_string(fits_section,
+                                                      fits_convention=True)]
     return trimmed
 
 
