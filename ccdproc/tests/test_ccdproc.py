@@ -191,6 +191,71 @@ def test_subtract_bias_fails(ccd_data):
         subtract_bias(ccd_data, bias)
 
 
+@pytest.mark.parametrize('explicit_times,scale', [
+                         (True, True),
+                         (False, True),
+                         (True, False),
+                         (False, False)])
+def test_subtract_dark(ccd_data, explicit_times, scale):
+    exptime = 30.0
+    exptime_key = 'exposure'
+    dark_level = 1.7
+    master_dark_data = np.zeros_like(ccd_data.data) + dark_level
+    master_dark = CCDData(data=master_dark_data, unit=u.adu)
+    master_dark.header[exptime_key] = 2 * exptime
+    dark_exptime = master_dark.header[exptime_key]
+    ccd_data.header[exptime_key] = exptime
+    if explicit_times:
+        dark_sub = subtract_dark(ccd_data, master_dark,
+                                 dark_exposure=dark_exptime * u.second,
+                                 data_exposure=exptime * u.second,
+                                 scale=scale)
+    else:
+        dark_sub = subtract_dark(ccd_data, master_dark,
+                                 exposure_key=exptime_key,
+                                 exposure_unit=u.second,
+                                 scale=scale)
+
+    dark_scale = 1.0
+    if scale:
+        dark_scale = exptime / dark_exptime
+
+    np.testing.assert_array_equal(ccd_data.data - dark_scale * dark_level,
+                                  dark_sub.data)
+    # Headers should have the same content...do they?
+    assert dark_sub.header == ccd_data.header
+    # But the headers should not be the same object -- a copy was made
+    assert dark_sub.header is not ccd_data.header
+
+
+def test_subtract_dark_fails(ccd_data):
+    # None of these tests check a result so the content of the master
+    # can be anything.
+    ccd_data.header['exptime'] = 30.0
+    master = ccd_data.copy()
+    # Do we fail if we give one of dark_exposure, data_exposure but not both?
+    with pytest.raises(TypeError):
+        subtract_dark(ccd_data, master, dark_exposure=30 * u.second)
+    with pytest.raises(TypeError):
+        subtract_dark(ccd_data, master, data_exposure=30 * u.second)
+    # Do we fail if we supply dark_exposure and data_exposure and exposure_key
+    with pytest.raises(TypeError):
+        subtract_dark(ccd_data, master, dark_exposure=10 * u.second,
+                      data_exposure=10 * u.second,
+                      exposure_key='exptime')
+    # Fail if we supply none of the exposure-related arguments?
+    with pytest.raises(TypeError):
+        subtract_dark(ccd_data, master)
+    # Fail if we supply exposure time but not a unit?
+    with pytest.raises(TypeError):
+        subtract_dark(ccd_data, master, exposure_key='exptime')
+    # Fail if ccd_data or master are not CCDData objects?
+    with pytest.raises(TypeError):
+        subtract_dark(ccd_data.data, master, exposure_key='exptime')
+    with pytest.raises(TypeError):
+        subtract_dark(ccd_data, master.data, exposure_key='exptime')
+
+
 # this xfail needs to get pulled out ASAP...
 @pytest.mark.xfail('TRAVIS' in os.environ, reason='needs astropy fix')
 # test for flat correction

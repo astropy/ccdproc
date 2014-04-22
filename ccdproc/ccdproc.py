@@ -257,8 +257,94 @@ def subtract_bias(ccd, master):
 
     master : CCDData
         Master image to be subtracted from `ccd`
+
+    Returns
+    -------
+
+    Returns
+    -------
+
+    result :  CCDData object
+        CCDData object with bias subtracted
     """
     result = ccd.subtract(master)
+    result.meta = ccd.meta.copy()
+    return result
+
+
+def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
+                  exposure_key=None, exposure_unit=None,
+                  scale=False):
+    """
+    Subtract dark current from an image
+
+    Parameters
+    ----------
+
+    ccd : CCDData
+        Image from which dark will be subtracted
+
+    master : CCDData
+        Dark image
+
+    dark_exposure : astropy.units.Quantity
+        Exposure time of the dark image; if specified, must also provided
+        `data_exposure`.
+
+    data_exposure : astropy.units.Quantity
+        Exposure time of the science image; if specified, must also provided
+        `dark_exposure`.
+
+    exposure_key : str
+        Name of key in image metadata that contains exposure time.
+
+    exposure_unit : astropy.units.Unit
+        Unit of the exposure time if the value in the meta data does not
+        include a unit.
+
+    Returns
+    -------
+
+    result : CCDData
+        Dark-subtracted image
+    """
+    if not (isinstance(ccd, CCDData) and isinstance(master, CCDData)):
+        raise TypeError("ccd and master must both be CCDData objects")
+
+    if (data_exposure is not None and
+            dark_exposure is not None and
+            exposure_key is not None):
+        raise TypeError("Specify either exposure_key or "
+                        "(dark_exposure and data_exposure), not both.")
+
+    if data_exposure is None and dark_exposure is None:
+        if exposure_key is None:
+            raise TypeError("Must specify either exposure_key or both "
+                            "dark_exposure and data_exposure.")
+        data_exposure = ccd.header[exposure_key]
+        dark_exposure = master.header[exposure_key]
+
+    if not (isinstance(dark_exposure, Quantity) and
+            isinstance(data_exposure, Quantity)):
+        if exposure_key:
+            try:
+                data_exposure *= exposure_unit
+                dark_exposure *= exposure_unit
+            except TypeError:
+                raise TypeError("Must provide unit for exposure time")
+        else:
+            raise TypeError("exposure times must be astropy.units.Quantity "
+                            "objects")
+
+    if scale:
+        master_scaled = master.copy()
+        master_scaled.data *= data_exposure / dark_exposure
+        master_scaled.unit = (master.unit *
+                              data_exposure.unit / dark_exposure.unit)
+        result = ccd.subtract(master_scaled)
+    else:
+        result = ccd.subtract(master)
+
     result.meta = ccd.meta.copy()
     return result
 
