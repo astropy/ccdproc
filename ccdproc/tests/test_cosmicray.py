@@ -8,20 +8,12 @@ from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
-from ..ccddata import CCDData, toFITS
 from ..ccdproc import *
 
 import os
 
 DATA_SCALE = 5.3
 NCRAYS = 30
-
-
-def writeout(cd, outfile):
-    hdu = toFITS(cd)
-    if os.path.isfile(outfile):
-        os.remove(outfile)
-    hdu.writeto(outfile)
 
 
 def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
@@ -48,18 +40,6 @@ def test_cosmicray_clean_scalar_background(ccd_data, background_type):
     testdata = 1.0 * ccd_data.data
     cc = cosmicray_clean(ccd_data, 5, cosmicray_median, crargs=(11,),
                          background=background_type, bargs=(), rbox=11, gbox=0)
-    assert abs(cc.data.std() - scale) < 0.1
-    assert ((testdata - cc.data) > 0).sum() == NCRAYS
-
-
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_clean_no_background(ccd_data):
-    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
-    threshold = 5
-    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
-    testdata = 1.0 * ccd_data.data
-    cc = cosmicray_clean(ccd_data, 5, cosmicray_median, crargs=(11,),
-                         background=None, bargs=(), rbox=11, gbox=0)
     assert abs(cc.data.std() - scale) < 0.1
     assert ((testdata - cc.data) > 0).sum() == NCRAYS
 

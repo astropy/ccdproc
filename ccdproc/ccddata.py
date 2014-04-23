@@ -1,15 +1,18 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # This module implements the base CCDData class.
 
+import copy
+
 from astropy.nddata import NDData
 from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
-from astropy.io import fits
+from astropy.io import fits, registry
 from astropy.utils.compat.odict import OrderedDict
 from astropy import units as u
+import astropy
 
-adu = u.def_unit('ADU')
-electrons = u.def_unit('electrons')
-photons = u.def_unit('photons')
+adu = u.adu
+electron = u.def_unit('electron')
+photon = u.photon
 
 
 class CCDData(NDData):
@@ -79,6 +82,7 @@ class CCDData(NDData):
         >>> x = NDData([1,2,3])
         >>> np.asarray(x)
         array([1, 2, 3])
+
     If the `NDData` object has a `mask`, `numpy.asarray` will return a
     Numpy masked array.
 
@@ -91,6 +95,10 @@ class CCDData(NDData):
         >>> plt.imshow(x)
 
     """
+    def __init__(self, *args, **kwd):
+        super(CCDData, self).__init__(*args, **kwd)
+        if self.unit is None:
+            raise ValueError("Unit for CCDData must be specified")
 
     @property
     def header(self):
@@ -107,14 +115,18 @@ class CCDData(NDData):
     @meta.setter
     def meta(self, value):
         if value is None:
-            self._meta = OrderedDict()
+            self._meta = fits.Header()
         elif isinstance(value, fits.Header):
             self._meta = value
         else:
+            h = fits.Header()
             try:
-                self._meta = OrderedDict(value)
-            except ValueError:
+                for k, v in value.iteritems():
+                    h[k] = v
+            except (ValueError, AttributeError):
                 raise TypeError('NDData meta attribute must be dict-like')
+            self._meta = h
+
 
     @property
     def uncertainty(self):
@@ -132,78 +144,89 @@ class CCDData(NDData):
         else:
             self._uncertainty = value
 
-    def create_variance(self, readnoise):
-        """Create a variance frame.  The function will update the uncertainty
-           plane which gives the variance for the data.  The function assumes
-           that the ccd is in electrons and the readnoise is in the same units.
+    def to_hdu(self):
+        """Creates an HDUList object from a CCDData object
 
-        Parameters
-        ----------
-        readnoise :  float
-          readnoise for each pixel
+           Raises
+           -------
+           ValueError
+              Multi-Exenstion FITS files are not supported
 
-        Raises
-        ------
-        TypeError :
-          raises TypeError if units are not in electrons
+           Returns
+           -------
+           hdulist : astropy.io.fits.HDUList object
 
-        Returns
-        -------
-        ccd :  CCDData object
-          CCDData object with uncertainty created
         """
-        if self.unit != electrons:
-            raise TypeError('CCDData object is not in electrons')
+        hdu = fits.PrimaryHDU(self.data, self.header)
+        hdulist = fits.HDUList([hdu])
+        return hdulist
 
-        var = (self.data + readnoise ** 2) ** 0.5
-        self.uncertainty = StdDevUncertainty(var)
+    def copy(self):
+        """
+        Return a copy of the CCDData object
+        """
+        return copy.deepcopy(self)
 
 
-def fromFITS(hdu, units=None):
-    """Creates a CCDData object from a FITS file
-
-       Parameters
-       ----------
-       hdu : astropy.io.fits object
-          FITS object fo the CCDData object
-
-       units : astropy.units object
-          Unit describing the data
-
-       Raises
-       -------
-       ValueError
-          Multi-Exenstion FITS files are not supported
-
-       Returns
-       -------
-       ccddata : ccddata.CCDData object
-
+def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
     """
-    if len(hdu) > 1:
-        raise ValueError('Multi-Exenstion FITS files are not supported')
+    Generate a CCDData object from a FITS file
 
-    return CCDData(hdu[0].data, meta=hdu[0].header)
+    Parameters
+    ----------
 
+    filename : str
+        Name of fits file.
 
-def toFITS(ccddata):
-    """Creates an HDUList object from a CCDData object
+    hdu : int, optional
+        FITS extension from which CCDData should be initialized.
 
-       Parameters
-       ----------
-       ccddata : CCDData object
-          CCDData object to create FITS file
+    unit : astropy.units.Unit
+        Units of the image data
 
-       Raises
-       -------
-       ValueError
-          Multi-Exenstion FITS files are not supported
+    kwd :
+        Any additional keyword parameters are passed through to the FITS reader
+        in :mod:`astropy.io.fits`; see Notes for additional discussion.
 
-       Returns
-       -------
-       hdulist : astropy.io.fits.HDUList object
+    Notes
+    -----
 
+    FITS files that contained scaled data (e.g. unsigned integer images) will
+    be scaled and the keywords used to manage scaled data in
+    :mod:`astropy.io.fits` are disabled.
     """
-    hdu = fits.PrimaryHDU(ccddata.data, ccddata.header)
-    hdulist = fits.HDUList([hdu])
-    return hdulist
+    unsupport_open_keywords = {
+        'do_not_scale_image_data': ('Image data must be scaled to perform '
+                                    'ccdproc operations.'),
+        'scale_back': 'Scale information is not preserved.'
+    }
+    for key, msg in unsupport_open_keywords.iteritems():
+        if key in kwd:
+            prefix = 'Unsupported keyword: {0}.'.format(key)
+            raise TypeError(' '.join([prefix, msg]))
+    hdus = fits.open(filename, **kwd)
+    ccd_data = CCDData(hdus[hdu].data, meta=hdus[hdu].header, unit=unit)
+    hdus.close()
+    return ccd_data
+
+
+def fits_ccddata_writer(ccd_data, filename, **kwd):
+    """
+    Write CCDData object to FITS file
+
+    Parameters
+    ----------
+
+    filename : str
+        Name of file
+
+    kwd :
+        All additional keywords are passed to :py:mod:`astropy.io.fits`
+    """
+    hdu = fits.PrimaryHDU(data=ccd_data.data, header=ccd_data.header)
+    hdu.writeto(filename, **kwd)
+
+
+registry.register_reader('fits', CCDData, fits_ccddata_reader)
+registry.register_writer('fits', CCDData, fits_ccddata_writer)
+registry.register_identifier('fits', CCDData, fits.connect.is_fits)

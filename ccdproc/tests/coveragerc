@@ -1,5 +1,11 @@
 [run]
 source = ccdproc
+branch = False
+omit = 
+    ccdproc/__init__*
+    ccdproc/conftest.py
+    ccdproc/*tests/*
+    ccdproc/*version*
 
 [report]
 exclude_lines =

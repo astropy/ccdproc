@@ -11,16 +11,8 @@ from astropy.utils import NumpyRNGContext
 from astropy.units.quantity import Quantity
 import astropy.units as u
 
-from ..ccddata import CCDData, adu, electrons, fromFITS, toFITS
+from ..ccddata import electron
 from ..ccdproc import *
-
-
-def writeout(cd, outfile):
-    import os
-    hdu = toFITS(cd)
-    if os.path.isfile(outfile):
-        os.remove(outfile)
-    hdu.writeto(outfile)
 
 
 # tests for overscan
@@ -32,7 +24,7 @@ def test_gain_correct(ccd_data):
 
 def test_gain_correct_quantity(ccd_data):
     orig_data = ccd_data.data
-    g = Quantity(3, electrons / u.adu)
+    g = Quantity(3, electron / u.adu)
     ccd = gain_correct(ccd_data, gain=g)
     assert_array_equal(ccd.data, 3 * orig_data)
-    assert ccd.unit == electrons
+    assert ccd.unit == electron

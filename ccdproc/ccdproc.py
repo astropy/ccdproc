@@ -2,36 +2,106 @@
 # This module implements the base CCDPROC functions
 import numpy as np
 
-from ccddata import CCDData
-
 from astropy.units.quantity import Quantity
+from astropy import units as u
 from astropy.modeling import fitting
 from astropy import stats
+from astropy.nddata import StdDevUncertainty
 
 from scipy import ndimage
 
+from ccddata import CCDData
+from .utils.slices import slice_from_string
 
-def subtract_overscan(ccd, overscan, median=False, model=None):
+
+def create_variance(ccd_data, gain=None, readnoise=None):
+    """
+    Create a variance frame.  The function will update the uncertainty
+    plane which gives the variance for the data.  The function assumes
+    that the ccd is in electron and the readnoise is in the same units.
+
+    Parameters
+    ----------
+
+    ccd_data : ccdproc.CCDData
+        Data whose variance will be calculated.
+
+    gain : astropy.units.Quantity, optional
+        Gain of the CCD; necessary only if `ccd_data` and `readnoise` are not
+        in the same units. In that case, the units of `gain` should be those
+        that convert `ccd_data.data` to the same units as `readnoise`.
+
+    readnoise :  astropy.units.Quantity
+        Read noise per pixel.
+
+    Raises
+    ------
+    UnitsError :
+        Raised if `readnoise` units are not equal to product of `gain` and
+        `ccd_data` units.
+
+    Returns
+    -------
+    ccd :  CCDData object
+        CCDData object with uncertainty created; uncertainty is in the same
+        units as the data in the parameter `ccd_data`.
+
+    """
+    if gain is not None and not isinstance(gain, Quantity):
+        raise TypeError('gain must be a astropy.units.Quantity')
+
+    if readnoise is None:
+        raise ValueError('Must provide a readnoise.')
+
+    if not isinstance(readnoise, Quantity):
+        raise TypeError('readnoise must be a astropy.units.Quantity')
+
+    if gain is None:
+        gain = 1.0 * u.dimensionless_unscaled
+
+    if gain.unit * ccd_data.unit != readnoise.unit:
+        raise u.UnitsError("Units of data, gain and readnoise do not match")
+
+    # Need to convert Quantity to plain number because NDData data is not
+    # a Quantity. All unit checking should happen prior to this point.
+    gain_value = gain / gain.unit
+    readnoise_value = readnoise / readnoise.unit
+
+    var = (gain_value * ccd_data.data + readnoise_value ** 2) ** 0.5
+    ccd = ccd_data.copy()
+    # ensure variance and image data have same unit
+    ccd.uncertainty = StdDevUncertainty(var / gain_value)
+    return ccd
+
+
+def subtract_overscan(ccd, overscan=None, fits_section=None,
+                      median=False, model=None):
     """
     Subtract the overscan region from an image.  This will first
     has an uncertainty plane which gives the variance for the data. The
-    function assumes that the ccd is in electrons and the readnoise is in the
+    function assumes that the ccd is in electron and the readnoise is in the
     same units.
 
     Parameters
     ----------
-    ccd : CCDData object
+    ccd : CCDData
         Data to have variance frame corrected
 
-    overscan :  CCDData object
-        section from CCDData object that is defined as the overscan region
+    overscan : CCDData
+        Slice from `ccd` that contains the overscan. Must provide either
+        this argument or `fits_section`, but not both.
 
-    median :  boolean
+    fits_section :  str
+        Region of `ccd` from which the overscan is extracted, using the FITS
+        conventions for index order and index start. See Notes and Examples
+        below. Must provide either this argument or `overscan`, but not both.
+
+    median :  bool, optional
         If true, takes the median of each line.  Otherwise, uses the mean
 
-    model :  astropy.model object
+    model :  astropy.model object, optional
         Model to fit to the data.  If None, returns the values calculated
-        by the median or the mean
+        by the median or the mean.
 
     Raises
     ------
@@ -43,11 +113,58 @@ def subtract_overscan(ccd, overscan, median=False, model=None):
     -------
     ccd :  CCDData object
         CCDData object with overscan subtracted
+
+
+    Notes
+    -----
+
+    The format of the `fits_section` string follow the rules for slices that
+    are consistent with the FITS standard (v3) and IRAF usage of keywords like
+    TRIMSEC and BIASSEC. Its indexes are one-based, instead of the
+    python-standard zero-based, and the first index is the one that increases
+    most rapidly as you move through the array in memory order, opposite the
+    python ordering.
+
+    The 'fits_section' argument is provided as a convenience for those who are
+    processing files that contain TRIMSEC and BIASSEC. The preferred, more
+    pythonic, way of specifying the overscan is to do it by indexing the data
+    array directly with the `overscan` argument.
+
+    Examples
+    --------
+
+    >>> import numpy as np
+    >>> from astropy import units as u
+    >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
+
+    The statement below uses all rows of columns 90 through 99 as the
+    overscan.
+
+    >>> no_scan = subtract_overscan(arr1, overscan=arr1[:, 90:100])
+    >>> assert (no_scan.data == 0).all()
+
+    This statement does the same as the above, but with a FITS-style section.
+
+    >>> no_scan = subtract_overscan(arr1, fits_section='[91:100, :]')
+    >>> assert (no_scan.data == 0).all()
+
+    Spaces are stripped out of the `fits_section` string.
     """
     if not (isinstance(ccd, CCDData) or isinstance(ccd, np.ndarray)):
         raise TypeError('ccddata is not a CCDData or ndarray object')
-    if not (isinstance(overscan, CCDData) or isinstance(overscan, np.ndarray)):
-        raise TypeError('overscan is not a CCDData or ndarray object')
+
+    if ((overscan is not None and fits_section is not None) or
+            (overscan is None and fits_section is None)):
+        raise TypeError('Specify either overscan or fits_section, but not both')
+
+    if (overscan is not None) and (not isinstance(overscan, CCDData)):
+        raise TypeError('overscan is not a CCDData object')
+
+    if (fits_section is not None) and not isinstance(fits_section, basestring):
+        raise TypeError('overscan is not a string')
+
+    if fits_section is not None:
+        overscan = ccd[slice_from_string(fits_section, fits_convention=True)]
 
     if median:
         oscan = np.median(overscan.data, axis=1)
@@ -66,6 +183,174 @@ def subtract_overscan(ccd, overscan, median=False, model=None):
     # subtract the overscan
     ccd.data = ccd.data - oscan
     return ccd
+
+
+def trim_image(ccd, fits_section=None):
+    """
+    Trim the image to the dimensions indicated by `section`
+
+    Parameters
+    ----------
+
+    ccd : ccdproc.CCDData
+        CCD image to be trimmed, sliced if desired.
+
+    fits_section : str
+        Region of `ccd` from which the overscan is extracted; see 
+        :func:`subtract_overscan` for details.
+
+    Returns
+    -------
+
+    trimmed_ccd : CCDData
+        Trimmed image.
+
+    Examples
+    --------
+
+    Given an array that is 100x100,
+
+    >>> import numpy as np
+    >>> from astropy import units as u
+    >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
+
+    the syntax for trimming this to keep all of the first index but only the
+    first 90 rows of the second index is
+
+    >>> trimmed = trim_image(arr1[:, :90])
+    >>> trimmed.shape
+    (100, 90)
+    >>> trimmed.data[0, 0] = 2
+    >>> arr1.data[0, 0]
+    1.0
+
+    This both trims *and makes a copy* of the image.
+
+    Indexing the image directly does *not* do the same thing, quite:
+
+    >>> not_really_trimmed = arr1[:, :90]
+    >>> not_really_trimmed.data[0, 0] = 2
+    >>> arr1.data[0, 0]
+    2.0
+
+    In this case, `not_really_trimmed` is a view of the underlying array
+    `arr1`, not a copy.
+    """
+    if fits_section is not None and not isinstance(fits_section, basestring):
+        raise TypeError("fits_section must be a string.")
+    trimmed = ccd.copy()
+    if fits_section:
+        trimmed.data = trimmed.data[slice_from_string(fits_section,
+                                                      fits_convention=True)]
+    return trimmed
+
+
+def subtract_bias(ccd, master):
+    """
+    Subtract master bias from image
+
+    Parameters
+    ----------
+
+    ccd : CCDData
+        Image from which bias will be subtracted
+
+    master : CCDData
+        Master image to be subtracted from `ccd`
+
+    Returns
+    -------
+
+    Returns
+    -------
+
+    result :  CCDData object
+        CCDData object with bias subtracted
+    """
+    result = ccd.subtract(master)
+    result.meta = ccd.meta.copy()
+    return result
+
+
+def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
+                  exposure_time=None, exposure_unit=None,
+                  scale=False):
+    """
+    Subtract dark current from an image
+
+    Parameters
+    ----------
+
+    ccd : CCDData
+        Image from which dark will be subtracted
+
+    master : CCDData
+        Dark image
+
+    dark_exposure : astropy.units.Quantity
+        Exposure time of the dark image; if specified, must also provided
+        `data_exposure`.
+
+    data_exposure : astropy.units.Quantity
+        Exposure time of the science image; if specified, must also provided
+        `dark_exposure`.
+
+    exposure_time : str or ~ccdproc.ccdproc.Keyword
+        Name of key in image metadata that contains exposure time.
+
+    exposure_unit : astropy.units.Unit
+        Unit of the exposure time if the value in the meta data does not
+        include a unit.
+
+    Returns
+    -------
+
+    result : CCDData
+        Dark-subtracted image
+    """
+    if not (isinstance(ccd, CCDData) and isinstance(master, CCDData)):
+        raise TypeError("ccd and master must both be CCDData objects")
+
+    if (data_exposure is not None and
+            dark_exposure is not None and
+            exposure_time is not None):
+        raise TypeError("Specify either exposure_time or "
+                        "(dark_exposure and data_exposure), not both.")
+
+    if data_exposure is None and dark_exposure is None:
+        if exposure_time is None:
+            raise TypeError("Must specify either exposure_time or both "
+                            "dark_exposure and data_exposure.")
+        if isinstance(exposure_time, Keyword):
+            data_exposure = exposure_time.value_from(ccd.header)
+            dark_exposure = exposure_time.value_from(master.header)
+        else:
+            data_exposure = ccd.header[exposure_time]
+            dark_exposure = master.header[exposure_time]
+
+    if not (isinstance(dark_exposure, Quantity) and
+            isinstance(data_exposure, Quantity)):
+        if exposure_time:
+            try:
+                data_exposure *= exposure_unit
+                dark_exposure *= exposure_unit
+            except TypeError:
+                raise TypeError("Must provide unit for exposure time")
+        else:
+            raise TypeError("exposure times must be astropy.units.Quantity "
+                            "objects")
+
+    if scale:
+        master_scaled = master.copy()
+        master_scaled.data *= data_exposure / dark_exposure
+        master_scaled.unit = (master.unit *
+                              data_exposure.unit / dark_exposure.unit)
+        result = ccd.subtract(master_scaled)
+    else:
+        result = ccd.subtract(master)
+
+    result.meta = ccd.meta.copy()
+    return result
 
 
 def gain_correct(ccd, gain):
@@ -394,3 +679,58 @@ def cosmicray_clean(ccddata, thresh, cr_func, crargs=(),
         mdata = ndimage.median_filter(data, rbox)
         ccddata.data[ccddata.mask > 0] = mdata[ccddata.mask > 0]
     return ccddata
+
+
+class Keyword(object):
+    """
+    """
+    def __init__(self, name, unit=None, value=None):
+        self._name = name
+        self._unit = unit
+        self.value = value
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def unit(self):
+        return self._unit
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        if value is None:
+            self._value = value
+        elif isinstance(value, Quantity):
+            self._unit = value.unit
+            self._value = value
+        elif isinstance(value, basestring):
+            if self.unit is not None:
+                raise ValueError("Keyword with a unit cannot have a "
+                                 "string value.")
+            else:
+                self._value = value
+        else:
+            if self.unit is None:
+                raise ValueError("No unit provided. Set value with "
+                                 "an astropy.units.Quantity")
+            self._value = value * self.unit
+
+    def value_from(self, header):
+        """
+        Set value of keyword from FITS header
+
+        Parameters
+        ----------
+
+        header : astropy.io.fits.Header
+            FITS header containing a value for this keyword
+        """
+
+        value_from_header = header[self.name]
+        self.value = value_from_header
+        return self.value
