@@ -273,7 +273,7 @@ def subtract_bias(ccd, master):
 
 
 def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
-                  exposure_key=None, exposure_unit=None,
+                  exposure_time=None, exposure_unit=None,
                   scale=False):
     """
     Subtract dark current from an image
@@ -295,7 +295,7 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
         Exposure time of the science image; if specified, must also provided
         `dark_exposure`.
 
-    exposure_key : str
+    exposure_time : str or ~ccdproc.ccdproc.Keyword
         Name of key in image metadata that contains exposure time.
 
     exposure_unit : astropy.units.Unit
@@ -313,20 +313,24 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
 
     if (data_exposure is not None and
             dark_exposure is not None and
-            exposure_key is not None):
-        raise TypeError("Specify either exposure_key or "
+            exposure_time is not None):
+        raise TypeError("Specify either exposure_time or "
                         "(dark_exposure and data_exposure), not both.")
 
     if data_exposure is None and dark_exposure is None:
-        if exposure_key is None:
-            raise TypeError("Must specify either exposure_key or both "
+        if exposure_time is None:
+            raise TypeError("Must specify either exposure_time or both "
                             "dark_exposure and data_exposure.")
-        data_exposure = ccd.header[exposure_key]
-        dark_exposure = master.header[exposure_key]
+        if isinstance(exposure_time, Keyword):
+            data_exposure = exposure_time.value_from(ccd.header)
+            dark_exposure = exposure_time.value_from(master.header)
+        else:
+            data_exposure = ccd.header[exposure_time]
+            dark_exposure = master.header[exposure_time]
 
     if not (isinstance(dark_exposure, Quantity) and
             isinstance(data_exposure, Quantity)):
-        if exposure_key:
+        if exposure_time:
             try:
                 data_exposure *= exposure_unit
                 dark_exposure *= exposure_unit

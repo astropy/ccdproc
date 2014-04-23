@@ -191,12 +191,10 @@ def test_subtract_bias_fails(ccd_data):
         subtract_bias(ccd_data, bias)
 
 
-@pytest.mark.parametrize('explicit_times,scale', [
-                         (True, True),
-                         (False, True),
-                         (True, False),
-                         (False, False)])
-def test_subtract_dark(ccd_data, explicit_times, scale):
+@pytest.mark.parametrize('exposure_keyword', [True, False])
+@pytest.mark.parametrize('explicit_times', [True, False])
+@pytest.mark.parametrize('scale', [True, False])
+def test_subtract_dark(ccd_data, explicit_times, scale, exposure_keyword):
     exptime = 30.0
     exptime_key = 'exposure'
     dark_level = 1.7
@@ -210,9 +208,14 @@ def test_subtract_dark(ccd_data, explicit_times, scale):
                                  dark_exposure=dark_exptime * u.second,
                                  data_exposure=exptime * u.second,
                                  scale=scale)
+    elif exposure_keyword:
+        key = Keyword(exptime_key, unit=u.second)
+        dark_sub = subtract_dark(ccd_data, master_dark,
+                                 exposure_time=key,
+                                 scale=scale)
     else:
         dark_sub = subtract_dark(ccd_data, master_dark,
-                                 exposure_key=exptime_key,
+                                 exposure_time=exptime_key,
                                  exposure_unit=u.second,
                                  scale=scale)
 
@@ -238,22 +241,22 @@ def test_subtract_dark_fails(ccd_data):
         subtract_dark(ccd_data, master, dark_exposure=30 * u.second)
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master, data_exposure=30 * u.second)
-    # Do we fail if we supply dark_exposure and data_exposure and exposure_key
+    # Do we fail if we supply dark_exposure and data_exposure and exposure_time
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master, dark_exposure=10 * u.second,
                       data_exposure=10 * u.second,
-                      exposure_key='exptime')
+                      exposure_time='exptime')
     # Fail if we supply none of the exposure-related arguments?
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master)
     # Fail if we supply exposure time but not a unit?
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data, master, exposure_key='exptime')
+        subtract_dark(ccd_data, master, exposure_time='exptime')
     # Fail if ccd_data or master are not CCDData objects?
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data.data, master, exposure_key='exptime')
+        subtract_dark(ccd_data.data, master, exposure_time='exptime')
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data, master.data, exposure_key='exptime')
+        subtract_dark(ccd_data, master.data, exposure_time='exptime')
 
 
 # this xfail needs to get pulled out ASAP...
