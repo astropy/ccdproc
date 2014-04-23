@@ -259,8 +259,6 @@ def test_subtract_dark_fails(ccd_data):
         subtract_dark(ccd_data, master.data, exposure_time='exptime')
 
 
-# this xfail needs to get pulled out ASAP...
-@pytest.mark.xfail('TRAVIS' in os.environ, reason='needs astropy fix')
 # test for flat correction
 @pytest.mark.data_scale(10)
 def test_flat_correct(ccd_data):
@@ -274,8 +272,7 @@ def test_flat_correct(ccd_data):
 
 # test for variance and for flat correction
 
-# this xfail needs to get pulled out ASAP...
-@pytest.mark.xfail('TRAVIS' in os.environ, reason='needs astropy fix')
+
 @pytest.mark.data_scale(10)
 @pytest.mark.data_mean(300)
 def test_flat_correct_variance(ccd_data):

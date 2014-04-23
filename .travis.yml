@@ -11,7 +11,7 @@ env:
         - WHEELHOUSE_HUB=http://physics.mnstate.edu/craig/wheelhouse
         - PIP_WHEEL_STRICT_NUMPY="pip install --use-wheel --no-index"
         - SETUP_CMD='test'
-        - ASTROPY_VERSION=stable
+        - ASTROPY_VERSION=development
         - PIP_WHEEL_FLEX_NUMPY="pip install --use-wheel --find-links=http://wheels.astropy.org --find-links=http://wheels2.astropy.org"
         # All tests explicitly added to the matrix in the include section use
         # the latest stable numpy.
