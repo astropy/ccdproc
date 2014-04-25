@@ -12,8 +12,10 @@ from scipy import ndimage
 
 from ccddata import CCDData
 from .utils.slices import slice_from_string
+from log_meta import log_to_metadata
 
 
+@log_to_metadata
 def create_variance(ccd_data, gain=None, readnoise=None):
     """
     Create a variance frame.  The function will update the uncertainty
@@ -34,9 +36,11 @@ def create_variance(ccd_data, gain=None, readnoise=None):
     readnoise :  astropy.units.Quantity
         Read noise per pixel.
 
+    {log}
+
     Raises
     ------
-    UnitsError :
+    UnitsError
         Raised if `readnoise` units are not equal to product of `gain` and
         `ccd_data` units.
 
@@ -75,6 +79,7 @@ def create_variance(ccd_data, gain=None, readnoise=None):
     return ccd
 
 
+@log_to_metadata
 def subtract_overscan(ccd, overscan=None, fits_section=None,
                       median=False, model=None):
     """
@@ -103,6 +108,8 @@ def subtract_overscan(ccd, overscan=None, fits_section=None,
     model :  astropy.model object, optional
         Model to fit to the data.  If None, returns the values calculated
         by the median or the mean.
+
+    {log}
 
     Raises
     ------
@@ -186,6 +193,7 @@ def subtract_overscan(ccd, overscan=None, fits_section=None,
     return ccd
 
 
+@log_to_metadata
 def trim_image(ccd, fits_section=None):
     """
     Trim the image to the dimensions indicated by `section`
@@ -199,6 +207,8 @@ def trim_image(ccd, fits_section=None):
     fits_section : str
         Region of `ccd` from which the overscan is extracted; see 
         :func:`subtract_overscan` for details.
+
+    {log}
 
     Returns
     -------
@@ -246,6 +256,7 @@ def trim_image(ccd, fits_section=None):
     return trimmed
 
 
+@log_to_metadata
 def subtract_bias(ccd, master):
     """
     Subtract master bias from image
@@ -259,8 +270,7 @@ def subtract_bias(ccd, master):
     master : CCDData
         Master image to be subtracted from `ccd`
 
-    Returns
-    -------
+    {log}
 
     Returns
     -------
@@ -273,6 +283,7 @@ def subtract_bias(ccd, master):
     return result
 
 
+@log_to_metadata
 def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
                   exposure_time=None, exposure_unit=None,
                   scale=False):
@@ -302,6 +313,8 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
     exposure_unit : astropy.units.Unit
         Unit of the exposure time if the value in the meta data does not
         include a unit.
+
+    {log}
 
     Returns
     -------
@@ -354,6 +367,7 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
     return result
 
 
+@log_to_metadata
 def gain_correct(ccd, gain):
     """Correct the gain in the image.
 
@@ -365,6 +379,8 @@ def gain_correct(ccd, gain):
        gain :  float or quantity
           gain value for the image expressed in electrions per adu
 
+
+       {log}
 
        Returns
        -------
@@ -379,6 +395,7 @@ def gain_correct(ccd, gain):
     return ccd
 
 
+@log_to_metadata
 def flat_correct(ccd, flat):
     """Correct the image for flatfielding
 
@@ -389,6 +406,8 @@ def flat_correct(ccd, flat):
 
        flat : CCDData object
           Flatfield to apply to the data
+
+       {log}
 
        Returns
        -------
@@ -542,6 +561,7 @@ def background_variance_filter(data, bbox):
     return ndimage.generic_filter(data, sigma_func, size=(bbox, bbox))
 
 
+@log_to_metadata
 def cosmicray_median(data, thresh,  background=None, mbox=11):
     """
     Identify cosmic rays through median technique.  The median technique
@@ -565,6 +585,7 @@ def cosmicray_median(data, thresh,  background=None, mbox=11):
     mbox :  int
         Median box for detecting cosmic rays
 
+    {log}
 
     Notes
     -----
@@ -589,6 +610,7 @@ def cosmicray_median(data, thresh,  background=None, mbox=11):
     return crarr
 
 
+@log_to_metadata
 def cosmicray_clean(ccddata, thresh, cr_func, crargs=(),
                     background=None, bargs=(), gbox=0, rbox=0):
     """
@@ -628,6 +650,7 @@ def cosmicray_clean(ccddata, thresh, cr_func, crargs=(),
         Median box for calculating replacement values.  If zero, no pixels will
         be replaced.
 
+    {log}
 
     Returns
     -------
