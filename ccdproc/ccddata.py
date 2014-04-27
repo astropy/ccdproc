@@ -2,6 +2,9 @@
 # This module implements the base CCDData class.
 
 import copy
+import numbers
+
+import numpy as np
 
 from astropy.nddata import NDData
 from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
@@ -166,6 +169,68 @@ class CCDData(NDData):
         Return a copy of the CCDData object
         """
         return copy.deepcopy(self)
+
+    def _ccddata_arithmetic(self, other, operation, scale_uncertainty=False):
+        """
+        Perform the common parts of arithmetic operations on CCDData objects
+
+        This should only be called when `other` is a Quantity or a number
+        """
+        # THE "1 *" IS NECESSARY to get the right result, at least in
+        # astropy-0.4dev. Using the np.multiply, etc, methods with a Unit
+        # and a Quantity is currently broken, but it works with two Quantity
+        # arguments.
+        if isinstance(other, u.Quantity):
+            other_value = other.value
+        elif isinstance(other, numbers.Number):
+            other_value = other
+        else:
+            raise TypeError("Cannot do arithmetic with type '{0}' "
+                            "and 'CCDData'".format(type(other)))
+
+        result_unit = operation(1 * self.unit, other).unit
+        result_data = operation(self.data, other_value)
+
+        if self.uncertainty:
+            result_uncertainty = self.uncertainty.array
+            if scale_uncertainty:
+                result_uncertainty = operation(result_uncertainty, other_value)
+            result_uncertainty = StdDevUncertainty(result_uncertainty)
+        else:
+            result_uncertainty = None
+
+        result = CCDData(data=result_data, unit=result_unit,
+                         uncertainty=result_uncertainty,
+                         meta=self.meta)
+        return result
+
+    def multiply(self, other):
+        if isinstance(other, CCDData):
+            return super(CCDData, self).multiply(other)
+
+        return self._ccddata_arithmetic(other, np.multiply,
+                                        scale_uncertainty=True)
+
+    def divide(self, other):
+        if isinstance(other, CCDData):
+            return super(CCDData, self).divide(other)
+
+        return self._ccddata_arithmetic(other, np.divide,
+                                        scale_uncertainty=True)
+
+    def add(self, other):
+        if isinstance(other, CCDData):
+            return super(CCDData, self).add(other)
+
+        return self._ccddata_arithmetic(other, np.add,
+                                        scale_uncertainty=False)
+
+    def subtract(self, other):
+        if isinstance(other, CCDData):
+            return super(CCDData, self).subtract(other)
+
+        return self._ccddata_arithmetic(other, np.subtract,
+                                        scale_uncertainty=False)
 
 
 def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
