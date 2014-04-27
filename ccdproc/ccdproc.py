@@ -1,5 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # This module implements the base CCDPROC functions
+from __future__ import absolute_import
+
 import numpy as np
 
 from astropy.units.quantity import Quantity
@@ -10,9 +12,9 @@ from astropy.nddata import StdDevUncertainty
 
 from scipy import ndimage
 
-from ccddata import CCDData
+from .ccddata import CCDData
 from .utils.slices import slice_from_string
-from log_meta import log_to_metadata
+from .log_meta import log_to_metadata
 
 
 @log_to_metadata
