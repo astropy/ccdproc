@@ -64,13 +64,14 @@ def create_variance(ccd_data, gain=None, readnoise=None):
 
     # Need to convert Quantity to plain number because NDData data is not
     # a Quantity. All unit checking should happen prior to this point.
-    gain_value = gain / gain.unit
-    readnoise_value = readnoise / readnoise.unit
+    gain_value = float(gain / gain.unit)
+    readnoise_value = float(readnoise / readnoise.unit)
 
     var = (gain_value * ccd_data.data + readnoise_value ** 2) ** 0.5
     ccd = ccd_data.copy()
     # ensure variance and image data have same unit
-    ccd.uncertainty = StdDevUncertainty(var / gain_value)
+    var /= gain_value
+    ccd.uncertainty = StdDevUncertainty(var)
     return ccd
 
 

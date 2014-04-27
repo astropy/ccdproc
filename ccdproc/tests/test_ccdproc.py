@@ -48,6 +48,9 @@ def test_create_variance(ccd_data, u_image, u_gain, u_readnoise,
         np.testing.assert_array_equal(ccd_var.uncertainty.array,
                                       expected_var)
         assert ccd_var.unit == ccd_data.unit
+        # uncertainty should *not* have any units -- does it?
+        with pytest.raises(AttributeError):
+            ccd_var.uncertainty.array.unit
     else:
         with pytest.raises(u.UnitsError):
             ccd_var = create_variance(ccd_data, gain=gain, readnoise=readnoise)
