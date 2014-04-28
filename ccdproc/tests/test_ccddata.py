@@ -178,7 +178,10 @@ def test_mult_div_overload(ccd_data, operand, with_uncertainty,
         assert result.uncertainty is None
 
     if isinstance(operand, u.Quantity):
-        assert result.unit == np_method(ccd_data.unit, operand.unit)
+        # Need the "1 *" below to force arguments to be Quantity to work around
+        # astropy/astropy#2377
+        expected_unit = np_method(1 * ccd_data.unit, 1 * operand.unit).unit
+        assert result.unit == expected_unit
     else:
         assert result.unit == ccd_data.unit
 
