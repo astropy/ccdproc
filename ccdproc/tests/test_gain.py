@@ -15,16 +15,44 @@ from ..ccddata import electron
 from ..ccdproc import *
 
 
-# tests for overscan
-def test_gain_correct(ccd_data):
+# tests for gain
+@pytest.mark.parametrize('gain', [
+                         3.0,
+                         3.0 * u.photon / u.adu,
+                         3.0 * electron / u.adu,
+                         Keyword('gainval', unit=electron / u.adu)])
+@pytest.mark.data_unit(u.adu)
+def test_linear_gain_correct(ccd_data, gain):
+    ccd_data = create_variance(ccd_data, readnoise=1.0 * u.adu)
+    ccd_data.meta['gainval'] = 3.0
     orig_data = ccd_data.data
-    ccd = gain_correct(ccd_data, gain=3)
-    assert_array_equal(ccd.data, 3 * orig_data)
+    ccd = gain_correct(ccd_data, gain)
+    if isinstance(gain, Keyword):
+        gain = gain.value   # convert to Quantity...
+    try:
+        gain_value = gain.value
+    except AttributeError:
+        gain_value = gain
+
+    assert_array_equal(ccd.data, gain_value * orig_data)
+    assert_array_equal(ccd.uncertainty.array,
+                       gain_value * ccd_data.uncertainty.array)
+
+    if isinstance(gain, Quantity):
+        assert ccd.unit == ccd_data.unit * gain.unit
+    else:
+        assert ccd.unit == ccd_data.unit
 
 
-def test_gain_correct_quantity(ccd_data):
+# test gain with gain_unit
+@pytest.mark.data_unit(u.adu)
+def test_linear_gain_unit_keyword(ccd_data):
+    ccd_data = create_variance(ccd_data, readnoise=1.0 * u.adu)
     orig_data = ccd_data.data
-    g = Quantity(3, electron / u.adu)
-    ccd = gain_correct(ccd_data, gain=g)
-    assert_array_equal(ccd.data, 3 * orig_data)
-    assert ccd.unit == electron
+    gain = 3.0
+    gain_unit = electron / u.adu
+    ccd = gain_correct(ccd_data, gain, gain_unit=gain_unit)
+    assert_array_equal(ccd.data, gain * orig_data)
+    assert_array_equal(ccd.uncertainty.array,
+                       gain * ccd_data.uncertainty.array)
+    assert ccd.unit == ccd_data.unit * gain_unit
