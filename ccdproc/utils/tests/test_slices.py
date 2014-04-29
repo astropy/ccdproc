@@ -79,3 +79,15 @@ def test_slice_from_string_fits_style():
 
 def test_slice_from_string_empty():
     assert len(slice_from_string('')) == 0
+
+
+def test_slice_from_string_bad_fits_slice():
+    with pytest.raises(ValueError):
+        # Do I error because 0 is an illegal lower bound?
+        slice_from_string('[0:10, 1:5]', fits_convention=True)
+    with pytest.raises(ValueError):
+        # Same as above, but switched order
+        slice_from_string('[1:5, 0:10]', fits_convention=True)
+    with pytest.raises(ValueError):
+        # Do I error if an ending index is negative?
+        slice_from_string('[1:10, 10:-1]', fits_convention=True)
