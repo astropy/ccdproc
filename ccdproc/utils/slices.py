@@ -97,6 +97,10 @@ def _defitsify_slice(slices):
     python_slice = []
     for a_slice in slices[::-1]:
         new_start = a_slice.start - 1 if a_slice.start is not None else None
+        if new_start is not None and new_start < 0:
+            raise ValueError("Smallest permissible FITS index is 1")
+        if a_slice.stop is not None and a_slice.stop < 0:
+            raise ValueError("Negative final index not allowed for FITS slice")
         new_slice = slice(new_start, a_slice.stop, a_slice.step)
         python_slice.append(new_slice)
 

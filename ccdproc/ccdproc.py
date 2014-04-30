@@ -2,6 +2,8 @@
 # This module implements the base CCDPROC functions
 from __future__ import absolute_import
 
+import numbers
+
 import numpy as np
 
 from astropy.units.quantity import Quantity
@@ -370,31 +372,37 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
 
 
 @log_to_metadata
-def gain_correct(ccd, gain):
+def gain_correct(ccd, gain, gain_unit=None):
     """Correct the gain in the image.
 
-       Parameters
-       ----------
-       ccd : CCDData object
-          Data to have variance frame corrected
+    Parameters
+    ----------
+    ccd : CCDData object
+      Data to have variance frame corrected
 
-       gain :  float or quantity
-          gain value for the image expressed in electrions per adu
+    gain :  `~astropy.units.Quantity` or `ccdproc.ccdproc.Keyword`
+      gain value for the image expressed in electrons per adu
 
+    gain_unit : astropy.units.Unit, optional
+        Unit for the `gain`; used only if `gain` itself does not provide
+        units.
 
-       {log}
+    {log}
 
-       Returns
-       -------
-       ccd :  CCDData object
-          CCDData object with gain corrected
+    Returns
+    -------
+    result :  CCDData object
+      CCDData object with gain corrected
     """
-    if isinstance(gain, Quantity):
-        ccd.data = ccd.data * gain.value
-        ccd.unit = ccd.unit * gain.unit
+    if isinstance(gain, Keyword):
+        gain_value = gain.value_from(ccd.header)
+    elif isinstance(gain, numbers.Number) and gain_unit is not None:
+        gain_value = gain * u.Unit(gain_unit)
     else:
-        ccd.data = ccd.data * gain
-    return ccd
+        gain_value = gain
+
+    result = ccd.multiply(gain_value)
+    return result
 
 
 @log_to_metadata
