@@ -247,7 +247,7 @@ class CCDData(NDData):
 
 def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
     """
-    Generate a CCDData object from a FITS file
+    Generate a CCDData object from a FITS file.
 
     Parameters
     ----------
@@ -289,7 +289,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
 
 def fits_ccddata_writer(ccd_data, filename, **kwd):
     """
-    Write CCDData object to FITS file
+    Write CCDData object to FITS file.
 
     Parameters
     ----------

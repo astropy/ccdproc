@@ -225,7 +225,7 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 @log_to_metadata
 def trim_image(ccd, fits_section=None):
     """
-    Trim the image to the dimensions indicated by `section`
+    Trim the image to the dimensions indicated by `section`.
 
     Parameters
     ----------
@@ -288,7 +288,7 @@ def trim_image(ccd, fits_section=None):
 @log_to_metadata
 def subtract_bias(ccd, master):
     """
-    Subtract master bias from image
+    Subtract master bias from image.
 
     Parameters
     ----------
@@ -317,7 +317,7 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
                   exposure_time=None, exposure_unit=None,
                   scale=False):
     """
-    Subtract dark current from an image
+    Subtract dark current from an image.
 
     Parameters
     ----------
@@ -432,7 +432,7 @@ def gain_correct(ccd, gain, gain_unit=None):
 
 @log_to_metadata
 def flat_correct(ccd, flat, min_value=None):
-    """Correct the image for flatfielding
+    """Correct the image for flatfielding.
 
        Parameters
        ----------
