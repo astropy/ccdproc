@@ -31,12 +31,12 @@ class CCDData(NDData):
 
     Parameters
     -----------
-    data : `~numpy.ndarray` or `~astropy.nddata.NDData`
+    data : `~numpy.ndarray` or :class:`~astropy.nddata.NDData`
         The actual data contained in this `NDData` object. Not that this
         will always be copies by *reference* , so you should make copy
         the `data` before passing it in if that's the  desired behavior.
 
-    uncertainty : `~astropy.nddata.NDUncertainty`, optional
+    uncertainty : `~astropy.nddata.StdDevUncertainty`, optional
         Uncertainties on the data.
 
     mask : `~numpy.ndarray`, optional
@@ -67,13 +67,13 @@ class CCDData(NDData):
         of this particular object.  e.g., creation date, unique identifier,
         simulation parameters, exposure time, telescope name, etc.
 
-    unit : `astropy.units.UnitBase` instance or str, optional
+    unit : `~astropy.units.Unit` instance or str, optional
         The units of the data.
 
     Raises
     ------
     ValueError
-        If the `uncertainty` or `mask` inputs cannot be broadcast (e.g., match
+        If the `uncertainty` or `.mask` inputs cannot be broadcast (e.g., match
         shape) onto `data`.
 
     Notes
