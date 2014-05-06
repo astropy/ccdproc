@@ -1,3 +1,4 @@
+from astropy.extern import six
 from astropy.tests.helper import pytest
 from astropy import units as u
 from astropy.units import Quantity
@@ -50,7 +51,7 @@ def test_value_setting(value, unit, expected):
             key = Keyword(name, unit=unit, value=value)
     else:
         key = Keyword(name, unit=unit, value=value)
-        if isinstance(expected, basestring):
+        if isinstance(expected, six.string_types):
             assert key.value == expected
         else:
             assert key.value == numerical_value * key.unit
