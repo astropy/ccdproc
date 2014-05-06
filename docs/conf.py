@@ -28,6 +28,7 @@
 # Load all of the global Astropy configuration
 from astropy.sphinx.conf import *
 
+intersphinx_mapping['astropy'] = ('http://docs.astropy.org/en/stable/', None)
 
 # -- General configuration ----------------------------------------------------
 
