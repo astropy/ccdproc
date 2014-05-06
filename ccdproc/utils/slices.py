@@ -2,6 +2,8 @@
 Define utility functions and classes for ccdproc
 """
 
+__all__ = []
+
 
 def slice_from_string(string, fits_convention=False):
     """

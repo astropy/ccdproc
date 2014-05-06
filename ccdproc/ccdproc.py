@@ -18,6 +18,11 @@ from .ccddata import CCDData
 from .utils.slices import slice_from_string
 from .log_meta import log_to_metadata
 
+__all__ = ['background_variance_box', 'background_variance_filter',
+           'cosmicray_clean', 'cosmicray_median', 'create_variance',
+           'flat_correct', 'gain_correct', 'sigma_func', 'subtract_bias',
+           'subtract_dark', 'subtract_overscan', 'trim_image', 'Keyword']
+
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
 _short_names = {

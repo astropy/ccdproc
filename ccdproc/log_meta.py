@@ -12,6 +12,8 @@ from astropy import units as u
 
 import ccdproc.ccdproc  # really only need Keyword from ccdproc
 
+__all__ = []
+
 _LOG_ARGUMENT = 'add_keyword'
 
 _LOG_ARG_HELP = \

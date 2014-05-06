@@ -14,6 +14,7 @@ from astropy import units as u
 import astropy
 
 from .utils.collections import CaseInsensitiveOrderedDict
+__all__ = ['CCDData']
 
 adu = u.adu
 electron = u.def_unit('electron')
