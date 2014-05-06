@@ -46,7 +46,6 @@ class Combiner(object):
             raise TypeError("ccd_list should be a list of CCDData objects")
 
         default_shape = None
-        default_dtype = None
         default_unit = None
         for ccd in ccd_list:
             #raise an error if the objects aren't CCDDAata objects
@@ -59,10 +58,6 @@ class Combiner(object):
             else:
                 if not (default_shape == ccd.shape):
                     raise TypeError("CCDData objects are not the same size")
-
-            #determine the dtype
-            if default_shape is None:
-                default_shape = ccd.data.dtype
 
             #raise an error if the units are different
             if default_unit is None:
@@ -126,7 +121,7 @@ class Combiner(object):
             self.data_arr.mask[mask] = True
 
     #set up sigma  clipping algorithms
-    def sigma_clipping(self, low_thresh=None, high_thresh=None,
+    def sigma_clipping(self, low_thresh=3, high_thresh=3,
                        func=ma.mean, dev_func=ma.std):
         """Pixels will be rejected if they have deviations greater than those
            set by the threshold values.   The algorithm will first calculated
@@ -137,13 +132,14 @@ class Combiner(object):
 
         Parameters
         -----------
-        low_thresh : float
+        low_thresh : positive float or None
             Threshold for rejecting pixels that deviate below the baseline
-            value
+            value.  If negative value, then will be convert to a positive
+            value.   If None, no rejection will be done based on low_thresh.
 
-        high_thresh : float
+        high_thresh : positive float or None
             Threshold for rejecting pixels that deviate above the baseline
-            value
+            value. If None, no rejection will be done based on high_thresh.
 
         func : function
             Function for calculating the baseline values (i.e. mean or median).
@@ -197,7 +193,7 @@ class Combiner(object):
 
         #set the mask
         mask = self.data_arr.mask.sum(axis=0)
-        mask = (mask < len(self.data_arr))
+        mask = (mask == len(self.data_arr))
 
         #set the uncertainty
         uncertainty = 1.4826 * median_absolute_deviation(self.data_arr.data,
@@ -234,7 +230,7 @@ class Combiner(object):
 
         #set up the mask
         mask = self.data_arr.mask.sum(axis=0)
-        mask = (mask < len(self.data_arr))
+        mask = (mask == len(self.data_arr))
 
         #set up the variance
         uncertainty = ma.std(self.data_arr, axis=0)

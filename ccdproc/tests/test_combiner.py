@@ -23,6 +23,11 @@ def test_combiner_empty():
     with pytest.raises(TypeError):
         Combiner()  # empty initializer should fail
 
+#test that the Combiner raises error if empty if ccd_list is None
+def test_combiner_empty():
+    with pytest.raises(TypeError):
+        Combiner(None)  # empty initializer should fail
+
 
 #test that Combiner throws an error if input
 #objects are not ccddata objects
@@ -49,13 +54,25 @@ def test_ccddata_combiner_units(ccd_data):
     with pytest.raises(TypeError):
         Combiner(ccd_list)
 
-
 #test if mask and data array are created
 def test_combiner_create(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     assert c.data_arr.shape == (3, 100, 100)
     assert c.data_arr.mask.shape == (3, 100, 100)
+
+#test mask is created from ccd.data
+def test_combiner_mask(ccd_data):
+    data = np.zeros((10, 10))
+    data[5,5] = 1
+    mask = (data == 0)
+    ccd = CCDData(data, unit=u.adu, mask=mask)
+    ccd_list = [ccd, ccd, ccd]
+    c = Combiner(ccd_list)
+    assert c.data_arr.shape == (3, 10, 10)
+    assert c.data_arr.mask.shape == (3, 10, 10)
+    assert c.data_arr.mask[0,5,5] == False
+
 
 
 def test_weights(ccd_data):
@@ -65,7 +82,7 @@ def test_weights(ccd_data):
         c.weights = 1
 
 
-def test_weights(ccd_data):
+def test_weights_shape(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     with pytest.raises(ValueError):
@@ -155,4 +172,34 @@ def test_combiner_average(ccd_data):
     assert ccd.unit == u.adu
     assert ccd.meta['NCOMBINE'] == len(ccd_list)
 
-#test that objects of large size are caught and handled correctly
+#test data combined with mask is created correctly
+def test_combiner_mask_average(ccd_data):
+    data = np.zeros((10, 10))
+    data[5,5] = 1
+    mask = (data == 0)
+    ccd = CCDData(data, unit=u.adu, mask=mask)
+    ccd_list = [ccd, ccd, ccd]
+    c = Combiner(ccd_list)
+    ccd = c.average_combine()
+    assert ccd.data[0,0] == 0
+    assert ccd.data[5,5] == 1
+    assert ccd.mask[0,0] == True 
+    assert ccd.mask[5,5] == False
+
+#test data combined with mask is created correctly
+def test_combiner_mask_media(ccd_data):
+    data = np.zeros((10, 10))
+    data[5,5] = 1
+    mask = (data == 0)
+    ccd = CCDData(data, unit=u.adu, mask=mask)
+    ccd_list = [ccd, ccd, ccd]
+    c = Combiner(ccd_list)
+    ccd = c.median_combine()
+    assert ccd.data[0,0] == 0
+    assert ccd.data[5,5] == 1
+    assert ccd.mask[0,0] == True 
+    assert ccd.mask[5,5] == False
+
+    
+    
+
