@@ -124,7 +124,7 @@ class CCDData(NDData):
         else:
             h = fits.Header()
             try:
-                for k, v in value.iteritems():
+                for k, v in value.items():
                     h[k] = v
             except (ValueError, AttributeError):
                 raise TypeError('NDData meta attribute must be dict-like')
@@ -265,7 +265,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
                                     'ccdproc operations.'),
         'scale_back': 'Scale information is not preserved.'
     }
-    for key, msg in unsupport_open_keywords.iteritems():
+    for key, msg in unsupport_open_keywords.items():
         if key in kwd:
             prefix = 'Unsupported keyword: {0}.'.format(key)
             raise TypeError(' '.join([prefix, msg]))

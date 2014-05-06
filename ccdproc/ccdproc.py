@@ -5,7 +5,7 @@ from __future__ import absolute_import
 import numbers
 
 import numpy as np
-
+from astropy.extern import six
 from astropy.units.quantity import Quantity
 from astropy import units as u
 from astropy.modeling import fitting
@@ -172,7 +172,7 @@ def subtract_overscan(ccd, overscan=None, fits_section=None,
     if (overscan is not None) and (not isinstance(overscan, CCDData)):
         raise TypeError('overscan is not a CCDData object')
 
-    if (fits_section is not None) and not isinstance(fits_section, basestring):
+    if (fits_section is not None) and not isinstance(fits_section, six.string_types):
         raise TypeError('overscan is not a string')
 
     if fits_section is not None:
@@ -251,7 +251,7 @@ def trim_image(ccd, fits_section=None):
     In this case, `not_really_trimmed` is a view of the underlying array
     `arr1`, not a copy.
     """
-    if fits_section is not None and not isinstance(fits_section, basestring):
+    if fits_section is not None and not isinstance(fits_section, six.string_types):
         raise TypeError("fits_section must be a string.")
     trimmed = ccd.copy()
     if fits_section:
@@ -742,7 +742,7 @@ class Keyword(object):
         elif isinstance(value, Quantity):
             self._unit = value.unit
             self._value = value
-        elif isinstance(value, basestring):
+        elif isinstance(value, six.string_types):
             if self.unit is not None:
                 raise ValueError("Keyword with a unit cannot have a "
                                  "string value.")

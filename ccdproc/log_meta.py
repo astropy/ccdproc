@@ -4,7 +4,6 @@ from __future__ import (absolute_import, division, print_function,
 from functools import wraps
 import inspect
 
-#from decorator import decorator
 from astropy.extern import six
 
 import ccdproc.ccdproc  # really only need Keyword from ccdproc
@@ -46,7 +45,7 @@ def log_to_metadata(func):
 
 
 def _insert_in_metadata(metadata, arg):
-    if isinstance(arg, basestring):
+    if isinstance(arg, six.string_types):
         # add the key, no value
         metadata[arg] = None
     elif isinstance(arg, ccdproc.ccdproc.Keyword):
