@@ -6,16 +6,17 @@ from astropy.io import fits
 from astropy.modeling import models
 from astropy.units.quantity import Quantity
 import astropy.units as u
+from astropy.stats import median_absolute_deviation as mad
 
 from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
 
+
 from ..ccddata import CCDData, electron, adu
 from ..combiner import *
 
-from astropy.stats import median_absolute_deviation as mad
 
-from pytest_fixtures import ccd_data
+from .pytest_fixtures import ccd_data
 
 
 #test that the Combiner raises error if empty
