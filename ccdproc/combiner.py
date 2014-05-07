@@ -3,12 +3,12 @@
 
 import numpy as np
 from numpy import ma
-from ccddata import CCDData
+from .ccddata import CCDData
 
 from astropy.stats import median_absolute_deviation
 from astropy.nddata import StdDevUncertainty
 
-#__all__ = ['Combiner']
+__all__ = ['Combiner']
 
 
 class Combiner(object):
