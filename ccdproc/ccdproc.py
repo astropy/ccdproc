@@ -178,17 +178,23 @@ def subtract_overscan(ccd, overscan=None, fits_section=None,
     if fits_section is not None:
         overscan = ccd[slice_from_string(fits_section, fits_convention=True)]
 
+    # Assume axis with the smaller dimension is the one to aggregate over
+    oscan_axis = 1 if overscan.shape[0] > overscan.shape[1] else 0
+
     if median:
-        oscan = np.median(overscan.data, axis=1)
+        oscan = np.median(overscan.data, axis=oscan_axis)
     else:
-        oscan = np.mean(overscan.data, axis=1)
+        oscan = np.mean(overscan.data, axis=oscan_axis)
 
     if model is not None:
         of = fitting.LinearLSQFitter()
         yarr = np.arange(len(oscan))
         oscan = of(model, yarr, oscan)
         oscan = oscan(yarr)
-        oscan = np.reshape(oscan, (oscan.size, 1))
+        if oscan_axis == 1:
+            oscan = np.reshape(oscan, (oscan.size, 1))
+        else:
+            oscan = np.reshape(oscan, (1, oscan.size))
     else:
         oscan = np.reshape(oscan, oscan.shape + (1,))
 
