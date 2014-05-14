@@ -79,11 +79,15 @@ def test_subtract_overscan(ccd_data, median, transpose):
     oscan_region = (slice(None), slice(0, 10))  # indices 0 through 9
     fits_section = '[1:10, :]'
     science_region = (slice(None), slice(10, None))
+
+    overscan_axis = 1
     if transpose:
         # Put overscan in first axis, not second, a test for #70
         oscan_region = oscan_region[::-1]
         fits_section = '[:, 1:10]'
         science_region = science_region[::-1]
+        overscan_axis = 0
+
     ccd_data.data[oscan_region] = oscan
     # Add a fake sky background so the "science" part of the image has a
     # different average than the "overscan" part.
@@ -93,6 +97,7 @@ def test_subtract_overscan(ccd_data, median, transpose):
     # Test once using the overscan argument to specify the overscan region
     ccd_data_overscan = subtract_overscan(ccd_data,
                                           overscan=ccd_data[oscan_region],
+                                          overscan_axis=overscan_axis,
                                           median=median, model=None)
     # Is the mean of the "science" region the sum of sky and the mean the
     # "science" section had before backgrounds were added?
@@ -105,6 +110,7 @@ def test_subtract_overscan(ccd_data, median, transpose):
     # Now do what should be the same subtraction, with the overscan specified
     # with the fits_section
     ccd_data_fits_section = subtract_overscan(ccd_data,
+                                              overscan_axis=overscan_axis,
                                               fits_section=fits_section,
                                               median=median, model=None)
     # Is the mean of the "science" region the sum of sky and the mean the
@@ -137,7 +143,9 @@ def test_subtract_overscan_model(ccd_data, transpose):
         oscan_region = oscan_region[::-1]
         science_region = science_region[::-1]
         scan = xscan
+        overscan_axis = 0
     else:
+        overscan_axis = 1
         scan = yscan
 
     original_mean = ccd_data.data[science_region].mean()
@@ -146,6 +154,7 @@ def test_subtract_overscan_model(ccd_data, transpose):
     ccd_data.data = ccd_data.data + scan
 
     ccd_data = subtract_overscan(ccd_data, overscan=ccd_data[oscan_region],
+                                 overscan_axis=overscan_axis,
                                  median=False, model=models.Polynomial1D(2))
     np.testing.assert_almost_equal(ccd_data.data[science_region].mean(),
                                    original_mean)
