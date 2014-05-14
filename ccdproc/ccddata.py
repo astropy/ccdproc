@@ -20,6 +20,8 @@ adu = u.adu
 electron = u.def_unit('electron')
 photon = u.photon
 
+__all__ = ['CCDData']
+
 
 class CCDData(NDData):
 
