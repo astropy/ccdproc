@@ -84,7 +84,7 @@ def create_variance(ccd_data, gain=None, readnoise=None):
 
 
 @log_to_metadata
-def subtract_overscan(ccd, overscan=None, fits_section=None,
+def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
                       median=False, model=None):
     """
     Subtract the overscan region from an image.  This will first
@@ -100,6 +100,11 @@ def subtract_overscan(ccd, overscan=None, fits_section=None,
     overscan : CCDData
         Slice from `ccd` that contains the overscan. Must provide either
         this argument or `fits_section`, but not both.
+
+    overscan_axis : 0 or 1, optional
+        Axis along which overscan should combined with mean or median. Axis
+        numbering follows the *python* convention for ordering, so 0 is the
+        first axis and 1 is the second axis.
 
     fits_section :  str
         Region of `ccd` from which the overscan is extracted, using the FITS
@@ -178,17 +183,22 @@ def subtract_overscan(ccd, overscan=None, fits_section=None,
     if fits_section is not None:
         overscan = ccd[slice_from_string(fits_section, fits_convention=True)]
 
+    # Assume axis with the smaller dimension is the one to aggregate over
+
     if median:
-        oscan = np.median(overscan.data, axis=1)
+        oscan = np.median(overscan.data, axis=overscan_axis)
     else:
-        oscan = np.mean(overscan.data, axis=1)
+        oscan = np.mean(overscan.data, axis=overscan_axis)
 
     if model is not None:
         of = fitting.LinearLSQFitter()
         yarr = np.arange(len(oscan))
         oscan = of(model, yarr, oscan)
         oscan = oscan(yarr)
-        oscan = np.reshape(oscan, (oscan.size, 1))
+        if overscan_axis == 1:
+            oscan = np.reshape(oscan, (oscan.size, 1))
+        else:
+            oscan = np.reshape(oscan, (1, oscan.size))
     else:
         oscan = np.reshape(oscan, oscan.shape + (1,))
 
