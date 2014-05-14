@@ -54,3 +54,9 @@ def test_log_bad_type_fails(ccd_data):
     with pytest.raises(AttributeError):
         create_variance(ccd_data, readnoise=3 * ccd_data.unit,
                         add_keyword=add_key)
+
+
+def test_log_set_to_None_does_not_change_header(ccd_data):
+    new = create_variance(ccd_data, readnoise=3 * ccd_data.unit,
+                          add_keyword=None)
+    assert new.meta.keys() == ccd_data.header.keys()
