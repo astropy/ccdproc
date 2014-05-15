@@ -168,14 +168,22 @@ class Combiner(object):
             self.data_arr.mask[mask] = True
 
     #set up the combining algorithms
-    def median_combine(self):
-        """Median combine a set of arrays. A CCDData object is returned
+    def median_combine(self, median_func=ma.median):
+        """Median combine a set of arrays.
+
+           A CCDData object is returned
            with the data property set to the median of the arrays.  If the data
            was masked or any data have been rejected, those pixels will not be
            included in the median.   A mask will be returned, and if a pixel
            has been rejected in all images, it will be masked.   The
            uncertainty of the combined image is set by 1.4826 times the median
            absolute deviation of all input images.
+
+           Parameters
+           ----------
+           median_func : function, optional
+               Function that calculates median of a ``numpy.ma.masked_array``.
+               Default is to use ``np.ma.median`` to calculate median.
 
            Returns
            -------
@@ -189,7 +197,7 @@ class Combiner(object):
 
         """
         #set the data
-        data = ma.median(self.data_arr, axis=0)
+        data = median_func(self.data_arr, axis=0)
 
         #set the mask
         mask = self.data_arr.mask.sum(axis=0)
