@@ -113,6 +113,8 @@ TBD
 
 .. automodapi:: ccdproc.ccddata
 
+.. automodapi:: ccdproc.combiner
+
 .. automodapi:: ccdproc.ccdproc
 
 .. automodapi:: ccdproc.utils.slices
