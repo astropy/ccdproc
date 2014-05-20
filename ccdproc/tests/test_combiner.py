@@ -136,6 +136,24 @@ def test_combiner_sigmaclip_high():
                      dev_func=mad)
     assert c.data_arr[5].mask.all()
 
+def test_combiner_sigmaclip_single_pix():
+    ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
+                CCDData(np.zeros((10, 10)) - 10, unit=u.adu),
+                CCDData(np.zeros((10, 10)) + 10, unit=u.adu),
+                CCDData(np.zeros((10, 10)) - 10, unit=u.adu),
+                CCDData(np.zeros((10, 10)) + 10, unit=u.adu),
+                CCDData(np.zeros((10, 10)) - 10, unit=u.adu)]
+    c = Combiner(ccd_list)
+    #add a single pixel in another array to check that 
+    #that one gets rejected
+    c.data_arr[0,5,5] = 0
+    c.data_arr[1,5,5] = -5
+    c.data_arr[2,5,5] = 5
+    c.data_arr[3,5,5] = -5
+    c.data_arr[4,5,5] = 25
+    c.sigma_clipping(high_thresh=3, low_thresh=None, func=np.median,
+                     dev_func=mad)
+    assert c.data_arr.mask[4,5,5] == True
 
 def test_combiner_sigmaclip_low():
     ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
