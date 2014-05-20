@@ -416,7 +416,7 @@ def gain_correct(ccd, gain, gain_unit=None):
 
 
 @log_to_metadata
-def flat_correct(ccd, flat):
+def flat_correct(ccd, flat, min_value=None):
     """Correct the image for flatfielding
 
        Parameters
@@ -427,6 +427,11 @@ def flat_correct(ccd, flat):
        flat : CCDData object
           Flatfield to apply to the data
 
+       min_value : None or float 
+          Minimum value for flat field.  The value can either be None and no 
+          minimum value is applied to the flat or specified by a float which 
+          will replace all values in the flat by the min_value.
+
        {log}
 
        Returns
@@ -434,6 +439,10 @@ def flat_correct(ccd, flat):
        ccd :  CCDData object
           CCDData object with flat corrected
     """
+    #Use the min_value to replace any values in the flat
+    if min_value is not None:
+       flat.data[flat.data < min_value] = min_value
+
     # normalize the flat
     flat.data = flat.data / flat.data.mean()
     if flat.uncertainty is not None:

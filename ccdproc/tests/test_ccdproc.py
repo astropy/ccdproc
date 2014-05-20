@@ -301,11 +301,29 @@ def test_subtract_dark_fails(ccd_data):
 @pytest.mark.data_scale(10)
 def test_flat_correct(ccd_data):
     size = ccd_data.shape[0]
-
+    orig_mean = ccd_data.data.mean()
     # create the flat
     data = 2 * np.ones((size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
-    ccd_data = flat_correct(ccd_data, flat)
+    flat_data = flat_correct(ccd_data, flat)
+
+    #check that the flat was normalized
+    assert flat_data.data.mean() == ccd_data.data.mean()
+    assert (ccd_data.data / flat_data.data == flat.data).all()
+
+# test for flat correction with min_value
+@pytest.mark.data_scale(10)
+def test_flat_correct_min_value(ccd_data):
+    size = ccd_data.shape[0]
+    orig_mean = ccd_data.data.mean()
+    # create the flat
+    data = 2 * np.ones((size, size))
+    flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
+    flat_data = flat_correct(ccd_data, flat, min_value = 4)
+
+    #check that the flat was normalized
+    assert flat_data.data.mean() == ccd_data.data.mean()
+    assert (ccd_data.data / flat_data.data == flat.data).all()
 
 
 # test for variance and for flat correction
