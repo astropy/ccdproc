@@ -59,7 +59,7 @@ matrix:
           env: ASTROPY_VERSION=development NUMPY_VERSION=$LATEST_NUMPY_STABLE SETUP_CMD='test --coverage'
 
 before_install:
-    - pip install setuptools
+    - pip install --upgrade setuptools
     - pip install --upgrade pip
     - pip install wheel
     - if [[ $SETUP_CMD == build_sphinx* ]]; then sudo apt-get update; sudo apt-get install graphviz; fi
@@ -81,7 +81,7 @@ install:
     # Build development astropy from source -- requires cython. Cython does not
     # depend on numpy so we don't care where we get the wheel from.
     - if [[ $ASTROPY_VERSION == development ]]; then $PIP_WHEEL_FLEX_NUMPY cython; fi
-    - if [[ $ASTROPY_VERSION == development ]]; then git clone http://github.com/astropy/astropy.git astropy; cd astropy; git submodule update --init; python setup.py install; cd ..; fi
+    - if [[ $ASTROPY_VERSION == development ]]; then pip -q install git+http://github.com/astropy/astropy.git#egg=astropy; fi
 
     # Documentation build has a couple of additional requirements.
     - if [[ $SETUP_CMD == build_sphinx* ]]; then $PIP_WHEEL_FLEX_NUMPY sphinx>=1.2; fi
