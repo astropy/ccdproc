@@ -26,8 +26,11 @@ Image masks/clipping
 --------------------
 
 There are currently two methods of clipping. Neither affects the data
-directly; instead each constructs a mask that is appliead when images are
+directly; instead each constructs a mask that is applied when images are
 combined.
+
+Masking done by clipping operations is combined with the image mask provided
+when the `~ccdproc.combiner.Combiner` is created.
 
 Min/max clipping
 ++++++++++++++++
@@ -88,6 +91,6 @@ at :ref:`bottleneck_example`.
 With image transformation
 -------------------------
 
-Like with images that have stars and stuff.
+TBD
 
 .. _bottleneck: http://berkeleyanalytics.com/bottleneck/
