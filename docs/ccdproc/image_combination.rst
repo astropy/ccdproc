@@ -68,6 +68,23 @@ You can mask pixels more than 5 standard deviations above or 2 standard deviatio
     which uses `bottleneck`_ is at :ref:`bottleneck_example`.
 
 
+Image combination
+-----------------
+
+Image combination is straightforward; to combine by taking the average, excluding any pixels mapped by clipping:
+
+    >>> combined_average = combination.average_combine()
+
+Performing a median combination is also straightforward,
+
+    >>> combined_median = combiner.median_combine()  # can be slow, see below 
+
+The masked median function provided by numpy (and used by default in
+``median_combine``) can be very slow, so ``median_combine`` accepts an
+argument ``median_func`` for calculating the median instead. One fast
+alternative is provided by the `bottleneck`_ package; an example using it is
+at :ref:`bottleneck_example`.
+
 With image transformation
 -------------------------
 
