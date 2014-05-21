@@ -59,7 +59,7 @@ matrix:
           env: ASTROPY_VERSION=development NUMPY_VERSION=$LATEST_NUMPY_STABLE SETUP_CMD='test --coverage'
 
 before_install:
-    - pip install --upgrade setuptools
+    - pip install setuptools
     - pip install --upgrade pip
     - pip install wheel
     - if [[ $SETUP_CMD == build_sphinx* ]]; then sudo apt-get update; sudo apt-get install graphviz; fi
