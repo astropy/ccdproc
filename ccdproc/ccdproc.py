@@ -677,7 +677,8 @@ def cosmicray_clean(ccd, thresh, cr_func, crargs=(),
     Cosmic ray clean a ccddata object.  This process will apply a cosmic ray
     cleaning method, cr_func, to a data set.  The cosmic rays will be
     identified based on being above a threshold, thresh, above the background.
-    The background can either be supplied by a function
+    The background can either be supplied by a function, an array or a single
+    number.
 
     Parameters
     ----------

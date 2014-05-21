@@ -70,6 +70,21 @@ You can mask pixels more than 5 standard deviations above or 2 standard deviatio
     A much faster library for this case is `bottleneck`_; a detailed example
     which uses `bottleneck`_ is at :ref:`bottleneck_example`.
 
+Iterative clipping
+++++++++++++++++++
+
+To clip iteratively, continuing the clipping process until no more pixels are
+rejected, loop in the code calling the clipping method:
+
+    >>> old_n_masked = 0  # dummy value to make loop execute at least once
+    >>> new_n_masked = combiner.data_array.mask.sum()
+    >>> while (new_n_masked > old_n_masked):
+    ...     combiner.sigma_clipping(func=np.ma.median)
+    ...     old_n_masked = new_n_masked
+    ...     new_n_masked = combiner.data_array.mask.sum()
+
+Note that the default values for the high and low thresholds for rejection are
+3 standard deviations.
 
 Image combination
 -----------------
