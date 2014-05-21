@@ -155,8 +155,8 @@ class Combiner(object):
         #check for negative numbers in low_thresh
 
         #setup baseline values
-        baseline = func(self.data_arr)
-        dev = dev_func(self.data_arr)
+        baseline = func(self.data_arr, axis=0)
+        dev = dev_func(self.data_arr, axis=0)
         #reject values
         if low_thresh is not None:
             if low_thresh < 0:
