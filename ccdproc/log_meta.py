@@ -4,7 +4,11 @@ from __future__ import (absolute_import, division, print_function,
 from functools import wraps
 import inspect
 
+import numpy as np
+
 from astropy.extern import six
+from astropy.nddata import NDData
+from astropy import units as u
 
 import ccdproc.ccdproc  # really only need Keyword from ccdproc
 
@@ -17,7 +21,7 @@ _LOG_ARG_HELP = \
         disable logging. Default is to add a dictionary with a single item:
         the key is the name of this function  and the value is a string
         containing the arguments the function was called with, except the
-        value of this argument. 
+        value of this argument.
     """.format(arg=_LOG_ARGUMENT)
 
 
@@ -63,16 +67,18 @@ def log_to_metadata(func):
 
         if log_result:
             _insert_in_metadata(result.meta, log_result)
-        elif not log_result and log_result is not None:
+        elif log_result is not None:
             # Logging is not turned off, but user did not provide a value
             # so construct one.
             key = func.__name__
             pos_args = ["{}={}".format(arg_name, arg_value)
                         for arg_name, arg_value
-                        in zip(original_positional_args, args)]
-            kwd_args = ["{}={}".format(k, v) for k, v in six.iteritems(kwd)]
+                        in zip(original_positional_args, args)
+                        if not isinstance(arg_value, (NDData, np.ndarray))]
+            kwd_args = ["{}={}".format(k, _replace_array_with_placeholder(v))
+                        for k, v in six.iteritems(kwd)]
             pos_args.extend(kwd_args)
-            log_val = " ".join(pos_args)
+            log_val = ", ".join(pos_args)
             log_val = log_val.replace("\n", "")
             to_log = {key: log_val}
             _insert_in_metadata(result.meta, to_log)
@@ -92,3 +98,26 @@ def _insert_in_metadata(metadata, arg):
                 metadata[k] = v
         except AttributeError:
             raise
+
+
+def _replace_array_with_placeholder(value):
+    return_type_not_value = False
+    if isinstance(value, u.Quantity):
+        return_type_not_value = not value.isscalar
+    elif isinstance(value, (NDData, np.ndarray)):
+        try:
+            length = len(value)
+        except TypeError:
+            # value has no length...
+            try:
+                # ...but if it is NDData its .data will have a length
+                length = len(value.data)
+            except TypeError:
+                # No idea what this data is, assume length is not 1
+                length = 42
+        return_type_not_value = length > 1
+
+    if return_type_not_value:
+        return "<{}>".format(value.__class__.__name__)
+    else:
+        return value

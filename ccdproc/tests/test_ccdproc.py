@@ -245,17 +245,17 @@ def test_subtract_dark(ccd_data, explicit_times, scale, exposure_keyword):
         dark_sub = subtract_dark(ccd_data, master_dark,
                                  dark_exposure=dark_exptime * u.second,
                                  data_exposure=exptime * u.second,
-                                 scale=scale)
+                                 scale=scale, add_keyword=None)
     elif exposure_keyword:
         key = Keyword(exptime_key, unit=u.second)
         dark_sub = subtract_dark(ccd_data, master_dark,
                                  exposure_time=key,
-                                 scale=scale)
+                                 scale=scale, add_keyword=None)
     else:
         dark_sub = subtract_dark(ccd_data, master_dark,
                                  exposure_time=exptime_key,
                                  exposure_unit=u.second,
-                                 scale=scale)
+                                 scale=scale, add_keyword=None)
 
     dark_scale = 1.0
     if scale:
