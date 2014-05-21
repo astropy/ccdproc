@@ -590,7 +590,6 @@ def background_variance_filter(data, bbox):
     return ndimage.generic_filter(data, sigma_func, size=(bbox, bbox))
 
 
-@log_to_metadata
 def cosmicray_median(data, thresh,  background=None, mbox=11):
     """
     Identify cosmic rays through median technique.  The median technique
