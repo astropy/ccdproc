@@ -13,6 +13,8 @@ from astropy.utils.compat.odict import OrderedDict
 from astropy import units as u
 import astropy
 
+from .utils.collections import CaseInsensitiveOrderedDict
+
 adu = u.adu
 electron = u.def_unit('electron')
 photon = u.photon
@@ -118,18 +120,15 @@ class CCDData(NDData):
     @meta.setter
     def meta(self, value):
         if value is None:
-            self._meta = fits.Header()
-        elif isinstance(value, fits.Header):
-            self._meta = value
+            self._meta = CaseInsensitiveOrderedDict()
         else:
-            h = fits.Header()
+            h = CaseInsensitiveOrderedDict()
             try:
                 for k, v in value.items():
                     h[k] = v
             except (ValueError, AttributeError):
                 raise TypeError('NDData meta attribute must be dict-like')
             self._meta = h
-
 
     @property
     def uncertainty(self):
@@ -148,7 +147,7 @@ class CCDData(NDData):
             self._uncertainty = value
 
     def to_hdu(self):
-        """Creates an HDUList object from a CCDData object
+        """Creates an HDUList object from a CCDData object.
 
            Raises
            -------
@@ -160,13 +159,16 @@ class CCDData(NDData):
            hdulist : astropy.io.fits.HDUList object
 
         """
-        hdu = fits.PrimaryHDU(self.data, self.header)
+        header = fits.Header()
+        for k, v in self.header.items():
+            header[k] = v
+        hdu = fits.PrimaryHDU(self.data, header)
         hdulist = fits.HDUList([hdu])
         return hdulist
 
     def copy(self):
         """
-        Return a copy of the CCDData object
+        Return a copy of the CCDData object.
         """
         return copy.deepcopy(self)
 
@@ -288,7 +290,7 @@ def fits_ccddata_writer(ccd_data, filename, **kwd):
     kwd :
         All additional keywords are passed to :py:mod:`astropy.io.fits`
     """
-    hdu = fits.PrimaryHDU(data=ccd_data.data, header=ccd_data.header)
+    hdu = ccd_data.to_hdu()
     hdu.writeto(filename, **kwd)
 
 
