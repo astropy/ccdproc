@@ -18,7 +18,7 @@ def test_log_string(ccd_data, key):
     assert add_key not in ccd_data.meta
     # Long keyword names should be accessible with just the keyword name
     # without HIERARCH -- is it?
-    assert new.meta[add_key] == ''
+    assert new.meta[add_key] is None
 
 
 def test_log_keyword(ccd_data):

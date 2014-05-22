@@ -39,7 +39,8 @@ def test_initialize_from_FITS(ccd_data, tmpdir):
     assert cd.shape == (10, 10)
     assert cd.size == 100
     assert np.issubdtype(cd.data.dtype, np.float)
-    assert cd.meta == hdu.header
+    for k, v in hdu.header.items():
+        assert cd.meta[k] == v
 
 
 def test_initialize_from_FITS_bad_keyword_raises_error(ccd_data, tmpdir):
@@ -63,9 +64,16 @@ def test_ccddata_writer(ccd_data, tmpdir):
     np.testing.assert_array_equal(ccd_data.data, ccd_disk.data)
 
 
-def test_ccddata_meta_is_fits_header(ccd_data):
+def test_ccddata_meta_is_case_insensitive(ccd_data):
+    key = 'SoMeKEY'
+    ccd_data.meta[key] = 10
+    assert key.lower() in ccd_data.meta
+    assert key.upper() in ccd_data.meta
+
+
+def test_ccddata_meta_is_not_fits_header(ccd_data):
     ccd_data.meta = {'OBSERVER': 'Edwin Hubble'}
-    assert isinstance(ccd_data.meta, fits.Header)
+    assert not isinstance(ccd_data.meta, fits.Header)
 
 
 def test_fromMEF(ccd_data, tmpdir):
