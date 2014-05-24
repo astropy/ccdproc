@@ -1,9 +1,13 @@
+from __future__ import (print_function, division, absolute_import)
+
+import numpy as np
+
 from astropy.extern import six
 from astropy.tests.helper import pytest
 import astropy.units as u
 
-from ..ccdproc import create_variance, Keyword
-
+from ..ccdproc import subtract_bias, create_variance, Keyword
+from ..ccddata import CCDData
 
 @pytest.mark.parametrize('key', [
                          'short',
@@ -60,3 +64,18 @@ def test_log_set_to_None_does_not_change_header(ccd_data):
     new = create_variance(ccd_data, readnoise=3 * ccd_data.unit,
                           add_keyword=None)
     assert new.meta.keys() == ccd_data.header.keys()
+
+
+def test_implicit_logging(ccd_data):
+    # If nothing is supplied for the add_keyword argument then the following
+    # should happen:
+    # + A key named func.__name__ is created, with
+    # + value that is the list of arguments the function was called with.
+    bias = CCDData(np.zeros_like(ccd_data.data), unit="adu")
+    result = subtract_bias(ccd_data, bias)
+    assert "subtract_bias" in result.header
+    assert result.header['subtract_bias'] == "ccd=<CCDData>, master=<CCDData>"
+
+    result = create_variance(ccd_data, readnoise=3 * ccd_data.unit)
+    assert ("readnoise="+str(3 * ccd_data.unit) in
+            result.header['create_variance'])

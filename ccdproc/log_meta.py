@@ -71,10 +71,10 @@ def log_to_metadata(func):
             # Logging is not turned off, but user did not provide a value
             # so construct one.
             key = func.__name__
-            pos_args = ["{}={}".format(arg_name, arg_value)
+            pos_args = ["{}={}".format(arg_name,
+                                       _replace_array_with_placeholder(arg_value))
                         for arg_name, arg_value
-                        in zip(original_positional_args, args)
-                        if not isinstance(arg_value, (NDData, np.ndarray))]
+                        in zip(original_positional_args, args)]
             kwd_args = ["{}={}".format(k, _replace_array_with_placeholder(v))
                         for k, v in six.iteritems(kwd)]
             pos_args.extend(kwd_args)
