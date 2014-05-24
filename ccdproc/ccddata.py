@@ -159,9 +159,19 @@ class CCDData(NDData):
            hdulist : astropy.io.fits.HDUList object
 
         """
+        from .ccdproc import _short_names
+
         header = fits.Header()
         for k, v in self.header.items():
-            header[k] = v
+            if k in _short_names:
+                # This keyword was (hopefully) added by autologging but the
+                # combination of it and its value FITS-compliant in two ways.
+                # Shorten, sort of...
+                short_name = _short_names[k]
+                header[k] = (short_name, "Shortened name for ccdproc command")
+                header[short_name] = v
+            else:
+                header[k] = v
         hdu = fits.PrimaryHDU(self.data, header)
         hdulist = fits.HDUList([hdu])
         return hdulist

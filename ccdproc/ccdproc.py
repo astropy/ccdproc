@@ -18,6 +18,21 @@ from .ccddata import CCDData
 from .utils.slices import slice_from_string
 from .log_meta import log_to_metadata
 
+# The dictionary below is used to translate actual function names to names
+# that are FITS compliant, i.e. 8 characters or less.
+_short_names = {
+    'background_variance_box': 'bakvarbx',
+    'background_variance_filter': 'bakvfilt',
+    'cosmicray_median': 'crmedian',
+    'create_variance': 'creatvar',
+    'flat_correct': 'flatcor',
+    'gain_correct': 'gaincor',
+    'subtract_bias': 'subbias',
+    'subtract_dark': 'subdark',
+    'subtract_overscan': 'suboscan',
+    'trim_image': 'trimim',
+}
+
 
 @log_to_metadata
 def create_variance(ccd_data, gain=None, readnoise=None):
