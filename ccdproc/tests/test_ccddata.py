@@ -134,7 +134,7 @@ def test_to_hdu(ccd_data):
     ccd_data.meta = {'observer': 'Edwin Hubble'}
     fits_hdulist = ccd_data.to_hdu()
     assert isinstance(fits_hdulist, fits.HDUList)
-    for k, v in ccd_data.meta.iteritems():
+    for k, v in ccd_data.meta.items():
         assert fits_hdulist[0].header[k] == v
     np.testing.assert_array_equal(fits_hdulist[0].data, ccd_data.data)
 
