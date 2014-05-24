@@ -118,6 +118,6 @@ def _replace_array_with_placeholder(value):
         return_type_not_value = length > 1
 
     if return_type_not_value:
-        return "<{}>".format(value.__class__.__name__)
+        return "<{0}>".format(value.__class__.__name__)
     else:
         return value

@@ -153,7 +153,6 @@ def test_to_hdu_long_metadata_item(ccd_data):
     result = subtract_dark(ccd_data, dark, dark_exposure=30 * u.second,
                            data_exposure=15 * u.second, scale=True)
     assert 'subtract_dark' in result.header
-    print result.header
     hdulist = result.to_hdu()
     header = hdulist[0].header
     assert header['subtract_dark'] == _short_names['subtract_dark']
