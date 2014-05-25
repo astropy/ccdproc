@@ -206,14 +206,13 @@ def test_subtract_bias(ccd_data):
     ccd_data.header['key'] = 'value'
     master_bias_array = np.zeros_like(ccd_data.data) + bias_level
     master_bias = CCDData(master_bias_array, unit=ccd_data.unit)
-    no_bias = subtract_bias(ccd_data, master_bias)
+    no_bias = subtract_bias(ccd_data, master_bias, add_keyword=None)
     # Does the data we are left with have the correct average?
     np.testing.assert_almost_equal(no_bias.data.mean(), data_avg)
-    # The test below is *NOT* really the desired outcome. Just here to make
-    # sure a real test gets added when something is done with the metadata.
+    # With logging turned off, metadata should not change
     assert no_bias.header == ccd_data.header
     del no_bias.header['key']
-    assert len(ccd_data.header) > 0
+    assert 'key' in ccd_data.header
     assert no_bias.header is not ccd_data.header
 
 
@@ -245,17 +244,17 @@ def test_subtract_dark(ccd_data, explicit_times, scale, exposure_keyword):
         dark_sub = subtract_dark(ccd_data, master_dark,
                                  dark_exposure=dark_exptime * u.second,
                                  data_exposure=exptime * u.second,
-                                 scale=scale)
+                                 scale=scale, add_keyword=None)
     elif exposure_keyword:
         key = Keyword(exptime_key, unit=u.second)
         dark_sub = subtract_dark(ccd_data, master_dark,
                                  exposure_time=key,
-                                 scale=scale)
+                                 scale=scale, add_keyword=None)
     else:
         dark_sub = subtract_dark(ccd_data, master_dark,
                                  exposure_time=exptime_key,
                                  exposure_unit=u.second,
-                                 scale=scale)
+                                 scale=scale, add_keyword=None)
 
     dark_scale = 1.0
     if scale:

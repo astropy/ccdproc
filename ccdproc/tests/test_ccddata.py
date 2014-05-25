@@ -121,7 +121,7 @@ def test_header2meta():
 def test_metafromstring_fail():
     hdr = 'this is not a valid header'
     with pytest.raises(TypeError):
-        d1 = CCDData(np.ones((5, 5)), meta=hdr)
+        CCDData(np.ones((5, 5)), meta=hdr)
 
 
 def test_setting_bad_uncertainty_raises_error(ccd_data):
@@ -134,6 +134,33 @@ def test_to_hdu(ccd_data):
     ccd_data.meta = {'observer': 'Edwin Hubble'}
     fits_hdulist = ccd_data.to_hdu()
     assert isinstance(fits_hdulist, fits.HDUList)
+    for k, v in ccd_data.meta.items():
+        assert fits_hdulist[0].header[k] == v
+    np.testing.assert_array_equal(fits_hdulist[0].data, ccd_data.data)
+
+
+def test_to_hdu_long_metadata_item(ccd_data):
+    # There is no attempt to try to handle the general problem of
+    # a long keyword (that requires HIERARCH) with a long string value
+    # (that requires CONTINUE).
+    # However, a long-ish keyword with a long value can happen because of
+    # auto-logging, and we are supposed to handle that.
+
+    # So, a nice long command:
+    from ..ccdproc import subtract_dark, _short_names
+
+    dark = CCDData(np.zeros_like(ccd_data.data), unit="adu")
+    result = subtract_dark(ccd_data, dark, dark_exposure=30 * u.second,
+                           data_exposure=15 * u.second, scale=True)
+    assert 'subtract_dark' in result.header
+    hdulist = result.to_hdu()
+    header = hdulist[0].header
+    assert header['subtract_dark'] == _short_names['subtract_dark']
+    args_value = header[_short_names['subtract_dark']]
+    # Yuck -- have to hand code the ".0" to the numbers to get this to pass...
+    assert "dark_exposure={0} {1}".format(30.0, u.second) in args_value
+    assert "data_exposure={0} {1}".format(15.0, u.second) in args_value
+    assert "scale=True" in args_value
 
 
 def test_copy(ccd_data):

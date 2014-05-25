@@ -16,7 +16,7 @@ class CaseInsensitiveOrderedDict(OrderedDict):
         super(CaseInsensitiveOrderedDict, self).__init__(*arg, **kwd)
 
     def _transform_key(self, key):
-        return key.upper()
+        return key.lower()
 
     def __setitem__(self, key, value):
         super(CaseInsensitiveOrderedDict,
