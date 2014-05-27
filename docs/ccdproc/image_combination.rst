@@ -22,6 +22,8 @@ The first step in combining a set of images is creating a
 The combiner task really combines two things: generation of masks for
 individual images via several clipping techniques and combination of images.
 
+.. _clipping:
+
 Image masks/clipping
 --------------------
 

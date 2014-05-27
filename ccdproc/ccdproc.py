@@ -43,8 +43,9 @@ _short_names = {
 def create_variance(ccd_data, gain=None, readnoise=None):
     """
     Create a variance frame.  The function will update the uncertainty
-    plane which gives the variance for the data.  The function assumes
-    that the ccd is in electron and the readnoise is in the same units.
+    plane which gives the variance for the data. Gain is used in this function
+    only to scale the data in constructing the variance; the data is not
+    scaled.
 
     Parameters
     ----------
@@ -107,10 +108,7 @@ def create_variance(ccd_data, gain=None, readnoise=None):
 def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
                       median=False, model=None):
     """
-    Subtract the overscan region from an image.  This will first
-    has an uncertainty plane which gives the variance for the data. The
-    function assumes that the ccd is in electron and the readnoise is in the
-    same units.
+    Subtract the overscan region from an image.
 
     Parameters
     ----------
@@ -202,8 +200,6 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 
     if fits_section is not None:
         overscan = ccd[slice_from_string(fits_section, fits_convention=True)]
-
-    # Assume axis with the smaller dimension is the one to aggregate over
 
     if median:
         oscan = np.median(overscan.data, axis=overscan_axis)
@@ -729,7 +725,7 @@ def cosmicray_clean(ccd, thresh, cr_func, crargs=(),
     with the median of the pixels in an 11 pixel wide box around the bad pixel.
 
         >>> from ccdproc import background_variance_box,cosmicray_median, cosmicray_clean
-        >>> cosmicray_clean(ccddata, 10, cosmicray_median, crargs(11,),
+        >>> cosmicray_clean(ccddata, 10, cosmicray_median, crargs=(11,),
                background=background_variance_box, bargs=(25,), rbox=11)
 
 

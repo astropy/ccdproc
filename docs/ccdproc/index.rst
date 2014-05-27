@@ -109,14 +109,14 @@ uncertainties (if they are set).
 Using `ccdproc`
 ---------------
 
-TBD
+.. toctree::
+    :maxdepth: 1
 
-.. automodapi:: ccdproc.ccddata
+    ccddata.rst
+    image_combination.rst
+    reduction_toolbox.rst
+    reduction_examples.rst
 
-.. automodapi:: ccdproc.combiner
-
-.. automodapi:: ccdproc.ccdproc
-
-.. automodapi:: ccdproc.utils.slices
+.. automodapi:: ccdproc
 
 .. _GitHub repo: https://github.com/astropy/ccdproc

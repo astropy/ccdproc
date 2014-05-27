@@ -26,9 +26,12 @@ try:
 except ImportError:
     __githash__ = ''
 
+# set up namespace
+from .ccdproc import *
+from .ccddata import *
+
+
 # set up the test command
-
-
 def _get_test_runner():
     from astropy.tests.helper import TestRunner
     return TestRunner(__path__[0])

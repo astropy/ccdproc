@@ -55,6 +55,7 @@ image units are different than the units of the read noise, and is used only
 to calculate the uncertainty. The data itself is not scaled by this function.
 
 As with all of the functions in `ccdproc`, *the input image is not modified*.
+
 In the example above the new image ``data_with_variance`` has its uncertainty
 set.
 
@@ -81,6 +82,7 @@ create a mask for a stack of images, as described in :ref:`clipping`.
 The other is to replace, in a single image, each pixel that is several
 standard deviations from a central value in a region surrounding that pixel.
 That is done with `~ccdproc.cosmicray_clean`:
+
 
     >>> threshold = 10.0  # number of standard deviations from central value
     >>> cr_func = ccdproc.cosmicray_median  # function for identifying deviant pixels
@@ -191,9 +193,8 @@ The overscan-subtracted image constructed above still contains the overscan
 portion. We are assuming came from a FITS file in which ``NAXIS1=2032`` and
 ``NAXIS2=1000``, in which the last 32 columns along ``NAXIS1`` are overscan.
 
-
- Trim it using `~ccdproc.trim_image`,shown below in both python-
- style and FITS-style indexing:
+Trim it using `~ccdproc.trim_image`,shown below in both python-
+style and FITS-style indexing:
 
     >>> # FITS-style:
     >>> trimmed = ccdproc.trim_image(oscan_subtracted,
@@ -220,6 +221,7 @@ trimming it.
     ``ccdproc.trim_image(oscan_subtracted[:, :200000000])`` will be treated as
     if you had put in the correct upper bound, ``200``.
 
+
 Subtract bias and dark
 ----------------------
 
@@ -240,6 +242,7 @@ Subtract the bias with `~ccdproc.subtract_bias`:
 
 There are several ways you can specify the exposure times of the dark and
 science images; see `~ccdproc.subtract_dark` for a full description.
+
 In the example below we assume there is a keyword ``exposure`` in the metadata
 of the trimmed image and the master dark and that the units of the exposure
 are seconds (note that you can instead explicitly provide these times).

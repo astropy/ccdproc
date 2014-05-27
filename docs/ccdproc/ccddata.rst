@@ -50,13 +50,22 @@ There is no restriction at all on what the unit can be -- any unit in
 Metadata
 ++++++++
 
-When initializing from a FITS file the `header` property is set to the header
+When initializing from a FITS file the `header` property initialized with the header
 of the FITS file. Metadata is optional, and can be provided by any dictionary
 or dict-like object:
 
     >>> ccd_simple = ccdproc.CCDData(np.arange(10), unit="adu")
     >>> my_meta = {'observer': 'Edwin Hubble', 'exposure': 30.0}
     >>> ccd_simple.header = my_meta  # or use ccd_simple.meta = my_meta
+
+Search of the metadata is case-insensitive:
+
+    >>> 'OBSERVER' in ccd_simple.header
+    True
+    >>> ccd_simple.header['ExPoSuRe']
+    30.0
+
+Note, however, that internally all keywords are converted to lowercase.
 
 Getting data out
 ++++++++++++++++
