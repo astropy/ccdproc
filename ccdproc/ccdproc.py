@@ -614,7 +614,7 @@ def cosmicray_median(data, thresh,  background=None, mbox=11):
     Parameters
     ----------
 
-    ccd : numpy ndarray or Mask arary object
+    ccd : numpy.ndarray or numpy.MaskedArary 
         Data to have cosmic ray cleans
 
     thresh :  float
@@ -640,9 +640,21 @@ def cosmicray_median(data, thresh,  background=None, mbox=11):
       A boolean ndarray with the cosmic rays identified
 
     """
+    if not isinstance(data, np.ndarray):
+        raise TypeError('data is not a ndarray object')
+
+    if background is None:
+        background = data.std()
+    else: 
+        if not isinstance(background, (float, np.ndarray)):
+            raise TypeError('Background is not a float or ndarray') 
 
     # create the median image
     marr = ndimage.median_filter(data, size=(mbox, mbox))
+
+    # Only look at the data array
+    if isinstance(data, np.ma.MaskedArray):
+       data = data.data
 
     # Find the residual image
     rarr = (data - marr) / background
@@ -654,7 +666,7 @@ def cosmicray_median(data, thresh,  background=None, mbox=11):
 
 
 @log_to_metadata
-def cosmicray_clean(ccddata, thresh, cr_func, crargs=(),
+def cosmicray_clean(ccd, thresh, cr_func, crargs=(),
                     background=None, bargs=(), gbox=0, rbox=0):
     """
     Cosmic ray clean a ccddata object.  This process will apply a cosmic ray
@@ -665,7 +677,7 @@ def cosmicray_clean(ccddata, thresh, cr_func, crargs=(),
     Parameters
     ----------
 
-    ccddata : CCDData object
+    ccd : CCDData object
         Data to have cosmic ray cleans
 
     thresh :  float
@@ -718,10 +730,10 @@ def cosmicray_clean(ccddata, thresh, cr_func, crargs=(),
     """
 
     # make a masked array that will be used for all calculations
-    if ccddata.mask is None:
-        data = ccddata.data
+    if ccd.mask is None:
+        data = ccd.data
     else:
-        data = np.ma.masked_array(ccddata.data, ccddata.mask)
+        data = np.ma.masked_array(ccd.data, ccd.mask)
 
     if background is None:
         background = sigma_func(data)
@@ -731,21 +743,26 @@ def cosmicray_clean(ccddata, thresh, cr_func, crargs=(),
     # identify the cosmic rays
     crarr = cr_func(data, thresh, background, *crargs)
 
+    #create new output array
+    newccd = ccd.copy()
+
     # upate the mask
-    if ccddata.mask is None:
-        ccddata.mask = crarr
+    if newccd.mask is None:
+        newccd.mask = crarr
     else:
-        ccddata.mask = ccddata.mask + crarr.mask
+        newccd.mask = newccd.mask + crarr.mask
 
     # grow the pixels
     if gbox > 0:
-        ccddata.mask = ndimage.maximum_filter(ccddata.mask, gbox)
+        newccd.mask = ndimage.maximum_filter(newccd.mask, gbox)
 
+    #replace bad pixels in the image
     if rbox > 0:
-        data = np.ma.masked_array(ccddata.data, (ccddata.mask == 0))
+        data = np.ma.masked_array(newccd.data, (newccd.mask == 0))
         mdata = ndimage.median_filter(data, rbox)
-        ccddata.data[ccddata.mask > 0] = mdata[ccddata.mask > 0]
-    return ccddata
+        newccd.data[newccd.mask > 0] = mdata[newccd.mask > 0]
+
+    return newccd
 
 
 class Keyword(object):
