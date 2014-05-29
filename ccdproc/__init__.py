@@ -29,6 +29,7 @@ except ImportError:
 # set up namespace
 from .ccdproc import *
 from .ccddata import *
+from .combiner import *
 
 
 # set up the test command

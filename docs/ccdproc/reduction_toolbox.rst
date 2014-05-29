@@ -83,7 +83,6 @@ The other is to replace, in a single image, each pixel that is several
 standard deviations from a central value in a region surrounding that pixel.
 That is done with `~ccdproc.cosmicray_clean`:
 
-
     >>> threshold = 10.0  # number of standard deviations from central value
     >>> cr_func = ccdproc.cosmicray_median  # function for identifying deviant pixels
     >>> cr_func_args = (11,)  # this cr_func takes one argument, a box size

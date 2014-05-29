@@ -19,11 +19,11 @@ Creating a `~ccdproc.ccddata.CCDData` object from any array-like data is easy:
     >>> ccd = ccdproc.CCDData(np.arange(10), unit="adu")
 
 Note that behind the scenes, `~astropy.nddata.NDData` creates references to
-(not copies of) your data when possible, so modifying the data in `ccd` will
+(not copies of) your data when possible, so modifying the data in ``ccd`` will
 modify the underlying data.
 
 You are **required** to provide a unit for your data. The most frequently used
-units for these objects are likely to be `adu`, `photon` and `electron`, which
+units for these objects are likely to be ``adu``, ``photon`` and ``electron``, which
 can be set either by providing the string name of the unit (as in the example
 above) or from unit objects:
 
@@ -32,7 +32,7 @@ above) or from unit objects:
     >>> ccd_electron = ccdproc.CCDData([1, 2, 3], unit=ccdproc.electron)
 
 If you prefer *not* to use the unit functionality then use the special unit
-`u.dimensionless_unscaled` when you create your `~ccdproc.ccddata.CCDData`
+``u.dimensionless_unscaled`` when you create your `~ccdproc.ccddata.CCDData`
 images:
 
     >>> ccd_unitless = ccdproc.CCDData(np.zeros(10, 10), unit=u.dimensionless_unscaled)
@@ -45,14 +45,14 @@ but for the moment you need to set the unit explicitly, even if it is in the
 FITS header.
 
 There is no restriction at all on what the unit can be -- any unit in
-`~astropy.units` or that you create yourself will work.
+`astropy.units` or that you create yourself will work.
 
 Metadata
 ++++++++
 
-When initializing from a FITS file the `header` property initialized with the header
-of the FITS file. Metadata is optional, and can be provided by any dictionary
-or dict-like object:
+When initializing from a FITS file, the ``header`` property is initialized using
+the header of the FITS file. Metadata is optional, and can be provided by any
+dictionary or dict-like object:
 
     >>> ccd_simple = ccdproc.CCDData(np.arange(10), unit="adu")
     >>> my_meta = {'observer': 'Edwin Hubble', 'exposure': 30.0}
@@ -72,7 +72,7 @@ Getting data out
 
 A `~ccdproc.ccddata.CCDData` object behaves like a numpy array (masked if the
 `~ccdproc.ccddata.CCDData` mask is set) in expressions, and the underlying
-data (ignoring any mask) is accessed through `data` attribute:
+data (ignoring any mask) is accessed through ``data`` attribute:
 
     >>> ccd_masked = ccdproc.CCDData([1, 2, 3], unit="adu", mask=[0, 0, 1])
     >>> 2 * np.ones(3) * ccd_masked   # one return value will be masked
@@ -126,14 +126,14 @@ Pixel-by-pixel uncertainty can be calculated for you:
 See :ref:`create_variance` for more details.
 
 You can also set the uncertainty directly but need to create a
-`~astropy.ndddata.StdDevUncertainty` object first:
+`~astropy.nddata.StdDevUncertainty` object first:
 
     >>> from astropy.nddata.nduncertainty import StdDevUncertainty
     >>> uncertainty = 0.1 * ccd.data  # can be any array whose shape matches the data
     >>> my_uncertainty = StdDevUncertainty(uncertainty)
     >>> ccd.uncertainty = my_uncertainty
 
-Using `~astropy.ndddata.StdDevUncertainty` is required to enable error
+Using `~astropy.nddata.StdDevUncertainty` is required to enable error
 propagation in `~ccdproc.ccddata.CCDData`
 
 If you want access to the underlying uncertainty use its ``.array`` attribute:

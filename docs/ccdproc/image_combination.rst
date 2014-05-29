@@ -5,12 +5,12 @@ Combining images and generating masks from clipping
 
 .. note::
     No attempt has been made yet to optimize memory usage in
-    `~ccdproc.combiner.Combiner`. A copy is made, and a mask array
+    `~ccdproc.Combiner`. A copy is made, and a mask array
     constructed, for each input image.
 
 
 The first step in combining a set of images is creating a
-``~ccdproc.combiner.Combiner`` instance:
+`~ccdproc.Combiner` instance:
 
     >>> from ccdproc import CCDData, Combiner
     >>> import numpy as np
@@ -32,12 +32,12 @@ directly; instead each constructs a mask that is applied when images are
 combined.
 
 Masking done by clipping operations is combined with the image mask provided
-when the `~ccdproc.combiner.Combiner` is created.
+when the `~ccdproc.Combiner` is created.
 
 Min/max clipping
 ++++++++++++++++
 
-`~ccdproc.combiner.Combiner.minmax_clipping` masks all pixels above or below
+`~ccdproc.Combiner.minmax_clipping` masks all pixels above or below
 `~user-specified levels. For example, to mask all values above the value
 `~``0.1`` and below the value ``-0.3``:
 
@@ -59,7 +59,8 @@ for calculating the deviation. The default is to use the mean (ignoring any
 masked pixels) for the central value and the standard deviation (again
 ignoring any masked values) for the deviation.
 
-You can mask pixels more than 5 standard deviations above or 2 standard deviations below the median with
+You can mask pixels more than 5 standard deviations above or 2 standard
+deviations below the median with
 
     >>> combiner.sigma_clipping(low_thresh=2, high_thresh=5, func=np.ma.median)
 
@@ -91,7 +92,8 @@ Note that the default values for the high and low thresholds for rejection are
 Image combination
 -----------------
 
-Image combination is straightforward; to combine by taking the average, excluding any pixels mapped by clipping:
+Image combination is straightforward; to combine by taking the average,
+excluding any pixels mapped by clipping:
 
     >>> combined_average = combination.average_combine()
 

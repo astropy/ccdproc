@@ -16,7 +16,7 @@ The `ccdproc` package provides:
   subtraction, flat field correction) with a flexible mechanism for logging
   reduction steps in the image metadata.
 + A class for combining and/or clipping images, `~ccdproc.Combiner`, and
-  associated functions functions.
+  associated functions.
 
 Getting Started
 ---------------
@@ -47,7 +47,7 @@ attribute:
     >>> sub_image = image_1[:, 1:-3]  # a CCDData object
     >>> sub_data =  image_1.data[:, 1:-3]  # a numpy array
 
-See the documentation for `~CCDData` for a complete list of attributes.
+See the documentation for `~ccdproc.CCDData` for a complete list of attributes.
 
 Most operations are performed by functions in `ccdproc`:
 
@@ -57,9 +57,9 @@ Most operations are performed by functions in `ccdproc`:
 Every function returns a *copy* of the data with the operation performed. If,
 for some reason, you wanted to modify the data in-place, do this:
 
-    >>> image_1 = ccdproc.subtract_dark(image_1, dark, dark_exposure=30*u.second, data_exposure=15*u.second, scale=True)
+    >>> image_2 = ccdproc.subtract_dark(image_1, dark, dark_exposure=30*u.second, data_exposure=15*u.second, scale=True)
 
-See the documentation for `~ccdproc.ccdproc.subtract_dark` for more compact
+See the documentation for `~ccdproc.subtract_dark` for more compact
 ways of providing exposure times.
 
 Every function in `ccdproc` supports logging through the addition of
@@ -70,7 +70,7 @@ Logging can be simple -- add a string to the metadata:
     >>> image_2_gained = ccdproc.gain_correct(image_2, 1.5 * u.photon/u.adu, add_keyword='gain_corrected')
 
 Logging can be more complicated -- add several keyword/value pairs by passing
-a dictionary to ``add_keyword`:
+a dictionary to ``add_keyword``:
 
     >>> my_log = {'gain_correct': 'Gain value was 1.5',
                   'calstat': 'G'}
@@ -89,9 +89,9 @@ image metadata and specify its unit:
     >>> gain = ccdproc.Keyword('gain'. unit=u.photon/u.adu)
     >>> image_2_var = ccdproc.create_variance(image_2, gain.value_from(image_2.header))
 
-You might wonder why there is a `~ccdproc.ccdproc.gain_correct` at all, since the implemented
+You might wonder why there is a `~ccdproc.gain_correct` at all, since the implemented
 gain correction simple multiplies by a constant. There are two things you get
-with `gain_correct` that you don't get with multiplication:
+with `~ccdproc.gain_correct` that you do not get with multiplication:
 
 + Appropriate scaling of uncertainties.
 + Units
@@ -102,7 +102,7 @@ correction, in which one image is divided by another:
     >>> flat = ccdproc.CCDData(np.random.normal(1.0, scale=0.1, size=(10, 10)))
     >>> image_1_flat = ccdproc.flat_correct(image_1, flat)
 
-In addition to doing the necessary division, `flat_correct` propagates
+In addition to doing the necessary division, `~ccdproc.flat_correct` propagates
 uncertainties (if they are set).
 
 

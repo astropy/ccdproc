@@ -50,7 +50,7 @@ def create_variance(ccd_data, gain=None, readnoise=None):
     Parameters
     ----------
 
-    ccd_data : `~ccdproc.ccddata.CCDData` object
+    ccd_data : `~ccdproc.ccddata.CCDData`
         Data whose variance will be calculated.
 
     gain : `~astropy.units.Quantity`, optional
@@ -71,7 +71,7 @@ def create_variance(ccd_data, gain=None, readnoise=None):
 
     Returns
     -------
-    ccd :  `~ccdproc.ccddata.CCDData` object
+    ccd :  `~ccdproc.ccddata.CCDData`
         CCDData object with uncertainty created; uncertainty is in the same
         units as the data in the parameter `ccd_data`.
 
@@ -112,10 +112,10 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 
     Parameters
     ----------
-    ccd : `~ccdproc.ccddata.CCDData` object
+    ccd : `~ccdproc.ccddata.CCDData`
         Data to have variance frame corrected
 
-    overscan : `~ccdproc.ccddata.CCDData` object
+    overscan : `~ccdproc.ccddata.CCDData`
         Slice from `ccd` that contains the overscan. Must provide either
         this argument or `fits_section`, but not both.
 
@@ -132,7 +132,7 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
     median :  bool, optional
         If true, takes the median of each line.  Otherwise, uses the mean
 
-    model :  `~astropy.modeling.Model` object, optional
+    model :  `~astropy.modeling.Model`, optional
         Model to fit to the data.  If None, returns the values calculated
         by the median or the mean.
 
@@ -141,12 +141,12 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
     Raises
     ------
     TypeError
-        A TypeError is raised if either ccd or overscan are not the correct
+        A TypeError is raised if either `ccd` or `overscan` are not the correct
         objects.
 
     Returns
     -------
-    ccd :  `~ccdproc.ccddata.CCDData` object
+    ccd :  `~ccdproc.ccddata.CCDData`
         CCDData object with overscan subtracted
 
 
@@ -226,12 +226,12 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 @log_to_metadata
 def trim_image(ccd, fits_section=None):
     """
-    Trim the image to the dimensions indicated by `section`.
+    Trim the image to the dimensions indicated.
 
     Parameters
     ----------
 
-    ccd : `~ccdproc.ccddata.CCDData` object
+    ccd : `~ccdproc.ccddata.CCDData`
         CCD image to be trimmed, sliced if desired.
 
     fits_section : str
@@ -243,7 +243,7 @@ def trim_image(ccd, fits_section=None):
     Returns
     -------
 
-    trimmed_ccd : `~ccdproc.ccddata.CCDData` object
+    trimmed_ccd : `~ccdproc.ccddata.CCDData`
         Trimmed image.
 
     Examples
@@ -294,10 +294,10 @@ def subtract_bias(ccd, master):
     Parameters
     ----------
 
-    ccd : `~ccdproc.ccddata.CCDData` object
+    ccd : `~ccdproc.CCDData`
         Image from which bias will be subtracted
 
-    master : `~ccdproc.ccddata.CCDData` object
+    master : `~ccdproc.CCDData`
         Master image to be subtracted from `ccd`
 
     {log}
@@ -305,7 +305,7 @@ def subtract_bias(ccd, master):
     Returns
     -------
 
-    result :  `~ccdproc.ccddata.CCDData` object
+    result :  `~ccdproc.ccddata.CCDData`
         CCDData object with bias subtracted
     """
     result = ccd.subtract(master)
@@ -323,10 +323,10 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
     Parameters
     ----------
 
-    ccd : `~ccdproc.ccddata.CCDData` object
+    ccd : `~ccdproc.ccddata.CCDData`
         Image from which dark will be subtracted
 
-    master : `~ccdproc.ccddata.CCDData` object
+    master : `~ccdproc.ccddata.CCDData`
         Dark image
 
     dark_exposure : `~astropy.units.Quantity`
@@ -349,7 +349,7 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
     Returns
     -------
 
-    result : `~ccdproc.ccddata.CCDData` object
+    result : `~ccdproc.ccddata.CCDData`
         Dark-subtracted image
     """
     if not (isinstance(ccd, CCDData) and isinstance(master, CCDData)):
@@ -403,7 +403,7 @@ def gain_correct(ccd, gain, gain_unit=None):
 
     Parameters
     ----------
-    ccd : `~ccdproc.ccddata.CCDData` object
+    ccd : `~ccdproc.ccddata.CCDData`
       Data to have variance frame corrected
 
     gain :  `~astropy.units.Quantity` or `~ccdproc.ccdproc.Keyword`
@@ -417,7 +417,7 @@ def gain_correct(ccd, gain, gain_unit=None):
 
     Returns
     -------
-    result :  `~ccdproc.ccddata.CCDData` object
+    result :  `~ccdproc.ccddata.CCDData`
       CCDData object with gain corrected
     """
     if isinstance(gain, Keyword):
@@ -437,10 +437,10 @@ def flat_correct(ccd, flat, min_value=None):
 
     Parameters
     ----------
-    ccd : `~ccdproc.ccddata.CCDData` object
+    ccd : `~ccdproc.ccddata.CCDData`
         Data to be flatfield corrected
 
-    flat : `~ccdproc.ccddata.CCDData` object
+    flat : `~ccdproc.ccddata.CCDData`
         Flatfield to apply to the data
 
        min_value : None or float
@@ -452,7 +452,7 @@ def flat_correct(ccd, flat, min_value=None):
 
     Returns
     -------
-    ccd :  `~ccdproc.ccddata.CCDData` object
+    ccd :  `~ccdproc.ccddata.CCDData`
       CCDData object with flat corrected
     """
     #Use the min_value to replace any values in the flat
@@ -477,7 +477,7 @@ def sigma_func(arr):
 
     Parameters
     ----------
-    arr : `~ccdproc.ccddata.CCDData` object or `~numpy.ndarray`
+    arr : `~ccdproc.ccddata.CCDData` or `~numpy.ndarray`
         Array whose variance is to be calculated.
 
     Returns
@@ -542,7 +542,7 @@ def background_variance_box(data, bbox):
 
     Parameters
     ----------
-    data : `~numpy.ndarray` or `~numpy.ma.MaskedArray` object
+    data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
         Data to measure background variance
 
     bbox :  int
@@ -555,7 +555,7 @@ def background_variance_box(data, bbox):
 
     Returns
     -------
-    background : `~numpy.ndarray` or `~numpy.ma.MaskedArray` object
+    background : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
         An array with the measured background variance in each pixel
 
     """
@@ -582,7 +582,7 @@ def background_variance_filter(data, bbox):
 
     Parameters
     ----------
-    data : `~numpy.ndarray` or `~numpy.ma.MaskedArray` object
+    data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
         Data to measure background variance
 
     bbox :  int
@@ -595,7 +595,7 @@ def background_variance_filter(data, bbox):
 
     Returns
     -------
-    background : `~numpy.ndarray` or `~numpy.ma.MaskedArray` object
+    background : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
         An array with the measured background variance in each pixel
 
     """
