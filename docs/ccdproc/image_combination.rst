@@ -12,9 +12,11 @@ Combining images and generating masks from clipping
 The first step in combining a set of images is creating a
 `~ccdproc.Combiner` instance:
 
+    >>> from astropy import units as u
     >>> from ccdproc import CCDData, Combiner
     >>> import numpy as np
-    >>> ccd1 = CCDData(np.random.normal(size=(10,10)))
+    >>> ccd1 = CCDData(np.random.normal(size=(10,10)),
+    ...                unit=u.adu)
     >>> ccd2 = ccd1.copy()
     >>> ccd3 = ccd1.copy()
     >>> combiner = Combiner([ccd1, ccd2, ccd3])
@@ -80,11 +82,11 @@ To clip iteratively, continuing the clipping process until no more pixels are
 rejected, loop in the code calling the clipping method:
 
     >>> old_n_masked = 0  # dummy value to make loop execute at least once
-    >>> new_n_masked = combiner.data_array.mask.sum()
+    >>> new_n_masked = combiner.data_arr.mask.sum()
     >>> while (new_n_masked > old_n_masked):
     ...     combiner.sigma_clipping(func=np.ma.median)
     ...     old_n_masked = new_n_masked
-    ...     new_n_masked = combiner.data_array.mask.sum()
+    ...     new_n_masked = combiner.data_arr.mask.sum()
 
 Note that the default values for the high and low thresholds for rejection are
 3 standard deviations.
@@ -95,7 +97,7 @@ Image combination
 Image combination is straightforward; to combine by taking the average,
 excluding any pixels mapped by clipping:
 
-    >>> combined_average = combination.average_combine()
+    >>> combined_average = combiner.average_combine()
 
 Performing a median combination is also straightforward,
 

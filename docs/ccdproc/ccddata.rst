@@ -35,11 +35,12 @@ If you prefer *not* to use the unit functionality then use the special unit
 ``u.dimensionless_unscaled`` when you create your `~ccdproc.ccddata.CCDData`
 images:
 
-    >>> ccd_unitless = ccdproc.CCDData(np.zeros(10, 10), unit=u.dimensionless_unscaled)
+    >>> ccd_unitless = ccdproc.CCDData(np.zeros((10, 10)),
+    ...                                unit=u.dimensionless_unscaled)
 
 A `~ccdproc.ccddata.CCDData` object can also be initialized from a FITS file:
 
-    >>> ccd = ccdproc.CCDData.read('my_file.fits', unit="adu")
+    >>> ccd = ccdproc.CCDData.read('my_file.fits', unit="adu")  # doctest: +SKIP
 
 but for the moment you need to set the unit explicitly, even if it is in the
 FITS header.
@@ -79,6 +80,7 @@ data (ignoring any mask) is accessed through ``data`` attribute:
     masked_array(data = [2.0 4.0 --],
                  mask = [False False  True],
            fill_value = 1e+20)
+    <BLANKLINE>
     >>> 2 * np.ones(3) * ccd_masked.data   # ignores the mask
     array([ 2.,  4.,  6.])
 
@@ -88,8 +90,9 @@ You can force conversion to a numpy array with:
     array([1, 2, 3])
     >>> np.ma.array(ccd_masked.data, mask=ccd_masked.mask)
     masked_array(data = [1 2 --],
-             mask = [False False  True],
-       fill_value = 999999)
+                 mask = [False False  True],
+           fill_value = 999999)
+    <BLANKLINE>
 
 A method for converting a `~ccdproc.ccddata.CCDData` object to a FITS HDU list
 is also available. It converts the metadata to a FITS header:
@@ -138,7 +141,8 @@ propagation in `~ccdproc.ccddata.CCDData`
 
 If you want access to the underlying uncertainty use its ``.array`` attribute:
 
-    >>> ccd.uncertainty.array
+    >>> ccd.uncertainty.array  # doctest: +ELLIPSIS
+    array(...)
 
 Arithmetic with images
 ----------------------
@@ -152,13 +156,14 @@ Using these methods propagates errors correctly (if the errors are
 uncorrelated), take care of any necessary unit conversions, and apply masks
 appropriately. Note that the metadata of the result is *not* set:
 
-    >>> result = ccd.multiple(0.2 * u.adu)
-    >>> result.uncertainty.array[0, 0]/ccd.uncertainty.array[0, 0]
-    0.19999999999999998
+    >>> result = ccd.multiply(0.2 * u.adu)
+    >>> uncertainty_ratio = result.uncertainty.array[0, 0]/ccd.uncertainty.array[0, 0]
+    >>> round(uncertainty_ratio, 5)
+    0.2
     >>> result.unit
     Unit("adu electron")
     >>> result.header
-
+    CaseInsensitiveOrderedDict()
 
 .. note::      
     In most cases you should use the functions described in
