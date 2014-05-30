@@ -9,7 +9,7 @@ Getting started
 Getting data in
 +++++++++++++++
 
-The tools in `ccdproc` accept only `~ccdproc.ccddata.CCDData` objects, a
+The tools in `ccdproc` accept only `~ccdproc.CCDData` objects, a
 subclass of `~astropy.nddata.NDData`.
 
 Creating a `~ccdproc.ccddata.CCDData` object from any array-like data is easy:
@@ -70,8 +70,8 @@ Note, however, that internally all keywords are converted to lowercase.
 Getting data out
 ++++++++++++++++
 
-A `~ccdproc.ccddata.CCDData` object behaves like a numpy array (masked if the
-`~ccdproc.ccddata.CCDData` mask is set) in expressions, and the underlying
+A `~ccdproc.CCDData` object behaves like a numpy array (masked if the
+`~ccdproc.CCDData` mask is set) in expressions, and the underlying
 data (ignoring any mask) is accessed through ``data`` attribute:
 
     >>> ccd_masked = ccdproc.CCDData([1, 2, 3], unit="adu", mask=[0, 0, 1])

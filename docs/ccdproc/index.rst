@@ -36,10 +36,12 @@ a FITS file:
     >>> from astropy import units as u
     >>> import ccdproc
     >>> image_1 = ccdproc.CCDData(np.ones((10, 10)), unit="adu")
-    >>> image_2 = ccdproc.CCDData.read('my_image.fits', unit=ccdproc.electron)
 
-The metadata of a ``CCDData`` object is a `~astropy.io.fits.Header` (though 
-this will likely change in future versions).
+An example of reading from a FITS file is
+``image_2 = ccdproc.CCDData.read('my_image.fits', unit=ccdproc.electron)``.
+
+The metadata of a ``CCDData`` object is a case-insensitive dictionary (though 
+this may change in future versions).
 
 The data is accessible either by indexing directly or through the ``data``
 attribute:
@@ -52,7 +54,10 @@ See the documentation for `~ccdproc.CCDData` for a complete list of attributes.
 Most operations are performed by functions in `ccdproc`:
 
     >>> dark = ccdproc.CCDData(np.random.normal(size=(10, 10)), unit="adu")
-    >>> dark_sub = ccdproc.subtract_dark(image_1, dark, dark_exposure=30*u.second, data_exposure=15*u.second, scale=True)
+    >>> dark_sub = ccdproc.subtract_dark(image_1, dark,
+    ...                                  dark_exposure=30*u.second,
+    ...                                  data_exposure=15*u.second,
+    ...                                  scale=True)
 
 Every function returns a *copy* of the data with the operation performed. If,
 for some reason, you wanted to modify the data in-place, do this:
@@ -73,21 +78,27 @@ Logging can be more complicated -- add several keyword/value pairs by passing
 a dictionary to ``add_keyword``:
 
     >>> my_log = {'gain_correct': 'Gain value was 1.5',
-                  'calstat': 'G'}
-    >>> image_2_gained = ccdproc.gain_correct(image_2, 1.5 * u.photon/u.adu, add_keyword=my_log)
+    ...           'calstat': 'G'}
+    >>> image_2_gained = ccdproc.gain_correct(image_2,
+    ...                                       1.5 * u.photon/u.adu,
+    ...                                       add_keyword=my_log)
 
-The `~ccdproc.ccdproc.Keyword` class provides a compromise for providing a
-key/value pair:
+The `~ccdproc.ccdproc.Keyword` class provides a compromise between the simple
+and complicated cases for providing a single key/value pair:
 
-    >>> key = Keyword('gain_corrected', value='Yes')
-    >>> image_2_gained = ccdproc.gain_correct(image_2, 1.5 * u.photon/u.adu, add_keyword=key)
+    >>> key = ccdproc.Keyword('gain_corrected', value='Yes')
+    >>> image_2_gained = ccdproc.gain_correct(image_2,
+    ...                                       1.5 * u.photon/u.adu,
+    ...                                       add_keyword=key)
 
 `~ccdproc.ccdproc.Keyword` also provides a convenient way to get a value from
 image metadata and specify its unit:
 
     >>> image_2.header['gain']  = 1.5
-    >>> gain = ccdproc.Keyword('gain'. unit=u.photon/u.adu)
-    >>> image_2_var = ccdproc.create_variance(image_2, gain.value_from(image_2.header))
+    >>> gain = ccdproc.Keyword('gain', unit=u.photon/u.adu)
+    >>> image_2_var = ccdproc.create_variance(image_2,
+    ...                                       gain=gain.value_from(image_2.header),
+    ...                                       readnoise=3.0 * u.photon)
 
 You might wonder why there is a `~ccdproc.gain_correct` at all, since the implemented
 gain correction simple multiplies by a constant. There are two things you get
@@ -99,7 +110,8 @@ with `~ccdproc.gain_correct` that you do not get with multiplication:
 The same advantages apply to operations that are more complex, like flat
 correction, in which one image is divided by another:
 
-    >>> flat = ccdproc.CCDData(np.random.normal(1.0, scale=0.1, size=(10, 10)))
+    >>> flat = ccdproc.CCDData(np.random.normal(1.0, scale=0.1, size=(10, 10)),
+    ...                        unit='adu')
     >>> image_1_flat = ccdproc.flat_correct(image_1, flat)
 
 In addition to doing the necessary division, `~ccdproc.flat_correct` propagates

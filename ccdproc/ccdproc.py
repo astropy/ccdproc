@@ -813,7 +813,7 @@ class Keyword(object):
         Parameters
         ----------
 
-        header : astropy.io.fits.Header
+        header : `astropy.io.fits.Header`
             FITS header containing a value for this keyword
         """
 

@@ -38,8 +38,8 @@ Min/max clipping
 ++++++++++++++++
 
 `~ccdproc.Combiner.minmax_clipping` masks all pixels above or below
-`~user-specified levels. For example, to mask all values above the value
-`~``0.1`` and below the value ``-0.3``:
+user-specified levels. For example, to mask all values above the value
+``0.1`` and below the value ``-0.3``:
 
     >>> combiner.minmax_clipping(min_clip=-0.3, max_clip=0.1)
 

@@ -33,9 +33,10 @@ class CCDData(NDData):
     Parameters
     -----------
     data : `~numpy.ndarray` or :class:`~astropy.nddata.NDData`
-        The actual data contained in this `NDData` object. Not that this
-        will always be copies by *reference* , so you should make copy
-        the `data` before passing it in if that's the  desired behavior.
+        The actual data contained in this `~astropy.nddata.NDData` object.
+        Note that this will always be copies by *reference* , so you should
+        make copy the `data` before passing it in if that's the  desired
+        behavior.
 
     uncertainty : `~astropy.nddata.StdDevUncertainty`, optional
         Uncertainties on the data.
@@ -90,8 +91,8 @@ class CCDData(NDData):
         >>> np.asarray(x)
         array([1, 2, 3])
 
-    If the `NDData` object has a `mask`, `numpy.asarray` will return a
-    Numpy masked array.
+    If the `~astropy.nddata.NDData` object has a `mask`, `numpy.asarray` will
+    return a Numpy masked array.
 
     This is useful, for example, when plotting a 2D image using
     matplotlib::
