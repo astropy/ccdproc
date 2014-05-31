@@ -19,6 +19,8 @@ adu = u.adu
 electron = u.def_unit('electron')
 photon = u.photon
 
+__all__ = ['CCDData', 'electron']
+
 
 class CCDData(NDData):
 
@@ -30,12 +32,13 @@ class CCDData(NDData):
 
     Parameters
     -----------
-    data : `~numpy.ndarray` or `~astropy.nddata.NDData`
-        The actual data contained in this `NDData` object. Not that this
-        will always be copies by *reference* , so you should make copy
-        the `data` before passing it in if that's the  desired behavior.
+    data : `~numpy.ndarray` or :class:`~astropy.nddata.NDData`
+        The actual data contained in this `~astropy.nddata.NDData` object.
+        Note that this will always be copies by *reference* , so you should
+        make copy the `data` before passing it in if that's the  desired
+        behavior.
 
-    uncertainty : `~astropy.nddata.NDUncertainty`, optional
+    uncertainty : `~astropy.nddata.StdDevUncertainty`, optional
         Uncertainties on the data.
 
     mask : `~numpy.ndarray`, optional
@@ -66,13 +69,13 @@ class CCDData(NDData):
         of this particular object.  e.g., creation date, unique identifier,
         simulation parameters, exposure time, telescope name, etc.
 
-    unit : `astropy.units.UnitBase` instance or str, optional
+    unit : `~astropy.units.Unit` instance or str, optional
         The units of the data.
 
     Raises
     ------
     ValueError
-        If the `uncertainty` or `mask` inputs cannot be broadcast (e.g., match
+        If the `uncertainty` or `.mask` inputs cannot be broadcast (e.g., match
         shape) onto `data`.
 
     Notes
@@ -88,8 +91,8 @@ class CCDData(NDData):
         >>> np.asarray(x)
         array([1, 2, 3])
 
-    If the `NDData` object has a `mask`, `numpy.asarray` will return a
-    Numpy masked array.
+    If the `~astropy.nddata.NDData` object has a `mask`, `numpy.asarray` will
+    return a Numpy masked array.
 
     This is useful, for example, when plotting a 2D image using
     matplotlib::
@@ -247,7 +250,7 @@ class CCDData(NDData):
 
 def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
     """
-    Generate a CCDData object from a FITS file
+    Generate a CCDData object from a FITS file.
 
     Parameters
     ----------
@@ -289,7 +292,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
 
 def fits_ccddata_writer(ccd_data, filename, **kwd):
     """
-    Write CCDData object to FITS file
+    Write CCDData object to FITS file.
 
     Parameters
     ----------

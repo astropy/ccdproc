@@ -27,13 +27,13 @@ class Combiner(object):
     Raises
     ------
     TypeError
-        If the `ccd_list` are not CCDData object, have different units,
-        or are different shapes
+        If the `ccd_list` are not `~ccdproc.CCDData` objects, have different
+        units, or are different shapes
 
     Notes
     -----
-    The following is an example of combining together different CCDData
-    objects:
+    The following is an example of combining together different
+    `~ccdproc.CCDData` objects:
 
         >>> from combiner import combiner
         >>> c = combiner([ccddata1, cccdata2, ccddata3])
@@ -187,7 +187,7 @@ class Combiner(object):
 
            Returns
            -------
-           combined_image: CCDData object
+           combined_image: `~ccdproc.CCDData`
                CCDData object based on the combined input of CCDData objects.
 
            Warnings
@@ -228,7 +228,7 @@ class Combiner(object):
 
            Returns
            -------
-           combined_image: CCDData object
+           combined_image: `~ccdproc.CCDData`
                CCDData object based on the combined input of CCDData objects.
 
         """

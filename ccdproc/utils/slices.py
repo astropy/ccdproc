@@ -1,11 +1,13 @@
 """
-Define untility functions and classes for ccdproc
+Define utility functions and classes for ccdproc
 """
+
+__all__ = []
 
 
 def slice_from_string(string, fits_convention=False):
     """
-    Convert a string to a tuple of slices
+    Convert a string to a tuple of slices.
 
     Parameters
     ----------
