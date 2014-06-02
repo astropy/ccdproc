@@ -6,8 +6,8 @@ from astropy.extern import six
 from astropy.tests.helper import pytest
 import astropy.units as u
 
-from ..ccdproc import subtract_bias, create_variance, Keyword
-from ..ccddata import CCDData
+from .. import subtract_bias, create_variance, Keyword, CCDData
+#from ..ccddata import CCDData
 
 @pytest.mark.parametrize('key', [
                          'short',
