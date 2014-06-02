@@ -13,7 +13,7 @@ from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
 
 from ..ccddata import CCDData, electron, adu
-from ..ccdproc import *
+from ..core import *
 
 
 # test creating variance

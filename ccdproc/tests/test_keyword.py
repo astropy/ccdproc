@@ -4,7 +4,7 @@ from astropy import units as u
 from astropy.units import Quantity
 from astropy.io import fits
 
-from ..ccdproc import Keyword
+from ..core import Keyword
 
 
 def test_keyword_init():

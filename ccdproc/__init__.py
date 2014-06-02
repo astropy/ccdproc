@@ -27,7 +27,7 @@ except ImportError:
     __githash__ = ''
 
 # set up namespace
-from .ccdproc import *
+from .core import *
 from .ccddata import *
 from .combiner import *
 

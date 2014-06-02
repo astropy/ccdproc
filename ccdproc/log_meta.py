@@ -10,7 +10,7 @@ from astropy.extern import six
 from astropy.nddata import NDData
 from astropy import units as u
 
-import ccdproc.ccdproc  # really only need Keyword from ccdproc
+import ccdproc  # really only need Keyword from ccdproc
 
 __all__ = []
 
@@ -92,7 +92,7 @@ def _insert_in_metadata(metadata, arg):
     if isinstance(arg, six.string_types):
         # add the key, no value
         metadata[arg] = None
-    elif isinstance(arg, ccdproc.ccdproc.Keyword):
+    elif isinstance(arg, ccdproc.Keyword):
         metadata[arg.name] = arg.value
     else:
         try:

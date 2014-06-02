@@ -12,7 +12,7 @@ from astropy.units.quantity import Quantity
 import astropy.units as u
 
 from ..ccddata import electron
-from ..ccdproc import *
+from ..core import *
 
 
 # tests for gain

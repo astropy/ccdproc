@@ -8,7 +8,7 @@ from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
-from ..ccdproc import *
+from ..core import *
 
 import os
 

@@ -162,7 +162,7 @@ class CCDData(NDData):
            hdulist : astropy.io.fits.HDUList object
 
         """
-        from .ccdproc import _short_names
+        from .core import _short_names
 
         header = fits.Header()
         for k, v in self.header.items():

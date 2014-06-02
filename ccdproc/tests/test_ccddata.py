@@ -147,7 +147,7 @@ def test_to_hdu_long_metadata_item(ccd_data):
     # auto-logging, and we are supposed to handle that.
 
     # So, a nice long command:
-    from ..ccdproc import subtract_dark, _short_names
+    from ..core import subtract_dark, _short_names
 
     dark = CCDData(np.zeros_like(ccd_data.data), unit="adu")
     result = subtract_dark(ccd_data, dark, dark_exposure=30 * u.second,
