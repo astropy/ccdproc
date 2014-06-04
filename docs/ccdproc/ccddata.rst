@@ -29,7 +29,10 @@ above) or from unit objects:
 
     >>> from astropy import units as u
     >>> ccd_photon = ccdproc.CCDData([1, 2, 3], unit=u.photon)
-    >>> ccd_electron = ccdproc.CCDData([1, 2, 3], unit=ccdproc.electron)
+    >>> ccd_electron = ccdproc.CCDData([1, 2, 3], unit="electron")
+
+Note that the electron unit is provided by `ccdproc`, so if you want access to
+the unit object, use ``ccdproc.electron``.
 
 If you prefer *not* to use the unit functionality then use the special unit
 ``u.dimensionless_unscaled`` when you create your `~ccdproc.ccddata.CCDData`
@@ -123,7 +126,7 @@ Uncertainty
 Pixel-by-pixel uncertainty can be calculated for you:
 
     >>> data = np.random.normal(size=(10, 10), loc=1.0, scale=0.1)
-    >>> ccd = ccdproc.CCDData(data, unit=ccdproc.electron)
+    >>> ccd = ccdproc.CCDData(data, unit="electron")
     >>> ccd_new = ccdproc.create_variance(ccd, readnoise=5 * ccdproc.electron)
 
 See :ref:`create_variance` for more details.

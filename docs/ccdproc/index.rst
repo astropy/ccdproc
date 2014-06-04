@@ -38,7 +38,8 @@ a FITS file:
     >>> image_1 = ccdproc.CCDData(np.ones((10, 10)), unit="adu")
 
 An example of reading from a FITS file is
-``image_2 = ccdproc.CCDData.read('my_image.fits', unit=ccdproc.electron)``.
+``image_2 = ccdproc.CCDData.read('my_image.fits', unit="electron")`` (the 
+``electron`` unit is defined as part of ``ccdproc``).
 
 The metadata of a ``CCDData`` object is a case-insensitive dictionary (though 
 this may change in future versions).
