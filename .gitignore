@@ -12,6 +12,7 @@ __pycache__
 # Other generated files
 ccdproc/cython_version.py
 */version.py
+*/cython_version.py
 htmlcov
 .coverage
 
