@@ -285,6 +285,8 @@ def trim_image(ccd, fits_section=None):
         trimmed.data = trimmed.data[python_slice]
         if trimmed.mask is not None:
             trimmed.mask = trimmed.mask[python_slice]
+        if trimmed.uncertainty is not None:
+            trimmed.uncertainty.array = trimmed.uncertainty.array[python_slice]
 
     return trimmed
 
