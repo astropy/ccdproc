@@ -10,7 +10,6 @@ recursive-include licenses *
 recursive-include cextern *
 recursive-include scripts *
 
-exclude *.pyc *.o 
+exclude *.pyc *.o
 prune docs/_build
 prune build
-
