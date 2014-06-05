@@ -281,8 +281,11 @@ def trim_image(ccd, fits_section=None):
         raise TypeError("fits_section must be a string.")
     trimmed = ccd.copy()
     if fits_section:
-        trimmed.data = trimmed.data[slice_from_string(fits_section,
-                                                      fits_convention=True)]
+        python_slice = slice_from_string(fits_section, fits_convention=True)
+        trimmed.data = trimmed.data[python_slice]
+        if trimmed.mask is not None:
+            trimmed.mask = trimmed.mask[python_slice]
+
     return trimmed
 
 

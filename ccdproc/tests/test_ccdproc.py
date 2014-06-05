@@ -184,12 +184,17 @@ def test_trim_image_fits_section_requires_string(ccd_data):
         trim_image(ccd_data, fits_section=5)
 
 
+@pytest.mark.parametrize('mask_data', [False, True])
 @pytest.mark.data_size(50)
-def test_trim_image_fits_section(ccd_data):
+def test_trim_image_fits_section(ccd_data, mask_data):
+    if mask_data:
+        ccd_data.mask = np.zeros_like(ccd_data)
     trimmed = trim_image(ccd_data, fits_section='[20:40,:]')
     # FITS reverse order, bounds are inclusive and starting index is 1-based
     assert trimmed.shape == (50, 21)
     np.testing.assert_array_equal(trimmed.data, ccd_data[:, 19:40])
+    if mask_data:
+        assert trimmed.shape == trimmed.mask.shape
 
 
 @pytest.mark.data_size(50)
