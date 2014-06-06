@@ -9,6 +9,8 @@ from astropy.modeling import models
 from astropy.units.quantity import Quantity
 import astropy.units as u
 
+from astropy.nddata import StdDevUncertainty
+
 from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
 
@@ -184,12 +186,25 @@ def test_trim_image_fits_section_requires_string(ccd_data):
         trim_image(ccd_data, fits_section=5)
 
 
+@pytest.mark.parametrize('mask_data, uncertainty', [
+                         (False, False),
+                         (True, True)])
 @pytest.mark.data_size(50)
-def test_trim_image_fits_section(ccd_data):
+def test_trim_image_fits_section(ccd_data, mask_data, uncertainty):
+    if mask_data:
+        ccd_data.mask = np.zeros_like(ccd_data)
+    if uncertainty:
+        err = np.random.normal(size=ccd_data.shape)
+        ccd_data.uncertainty = StdDevUncertainty(err)
+
     trimmed = trim_image(ccd_data, fits_section='[20:40,:]')
     # FITS reverse order, bounds are inclusive and starting index is 1-based
     assert trimmed.shape == (50, 21)
     np.testing.assert_array_equal(trimmed.data, ccd_data[:, 19:40])
+    if mask_data:
+        assert trimmed.shape == trimmed.mask.shape
+    if uncertainty:
+        assert trimmed.shape == trimmed.uncertainty.array.shape
 
 
 @pytest.mark.data_size(50)

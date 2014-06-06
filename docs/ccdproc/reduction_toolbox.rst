@@ -107,9 +107,13 @@ Subtract overscan and trim images
 
 .. note::
 
-    Images reduced with `ccdproc` do **NOT** have to come from FITS files. The
-    discussion below is intended to ease the transition from the indexing
-    conventions used in FITS and IRAF to python indexing.
+    + Images reduced with `ccdproc` do **NOT** have to come from FITS files. The
+      discussion below is intended to ease the transition from the indexing
+      conventions used in FITS and IRAF to python indexing.
+    + No bounds checking is done when trimming arrays, so indexes that are too
+      large are silently set to the upper bound of the array. This is because
+      `numpy`, which provides the infrastructure for the arrays in `ccdproc`
+      has this behavior.
 
 Indexing: python and FITS
 +++++++++++++++++++++++++
