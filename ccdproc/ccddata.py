@@ -11,7 +11,7 @@ from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
 from astropy.io import fits, registry
 from astropy.utils.compat.odict import OrderedDict
 from astropy import units as u
-import astropy
+from astropy import log
 
 from .utils.collections import CaseInsensitiveOrderedDict
 
@@ -286,7 +286,19 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
             prefix = 'Unsupported keyword: {0}.'.format(key)
             raise TypeError(' '.join([prefix, msg]))
     hdus = fits.open(filename, **kwd)
-    ccd_data = CCDData(hdus[hdu].data, meta=hdus[hdu].header, unit=unit)
+    hdr = hdus[hdu].header
+
+    try:
+        fits_unit_string = hdr['bunit']
+    except KeyError:
+        fits_unit_string = None
+
+    if unit is not None and fits_unit_string:
+        log.info("Using the unit {0} passed to the FITS reader instead of "
+                 "the unit {1} in the FITS file.", unit, fits_unit_string)
+
+    use_unit = unit or fits_unit_string
+    ccd_data = CCDData(hdus[hdu].data, meta=hdus[hdu].header, unit=use_unit)
     hdus.close()
     return ccd_data
 
