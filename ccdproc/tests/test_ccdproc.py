@@ -249,16 +249,20 @@ def test_subtract_bias_fails(ccd_data):
 def test_subtract_dark(ccd_data, explicit_times, scale, exposure_keyword):
     exptime = 30.0
     exptime_key = 'exposure'
+    exposure_unit = u.second
     dark_level = 1.7
     master_dark_data = np.zeros_like(ccd_data.data) + dark_level
     master_dark = CCDData(data=master_dark_data, unit=u.adu)
     master_dark.header[exptime_key] = 2 * exptime
     dark_exptime = master_dark.header[exptime_key]
     ccd_data.header[exptime_key] = exptime
+    dark_exposure_unit = exposure_unit
     if explicit_times:
+        # test case when units of dark and data exposures are different
+        dark_exposure_unit = u.minute
         dark_sub = subtract_dark(ccd_data, master_dark,
-                                 dark_exposure=dark_exptime * u.second,
-                                 data_exposure=exptime * u.second,
+                                 dark_exposure=dark_exptime * dark_exposure_unit,
+                                 data_exposure=exptime * exposure_unit,
                                  scale=scale, add_keyword=None)
     elif exposure_keyword:
         key = Keyword(exptime_key, unit=u.second)
@@ -273,7 +277,8 @@ def test_subtract_dark(ccd_data, explicit_times, scale, exposure_keyword):
 
     dark_scale = 1.0
     if scale:
-        dark_scale = exptime / dark_exptime
+        dark_scale = float((exptime / dark_exptime) *
+                           (exposure_unit / dark_exposure_unit))
 
     np.testing.assert_array_equal(ccd_data.data - dark_scale * dark_level,
                                   dark_sub.data)

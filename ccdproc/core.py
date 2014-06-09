@@ -391,9 +391,9 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
 
     if scale:
         master_scaled = master.copy()
-        master_scaled.data *= data_exposure / dark_exposure
-        master_scaled.unit = (master.unit *
-                              data_exposure.unit / dark_exposure.unit)
+        # data_exposure and dark_exposure are both quantities,
+        # so we can just have subtract do the scaling
+        master_scaled = master_scaled.multiply(data_exposure / dark_exposure)
         result = ccd.subtract(master_scaled)
     else:
         result = ccd.subtract(master)
