@@ -262,8 +262,10 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
     hdu : int, optional
         FITS extension from which CCDData should be initialized.
 
-    unit : astropy.units.Unit
-        Units of the image data
+    unit : astropy.units.Unit, optional
+        Units of the image data. If this argument is provided and there is a
+        unit for the image in the FITS header (the keyword ``BUNIT`` is used
+        as the unit, if present), this argument is used for the unit.
 
     kwd :
         Any additional keyword parameters are passed through to the FITS reader

@@ -45,8 +45,9 @@ A `~ccdproc.ccddata.CCDData` object can also be initialized from a FITS file:
 
     >>> ccd = ccdproc.CCDData.read('my_file.fits', unit="adu")  # doctest: +SKIP
 
-but for the moment you need to set the unit explicitly, even if it is in the
-FITS header.
+If there is a unit in the FITS file (in the ``BUNIT`` keyword), that will be
+used, but a unit explicitly provided in ``read`` will override any unit in the
+FITS file.
 
 There is no restriction at all on what the unit can be -- any unit in
 `astropy.units` or that you create yourself will work.
