@@ -39,7 +39,7 @@ class CCDData(NDData):
         make copy the `data` before passing it in if that's the  desired
         behavior.
 
-    uncertainty : `~astropy.nddata.StdDevUncertainty`, optional
+    uncertainty : `~astropy.nddata.StdDevUncertainty` or `~numpy.ndarray`, optional
         Uncertainties on the data.
 
     mask : `~numpy.ndarray`, optional
@@ -143,10 +143,17 @@ class CCDData(NDData):
         if value is not None:
             if isinstance(value, NDUncertainty):
                 self._uncertainty = value
-                self._uncertainty._parent_nddata = self
+            elif isinstance(value, np.ndarray):
+                if value.shape != self.shape:
+                    raise ValueError("Uncertainty must have same shape as "
+                                     "data")
+                self._uncertainty = StdDevUncertainty(value)
+                log.info("Array provided for uncertainty; assuming it is a "
+                         "StdDevUncertainty.")
             else:
                 raise TypeError("Uncertainty must be an instance of a "
-                                "NDUncertainty object")
+                                "NDUncertainty object or a numpy array.")
+            self._uncertainty._parent_nddata = self
         else:
             self._uncertainty = value
 

@@ -132,7 +132,7 @@ Pixel-by-pixel uncertainty can be calculated for you:
 
 See :ref:`create_variance` for more details.
 
-You can also set the uncertainty directly but need to create a
+You can also set the uncertainty directly, either by creating a
 `~astropy.nddata.StdDevUncertainty` object first:
 
     >>> from astropy.nddata.nduncertainty import StdDevUncertainty
@@ -140,8 +140,14 @@ You can also set the uncertainty directly but need to create a
     >>> my_uncertainty = StdDevUncertainty(uncertainty)
     >>> ccd.uncertainty = my_uncertainty
 
-Using `~astropy.nddata.StdDevUncertainty` is required to enable error
-propagation in `~ccdproc.ccddata.CCDData`
+or by providing a `~numpy.ndarray` with the same shape as the data:
+
+    >>> ccd.uncertainty = 0.1 * ccd.data
+    INFO: Array provided for uncertainty; assuming it is a StdDevUncertainty. [ccdproc.ccddata]
+
+In this case the uncertainty is assumed to be
+`~astropy.nddata.StdDevUncertainty`. Using `~astropy.nddata.StdDevUncertainty`
+is required to enable error propagation in `~ccdproc.ccddata.CCDData`
 
 If you want access to the underlying uncertainty use its ``.array`` attribute:
 

@@ -150,6 +150,18 @@ def test_setting_bad_uncertainty_raises_error(ccd_data):
         ccd_data.uncertainty = 10
 
 
+def test_setting_uncertainty_with_array(ccd_data):
+    ccd_data.uncertainty = None
+    fake_uncertainty = np.sqrt(np.abs(ccd_data.data))
+    ccd_data.uncertainty = fake_uncertainty.copy()
+    np.testing.assert_array_equal(ccd_data.uncertainty.array, fake_uncertainty)
+
+
+def test_setting_uncertainty_wrong_shape_raises_error(ccd_data):
+    with pytest.raises(ValueError):
+        ccd_data.uncertainty = np.random.random(size=2 * ccd_data.shape)
+
+
 def test_to_hdu(ccd_data):
     ccd_data.meta = {'observer': 'Edwin Hubble'}
     fits_hdulist = ccd_data.to_hdu()
