@@ -29,6 +29,11 @@ def test_ccddata_simple(ccd_data):
     assert ccd_data.dtype == np.dtype(float)
 
 
+def test_ccddata_init_with_string_electron_unit():
+    ccd = CCDData(np.zeros((10, 10)), unit="electron")
+    assert ccd.unit is electron
+
+
 @pytest.mark.data_size(10)
 def test_initialize_from_FITS(ccd_data, tmpdir):
     hdu = fits.PrimaryHDU(ccd_data)
