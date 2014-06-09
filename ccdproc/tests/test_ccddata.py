@@ -48,6 +48,21 @@ def test_initialize_from_FITS(ccd_data, tmpdir):
         assert cd.meta[k] == v
 
 
+def test_initialize_from_fits_with_unit_in_header(tmpdir):
+    fake_img = np.random.random(size=(100, 100))
+    hdu = fits.PrimaryHDU(fake_img)
+    hdu.header['bunit'] = u.adu.to_string()
+    filename = tmpdir.join('afile.fits').strpath
+    hdu.writeto(filename)
+    ccd = CCDData.read(filename)
+    # ccd should pick up the unit adu from the fits header...did it?
+    assert ccd.unit is u.adu
+
+    # An explicit unit in the read overrides any unit in the FITS file
+    ccd2 = CCDData.read(filename, unit="photon")
+    assert ccd2.unit is u.photon
+
+
 def test_initialize_from_FITS_bad_keyword_raises_error(ccd_data, tmpdir):
     # There are two fits.open keywords that are not permitted in ccdpro:
     #     do_not_scale_image_data and scale_back
