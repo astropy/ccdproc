@@ -321,14 +321,18 @@ def test_subtract_dark_fails(ccd_data):
 def test_flat_correct(ccd_data):
     size = ccd_data.shape[0]
     orig_mean = ccd_data.data.mean()
-    # create the flat
-    data = 2 * np.ones((size, size))
+    # create the flat, with some scatter
+    data = 2 * np.random.normal(loc=1.0, scale=0.05, size=(size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat_data = flat_correct(ccd_data, flat)
 
     #check that the flat was normalized
-    assert flat_data.data.mean() == ccd_data.data.mean()
-    assert (ccd_data.data / flat_data.data == flat.data).all()
+    # Should be the case that flat * flat_data = ccd_data * flat.data.mean
+    # if the normalization was done correctly.
+    np.testing.assert_almost_equal((flat_data.data * flat.data).mean(),
+                                   ccd_data.data.mean() * flat.data.mean())
+    np.testing.assert_allclose(ccd_data.data / flat_data.data,
+                               flat.data / flat.data.mean())
 
 # test for flat correction with min_value
 @pytest.mark.data_scale(10)
@@ -336,13 +340,18 @@ def test_flat_correct_min_value(ccd_data):
     size = ccd_data.shape[0]
     orig_mean = ccd_data.data.mean()
     # create the flat
-    data = 2 * np.ones((size, size))
+    data = 2 * np.random.normal(loc=1.0, scale=0.05, size=(size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
-    flat_data = flat_correct(ccd_data, flat, min_value = 4)
+    min_value = 2.1  # should replace some, but not all, values
+    flat_data = flat_correct(ccd_data, flat, min_value=min_value)
 
+    flat_with_min = flat.copy()
+    flat_with_min.data[flat_with_min < min_value] = min_value
     #check that the flat was normalized
-    assert flat_data.data.mean() == ccd_data.data.mean()
-    assert (ccd_data.data / flat_data.data == flat.data).all()
+    np.testing.assert_almost_equal((flat_data.data * flat.data).mean(),
+                                   ccd_data.data.mean() * flat.data.mean())
+    np.testing.assert_allclose(ccd_data.data / flat_data.data,
+                               flat.data / flat.data.mean())
 
 
 # test for variance and for flat correction
