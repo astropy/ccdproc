@@ -467,9 +467,7 @@ def flat_correct(ccd, flat, min_value=None):
        flat.data[flat.data < min_value] = min_value
 
     # normalize the flat
-    flat.data = flat.data / flat.data.mean()
-    if flat.uncertainty is not None:
-        flat.uncertainty.array = flat.uncertainty.array / flat.data.mean()
+    flat.divide(flat.data.mean())
 
     # divide through the flat
     ccd.divide(flat)
