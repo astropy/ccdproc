@@ -463,15 +463,17 @@ def flat_correct(ccd, flat, min_value=None):
         CCDData object with flat corrected
     """
     #Use the min_value to replace any values in the flat
+    use_flat = flat
     if min_value is not None:
-        flat.data[flat.data < min_value] = min_value
-
-    # normalize the flat
-    flat_normed = flat.divide(flat.data.mean())
+        flat_min = flat.copy()
+        flat_min.data[flat_min.data < min_value] = min_value
+        use_flat = flat_min
 
     # divide through the flat
-    flat_corrected = ccd.divide(flat_normed)
-
+    flat_corrected = ccd.divide(use_flat)
+    # multiply by the mean of the flat
+    flat_corrected = flat_corrected.multiply(use_flat.data.mean() *
+                                             use_flat.unit)
     return flat_corrected
 
 
