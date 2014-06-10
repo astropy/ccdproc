@@ -346,7 +346,7 @@ def test_flat_correct_min_value(ccd_data):
     flat_data = flat_correct(ccd_data, flat, min_value=min_value)
 
     flat_with_min = flat.copy()
-    flat_with_min.data[flat_with_min < min_value] = min_value
+    flat_with_min.data[flat_with_min.data < min_value] = min_value
     #check that the flat was normalized
     np.testing.assert_almost_equal((flat_data.data * flat.data).mean(),
                                    ccd_data.data.mean() * flat.data.mean())
