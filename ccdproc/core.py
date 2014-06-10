@@ -464,15 +464,15 @@ def flat_correct(ccd, flat, min_value=None):
     """
     #Use the min_value to replace any values in the flat
     if min_value is not None:
-       flat.data[flat.data < min_value] = min_value
+        flat.data[flat.data < min_value] = min_value
 
     # normalize the flat
-    flat.divide(flat.data.mean())
+    flat_normed = flat.divide(flat.data.mean())
 
     # divide through the flat
-    ccd.divide(flat)
+    flat_corrected = ccd.divide(flat_normed)
 
-    return ccd
+    return flat_corrected
 
 
 def sigma_func(arr):
