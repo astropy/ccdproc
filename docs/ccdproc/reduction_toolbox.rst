@@ -39,8 +39,8 @@ An uncertainty can be calculated from your data with
     >>> img = np.random.normal(loc=10, scale=0.5, size=(100, 232))
     >>> data = ccdproc.CCDData(img, unit=u.adu)
     >>> data_with_variance = ccdproc.create_variance(data,
-    ...                                              gain=1.5 * ccdproc.electron/u.adu,
-    ...                                              readnoise=5 * ccdproc.electron)
+    ...                                              gain=1.5 * u.electron/u.adu,
+    ...                                              readnoise=5 * u.electron)
     >>> data_with_variance.header['exposure'] = 30.0  # for dark subtraction
 
 The uncertainty, :math:`u_{ij}`, at pixel :math:`(i,~j)` with value
@@ -64,7 +64,7 @@ Gain
 
 To apply a gain to an image, do:
 
-    >>> gain_corrected = ccdproc.gain_correct(data_with_variance, 1.5*ccdproc.electron/u.adu)
+    >>> gain_corrected = ccdproc.gain_correct(data_with_variance, 1.5*u.electron/u.adu)
 
 The result ``gain_corrected`` has its data *and uncertainty* scaled by the gain
 and its unit updated.
@@ -239,7 +239,7 @@ Subtract the bias with `~ccdproc.subtract_bias`:
 
     >>> fake_bias_data = np.random.normal(size=trimmed.shape)  # just for illustration
     >>> master_bias = ccdproc.CCDData(fake_bias_data,
-    ...                               unit=ccdproc.electron,
+    ...                               unit=u.electron,
     ...                               mask=np.zeros(trimmed.shape))
     >>> bias_subtracted = ccdproc.subtract_bias(trimmed, master_bias)
 
@@ -269,7 +269,7 @@ Given a flat frame called ``master_flat``, use `~ccdproc.flat_correct` to
 perform this calibration:
 
     >>> fake_flat_data = np.random.normal(loc=1.0, scale=0.05, size=trimmed.shape)
-    >>> master_flat = ccdproc.CCDData(fake_flat_data, unit=ccdproc.electron)
+    >>> master_flat = ccdproc.CCDData(fake_flat_data, unit=u.electron)
     >>> reduced_image = ccdproc.flat_correct(dark_subtracted, master_flat)
 
 As with the additive calibrations, uncertainty is propagated in the division.

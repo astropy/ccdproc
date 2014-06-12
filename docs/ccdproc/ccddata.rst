@@ -31,9 +31,6 @@ above) or from unit objects:
     >>> ccd_photon = ccdproc.CCDData([1, 2, 3], unit=u.photon)
     >>> ccd_electron = ccdproc.CCDData([1, 2, 3], unit="electron")
 
-Note that the electron unit is provided by `ccdproc`, so if you want access to
-the unit object, use ``ccdproc.electron``.
-
 If you prefer *not* to use the unit functionality then use the special unit
 ``u.dimensionless_unscaled`` when you create your `~ccdproc.ccddata.CCDData`
 images:
@@ -128,7 +125,7 @@ Pixel-by-pixel uncertainty can be calculated for you:
 
     >>> data = np.random.normal(size=(10, 10), loc=1.0, scale=0.1)
     >>> ccd = ccdproc.CCDData(data, unit="electron")
-    >>> ccd_new = ccdproc.create_variance(ccd, readnoise=5 * ccdproc.electron)
+    >>> ccd_new = ccdproc.create_variance(ccd, readnoise=5 * u.electron)
 
 See :ref:`create_variance` for more details.
 
