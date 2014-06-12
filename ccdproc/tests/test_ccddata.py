@@ -9,7 +9,7 @@ from astropy.utils import NumpyRNGContext
 from astropy.nddata import StdDevUncertainty
 from astropy import units as u
 
-from ..ccddata import CCDData, electron
+from ..ccddata import CCDData
 
 
 def test_ccddata_empty():
@@ -31,7 +31,7 @@ def test_ccddata_simple(ccd_data):
 
 def test_ccddata_init_with_string_electron_unit():
     ccd = CCDData(np.zeros((10, 10)), unit="electron")
-    assert ccd.unit is electron
+    assert ccd.unit is u.electron
 
 
 @pytest.mark.data_size(10)
@@ -40,7 +40,7 @@ def test_initialize_from_FITS(ccd_data, tmpdir):
     hdulist = fits.HDUList([hdu])
     filename = tmpdir.join('afile.fits').strpath
     hdulist.writeto(filename)
-    cd = CCDData.read(filename, unit=electron)
+    cd = CCDData.read(filename, unit=u.electron)
     assert cd.shape == (10, 10)
     assert cd.size == 100
     assert np.issubdtype(cd.data.dtype, np.float)
@@ -104,10 +104,10 @@ def test_fromMEF(ccd_data, tmpdir):
     filename = tmpdir.join('afile.fits').strpath
     hdulist.writeto(filename)
     # by default, we reading from the first extension
-    cd = CCDData.read(filename, unit=electron)
+    cd = CCDData.read(filename, unit=u.electron)
     np.testing.assert_array_equal(cd.data, ccd_data.data)
     # but reading from the second should work too
-    cd = CCDData.read(filename, hdu=1, unit=electron)
+    cd = CCDData.read(filename, hdu=1, unit=u.electron)
     np.testing.assert_array_equal(cd.data, 2 * ccd_data.data)
 
 
@@ -116,14 +116,14 @@ def test_metafromheader(ccd_data):
     hdr.set('observer', 'Edwin Hubble')
     hdr.set('exptime', '3600')
 
-    d1 = CCDData(np.ones((5, 5)), meta=hdr, unit=electron)
+    d1 = CCDData(np.ones((5, 5)), meta=hdr, unit=u.electron)
     assert d1.meta['OBSERVER'] == 'Edwin Hubble'
     assert d1.header['OBSERVER'] == 'Edwin Hubble'
 
 
 def test_metafromdict():
     dic = {'OBSERVER': 'Edwin Hubble', 'EXPTIME': 3600}
-    d1 = CCDData(np.ones((5, 5)), meta=dic, unit=electron)
+    d1 = CCDData(np.ones((5, 5)), meta=dic, unit=u.electron)
     assert d1.meta['OBSERVER'] == 'Edwin Hubble'
 
 
@@ -132,7 +132,7 @@ def test_header2meta():
     hdr.set('observer', 'Edwin Hubble')
     hdr.set('exptime', '3600')
 
-    d1 = CCDData(np.ones((5, 5)), unit=electron)
+    d1 = CCDData(np.ones((5, 5)), unit=u.electron)
     d1.header = hdr
     assert d1.meta['OBSERVER'] == 'Edwin Hubble'
     assert d1.header['OBSERVER'] == 'Edwin Hubble'
