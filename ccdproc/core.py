@@ -438,7 +438,9 @@ def gain_correct(ccd, gain, gain_unit=None):
 
 @log_to_metadata
 def flat_correct(ccd, flat, min_value=None):
-    """Correct the image for flatfielding.
+    """Correct the image for flat fielding.
+
+    The flat field image is normalized by its mean before flat correcting.
 
     Parameters
     ----------
@@ -448,31 +450,31 @@ def flat_correct(ccd, flat, min_value=None):
     flat : `~ccdproc.ccddata.CCDData`
         Flatfield to apply to the data
 
-       min_value : None or float
-          Minimum value for flat field.  The value can either be None and no
-          minimum value is applied to the flat or specified by a float which
-          will replace all values in the flat by the min_value.
+    min_value : None or float
+        Minimum value for flat field.  The value can either be None and no
+        minimum value is applied to the flat or specified by a float which
+        will replace all values in the flat by the min_value.
 
     {log}
 
     Returns
     -------
     ccd :  `~ccdproc.ccddata.CCDData`
-      CCDData object with flat corrected
+        CCDData object with flat corrected
     """
     #Use the min_value to replace any values in the flat
+    use_flat = flat
     if min_value is not None:
-       flat.data[flat.data < min_value] = min_value
-
-    # normalize the flat
-    flat.data = flat.data / flat.data.mean()
-    if flat.uncertainty is not None:
-        flat.uncertainty.array = flat.uncertainty.array / flat.data.mean()
+        flat_min = flat.copy()
+        flat_min.data[flat_min.data < min_value] = min_value
+        use_flat = flat_min
 
     # divide through the flat
-    ccd.divide(flat)
-
-    return ccd
+    flat_corrected = ccd.divide(use_flat)
+    # multiply by the mean of the flat
+    flat_corrected = flat_corrected.multiply(use_flat.data.mean() *
+                                             use_flat.unit)
+    return flat_corrected
 
 
 def sigma_func(arr):
