@@ -12,7 +12,7 @@ from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
 
 
-from ..ccddata import CCDData, electron, adu
+from ..ccddata import CCDData
 from ..combiner import *
 
 

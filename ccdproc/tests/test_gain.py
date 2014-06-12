@@ -11,7 +11,6 @@ from astropy.utils import NumpyRNGContext
 from astropy.units.quantity import Quantity
 import astropy.units as u
 
-from ..ccddata import electron
 from ..core import *
 
 
@@ -19,8 +18,8 @@ from ..core import *
 @pytest.mark.parametrize('gain', [
                          3.0,
                          3.0 * u.photon / u.adu,
-                         3.0 * electron / u.adu,
-                         Keyword('gainval', unit=electron / u.adu)])
+                         3.0 * u.electron / u.adu,
+                         Keyword('gainval', unit=u.electron / u.adu)])
 @pytest.mark.data_unit(u.adu)
 def test_linear_gain_correct(ccd_data, gain):
     ccd_data = create_variance(ccd_data, readnoise=1.0 * u.adu)
@@ -50,7 +49,7 @@ def test_linear_gain_unit_keyword(ccd_data):
     ccd_data = create_variance(ccd_data, readnoise=1.0 * u.adu)
     orig_data = ccd_data.data
     gain = 3.0
-    gain_unit = electron / u.adu
+    gain_unit = u.electron / u.adu
     ccd = gain_correct(ccd_data, gain, gain_unit=gain_unit)
     assert_array_equal(ccd.data, gain * orig_data)
     assert_array_equal(ccd.uncertainty.array,

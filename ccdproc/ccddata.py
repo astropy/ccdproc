@@ -15,12 +15,7 @@ from astropy import log
 
 from .utils.collections import CaseInsensitiveOrderedDict
 
-adu = u.adu
-electron = u.def_unit('electron', doc="Electron count")
-u.add_enabled_units([electron])
-photon = u.photon
-
-__all__ = ['CCDData', 'electron']
+__all__ = ['CCDData']
 
 
 class CCDData(NDData):
