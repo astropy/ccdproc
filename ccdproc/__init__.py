@@ -11,7 +11,8 @@ stand-alone processing or as part of a pipeline.
 from ._astropy_init import *
 # ----------------------------------------------------------------------------
 
-# set up namespace
-from .core import *
-from .ccddata import *
-from .combiner import *
+# set up namespace, unless we are in setup...
+if not _ASTROPY_SETUP_:
+    from .core import *
+    from .ccddata import *
+    from .combiner import *
