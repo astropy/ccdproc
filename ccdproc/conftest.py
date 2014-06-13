@@ -3,4 +3,9 @@
 # no matter how it is invoked within the source tree.
 
 from astropy.tests.pytest_plugins import *
+
 from .tests.pytest_fixtures import *
+
+## Uncomment the following line to treat all DeprecationWarnings as
+## exceptions
+# enable_deprecations_as_exceptions()
