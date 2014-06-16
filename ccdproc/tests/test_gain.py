@@ -1,5 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # This module implements the base CCDData class.
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
