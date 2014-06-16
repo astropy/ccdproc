@@ -52,6 +52,7 @@ def test_ccddata_combiner_units(ccd_data):
     with pytest.raises(TypeError):
         Combiner(ccd_list)
 
+
 #test if mask and data array are created
 def test_combiner_create(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
@@ -59,18 +60,18 @@ def test_combiner_create(ccd_data):
     assert c.data_arr.shape == (3, 100, 100)
     assert c.data_arr.mask.shape == (3, 100, 100)
 
+
 #test mask is created from ccd.data
 def test_combiner_mask(ccd_data):
     data = np.zeros((10, 10))
-    data[5,5] = 1
+    data[5, 5] = 1
     mask = (data == 0)
     ccd = CCDData(data, unit=u.adu, mask=mask)
     ccd_list = [ccd, ccd, ccd]
     c = Combiner(ccd_list)
     assert c.data_arr.shape == (3, 10, 10)
     assert c.data_arr.mask.shape == (3, 10, 10)
-    assert c.data_arr.mask[0,5,5] == False
-
+    assert not c.data_arr.mask[0, 5, 5]
 
 
 def test_weights(ccd_data):
@@ -133,6 +134,7 @@ def test_combiner_sigmaclip_high():
                      dev_func=mad)
     assert c.data_arr[5].mask.all()
 
+
 def test_combiner_sigmaclip_single_pix():
     ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
                 CCDData(np.zeros((10, 10)) - 10, unit=u.adu),
@@ -141,16 +143,17 @@ def test_combiner_sigmaclip_single_pix():
                 CCDData(np.zeros((10, 10)) + 10, unit=u.adu),
                 CCDData(np.zeros((10, 10)) - 10, unit=u.adu)]
     c = Combiner(ccd_list)
-    #add a single pixel in another array to check that 
+    #add a single pixel in another array to check that
     #that one gets rejected
-    c.data_arr[0,5,5] = 0
-    c.data_arr[1,5,5] = -5
-    c.data_arr[2,5,5] = 5
-    c.data_arr[3,5,5] = -5
-    c.data_arr[4,5,5] = 25
+    c.data_arr[0, 5, 5] = 0
+    c.data_arr[1, 5, 5] = -5
+    c.data_arr[2, 5, 5] = 5
+    c.data_arr[3, 5, 5] = -5
+    c.data_arr[4, 5, 5] = 25
     c.sigma_clipping(high_thresh=3, low_thresh=None, func=np.median,
                      dev_func=mad)
-    assert c.data_arr.mask[4,5,5] == True
+    assert c.data_arr.mask[4, 5, 5]
+
 
 def test_combiner_sigmaclip_low():
     ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
@@ -188,30 +191,32 @@ def test_combiner_average(ccd_data):
     assert ccd.unit == u.adu
     assert ccd.meta['NCOMBINE'] == len(ccd_list)
 
+
 #test data combined with mask is created correctly
 def test_combiner_mask_average(ccd_data):
     data = np.zeros((10, 10))
-    data[5,5] = 1
+    data[5, 5] = 1
     mask = (data == 0)
     ccd = CCDData(data, unit=u.adu, mask=mask)
     ccd_list = [ccd, ccd, ccd]
     c = Combiner(ccd_list)
     ccd = c.average_combine()
-    assert ccd.data[0,0] == 0
-    assert ccd.data[5,5] == 1
-    assert ccd.mask[0,0] == True 
-    assert ccd.mask[5,5] == False
+    assert ccd.data[0, 0] == 0
+    assert ccd.data[5, 5] == 1
+    assert ccd.mask[0, 0]
+    assert not ccd.mask[5, 5]
+
 
 #test data combined with mask is created correctly
 def test_combiner_mask_media(ccd_data):
     data = np.zeros((10, 10))
-    data[5,5] = 1
+    data[5, 5] = 1
     mask = (data == 0)
     ccd = CCDData(data, unit=u.adu, mask=mask)
     ccd_list = [ccd, ccd, ccd]
     c = Combiner(ccd_list)
     ccd = c.median_combine()
-    assert ccd.data[0,0] == 0
-    assert ccd.data[5,5] == 1
-    assert ccd.mask[0,0] == True 
-    assert ccd.mask[5,5] == False
+    assert ccd.data[0, 0] == 0
+    assert ccd.data[5, 5] == 1
+    assert ccd.mask[0, 0]
+    assert not ccd.mask[5, 5]
