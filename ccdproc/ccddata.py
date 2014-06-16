@@ -9,7 +9,6 @@ import numpy as np
 from astropy.nddata import NDData
 from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
 from astropy.io import fits, registry
-from astropy.utils.compat.odict import OrderedDict
 from astropy import units as u
 from astropy import log
 

@@ -5,7 +5,6 @@ import numpy as np
 from astropy.io import fits
 
 from astropy.tests.helper import pytest
-from astropy.utils import NumpyRNGContext
 from astropy.nddata import StdDevUncertainty
 from astropy import units as u
 
@@ -354,14 +353,3 @@ def test_arithmetic_overload_ccddata_operand(ccd_data):
                             ccd_data.uncertainty.array)
     np.testing.assert_allclose(result.uncertainty.array,
                                expected_uncertainty)
-
-if __name__ == '__main__':
-    test_ccddata_empty()
-    test_ccddata_simple()
-    test_fromFITS()
-    test_fromMEF()
-    test_metafromheader()
-    test_metafromstring_fail()
-    test_metafromdict()
-    test_header2meta()
-    test_create_variance()

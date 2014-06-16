@@ -2,15 +2,12 @@
 # This module implements the base CCDData class.
 
 import numpy as np
-from astropy.io import fits
 
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
 from ..core import *
-
-import os
 
 DATA_SCALE = 5.3
 NCRAYS = 30

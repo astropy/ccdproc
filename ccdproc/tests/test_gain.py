@@ -1,13 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # This module implements the base CCDData class.
 
-import numpy as np
-from astropy.io import fits
-from astropy import modeling as models
-
 from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
-from astropy.utils import NumpyRNGContext
 from astropy.units.quantity import Quantity
 import astropy.units as u
 

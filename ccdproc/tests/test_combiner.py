@@ -2,13 +2,10 @@
 # This module implements the base CCDData class.
 
 import numpy as np
-from astropy.io import fits
-from astropy.modeling import models
-from astropy.units.quantity import Quantity
+
 import astropy.units as u
 from astropy.stats import median_absolute_deviation as mad
 
-from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
 
 
@@ -16,16 +13,14 @@ from ..ccddata import CCDData
 from ..combiner import *
 
 
-from .pytest_fixtures import ccd_data
-
-
 #test that the Combiner raises error if empty
 def test_combiner_empty():
     with pytest.raises(TypeError):
         Combiner()  # empty initializer should fail
 
+
 #test that the Combiner raises error if empty if ccd_list is None
-def test_combiner_empty():
+def test_combiner_init_with_none():
     with pytest.raises(TypeError):
         Combiner(None)  # empty initializer should fail
 
@@ -218,7 +213,3 @@ def test_combiner_mask_media(ccd_data):
     assert ccd.data[5,5] == 1
     assert ccd.mask[0,0] == True 
     assert ccd.mask[5,5] == False
-
-    
-    
-

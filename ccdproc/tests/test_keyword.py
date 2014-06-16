@@ -1,7 +1,6 @@
 from astropy.extern import six
 from astropy.tests.helper import pytest
 from astropy import units as u
-from astropy.units import Quantity
 from astropy.io import fits
 
 from ..core import Keyword

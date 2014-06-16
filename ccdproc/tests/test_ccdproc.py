@@ -1,8 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # This module implements the base CCDData class.
 
-import os
-
 import numpy as np
 from astropy.io import fits
 from astropy.modeling import models
