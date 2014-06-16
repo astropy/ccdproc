@@ -318,7 +318,6 @@ def test_subtract_dark_fails(ccd_data):
 @pytest.mark.data_scale(10)
 def test_flat_correct(ccd_data):
     size = ccd_data.shape[0]
-    orig_mean = ccd_data.data.mean()
     # create the flat, with some scatter
     data = 2 * np.random.normal(loc=1.0, scale=0.05, size=(size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
