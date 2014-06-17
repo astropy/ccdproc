@@ -170,7 +170,8 @@ class Combiner(object):
             self.data_arr.mask[mask] = True
 
     #set up the combining algorithms
-    def median_combine(self, median_func=ma.median):
+    def median_combine(self, median_func=ma.median,
+                       scale_func=None, scale_to=1.0):
         """Median combine a set of arrays.
 
            A CCDData object is returned
@@ -187,6 +188,14 @@ class Combiner(object):
                Function that calculates median of a ``numpy.ma.masked_array``.
                Default is to use ``np.ma.median`` to calculate median.
 
+           scale_func : function, optional
+               A function (e.g. `~numpy.ma.median`) that should be used to
+               calculate a value for each image by which each image should
+               be scaled before combining.
+
+           scale_to : float, optional
+               Value to which data should be scaled using `scale_func`.
+
            Returns
            -------
            combined_image: `~ccdproc.CCDData`
@@ -198,8 +207,15 @@ class Combiner(object):
            deviation does not account for rejected pixels
 
         """
+        if scale_func:
+            scalings = scale_func(self.data_arr, axis=2)
+            scalings = scale_to/scale_func(scalings, axis=1)
+            scalings = scalings[:, np.newaxis, np.newaxis]
+        else:
+            scalings = 1.0
+
         #set the data
-        data = median_func(self.data_arr, axis=0)
+        data = median_func(scalings * self.data_arr, axis=0)
 
         #set the mask
         mask = self.data_arr.mask.sum(axis=0)
@@ -234,7 +250,7 @@ class Combiner(object):
            scale_func : function, optional
                A function (e.g. `~numpy.ma.median`) that should be used to
                calculate a value for each image by which each image should
-               be scaled before combining. 
+               be scaled before combining.
 
            scale_to : float, optional
                Value to which data should be scaled using `scale_func`.
