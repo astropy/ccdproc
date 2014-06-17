@@ -83,12 +83,57 @@ def test_cosmicray_clean_rbox_zero_replaces_no_pixels(ccd_data):
                          background=scale, bargs=(), rbox=0, gbox=0)
     assert_allclose(cc, testdata)
 
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_lacosmic(ccd_data):
+    threshold = 5
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    noise = DATA_SCALE * np.ones_like(ccd_data.data)
+    crarr = cosmicray_lacosmic(ccd_data.data, noise, thresh=5, 
+              mbox=11)
+
+    # check the number of cosmic rays detected
+    assert crarr.sum() == NCRAYS
+
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_lacosmic_check_data(ccd_data):
+    with pytest.raises(TypeError):
+        noise = DATA_SCALE * np.ones_like(ccd_data.data)
+        cosmicray_lacosmic(10, noise, thresh=5,
+              mbox=11)
+
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_lacosmic_check_background(ccd_data):
+    with pytest.raises(TypeError):
+        noise = DATA_SCALE * np.ones_like(ccd_data.data)
+        cosmicray_lacosmic(ccd_data.data, 10, thresh=5,
+              mbox=11)
+
+
+@pytest.mark.data_scale(DATA_SCALE)
+@pytest.mark.data_size(10)
+def test_cosmicray_lacosmic_check_shape(ccd_data):
+    with pytest.raises(ValueError):
+        noise = DATA_SCALE * np.ones((15,15))
+        cosmicray_lacosmic(ccd_data.data, noise, thresh=5,
+              mbox=11)
+   
+
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_lacosmic(ccd_data):
+    threshold = 5
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11, background=DATA_SCALE)
+
+    # check the number of cosmic rays detected
+    assert crarr.sum() == NCRAYS
+
+
 
 @pytest.mark.data_scale(DATA_SCALE)
 def test_cosmicray_median(ccd_data):
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    crarr = cosmicray_median(ccd_data.data, 5, mbox=11, background=DATA_SCALE)
+    crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11, background=DATA_SCALE)
 
     # check the number of cosmic rays detected
     assert crarr.sum() == NCRAYS
@@ -98,7 +143,7 @@ def test_cosmicray_median_masked(ccd_data):
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     data = np.ma.masked_array(ccd_data.data, (ccd_data.data>-1e6))
-    crarr = cosmicray_median(data, 5, mbox=11, background=DATA_SCALE)
+    crarr = cosmicray_median(data, thresh=5, mbox=11, background=DATA_SCALE)
 
     # check the number of cosmic rays detected
     assert crarr.sum() == NCRAYS
@@ -108,12 +153,10 @@ def test_cosmicray_median_masked(ccd_data):
 def test_cosmicray_median_background_None(ccd_data):
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    crarr = cosmicray_median(ccd_data.data, 5, mbox=11, background=None)
+    crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11, background=None)
 
     # check the number of cosmic rays detected
     assert crarr.sum() == NCRAYS
-
-
 
 
 def test_background_variance_box():

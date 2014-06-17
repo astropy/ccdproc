@@ -20,7 +20,8 @@ from .utils.slices import slice_from_string
 from .log_meta import log_to_metadata
 
 __all__ = ['background_variance_box', 'background_variance_filter',
-           'cosmicray_clean', 'cosmicray_median', 'create_variance',
+           'cosmicray_clean', 'cosmicray_median', 'cosmicray_lacosmic',
+           'create_variance',
            'flat_correct', 'gain_correct', 'sigma_func',  
            'subtract_bias', 'subtract_dark', 'subtract_overscan', 
            'trim_image', 'Keyword']
@@ -628,8 +629,8 @@ def _rebin(data, newshape):
 
     Returns
     -------
-    background : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-        An array with the measured background variance in each pixel
+    output : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+        An array with the new shape 
 
     Raises
     ------
@@ -661,9 +662,180 @@ def _rebin(data, newshape):
     coordinates = np.mgrid[slices]
     indices = coordinates.astype('i')   
     return data[tuple(indices)]
-    
 
-def cosmicray_median(data, thresh,  background=None, mbox=11):
+def _blkavg(data, newshape):
+    """
+    Block average an array such that it has the new shape
+
+    Parameters
+    ----------
+    data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+        Data to average
+
+    newshape : tuple 
+        Tuple containing the new shape for the array
+
+    Returns
+    -------
+    output : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+        An array with the new shape and the average of the pixels
+
+    Raises
+    ------
+    TypeError
+        A type error is raised if data is not an `numpy.ndarray`
+
+    ValueError
+        A value error is raised if the dimenisions of new shape is not equal
+        to data
+
+    Notes
+    -----
+    This is based on the scipy cookbook for rebinning:
+    http://wiki.scipy.org/Cookbook/Rebinning
+    """
+    #check to see that is in a nddata type
+    if not isinstance(data, np.ndarray):
+        raise TypeError('data is not a ndarray object')
+
+    #check to see that the two arrays are going to be the same length
+    if len(data.shape)!=len(newshape):
+        raise ValueError('newshape does not have the same dimensions as data')
+
+    shape=data.shape
+    lenShape = len(shape)
+    factor = np.asarray(shape)/np.asarray(newshape)
+
+    evList = ['data.reshape('] + \
+        ['newshape[%d],factor[%d],'%(i,i) for i in range(lenShape)] + \
+        [')'] + ['.mean(%d)'%(i+1) for i in range(lenShape)]
+
+    return eval(''.join(evList))
+
+
+def cosmicray_lacosmic(data, background, thresh, fthresh=5, gthresh=1.5,
+        b_factor=2, mbox = 5, min_limit=0.01, 
+        f_conv=np.array([[0,-1,0],[-1,4,-1],[0,-1,0]])):
+    """
+    Identify cosmic rays through the lacosmic technique. The lacosmic technique
+    identifies cosmic rays by identifying pixels based on a variation of the
+    Laplacian edge detection.  The algorithm is an implimentation of the 
+    code describe in van Dokkum (2001) [1]_. 
+
+    Parameters
+    ----------
+
+    data : `numpy.ndarray`
+        Data to have cosmic ray cleaned
+
+    background : `numpy.ndarray`
+        Background variance level.   It should have the same shape as data
+        as data. This is the same as the noise array in lacosmic.cl
+
+    thresh :  float
+        Threshhold for detecting cosmic rays.  This is the same as sigmaclip
+        in lacosmic.cl
+
+    fthresh :  float
+        Threshhold for differentianting compact sources from cosmic rays.
+        This is the same as objlim in lacosmic.cl
+
+    gthresh :  float
+        Threshhold for checking for surrounding cosmic rays from source.
+        This is the same as sigclip*sigfrac from lacosmic.cl
+
+    b_factor :  int
+        Factor for block replication
+
+    mbox :  int
+        Median box for detecting cosmic rays
+
+    min_limit: float
+        Minimum value for all pixels so as to avoid division by zero errors
+
+    f_conv: `numpy.ndarray`
+        Convolutoin kernal for detecting edges. 
+
+    {log}
+
+    Notes
+    -----
+    Implimentation of the cosmic ray identifcation L.A.Cosmic:
+    http://www.astro.yale.edu/dokkum/lacosmic/
+
+    Returns
+    -------
+    crarr : `~numpy.ndarray`
+      A boolean ndarray with the cosmic rays identified
+
+    References
+    ----------
+    .. [1] van Dokkum, P; 2001, "Cosmic-Ray Rejection by Laplacian Edge
+           Detection". The Publications of the Astronomical Society of the
+           Pacific, Volume 113, Issue 789, pp. 1420-1427.
+           doi: 10.1086/323894
+
+
+    """
+    if not isinstance(data, np.ndarray):
+        raise TypeError('data is not a ndarray object')
+
+    if not isinstance(background, np.ndarray):
+        raise TypeError('background is not a ndarray object')
+
+    if data.shape != background.shape:
+        raise ValueError('background is not the same shape as data')
+
+    #set up a copy of the array and original shape
+    shape=data.shape
+
+    #rebin the data
+    newshape = (b_factor*shape[0],b_factor*shape[1])
+    ldata = _rebin(data, newshape)
+
+    #convolve with f_conv
+    ldata=ndimage.filters.convolve(ldata,f_conv)
+    ldata[ldata<=0] = 0
+
+    #return to the original binning
+    ldata = _blkavg(ldata,shape)
+
+    #median the noise image
+    med_noise = ndimage.median_filter(background, size=(mbox, mbox))
+
+    #create S/N image
+    sndata = ldata / med_noise / b_factor
+
+    #remove extended objects
+    mdata = ndimage.median_filter(sndata, size=(mbox, mbox))
+    sndata = sndata - mdata
+
+    #select objects
+    masks = (sndata>thresh)
+
+    #remove compact bright sources
+    fdata =  ndimage.median_filter(data, size=(mbox-2, mbox-2))
+    fdata -=  ndimage.median_filter(data, size=(mbox+2, mbox+2))
+    fdata = fdata / med_noise 
+
+    # set a minimum value for all pixels so no divide by zero problems
+    fdata[fdata<min_limit] = min_limit
+
+    fdata = sndata * masks / fdata
+    maskf = (fdata > fthresh)
+
+    #make the list of cosmic rays
+    crarr =  masks * (fdata > fthresh) 
+
+    #check any of the neighboring pixels
+    gdata = sndata * ndimage.filters.maximum_filter(crarr,size=(3,3))
+    crarr = crarr * (gdata > gthresh)
+
+    return crarr
+
+   
+
+def cosmicray_median(data, background, thresh, mbox=11):
     """
     Identify cosmic rays through median technique.  The median technique
     identifies cosmic rays by identifying pixels by subtracting a median image
@@ -800,7 +972,7 @@ def cosmicray_clean(ccd, thresh, cr_func, crargs=(),
         background = background(data, *bargs)
 
     # identify the cosmic rays
-    crarr = cr_func(data, thresh, background, *crargs)
+    crarr = cr_func(data, background, thresh, *crargs)
 
     #create new output array
     newccd = ccd.copy()
