@@ -21,8 +21,9 @@ from .log_meta import log_to_metadata
 
 __all__ = ['background_variance_box', 'background_variance_filter',
            'cosmicray_clean', 'cosmicray_median', 'create_variance',
-           'flat_correct', 'gain_correct', 'sigma_func', 'subtract_bias',
-           'subtract_dark', 'subtract_overscan', 'trim_image', 'Keyword']
+           'flat_correct', 'gain_correct', 'sigma_func',  
+           'subtract_bias', 'subtract_dark', 'subtract_overscan', 
+           'trim_image', 'Keyword']
 
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
@@ -590,7 +591,7 @@ def background_variance_filter(data, bbox):
 
     Parameters
     ----------
-    data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+    data : `~numpy.ndarray`
         Data to measure background variance
 
     bbox :  int
@@ -613,6 +614,54 @@ def background_variance_filter(data, bbox):
 
     return ndimage.generic_filter(data, sigma_func, size=(bbox, bbox))
 
+def _rebin(data, newshape):
+    """
+    Rebin an array to have a new shape
+
+    Parameters
+    ----------
+    data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+        Data to rebin
+
+    newshape : tuple 
+        Tuple containing the new shape for the array
+
+    Returns
+    -------
+    background : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+        An array with the measured background variance in each pixel
+
+    Raises
+    ------
+    TypeError
+        A type error is raised if data is not an `numpy.ndarray`
+
+    ValueError
+        A value error is raised if the dimenisions of new shape is not equal
+        to data
+
+    Notes
+    -----
+    This is based on the scipy cookbook for rebinning:
+    http://wiki.scipy.org/Cookbook/Rebinning
+
+    Examples
+    --------
+
+    """
+    #check to see that is in a nddata type
+    if not isinstance(data, np.ndarray):
+        raise TypeError('data is not a ndarray object')
+
+    #check to see that the two arrays are going to be the same length
+    if len(data.shape)!=len(newshape):
+        raise ValueError('newshape does not have the same dimensions as data')
+
+    slices = [ slice(0,old, float(old)/new) for old,new in zip(data.shape,newshape) ]
+    coordinates = np.mgrid[slices]
+    indices = coordinates.astype('i')   
+    return data[tuple(indices)]
+    
 
 def cosmicray_median(data, thresh,  background=None, mbox=11):
     """
