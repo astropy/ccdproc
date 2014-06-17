@@ -219,7 +219,7 @@ class Combiner(object):
         #return the combined image
         return combined_image
 
-    def average_combine(self):
+    def average_combine(self, scale_func=None, scale_to=1.0):
         """Average combine together a set of arrays.   A CCDData object is
            returned with the data property set to the average of the arrays.
            If the data was masked or any data have been rejected, those pixels
@@ -228,14 +228,31 @@ class Combiner(object):
            uncertainty of the combined image is set by the standard deviation
            of the input images.
 
+           Parameters
+           ----------
+
+           scale_func : function, optional
+               A function (e.g. `~numpy.ma.median`) that should be used to
+               calculate a value for each image by which each image should
+               be scaled before combining. 
+
+           scale_to : float, optional
+               Value to which data should be scaled using `scale_func`.
+
            Returns
            -------
            combined_image: `~ccdproc.CCDData`
                CCDData object based on the combined input of CCDData objects.
 
         """
+        if scale_func:
+            scalings = scale_func(self.data_arr, axis=2)
+            scalings = scale_to/scale_func(scalings, axis=1)
+        else:
+            scalings = np.ones(self.data_arr.shape[0])
         #set up the data
-        data, wei = ma.average(self.data_arr, axis=0, weights=self.weights,
+        data, wei = ma.average(scalings[:, np.newaxis, np.newaxis] * self.data_arr,
+                               axis=0, weights=self.weights,
                                returned=True)
 
         #set up the mask

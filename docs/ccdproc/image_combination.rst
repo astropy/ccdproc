@@ -109,6 +109,19 @@ argument ``median_func`` for calculating the median instead. One fast
 alternative is provided by the `bottleneck`_ package; an example using it is
 at :ref:`bottleneck_example`.
 
+With image scaling
+------------------
+
+In some circumstances it may be convenient to scale all images to some value
+before combining them. Do so with:
+
+    >>> combined_average_scaled = combiner.average_combine(scale_func=np.ma.mean,
+    ...                                                    scale_to=1.5)
+
+This will normalize each image by its mean then scale to 1.5 before combining
+(note that the underlying images are *not* scaled; scaling is only done as
+part of the averaging).
+
 With image transformation
 -------------------------
 

@@ -207,6 +207,18 @@ def test_combiner_mask_average(ccd_data):
     assert not ccd.mask[5, 5]
 
 
+def test_combiner_average_with_scaling(ccd_data):
+    # The factors below are not particularly important; just avoid anything
+    # whose average is 1.
+    ccd_data_lower = ccd_data.multiply(3)
+    ccd_data_higher = ccd_data.multiply(0.9)
+    combiner = Combiner([ccd_data, ccd_data_higher, ccd_data_lower])
+    avg_ccd = combiner.average_combine(scale_func=np.ma.average,
+                                       scale_to=ccd_data.data.mean())
+    np.testing.assert_almost_equal(avg_ccd.data.mean(),
+                                   ccd_data.data.mean())
+
+
 #test data combined with mask is created correctly
 def test_combiner_mask_media(ccd_data):
     data = np.zeros((10, 10))
