@@ -1,5 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # This module implements the base CCDData class.
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import copy
 import numbers
@@ -9,7 +11,6 @@ import numpy as np
 from astropy.nddata import NDData
 from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
 from astropy.io import fits, registry
-from astropy.utils.compat.odict import OrderedDict
 from astropy import units as u
 from astropy import log
 

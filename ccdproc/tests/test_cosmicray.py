@@ -1,16 +1,15 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # This module implements the base CCDData class.
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
-from astropy.io import fits
 
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
 
 from ..core import *
-
-import os
 
 DATA_SCALE = 5.3
 NCRAYS = 30
@@ -48,7 +47,6 @@ def test_cosmicray_clean_gbox(ccd_data):
     scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
     threshold = 5
     add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
-    testdata = 1.0 * ccd_data.data
     cc = ccd_data  # currently here because no copy command for NDData
     cc = cosmicray_clean(cc, 5.0, cosmicray_median, crargs=(11,),
                              background=background_variance_box, bargs=(25,),
@@ -131,7 +129,7 @@ def test_background_variance_box_fail():
         scale = 5.3
         cd = np.random.normal(loc=0, size=(100, 100), scale=scale)
     with pytest.raises(ValueError):
-        bd = background_variance_box(cd, 0.5)
+        background_variance_box(cd, 0.5)
 
 
 def test_background_variance_filter():
@@ -147,4 +145,4 @@ def test_background_variance_filter_fail():
         scale = 5.3
         cd = np.random.normal(loc=0, size=(100, 100), scale=scale)
     with pytest.raises(ValueError):
-        bd = background_variance_filter(cd, 0.5)
+        background_variance_filter(cd, 0.5)

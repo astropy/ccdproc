@@ -1,13 +1,13 @@
-from __future__ import (print_function, division, absolute_import)
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numpy as np
 
 from astropy.extern import six
 from astropy.tests.helper import pytest
-import astropy.units as u
 
 from .. import subtract_bias, create_variance, Keyword, CCDData
-#from ..ccddata import CCDData
+
 
 @pytest.mark.parametrize('key', [
                          'short',

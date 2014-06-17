@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # This module implements the base CCDPROC functions
-from __future__ import absolute_import
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import numbers
 
@@ -235,7 +236,7 @@ def trim_image(ccd, fits_section=None):
         CCD image to be trimmed, sliced if desired.
 
     fits_section : str
-        Region of `ccd` from which the overscan is extracted; see 
+        Region of `ccd` from which the overscan is extracted; see
         :func:`subtract_overscan` for details.
 
     {log}
@@ -653,16 +654,16 @@ def cosmicray_median(data, thresh,  background=None, mbox=11):
 
     if background is None:
         background = data.std()
-    else: 
+    else:
         if not isinstance(background, (float, np.ndarray)):
-            raise TypeError('Background is not a float or ndarray') 
+            raise TypeError('Background is not a float or ndarray')
 
     # create the median image
     marr = ndimage.median_filter(data, size=(mbox, mbox))
 
     # Only look at the data array
     if isinstance(data, np.ma.MaskedArray):
-       data = data.data
+        data = data.data
 
     # Find the residual image
     rarr = (data - marr) / background
