@@ -21,9 +21,8 @@ from .log_meta import log_to_metadata
 
 __all__ = ['background_variance_box', 'background_variance_filter',
            'cosmicray_clean', 'cosmicray_median', 'cosmicray_lacosmic',
-           'create_variance',
-           'flat_correct', 'gain_correct', 'sigma_func',  
-           'subtract_bias', 'subtract_dark', 'subtract_overscan', 
+           'create_variance', 'flat_correct', 'gain_correct', 'sigma_func',
+           'subtract_bias', 'subtract_dark', 'subtract_overscan',
            'trim_image', 'Keyword']
 
 # The dictionary below is used to translate actual function names to names
@@ -615,22 +614,23 @@ def background_variance_filter(data, bbox):
 
     return ndimage.generic_filter(data, sigma_func, size=(bbox, bbox))
 
+
 def _rebin(data, newshape):
     """
     Rebin an array to have a new shape
 
     Parameters
     ----------
-    data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+    data : `~numpy.ndarray`
         Data to rebin
 
-    newshape : tuple 
+    newshape : tuple
         Tuple containing the new shape for the array
 
     Returns
     -------
-    output : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-        An array with the new shape 
+    output : `~numpy.ndarray`
+        An array with the new shape
 
     Raises
     ------
@@ -655,13 +655,14 @@ def _rebin(data, newshape):
         raise TypeError('data is not a ndarray object')
 
     #check to see that the two arrays are going to be the same length
-    if len(data.shape)!=len(newshape):
+    if len(data.shape) != len(newshape):
         raise ValueError('newshape does not have the same dimensions as data')
 
-    slices = [ slice(0,old, float(old)/new) for old,new in zip(data.shape,newshape) ]
+    slices = [slice(0, old, float(old)/new) for old, new in
+              zip(data.shape, newshape)]
     coordinates = np.mgrid[slices]
-    indices = coordinates.astype('i')   
-    return data[tuple(indices)]
+    indices = coordinates.astype('i')
+    return data[tuple(indices)
 
 def _blkavg(data, newshape):
     """
@@ -672,7 +673,7 @@ def _blkavg(data, newshape):
     data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
         Data to average
 
-    newshape : tuple 
+    newshape : tuple
         Tuple containing the new shape for the array
 
     Returns
@@ -714,13 +715,13 @@ def _blkavg(data, newshape):
 
 
 def cosmicray_lacosmic(data, background, thresh, fthresh=5, gthresh=1.5,
-        b_factor=2, mbox = 5, min_limit=0.01, 
+        b_factor=2, mbox = 5, min_limit=0.01,
         f_conv=np.array([[0,-1,0],[-1,4,-1],[0,-1,0]])):
     """
     Identify cosmic rays through the lacosmic technique. The lacosmic technique
     identifies cosmic rays by identifying pixels based on a variation of the
-    Laplacian edge detection.  The algorithm is an implimentation of the 
-    code describe in van Dokkum (2001) [1]_. 
+    Laplacian edge detection.  The algorithm is an implimentation of the
+    code describe in van Dokkum (2001) [1]_.
 
     Parameters
     ----------
@@ -754,7 +755,7 @@ def cosmicray_lacosmic(data, background, thresh, fthresh=5, gthresh=1.5,
         Minimum value for all pixels so as to avoid division by zero errors
 
     f_conv: `numpy.ndarray`
-        Convolutoin kernal for detecting edges. 
+        Convolutoin kernal for detecting edges.
 
     {log}
 
@@ -816,7 +817,7 @@ def cosmicray_lacosmic(data, background, thresh, fthresh=5, gthresh=1.5,
     #remove compact bright sources
     fdata =  ndimage.median_filter(data, size=(mbox-2, mbox-2))
     fdata -=  ndimage.median_filter(data, size=(mbox+2, mbox+2))
-    fdata = fdata / med_noise 
+    fdata = fdata / med_noise
 
     # set a minimum value for all pixels so no divide by zero problems
     fdata[fdata<min_limit] = min_limit
@@ -825,7 +826,7 @@ def cosmicray_lacosmic(data, background, thresh, fthresh=5, gthresh=1.5,
     maskf = (fdata > fthresh)
 
     #make the list of cosmic rays
-    crarr =  masks * (fdata > fthresh) 
+    crarr =  masks * (fdata > fthresh)
 
     #check any of the neighboring pixels
     gdata = sndata * ndimage.filters.maximum_filter(crarr,size=(3,3))
@@ -833,7 +834,6 @@ def cosmicray_lacosmic(data, background, thresh, fthresh=5, gthresh=1.5,
 
     return crarr
 
-   
 
 def cosmicray_median(data, background, thresh, mbox=11):
     """
