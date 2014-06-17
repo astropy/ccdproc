@@ -248,10 +248,11 @@ class Combiner(object):
         if scale_func:
             scalings = scale_func(self.data_arr, axis=2)
             scalings = scale_to/scale_func(scalings, axis=1)
+            scalings = scalings[:, np.newaxis, np.newaxis]
         else:
-            scalings = np.ones(self.data_arr.shape[0])
+            scalings = 1.0
         #set up the data
-        data, wei = ma.average(scalings[:, np.newaxis, np.newaxis] * self.data_arr,
+        data, wei = ma.average(scalings * self.data_arr,
                                axis=0, weights=self.weights,
                                returned=True)
 
