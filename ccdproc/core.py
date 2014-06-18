@@ -662,7 +662,8 @@ def _rebin(data, newshape):
               zip(data.shape, newshape)]
     coordinates = np.mgrid[slices]
     indices = coordinates.astype('i')
-    return data[tuple(indices)
+    return data[tuple(indices)]
+
 
 def _blkavg(data, newshape):
     """
