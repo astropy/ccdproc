@@ -16,7 +16,7 @@ from astropy.tests.helper import pytest
 
 from ..ccddata import CCDData
 from ..core import *
-from ..core import _rebin
+from ..core import _rebin, _blkavg
 
 # test creating variance
 # success expected if u_image * u_gain = u_readnoise
@@ -416,6 +416,22 @@ def test__rebin_smaller(ccd_data):
      assert c.shape == (10,10)
      assert (c-a).sum() == 0
 
+#test blockaveraging ndarray
+def test__blkavg_ndarray(ccd_data):
+    with pytest.raises(TypeError):
+        _blkavg(1, (5,5))
 
+#test rebinning dimensions
+@pytest.mark.data_size(10)
+def test__blkavg_dimensions(ccd_data):
+    with pytest.raises(ValueError):
+        _blkavg(ccd_data.data, (5,))
 
+#test blkavg works
+@pytest.mark.data_size(20)
+def test__blkavg_larger(ccd_data):
+     a = ccd_data.data
+     b = _blkavg(a, (10,10))
 
+     assert b.shape == (10,10)
+     np.testing.assert_almost_equal(b.sum(), 0.25 * a.sum())
