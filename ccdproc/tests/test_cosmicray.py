@@ -122,14 +122,10 @@ def test_cosmicray_lacosmic_check_shape(ccd_data):
 
 
 @pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_lacosmic(ccd_data):
-    threshold = 5
-    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11,
-                             background=DATA_SCALE)
-
-    # check the number of cosmic rays detected
-    assert crarr.sum() == NCRAYS
+def test_cosmicray_median_check_data(ccd_data):
+    with pytest.raises(TypeError):
+        crarr = cosmicray_median(10, thresh=5, mbox=11,
+                                 background=DATA_SCALE)
 
 
 @pytest.mark.data_scale(DATA_SCALE)
