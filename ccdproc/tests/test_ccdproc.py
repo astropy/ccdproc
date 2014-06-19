@@ -16,7 +16,7 @@ from astropy.tests.helper import pytest
 
 from ..ccddata import CCDData
 from ..core import *
-
+from ..core import _rebin, _blkavg
 
 # test creating variance
 # success expected if u_image * u_gain = u_readnoise
@@ -356,8 +356,6 @@ def test_flat_correct_min_value(ccd_data):
 
 
 # test for variance and for flat correction
-
-
 @pytest.mark.data_scale(10)
 @pytest.mark.data_mean(300)
 def test_flat_correct_variance(ccd_data):
@@ -369,6 +367,8 @@ def test_flat_correct_variance(ccd_data):
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat = create_variance(flat, readnoise=0.5 * u.electron)
     ccd_data = flat_correct(ccd_data, flat)
+
+    
 
 
 # tests for gain correction
@@ -385,3 +385,53 @@ def test_gain_correct_quantity(ccd_data):
 
     assert_array_equal(ccd_data.data, 3 * init_data)
     assert ccd_data.unit == u.electron
+
+#test rebinning ndarray
+def test__rebin_ndarray(ccd_data):
+    with pytest.raises(TypeError):
+        _rebin(1, (5,5))
+
+#test rebinning dimensions
+@pytest.mark.data_size(10)
+def test__rebin_dimensions(ccd_data):
+    with pytest.raises(ValueError):
+        _rebin(ccd_data.data, (5,))
+
+#test rebinning works
+@pytest.mark.data_size(10)
+def test__rebin_larger(ccd_data):
+     a = ccd_data.data
+     b = _rebin(a, (20,20))
+
+     assert b.shape == (20,20)
+     np.testing.assert_almost_equal(b.sum(), 4 * a.sum())
+
+#test rebinning is invariant
+@pytest.mark.data_size(10)
+def test__rebin_smaller(ccd_data):
+     a = ccd_data.data
+     b = _rebin(a, (20, 20))
+     c = _rebin(b, (10, 10))
+
+     assert c.shape == (10,10)
+     assert (c-a).sum() == 0
+
+#test blockaveraging ndarray
+def test__blkavg_ndarray(ccd_data):
+    with pytest.raises(TypeError):
+        _blkavg(1, (5,5))
+
+#test rebinning dimensions
+@pytest.mark.data_size(10)
+def test__blkavg_dimensions(ccd_data):
+    with pytest.raises(ValueError):
+        _blkavg(ccd_data.data, (5,))
+
+#test blkavg works
+@pytest.mark.data_size(20)
+def test__blkavg_larger(ccd_data):
+     a = ccd_data.data
+     b = _blkavg(a, (10,10))
+
+     assert b.shape == (10,10)
+     np.testing.assert_almost_equal(b.sum(), 0.25 * a.sum())
