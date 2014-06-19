@@ -715,7 +715,7 @@ def _blkavg(data, newshape):
     return eval(''.join(evList))
 
 
-def cosmicray_lacosmic(data, background, thresh, fthresh=5, gthresh=1.5,
+def cosmicray_lacosmic(data, background, thresh=5, fthresh=5, gthresh=1.5,
         b_factor=2, mbox = 5, min_limit=0.01,
         f_conv=np.array([[0,-1,0],[-1,4,-1],[0,-1,0]])):
     """
@@ -836,7 +836,7 @@ def cosmicray_lacosmic(data, background, thresh, fthresh=5, gthresh=1.5,
     return crarr
 
 
-def cosmicray_median(data, background, thresh, mbox=11):
+def cosmicray_median(data, background, thresh=5, mbox=11):
     """
     Identify cosmic rays through median technique.  The median technique
     identifies cosmic rays by identifying pixels by subtracting a median image
@@ -897,13 +897,13 @@ def cosmicray_median(data, background, thresh, mbox=11):
 
 
 @log_to_metadata
-def cosmicray_clean(ccd, thresh, cr_func, crargs=(),
-                    background=None, bargs=(), gbox=0, rbox=0):
+def cosmicray_clean(ccd, thresh, cr_func, crargs={},
+                    background=None, bargs={}, gbox=0, rbox=0):
     """
     Cosmic ray clean a ccddata object.  This process will apply a cosmic ray
     cleaning method, cr_func, to a data set.  The cosmic rays will be
     identified based on being above a threshold, thresh, above the background.
-    The background can either be supplied by a function, an array or a single
+    The background can either be supplied by a function, an array, or a single
     number.
 
     Parameters
@@ -973,7 +973,7 @@ def cosmicray_clean(ccd, thresh, cr_func, crargs=(),
         background = background(data, *bargs)
 
     # identify the cosmic rays
-    crarr = cr_func(data, background=background, thresh=thresh, *crargs)
+    crarr = cr_func(data, background, thresh, *crargs)
 
     #create new output array
     newccd = ccd.copy()

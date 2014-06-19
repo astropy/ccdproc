@@ -160,6 +160,14 @@ def test_cosmicray_median_background_None(ccd_data):
     # check the number of cosmic rays detected
     assert crarr.sum() == NCRAYS
 
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_median_background_error(ccd_data):
+    with pytest.raises(TypeError):
+        crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11, 
+                                 background='blank')
+
+
+
 
 def test_background_variance_box():
     with NumpyRNGContext(123):
