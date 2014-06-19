@@ -973,7 +973,7 @@ def cosmicray_clean(ccd, thresh, cr_func, crargs=(),
         background = background(data, *bargs)
 
     # identify the cosmic rays
-    crarr = cr_func(data, background, thresh, *crargs)
+    crarr = cr_func(data, background=background, thresh=thresh, *crargs)
 
     #create new output array
     newccd = ccd.copy()
