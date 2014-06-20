@@ -113,14 +113,16 @@ With image scaling
 ------------------
 
 In some circumstances it may be convenient to scale all images to some value
-before combining them. Do so with:
+before combining them. Do so by setting `~ccdproc.Combiner.scaling`:
 
-    >>> combined_average_scaled = combiner.average_combine(scale_func=np.ma.mean,
-    ...                                                    scale_to=1.5)
+    >>> scaling_func = lambda arr: 1/np.ma.average(arr)
+    >>> combiner.scaling = scaling_func
+    >>> combined_average_scaled = combiner.average_combine()
 
-This will normalize each image by its mean then scale to 1.5 before combining
-(note that the underlying images are *not* scaled; scaling is only done as
-part of the averaging).
+This will normalize each image by its mean before combining (note that the
+underlying images are *not* scaled; scaling is only done as part of combining
+using `~ccdproc.Combiner.average_combine` or
+`~ccdproc.Combiner.median_combine`).
 
 With image transformation
 -------------------------

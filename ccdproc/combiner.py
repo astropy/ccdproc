@@ -85,6 +85,10 @@ class Combiner(object):
             else:
                 self.data_arr.mask[i] = ma.zeros((ydim, xdim))
 
+        # Must be after self.data_arr is defined because it checks the
+        # length of the data array.
+        self.scaling = None
+
     @property
     def weights(self):
         return self._weights
@@ -101,6 +105,46 @@ class Combiner(object):
                 raise TypeError("mask must be a Numpy array")
         else:
             self._weights = None
+
+    @property
+    def scaling(self):
+        """
+        Scaling factor used in combining images.
+
+        Parameters
+        ----------
+
+        scale : function or array-like or None, optional
+            Images are multiplied by scaling prior to combining them. Scaling
+            may be either a function, which will be applied to each image
+            to determine the scaling factor, or a list or array whose length
+            is the number of images in the `Combiner`. Default is ``None``.
+        """
+        return self._scaling
+
+    @scaling.setter
+    def scaling(self, value):
+        if value is None:
+            self._scaling = value
+        else:
+            n_images = self.data_arr.data.shape[0]
+            if callable(value):
+                print(value)
+                self._scaling = [value(self.data_arr[i]) for
+                                           i in range(n_images)]
+                print("len", len(self._scaling))
+                self._scaling = np.array(self._scaling)
+                print(self._scaling.shape)
+                print(n_images)
+            else:
+                try:
+                    len(value) == n_images
+                    self._scaling = np.array(value)
+                except TypeError:
+                    raise TypeError("Scaling must be a function or an array the "
+                                    "same length as the number of images.")
+            # reshape so that broadcasting occurs properly
+            self._scaling = self.scaling[:, np.newaxis, np.newaxis]
 
     #set up min/max clipping algorithms
     def minmax_clipping(self, min_clip=None, max_clip=None):
@@ -170,8 +214,7 @@ class Combiner(object):
             self.data_arr.mask[mask] = True
 
     #set up the combining algorithms
-    def median_combine(self, median_func=ma.median,
-                       scale_func=None, scale_to=1.0):
+    def median_combine(self, median_func=ma.median):
         """Median combine a set of arrays.
 
            A CCDData object is returned
@@ -188,14 +231,6 @@ class Combiner(object):
                Function that calculates median of a ``numpy.ma.masked_array``.
                Default is to use ``np.ma.median`` to calculate median.
 
-           scale_func : function, optional
-               A function (e.g. `~numpy.ma.median`) that should be used to
-               calculate a value for each image by which each image should
-               be scaled before combining.
-
-           scale_to : float, optional
-               Value to which data should be scaled using `scale_func`.
-
            Returns
            -------
            combined_image: `~ccdproc.CCDData`
@@ -207,10 +242,8 @@ class Combiner(object):
            deviation does not account for rejected pixels
 
         """
-        if scale_func:
-            scalings = scale_func(self.data_arr, axis=2)
-            scalings = scale_to/scale_func(scalings, axis=1)
-            scalings = scalings[:, np.newaxis, np.newaxis]
+        if self.scaling is not None:
+            scalings = self.scaling
         else:
             scalings = 1.0
 
@@ -244,27 +277,14 @@ class Combiner(object):
            uncertainty of the combined image is set by the standard deviation
            of the input images.
 
-           Parameters
-           ----------
-
-           scale_func : function, optional
-               A function (e.g. `~numpy.ma.median`) that should be used to
-               calculate a value for each image by which each image should
-               be scaled before combining.
-
-           scale_to : float, optional
-               Value to which data should be scaled using `scale_func`.
-
            Returns
            -------
            combined_image: `~ccdproc.CCDData`
                CCDData object based on the combined input of CCDData objects.
 
         """
-        if scale_func:
-            scalings = scale_func(self.data_arr, axis=2)
-            scalings = scale_to/scale_func(scalings, axis=1)
-            scalings = scalings[:, np.newaxis, np.newaxis]
+        if self.scaling is not None:
+            scalings = self.scaling
         else:
             scalings = 1.0
         #set up the data

@@ -213,15 +213,33 @@ def test_combiner_with_scaling(ccd_data):
     ccd_data_lower = ccd_data.multiply(3)
     ccd_data_higher = ccd_data.multiply(0.9)
     combiner = Combiner([ccd_data, ccd_data_higher, ccd_data_lower])
-    avg_ccd = combiner.average_combine(scale_func=np.ma.average,
-                                       scale_to=ccd_data.data.mean())
+    # scale each array to the mean of the first image
+    scale_by_mean = lambda x: ccd_data.data.mean()/np.ma.average(x)
+    combiner.scaling = scale_by_mean
+    avg_ccd = combiner.average_combine()
+    # Does the mean of the scaled arrays match the value to which it was
+    # scaled?
     np.testing.assert_almost_equal(avg_ccd.data.mean(),
                                    ccd_data.data.mean())
     assert avg_ccd.shape == ccd_data.shape
-    median_ccd = combiner.median_combine(scale_func=np.ma.average,
-                                         scale_to=ccd_data.data.mean())
+    median_ccd = combiner.median_combine()
+    # Does median also scale to the correct value?
     np.testing.assert_almost_equal(np.ma.median(median_ccd),
                                    np.ma.median(ccd_data.data))
+
+    # Set the scaling manually...
+    combiner.scaling = [scale_by_mean(combiner.data_arr[i]) for i in range(3)]
+    avg_ccd = combiner.average_combine()
+    np.testing.assert_almost_equal(avg_ccd.data.mean(),
+                                   ccd_data.data.mean())
+    assert avg_ccd.shape == ccd_data.shape
+
+
+def test_combiner_scaling_fails(ccd_data):
+    combiner = Combiner([ccd_data, ccd_data.copy()])
+    # Should fail unless scaling is set to a function or list-like
+    with pytest.raises(TypeError):
+        combiner.scaling = 5
 
 
 #test data combined with mask is created correctly
