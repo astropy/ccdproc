@@ -129,20 +129,16 @@ class Combiner(object):
         else:
             n_images = self.data_arr.data.shape[0]
             if callable(value):
-                print(value)
                 self._scaling = [value(self.data_arr[i]) for
-                                           i in range(n_images)]
-                print("len", len(self._scaling))
+                                 i in range(n_images)]
                 self._scaling = np.array(self._scaling)
-                print(self._scaling.shape)
-                print(n_images)
             else:
                 try:
                     len(value) == n_images
                     self._scaling = np.array(value)
                 except TypeError:
-                    raise TypeError("Scaling must be a function or an array the "
-                                    "same length as the number of images.")
+                    raise TypeError("Scaling must be a function or an array "
+                                    "the same length as the number of images.")
             # reshape so that broadcasting occurs properly
             self._scaling = self.scaling[:, np.newaxis, np.newaxis]
 
