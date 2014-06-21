@@ -85,6 +85,10 @@ class Combiner(object):
             else:
                 self.data_arr.mask[i] = ma.zeros((ydim, xdim))
 
+        # Must be after self.data_arr is defined because it checks the
+        # length of the data array.
+        self.scaling = None
+
     @property
     def weights(self):
         return self._weights
@@ -101,6 +105,42 @@ class Combiner(object):
                 raise TypeError("mask must be a Numpy array")
         else:
             self._weights = None
+
+    @property
+    def scaling(self):
+        """
+        Scaling factor used in combining images.
+
+        Parameters
+        ----------
+
+        scale : function or array-like or None, optional
+            Images are multiplied by scaling prior to combining them. Scaling
+            may be either a function, which will be applied to each image
+            to determine the scaling factor, or a list or array whose length
+            is the number of images in the `Combiner`. Default is ``None``.
+        """
+        return self._scaling
+
+    @scaling.setter
+    def scaling(self, value):
+        if value is None:
+            self._scaling = value
+        else:
+            n_images = self.data_arr.data.shape[0]
+            if callable(value):
+                self._scaling = [value(self.data_arr[i]) for
+                                 i in range(n_images)]
+                self._scaling = np.array(self._scaling)
+            else:
+                try:
+                    len(value) == n_images
+                    self._scaling = np.array(value)
+                except TypeError:
+                    raise TypeError("Scaling must be a function or an array "
+                                    "the same length as the number of images.")
+            # reshape so that broadcasting occurs properly
+            self._scaling = self.scaling[:, np.newaxis, np.newaxis]
 
     #set up min/max clipping algorithms
     def minmax_clipping(self, min_clip=None, max_clip=None):
@@ -198,8 +238,13 @@ class Combiner(object):
            deviation does not account for rejected pixels
 
         """
+        if self.scaling is not None:
+            scalings = self.scaling
+        else:
+            scalings = 1.0
+
         #set the data
-        data = median_func(self.data_arr, axis=0)
+        data = median_func(scalings * self.data_arr, axis=0)
 
         #set the mask
         mask = self.data_arr.mask.sum(axis=0)
@@ -219,7 +264,7 @@ class Combiner(object):
         #return the combined image
         return combined_image
 
-    def average_combine(self):
+    def average_combine(self, scale_func=None, scale_to=1.0):
         """Average combine together a set of arrays.   A CCDData object is
            returned with the data property set to the average of the arrays.
            If the data was masked or any data have been rejected, those pixels
@@ -234,8 +279,13 @@ class Combiner(object):
                CCDData object based on the combined input of CCDData objects.
 
         """
+        if self.scaling is not None:
+            scalings = self.scaling
+        else:
+            scalings = 1.0
         #set up the data
-        data, wei = ma.average(self.data_arr, axis=0, weights=self.weights,
+        data, wei = ma.average(scalings * self.data_arr,
+                               axis=0, weights=self.weights,
                                returned=True)
 
         #set up the mask
