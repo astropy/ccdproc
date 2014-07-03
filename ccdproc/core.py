@@ -22,7 +22,7 @@ from .log_meta import log_to_metadata
 __all__ = ['background_variance_box', 'background_variance_filter',
            'cosmicray_clean', 'cosmicray_median', 'cosmicray_lacosmic',
            'create_variance', 'flat_correct', 'transform_image',
-           'gain_correct', 'sigma_func', 'subtract_bias', 'subtract_dark', 
+           'gain_correct', 'sigma_func', 'subtract_bias', 'subtract_dark',
            'subtract_overscan', 'trim_image', 'Keyword']
 
 # The dictionary below is used to translate actual function names to names
@@ -479,9 +479,10 @@ def flat_correct(ccd, flat, min_value=None):
                                              use_flat.unit)
     return flat_corrected
 
+
 @log_to_metadata
 def transform_image(ccd, transform_func, **kwargs):
-    """Transform the image 
+    """Transform the image
 
     Using the function specified by transform_func, the transform will
     be applied to all planes in ccd.
@@ -502,14 +503,14 @@ def transform_image(ccd, transform_func, **kwargs):
     Returns
     -------
     ccd :  `~ccdproc.ccddata.CCDData`
-        A transformed CCDData object 
+        A transformed CCDData object
 
     Note
     ----
 
-    At this time, transform will be applied to the uncertainy data but it 
+    At this time, transform will be applied to the uncertainy data but it
     will only transform the data.  This may not properly handle uncertainties
-    that arise due to correlation between the pixels. 
+    that arise due to correlation between the pixels.
 
     Examples
     --------
@@ -520,8 +521,8 @@ def transform_image(ccd, transform_func, **kwargs):
     >>> from astropy import units as u
     >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
 
-    the syntax for transforming the array using 
-    scipy.ndimage.interpolation.shift 
+    the syntax for transforming the array using
+    scipy.ndimage.interpolation.shift
 
     >>> from scipy.ndimage.interpolation import shift
     >>> transformed = transform(arr1, shift, shift=(5.5, 8.1))
@@ -538,7 +539,7 @@ def transform_image(ccd, transform_func, **kwargs):
     #make a copy of the object
     nccd = ccd.copy()
 
-    #transform the image plane 
+    #transform the image plane
     nccd.data = transform_func(nccd.data, **kwargs)
 
     #transform the uncertainty plane if it exists
@@ -552,6 +553,7 @@ def transform_image(ccd, transform_func, **kwargs):
         nccd.mask = (nccd.mask > 0)
 
     return nccd
+
 
 def sigma_func(arr):
     """
@@ -775,23 +777,23 @@ def _blkavg(data, newshape):
         raise TypeError('data is not a ndarray object')
 
     #check to see that the two arrays are going to be the same length
-    if len(data.shape)!=len(newshape):
+    if len(data.shape) != len(newshape):
         raise ValueError('newshape does not have the same dimensions as data')
 
-    shape=data.shape
+    shape = data.shape
     lenShape = len(shape)
     factor = np.asarray(shape)/np.asarray(newshape)
 
     evList = ['data.reshape('] + \
-        ['newshape[%d],factor[%d],'%(i,i) for i in range(lenShape)] + \
-        [')'] + ['.mean(%d)'%(i+1) for i in range(lenShape)]
+        ['newshape[%d],factor[%d],' % (i, i) for i in range(lenShape)] + \
+        [')'] + ['.mean(%d)' % (i + 1) for i in range(lenShape)]
 
     return eval(''.join(evList))
 
 
-def cosmicray_lacosmic(data, background, thresh=5, fthresh=5, gthresh=1.5,
-        b_factor=2, mbox = 5, min_limit=0.01,
-        f_conv=np.array([[0,-1,0],[-1,4,-1],[0,-1,0]])):
+def cosmicray_lacosmic(data, background, thresh=5, fthresh=5,
+                       gthresh=1.5, b_factor=2, mbox=5, min_limit=0.01,
+                       f_conv=np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])):
     """
     Identify cosmic rays through the lacosmic technique. The lacosmic technique
     identifies cosmic rays by identifying pixels based on a variation of the
@@ -863,18 +865,18 @@ def cosmicray_lacosmic(data, background, thresh=5, fthresh=5, gthresh=1.5,
         raise ValueError('background is not the same shape as data')
 
     #set up a copy of the array and original shape
-    shape=data.shape
+    shape = data.shape
 
     #rebin the data
-    newshape = (b_factor*shape[0],b_factor*shape[1])
+    newshape = (b_factor*shape[0], b_factor*shape[1])
     ldata = _rebin(data, newshape)
 
     #convolve with f_conv
-    ldata=ndimage.filters.convolve(ldata,f_conv)
-    ldata[ldata<=0] = 0
+    ldata = ndimage.filters.convolve(ldata, f_conv)
+    ldata[ldata <= 0] = 0
 
     #return to the original binning
-    ldata = _blkavg(ldata,shape)
+    ldata = _blkavg(ldata, shape)
 
     #median the noise image
     med_noise = ndimage.median_filter(background, size=(mbox, mbox))
@@ -887,28 +889,27 @@ def cosmicray_lacosmic(data, background, thresh=5, fthresh=5, gthresh=1.5,
     sndata = sndata - mdata
 
     #select objects
-    masks = (sndata>thresh)
+    masks = (sndata > thresh)
 
     #remove compact bright sources
-    fdata =  ndimage.median_filter(data, size=(mbox-2, mbox-2))
-    fdata -=  ndimage.median_filter(data, size=(mbox+2, mbox+2))
+    fdata = ndimage.median_filter(data, size=(mbox-2, mbox-2))
+    fdata = fdata - ndimage.median_filter(data, size=(mbox+2, mbox+2))
     fdata = fdata / med_noise
 
     # set a minimum value for all pixels so no divide by zero problems
-    fdata[fdata<min_limit] = min_limit
+    fdata[fdata < min_limit] = min_limit
 
     fdata = sndata * masks / fdata
     maskf = (fdata > fthresh)
 
     #make the list of cosmic rays
-    crarr =  masks * (fdata > fthresh)
+    crarr = masks * (fdata > fthresh)
 
     #check any of the neighboring pixels
-    gdata = sndata * ndimage.filters.maximum_filter(crarr,size=(3,3))
+    gdata = sndata * ndimage.filters.maximum_filter(crarr, size=(3, 3))
     crarr = crarr * (gdata > gthresh)
 
     return crarr
-
 
 
 def cosmicray_median(data, background, thresh=5, mbox=11):
@@ -1029,7 +1030,7 @@ def cosmicray_clean(ccd, thresh, cr_func, crargs={},
     estimated in a box around the image.  It will then replace bad pixel value
     with the median of the pixels in an 11 pixel wide box around the bad pixel.
 
-        >>> from ccdproc import background_variance_box,cosmicray_median, cosmicray_clean
+        >>> from ccdproc import background_variance_box, cosmicray_median, cosmicray_clean
         >>> cosmicray_clean(ccddata, 10, cosmicray_median, crargs=(11,),
                background=background_variance_box, bargs=(25,), rbox=11)
 
