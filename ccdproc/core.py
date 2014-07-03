@@ -21,9 +21,9 @@ from .log_meta import log_to_metadata
 
 __all__ = ['background_variance_box', 'background_variance_filter',
            'cosmicray_clean', 'cosmicray_median', 'cosmicray_lacosmic',
-           'create_variance', 'flat_correct', 'gain_correct', 'sigma_func',
-           'subtract_bias', 'subtract_dark', 'subtract_overscan',
-           'trim_image', 'Keyword']
+           'create_variance', 'flat_correct', 'transform_image',
+           'gain_correct', 'sigma_func', 'subtract_bias', 'subtract_dark', 
+           'subtract_overscan', 'trim_image', 'Keyword']
 
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
@@ -38,6 +38,7 @@ _short_names = {
     'subtract_dark': 'subdark',
     'subtract_overscan': 'suboscan',
     'trim_image': 'trimim',
+    'transform_image': 'tranim',
 }
 
 
@@ -478,6 +479,79 @@ def flat_correct(ccd, flat, min_value=None):
                                              use_flat.unit)
     return flat_corrected
 
+@log_to_metadata
+def transform_image(ccd, transform_func, **kwargs):
+    """Transform the image 
+
+    Using the function specified by transform_func, the transform will
+    be applied to all planes in ccd.
+
+    Parameters
+    ----------
+    ccd : `~ccdproc.ccddata.CCDData`
+        Data to be flatfield corrected
+
+    transform_func : function
+        Function to be used to transform the data
+
+    kwargs: dict
+        Dictionary of arguments to be used by the transform_func.
+
+    {log}
+
+    Returns
+    -------
+    ccd :  `~ccdproc.ccddata.CCDData`
+        A transformed CCDData object 
+
+    Note
+    ----
+
+    At this time, transform will be applied to the uncertainy data but it 
+    will only transform the data.  This may not properly handle uncertainties
+    that arise due to correlation between the pixels. 
+
+    Examples
+    --------
+
+    Given an array that is 100x100,
+
+    >>> import numpy as np
+    >>> from astropy import units as u
+    >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
+
+    the syntax for transforming the array using 
+    scipy.ndimage.interpolation.shift 
+
+    >>> from scipy.ndimage.interpolation import shift
+    >>> transformed = transform(arr1, shift, shift=(5.5, 8.1))
+
+    """
+    #check that it is a ccddata object
+    if not (isinstance(ccd, CCDData)):
+        raise TypeError('ccd is not a CCDData')
+
+    #check that transform is a callable function
+    if not hasattr(transform_func, '__call__'):
+        raise TypeError('transform is not a function')
+
+    #make a copy of the object
+    nccd = ccd.copy()
+
+    #transform the image plane 
+    nccd.data = transform_func(nccd.data, **kwargs)
+
+    #transform the uncertainty plane if it exists
+    if nccd.uncertainty is not None:
+        nccd.uncertainty.array = transform_func(nccd.uncertainty.array,
+                                                **kwargs)
+
+    #transform the mask plane
+    if nccd.mask is not None:
+        nccd.mask = transform_func(nccd.mask, **kwargs)
+        nccd.mask = (nccd.mask > 0)
+
+    return nccd
 
 def sigma_func(arr):
     """
@@ -834,6 +908,7 @@ def cosmicray_lacosmic(data, background, thresh=5, fthresh=5, gthresh=1.5,
     crarr = crarr * (gdata > gthresh)
 
     return crarr
+
 
 
 def cosmicray_median(data, background, thresh=5, mbox=11):

@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-# This module implements the base CCDData class.
+# This module implements the base CCDData class
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
@@ -207,6 +207,7 @@ def test_trim_image_fits_section(ccd_data, mask_data, uncertainty):
         assert trimmed.shape == trimmed.uncertainty.array.shape
 
 
+
 @pytest.mark.data_size(50)
 def test_trim_image_no_section(ccd_data):
     trimmed = trim_image(ccd_data[:, 19:40])
@@ -385,6 +386,42 @@ def test_gain_correct_quantity(ccd_data):
 
     assert_array_equal(ccd_data.data, 3 * init_data)
     assert ccd_data.unit == u.electron
+
+#test transform is ccd
+def test_transform_isccd(ccd_data):
+    with pytest.raises(TypeError):
+        transform_image(1, 1)
+
+#test function is callable
+def test_transform_isfunc(ccd_data):
+    with pytest.raises(TypeError):
+        transform_image(ccd_data, 1)
+
+@pytest.mark.parametrize('mask_data, uncertainty', [
+                         (False, False),
+                         (True, True)])
+@pytest.mark.data_size(50)
+def test_transform_image(ccd_data, mask_data, uncertainty):
+    if mask_data:
+        ccd_data.mask = np.zeros_like(ccd_data)
+        ccd_data.mask[10,10] = 1
+    if uncertainty:
+        err = np.random.normal(size=ccd_data.shape)
+        ccd_data.uncertainty = StdDevUncertainty(err)
+    def tran(arr):
+        return 10 * arr
+
+    tran = transform_image(ccd_data, tran)
+
+    assert_array_equal(10 * ccd_data.data, tran.data)
+    if mask_data:
+        assert tran.shape == tran.mask.shape
+        assert_array_equal(ccd_data.mask, tran.mask)
+    if uncertainty:
+        assert tran.shape == tran.uncertainty.array.shape
+        assert_array_equal(10 * ccd_data.uncertainty.array, tran.uncertainty.array)
+    
+
 
 #test rebinning ndarray
 def test__rebin_ndarray(ccd_data):
