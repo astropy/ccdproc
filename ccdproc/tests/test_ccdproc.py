@@ -18,6 +18,7 @@ from ..ccddata import CCDData
 from ..core import *
 from ..core import _rebin, _blkavg
 
+
 # test creating variance
 # success expected if u_image * u_gain = u_readnoise
 @pytest.mark.parametrize('u_image,u_gain,u_readnoise,expect_succes', [
@@ -207,7 +208,6 @@ def test_trim_image_fits_section(ccd_data, mask_data, uncertainty):
         assert trimmed.shape == trimmed.uncertainty.array.shape
 
 
-
 @pytest.mark.data_size(50)
 def test_trim_image_no_section(ccd_data):
     trimmed = trim_image(ccd_data[:, 19:40])
@@ -369,8 +369,6 @@ def test_flat_correct_variance(ccd_data):
     flat = create_variance(flat, readnoise=0.5 * u.electron)
     ccd_data = flat_correct(ccd_data, flat)
 
-    
-
 
 # tests for gain correction
 def test_gain_correct(ccd_data):
@@ -387,15 +385,18 @@ def test_gain_correct_quantity(ccd_data):
     assert_array_equal(ccd_data.data, 3 * init_data)
     assert ccd_data.unit == u.electron
 
+
 #test transform is ccd
 def test_transform_isccd(ccd_data):
     with pytest.raises(TypeError):
         transform_image(1, 1)
 
+
 #test function is callable
 def test_transform_isfunc(ccd_data):
     with pytest.raises(TypeError):
         transform_image(ccd_data, 1)
+
 
 @pytest.mark.parametrize('mask_data, uncertainty', [
                          (False, False),
@@ -404,10 +405,11 @@ def test_transform_isfunc(ccd_data):
 def test_transform_image(ccd_data, mask_data, uncertainty):
     if mask_data:
         ccd_data.mask = np.zeros_like(ccd_data)
-        ccd_data.mask[10,10] = 1
+        ccd_data.mask[10, 10] = 1
     if uncertainty:
         err = np.random.normal(size=ccd_data.shape)
         ccd_data.uncertainty = StdDevUncertainty(err)
+
     def tran(arr):
         return 10 * arr
 
@@ -419,14 +421,15 @@ def test_transform_image(ccd_data, mask_data, uncertainty):
         assert_array_equal(ccd_data.mask, tran.mask)
     if uncertainty:
         assert tran.shape == tran.uncertainty.array.shape
-        assert_array_equal(10 * ccd_data.uncertainty.array, tran.uncertainty.array)
-    
+        assert_array_equal(10 * ccd_data.uncertainty.array,
+                           tran.uncertainty.array)
 
 
 #test rebinning ndarray
 def test__rebin_ndarray(ccd_data):
     with pytest.raises(TypeError):
-        _rebin(1, (5,5))
+        _rebin(1, (5, 5))
+
 
 #test rebinning dimensions
 @pytest.mark.data_size(10)
@@ -434,29 +437,33 @@ def test__rebin_dimensions(ccd_data):
     with pytest.raises(ValueError):
         _rebin(ccd_data.data, (5,))
 
+
 #test rebinning works
 @pytest.mark.data_size(10)
 def test__rebin_larger(ccd_data):
-     a = ccd_data.data
-     b = _rebin(a, (20,20))
+    a = ccd_data.data
+    b = _rebin(a, (20, 20))
 
-     assert b.shape == (20,20)
-     np.testing.assert_almost_equal(b.sum(), 4 * a.sum())
+    assert b.shape == (20, 20)
+    np.testing.assert_almost_equal(b.sum(), 4 * a.sum())
+
 
 #test rebinning is invariant
 @pytest.mark.data_size(10)
 def test__rebin_smaller(ccd_data):
-     a = ccd_data.data
-     b = _rebin(a, (20, 20))
-     c = _rebin(b, (10, 10))
+    a = ccd_data.data
+    b = _rebin(a, (20, 20))
+    c = _rebin(b, (10, 10))
 
-     assert c.shape == (10,10)
-     assert (c-a).sum() == 0
+    assert c.shape == (10, 10)
+    assert (c-a).sum() == 0
+
 
 #test blockaveraging ndarray
 def test__blkavg_ndarray(ccd_data):
     with pytest.raises(TypeError):
-        _blkavg(1, (5,5))
+        _blkavg(1, (5, 5))
+
 
 #test rebinning dimensions
 @pytest.mark.data_size(10)
@@ -464,11 +471,12 @@ def test__blkavg_dimensions(ccd_data):
     with pytest.raises(ValueError):
         _blkavg(ccd_data.data, (5,))
 
+
 #test blkavg works
 @pytest.mark.data_size(20)
 def test__blkavg_larger(ccd_data):
-     a = ccd_data.data
-     b = _blkavg(a, (10,10))
+    a = ccd_data.data
+    b = _blkavg(a, (10, 10))
 
-     assert b.shape == (10,10)
-     np.testing.assert_almost_equal(b.sum(), 0.25 * a.sum())
+    assert b.shape == (10, 10)
+    np.testing.assert_almost_equal(b.sum(), 0.25 * a.sum())
