@@ -707,12 +707,12 @@ def rebin(ccd, newshape):
     -------
     output : `~ccdproc.CCDData` or `~numpy.ndarray`
         An array with the new shape.  It will have the same type as the input
-        object. 
+        object.
 
     Raises
     ------
     TypeError
-        A type error is raised if data is not an `numpy.ndarray` or 
+        A type error is raised if data is not an `numpy.ndarray` or
         `~ccdproc.CCDData`
 
     ValueError
@@ -724,8 +724,8 @@ def rebin(ccd, newshape):
     This is based on the scipy cookbook for rebinning:
     http://wiki.scipy.org/Cookbook/Rebinning
 
-    If rebinning a CCDData object to a smaller shape, there is no guarantee that the 
-    masking or uncertainty are handled correctly
+    If rebinning a CCDData object to a smaller shape, the masking and
+    uncertainty are not handled correctly.
 
     Examples
     --------
@@ -736,10 +736,9 @@ def rebin(ccd, newshape):
     >>> arr1 = CCDData(np.ones([10, 10]), unit=u.adu)
 
     the syntax for rebinning an array to a shape
-    of (20,20) is 
+    of (20,20) is
 
     >>> rebinned = rebin(arr1, (20,20))
-
 
     """
     #check to see that is in a nddata type
@@ -761,17 +760,17 @@ def rebin(ccd, newshape):
             raise ValueError('newshape does not have the same dimensions as ccd')
 
         nccd = ccd.copy()
-        #rebin the data plane 
+        #rebin the data plane
         nccd.data = rebin(nccd.data, newshape)
 
         #rebin the uncertainty plane
         if nccd.uncertainty is not None:
-           nccd.uncertainty.array = rebin(nccd.uncertainty.array, newshape)
+            nccd.uncertainty.array = rebin(nccd.uncertainty.array, newshape)
 
-        #rebin the mask plane 
+        #rebin the mask plane
         if nccd.mask is not None:
-           nccd.mask = rebin(nccd.mask, newshape)
-   
+            nccd.mask = rebin(nccd.mask, newshape)
+
         return nccd
     else:
         raise TypeError('ccd is not an ndarray or a CCDData object')
