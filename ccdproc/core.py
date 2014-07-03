@@ -21,9 +21,9 @@ from .log_meta import log_to_metadata
 
 __all__ = ['background_variance_box', 'background_variance_filter',
            'cosmicray_clean', 'cosmicray_median', 'cosmicray_lacosmic',
-           'create_variance', 'flat_correct', 'transform_image',
-           'gain_correct', 'sigma_func', 'subtract_bias', 'subtract_dark',
-           'subtract_overscan', 'trim_image', 'Keyword']
+           'create_variance', 'flat_correct', 'gain_correct', 'rebin',
+           'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
+           'transform_image', 'trim_image', 'Keyword']
 
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
@@ -505,8 +505,8 @@ def transform_image(ccd, transform_func, **kwargs):
     ccd :  `~ccdproc.ccddata.CCDData`
         A transformed CCDData object
 
-    Note
-    ----
+    Notes
+    -----
 
     At this time, transform will be applied to the uncertainy data but it
     will only transform the data.  This may not properly handle uncertainties
@@ -691,13 +691,13 @@ def background_variance_filter(data, bbox):
     return ndimage.generic_filter(data, sigma_func, size=(bbox, bbox))
 
 
-def _rebin(data, newshape):
+def rebin(ccd, newshape):
     """
     Rebin an array to have a new shape
 
     Parameters
     ----------
-    data : `~numpy.ndarray`
+    data : `~ccdproc.CCDData` or `~numpy.ndarray`
         Data to rebin
 
     newshape : tuple
@@ -705,13 +705,15 @@ def _rebin(data, newshape):
 
     Returns
     -------
-    output : `~numpy.ndarray`
-        An array with the new shape
+    output : `~ccdproc.CCDData` or `~numpy.ndarray`
+        An array with the new shape.  It will have the same type as the input
+        object. 
 
     Raises
     ------
     TypeError
-        A type error is raised if data is not an `numpy.ndarray`
+        A type error is raised if data is not an `numpy.ndarray` or 
+        `~ccdproc.CCDData`
 
     ValueError
         A value error is raised if the dimenisions of new shape is not equal
@@ -722,23 +724,57 @@ def _rebin(data, newshape):
     This is based on the scipy cookbook for rebinning:
     http://wiki.scipy.org/Cookbook/Rebinning
 
+    If rebinning a CCDData object to a smaller shape, there is no guarantee that the 
+    masking or uncertainty are handled correctly
+
     Examples
     --------
+    Given an array that is 100x100,
+
+    >>> import numpy as np
+    >>> from astropy import units as u
+    >>> arr1 = CCDData(np.ones([10, 10]), unit=u.adu)
+
+    the syntax for rebinning an array to a shape
+    of (20,20) is 
+
+    >>> rebinned = rebin(arr1, (20,20))
+
 
     """
     #check to see that is in a nddata type
-    if not isinstance(data, np.ndarray):
-        raise TypeError('data is not a ndarray object')
+    if isinstance(ccd, np.ndarray):
 
-    #check to see that the two arrays are going to be the same length
-    if len(data.shape) != len(newshape):
-        raise ValueError('newshape does not have the same dimensions as data')
+        #check to see that the two arrays are going to be the same length
+        if len(ccd.shape) != len(newshape):
+            raise ValueError('newshape does not have the same dimensions as ccd')
 
-    slices = [slice(0, old, float(old)/new) for old, new in
-              zip(data.shape, newshape)]
-    coordinates = np.mgrid[slices]
-    indices = coordinates.astype('i')
-    return data[tuple(indices)]
+        slices = [slice(0, old, float(old)/new) for old, new in
+                  zip(ccd.shape, newshape)]
+        coordinates = np.mgrid[slices]
+        indices = coordinates.astype('i')
+        return ccd[tuple(indices)]
+
+    elif isinstance(ccd, CCDData):
+        #check to see that the two arrays are going to be the same length
+        if len(ccd.shape) != len(newshape):
+            raise ValueError('newshape does not have the same dimensions as ccd')
+
+        nccd = ccd.copy()
+        #rebin the data plane 
+        nccd.data = rebin(nccd.data, newshape)
+
+        #rebin the uncertainty plane
+        if nccd.uncertainty is not None:
+           nccd.uncertainty.array = rebin(nccd.uncertainty.array, newshape)
+
+        #rebin the mask plane 
+        if nccd.mask is not None:
+           nccd.mask = rebin(nccd.mask, newshape)
+   
+        return nccd
+    else:
+        raise TypeError('ccd is not an ndarray or a CCDData object')
 
 
 def _blkavg(data, newshape):
@@ -869,7 +905,7 @@ def cosmicray_lacosmic(data, background, thresh=5, fthresh=5,
 
     #rebin the data
     newshape = (b_factor*shape[0], b_factor*shape[1])
-    ldata = _rebin(data, newshape)
+    ldata = rebin(data, newshape)
 
     #convolve with f_conv
     ldata = ndimage.filters.convolve(ldata, f_conv)
