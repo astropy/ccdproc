@@ -437,6 +437,7 @@ def test_rebin_dimensions(ccd_data):
     with pytest.raises(ValueError):
         rebin(ccd_data.data, (5,))
 
+
 #test rebinning dimensions
 @pytest.mark.data_size(10)
 def test_rebin_ccddata_dimensions(ccd_data):
@@ -464,6 +465,7 @@ def test_rebin_smaller(ccd_data):
     assert c.shape == (10, 10)
     assert (c-a).sum() == 0
 
+
 #test rebinning with ccddata object
 @pytest.mark.parametrize('mask_data, uncertainty', [
                          (False, False),
@@ -478,12 +480,11 @@ def test_rebin_ccddata(ccd_data, mask_data, uncertainty):
 
     b = rebin(ccd_data, (20, 20))
 
-    assert b.shape == (20,20)
+    assert b.shape == (20, 20)
     if mask_data:
-        assert b.mask.shape == (20,20)
+        assert b.mask.shape == (20, 20)
     if uncertainty:
-        assert b.uncertainty.array.shape == (20,20)
-
+        assert b.uncertainty.array.shape == (20, 20)
 
 
 #test blockaveraging ndarray
