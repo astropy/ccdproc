@@ -21,9 +21,9 @@ from .log_meta import log_to_metadata
 
 __all__ = ['background_variance_box', 'background_variance_filter',
            'cosmicray_clean', 'cosmicray_median', 'cosmicray_lacosmic',
-           'create_variance', 'flat_correct', 'gain_correct', 'sigma_func',
-           'subtract_bias', 'subtract_dark', 'subtract_overscan',
-           'trim_image', 'Keyword']
+           'create_variance', 'flat_correct', 'gain_correct', 'rebin',
+           'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
+           'transform_image', 'trim_image', 'Keyword']
 
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
@@ -38,6 +38,7 @@ _short_names = {
     'subtract_dark': 'subdark',
     'subtract_overscan': 'suboscan',
     'trim_image': 'trimim',
+    'transform_image': 'tranim',
 }
 
 
@@ -479,6 +480,84 @@ def flat_correct(ccd, flat, min_value=None):
     return flat_corrected
 
 
+@log_to_metadata
+def transform_image(ccd, transform_func, **kwargs):
+    """Transform the image
+
+    Using the function specified by transform_func, the transform will
+    be applied to data, uncertainty, and mask in ccd.
+
+    Parameters
+    ----------
+    ccd : `~ccdproc.ccddata.CCDData`
+        Data to be flatfield corrected
+
+    transform_func : function
+        Function to be used to transform the data
+
+    kwargs: dict
+        Dictionary of arguments to be used by the transform_func.
+
+    {log}
+
+    Returns
+    -------
+    ccd :  `~ccdproc.ccddata.CCDData`
+        A transformed CCDData object
+
+    Notes
+    -----
+
+    At this time, transform will be applied to the uncertainy data but it
+    will only transform the data.  This will not properly handle uncertainties
+    that arise due to correlation between the pixels.
+
+    These should only be geometric transformations of the images.  Other
+    methods should be used if the units of ccd need to be changed.
+
+    Examples
+    --------
+
+    Given an array that is 100x100,
+
+    >>> import numpy as np
+    >>> from astropy import units as u
+    >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
+
+    the syntax for transforming the array using
+    scipy.ndimage.interpolation.shift
+
+    >>> from scipy.ndimage.interpolation import shift
+    >>> transformed = transform(arr1, shift, shift=(5.5, 8.1))
+
+    """
+    #check that it is a ccddata object
+    if not (isinstance(ccd, CCDData)):
+        raise TypeError('ccd is not a CCDData')
+
+    #check that transform is a callable function
+    if not hasattr(transform_func, '__call__'):
+        raise TypeError('transform is not a function')
+
+    #make a copy of the object
+    nccd = ccd.copy()
+
+    #transform the image plane
+    nccd.data = transform_func(nccd.data, **kwargs)
+
+    #transform the uncertainty plane if it exists
+    if nccd.uncertainty is not None:
+        nccd.uncertainty.array = transform_func(nccd.uncertainty.array,
+                                                **kwargs)
+
+    #transform the mask plane
+    if nccd.mask is not None:
+        mask = transform_func(nccd.mask, **kwargs)
+        nccd.mask = (mask > 0)
+
+    return nccd
+
+
 def sigma_func(arr):
     """
     Robust method for calculating the variance of an array. ``sigma_func`` uses
@@ -615,13 +694,13 @@ def background_variance_filter(data, bbox):
     return ndimage.generic_filter(data, sigma_func, size=(bbox, bbox))
 
 
-def _rebin(data, newshape):
+def rebin(ccd, newshape):
     """
-    Rebin an array to have a new shape
+    Rebin an array to have a new shape.
 
     Parameters
     ----------
-    data : `~numpy.ndarray`
+    data : `~ccdproc.CCDData` or `~numpy.ndarray`
         Data to rebin
 
     newshape : tuple
@@ -629,13 +708,15 @@ def _rebin(data, newshape):
 
     Returns
     -------
-    output : `~numpy.ndarray`
-        An array with the new shape
+    output : `~ccdproc.CCDData` or `~numpy.ndarray`
+        An array with the new shape.  It will have the same type as the input
+        object.
 
     Raises
     ------
     TypeError
-        A type error is raised if data is not an `numpy.ndarray`
+        A type error is raised if data is not an `numpy.ndarray` or
+        `~ccdproc.CCDData`
 
     ValueError
         A value error is raised if the dimenisions of new shape is not equal
@@ -646,23 +727,56 @@ def _rebin(data, newshape):
     This is based on the scipy cookbook for rebinning:
     http://wiki.scipy.org/Cookbook/Rebinning
 
+    If rebinning a CCDData object to a smaller shape, the masking and
+    uncertainty are not handled correctly.
+
     Examples
     --------
+    Given an array that is 100x100,
+
+    >>> import numpy as np
+    >>> from astropy import units as u
+    >>> arr1 = CCDData(np.ones([10, 10]), unit=u.adu)
+
+    the syntax for rebinning an array to a shape
+    of (20,20) is
+
+    >>> rebinned = rebin(arr1, (20,20))
 
     """
     #check to see that is in a nddata type
-    if not isinstance(data, np.ndarray):
-        raise TypeError('data is not a ndarray object')
+    if isinstance(ccd, np.ndarray):
 
-    #check to see that the two arrays are going to be the same length
-    if len(data.shape) != len(newshape):
-        raise ValueError('newshape does not have the same dimensions as data')
+        #check to see that the two arrays are going to be the same length
+        if len(ccd.shape) != len(newshape):
+            raise ValueError('newshape does not have the same dimensions as ccd')
 
-    slices = [slice(0, old, float(old)/new) for old, new in
-              zip(data.shape, newshape)]
-    coordinates = np.mgrid[slices]
-    indices = coordinates.astype('i')
-    return data[tuple(indices)]
+        slices = [slice(0, old, old/new) for old, new in
+                  zip(ccd.shape, newshape)]
+        coordinates = np.mgrid[slices]
+        indices = coordinates.astype('i')
+        return ccd[tuple(indices)]
+
+    elif isinstance(ccd, CCDData):
+        #check to see that the two arrays are going to be the same length
+        if len(ccd.shape) != len(newshape):
+            raise ValueError('newshape does not have the same dimensions as ccd')
+
+        nccd = ccd.copy()
+        #rebin the data plane
+        nccd.data = rebin(nccd.data, newshape)
+
+        #rebin the uncertainty plane
+        if nccd.uncertainty is not None:
+            nccd.uncertainty.array = rebin(nccd.uncertainty.array, newshape)
+
+        #rebin the mask plane
+        if nccd.mask is not None:
+            nccd.mask = rebin(nccd.mask, newshape)
+
+        return nccd
+    else:
+        raise TypeError('ccd is not an ndarray or a CCDData object')
 
 
 def _blkavg(data, newshape):
@@ -701,23 +815,23 @@ def _blkavg(data, newshape):
         raise TypeError('data is not a ndarray object')
 
     #check to see that the two arrays are going to be the same length
-    if len(data.shape)!=len(newshape):
+    if len(data.shape) != len(newshape):
         raise ValueError('newshape does not have the same dimensions as data')
 
-    shape=data.shape
+    shape = data.shape
     lenShape = len(shape)
     factor = np.asarray(shape)/np.asarray(newshape)
 
     evList = ['data.reshape('] + \
-        ['newshape[%d],factor[%d],'%(i,i) for i in range(lenShape)] + \
-        [')'] + ['.mean(%d)'%(i+1) for i in range(lenShape)]
+        ['newshape[%d],factor[%d],' % (i, i) for i in range(lenShape)] + \
+        [')'] + ['.mean(%d)' % (i + 1) for i in range(lenShape)]
 
     return eval(''.join(evList))
 
 
-def cosmicray_lacosmic(data, background, thresh=5, fthresh=5, gthresh=1.5,
-        b_factor=2, mbox = 5, min_limit=0.01,
-        f_conv=np.array([[0,-1,0],[-1,4,-1],[0,-1,0]])):
+def cosmicray_lacosmic(data, background, thresh=5, fthresh=5,
+                       gthresh=1.5, b_factor=2, mbox=5, min_limit=0.01,
+                       f_conv=np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])):
     """
     Identify cosmic rays through the lacosmic technique. The lacosmic technique
     identifies cosmic rays by identifying pixels based on a variation of the
@@ -789,18 +903,18 @@ def cosmicray_lacosmic(data, background, thresh=5, fthresh=5, gthresh=1.5,
         raise ValueError('background is not the same shape as data')
 
     #set up a copy of the array and original shape
-    shape=data.shape
+    shape = data.shape
 
     #rebin the data
-    newshape = (b_factor*shape[0],b_factor*shape[1])
-    ldata = _rebin(data, newshape)
+    newshape = (b_factor*shape[0], b_factor*shape[1])
+    ldata = rebin(data, newshape)
 
     #convolve with f_conv
-    ldata=ndimage.filters.convolve(ldata,f_conv)
-    ldata[ldata<=0] = 0
+    ldata = ndimage.filters.convolve(ldata, f_conv)
+    ldata[ldata <= 0] = 0
 
     #return to the original binning
-    ldata = _blkavg(ldata,shape)
+    ldata = _blkavg(ldata, shape)
 
     #median the noise image
     med_noise = ndimage.median_filter(background, size=(mbox, mbox))
@@ -813,24 +927,24 @@ def cosmicray_lacosmic(data, background, thresh=5, fthresh=5, gthresh=1.5,
     sndata = sndata - mdata
 
     #select objects
-    masks = (sndata>thresh)
+    masks = (sndata > thresh)
 
     #remove compact bright sources
-    fdata =  ndimage.median_filter(data, size=(mbox-2, mbox-2))
-    fdata -=  ndimage.median_filter(data, size=(mbox+2, mbox+2))
+    fdata = ndimage.median_filter(data, size=(mbox-2, mbox-2))
+    fdata = fdata - ndimage.median_filter(data, size=(mbox+2, mbox+2))
     fdata = fdata / med_noise
 
     # set a minimum value for all pixels so no divide by zero problems
-    fdata[fdata<min_limit] = min_limit
+    fdata[fdata < min_limit] = min_limit
 
     fdata = sndata * masks / fdata
     maskf = (fdata > fthresh)
 
     #make the list of cosmic rays
-    crarr =  masks * (fdata > fthresh)
+    crarr = masks * (fdata > fthresh)
 
     #check any of the neighboring pixels
-    gdata = sndata * ndimage.filters.maximum_filter(crarr,size=(3,3))
+    gdata = sndata * ndimage.filters.maximum_filter(crarr, size=(3, 3))
     crarr = crarr * (gdata > gthresh)
 
     return crarr
@@ -954,7 +1068,7 @@ def cosmicray_clean(ccd, thresh, cr_func, crargs={},
     estimated in a box around the image.  It will then replace bad pixel value
     with the median of the pixels in an 11 pixel wide box around the bad pixel.
 
-        >>> from ccdproc import background_variance_box,cosmicray_median, cosmicray_clean
+        >>> from ccdproc import background_variance_box, cosmicray_median, cosmicray_clean
         >>> cosmicray_clean(ccddata, 10, cosmicray_median, crargs=(11,),
                background=background_variance_box, bargs=(25,), rbox=11)
 
