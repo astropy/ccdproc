@@ -485,7 +485,7 @@ def transform_image(ccd, transform_func, **kwargs):
     """Transform the image
 
     Using the function specified by transform_func, the transform will
-    be applied to all planes in ccd.
+    be applied to data, uncertainty, and mask in ccd.
 
     Parameters
     ----------
@@ -509,8 +509,11 @@ def transform_image(ccd, transform_func, **kwargs):
     -----
 
     At this time, transform will be applied to the uncertainy data but it
-    will only transform the data.  This may not properly handle uncertainties
+    will only transform the data.  This will not properly handle uncertainties
     that arise due to correlation between the pixels.
+
+    These should only be geometric transformations of the images.  Other
+    methods should be used if the units of ccd need to be changed.
 
     Examples
     --------
@@ -549,8 +552,8 @@ def transform_image(ccd, transform_func, **kwargs):
 
     #transform the mask plane
     if nccd.mask is not None:
-        nccd.mask = transform_func(nccd.mask, **kwargs)
-        nccd.mask = (nccd.mask > 0)
+        mask = transform_func(nccd.mask, **kwargs)
+        nccd.mask = (mask > 0)
 
     return nccd
 
@@ -693,7 +696,7 @@ def background_variance_filter(data, bbox):
 
 def rebin(ccd, newshape):
     """
-    Rebin an array to have a new shape
+    Rebin an array to have a new shape.
 
     Parameters
     ----------
@@ -748,7 +751,7 @@ def rebin(ccd, newshape):
         if len(ccd.shape) != len(newshape):
             raise ValueError('newshape does not have the same dimensions as ccd')
 
-        slices = [slice(0, old, float(old)/new) for old, new in
+        slices = [slice(0, old, old/new) for old, new in
                   zip(ccd.shape, newshape)]
         coordinates = np.mgrid[slices]
         indices = coordinates.astype('i')
