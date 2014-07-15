@@ -1096,7 +1096,7 @@ def cosmicray_clean(ccd, thresh, cr_func, crargs={},
     if newccd.mask is None:
         newccd.mask = crarr
     else:
-        newccd.mask = newccd.mask + crarr.mask
+        newccd.mask = newccd.mask + crarr
 
     # grow the pixels
     if gbox > 0:
