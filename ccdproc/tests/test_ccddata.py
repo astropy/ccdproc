@@ -114,8 +114,8 @@ def test_fromMEF(ccd_data, tmpdir):
 
 def test_metafromheader(ccd_data):
     hdr = fits.header.Header()
-    hdr.set('observer', 'Edwin Hubble')
-    hdr.set('exptime', '3600')
+    hdr['observer'] = 'Edwin Hubble'
+    hdr['exptime'] = '3600'
 
     d1 = CCDData(np.ones((5, 5)), meta=hdr, unit=u.electron)
     assert d1.meta['OBSERVER'] == 'Edwin Hubble'
@@ -130,8 +130,8 @@ def test_metafromdict():
 
 def test_header2meta():
     hdr = fits.header.Header()
-    hdr.set('observer', 'Edwin Hubble')
-    hdr.set('exptime', '3600')
+    hdr['observer'] = 'Edwin Hubble'
+    hdr['exptime'] = '3600'
 
     d1 = CCDData(np.ones((5, 5)), unit=u.electron)
     d1.header = hdr

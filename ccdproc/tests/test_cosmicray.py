@@ -56,6 +56,21 @@ def test_cosmicray_clean_gbox(ccd_data):
     assert abs(data.std() - scale) < 0.1
     assert cc.mask.sum() > NCRAYS
 
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_clean_mask(ccd_data):
+    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
+    threshold = 5
+    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
+    cc = ccd_data  # currently here because no copy command for NDData
+    cc.mask = (ccd_data.data==0)
+    cc = cosmicray_clean(cc, 5.0, cosmicray_median, crargs=(11,),
+                         background=background_variance_box, bargs=(25,),
+                         rbox=0, gbox=5)
+    data = np.ma.masked_array(cc.data, cc.mask)
+    assert abs(data.std() - scale) < 0.1
+    assert cc.mask.sum() > NCRAYS
+
+
 
 @pytest.mark.data_scale(DATA_SCALE)
 def test_cosmicray_clean(ccd_data):
