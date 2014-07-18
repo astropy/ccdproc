@@ -1,11 +1,17 @@
 [run]
 source = ccdproc
 branch = False
-omit = 
-    ccdproc/__init__*
-    ccdproc/conftest.py
-    ccdproc/*tests/*
-    ccdproc/*version*
+omit =
+   ccdproc/_astropy_init*
+   ccdproc/conftest*
+   ccdproc/cython_version*
+   ccdproc/setup_package*
+   ccdproc/*/setup_package*
+   ccdproc/*/*/setup_package*
+   ccdproc/tests/*
+   ccdproc/*/tests/*
+   ccdproc/*/*/tests/*
+   ccdproc/*version*
 
 [report]
 exclude_lines =
