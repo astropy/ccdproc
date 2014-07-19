@@ -13,7 +13,7 @@ env:
         # overidden underneath. They are defined here in order to save having
         # to repeat them for all configurations.
         - NUMPY_VERSION=1.8
-        - ASTROPY_VERSION=development   #  UNTIL 0.4 IS OUT
+        - ASTROPY_VERSION=stable
         - CONDA_INSTALL='conda install -c astropy-ci-extras --yes'
         - PIP_INSTALL='pip install'
     matrix:
