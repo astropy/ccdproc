@@ -378,8 +378,9 @@ def test_flat_correct_variance(ccd_data):
 # tests for gain correction
 def test_gain_correct(ccd_data):
     init_data = ccd_data.data
-    ccd_data = gain_correct(ccd_data, gain=3)
-    assert_array_equal(ccd_data.data, 3 * init_data)
+    gain_data = gain_correct(ccd_data, gain=3, add_keyword=None)
+    assert_array_equal(gain_data.data, 3 * init_data)
+    assert ccd_data.meta == gain_data.meta
 
 
 def test_gain_correct_quantity(ccd_data):
