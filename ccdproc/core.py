@@ -20,7 +20,7 @@ from .utils.slices import slice_from_string
 from .log_meta import log_to_metadata
 
 __all__ = ['background_variance_box', 'background_variance_filter',
-           'cosmicray_clean', 'cosmicray_median', 'cosmicray_lacosmic',
+           'cosmicray_median', 'cosmicray_lacosmic',
            'create_variance', 'flat_correct', 'gain_correct', 'rebin',
            'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
            'transform_image', 'trim_image', 'Keyword']
@@ -829,8 +829,9 @@ def _blkavg(data, newshape):
     return eval(''.join(evList))
 
 
-def cosmicray_lacosmic(data, background, thresh=5, fthresh=5,
+def cosmicray_lacosmic(ccd, variance_image=None, thresh=5, fthresh=5,
                        gthresh=1.5, b_factor=2, mbox=5, min_limit=0.01,
+                       gbox=0, rbox=0,
                        f_conv=np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])):
     """
     Identify cosmic rays through the lacosmic technique. The lacosmic technique
@@ -841,10 +842,10 @@ def cosmicray_lacosmic(data, background, thresh=5, fthresh=5,
     Parameters
     ----------
 
-    data : `numpy.ndarray`
+    ccd: `~ccdproc.CCDData` or `numpy.ndarray`
         Data to have cosmic ray cleaned
 
-    background : `numpy.ndarray`
+    variance_image : `numpy.ndarray`
         Background variance level.   It should have the same shape as data
         as data. This is the same as the noise array in lacosmic.cl
 
@@ -869,6 +870,13 @@ def cosmicray_lacosmic(data, background, thresh=5, fthresh=5,
     min_limit: float
         Minimum value for all pixels so as to avoid division by zero errors
 
+    gbox :  int
+        Box size to grow cosmic rays. If zero, no growing will be done.
+
+    rbox :  int
+        Median box for calculating replacement values.  If zero, no pixels will
+        be replaced.
+
     f_conv: `numpy.ndarray`
         Convolutoin kernal for detecting edges.
 
@@ -881,8 +889,14 @@ def cosmicray_lacosmic(data, background, thresh=5, fthresh=5,
 
     Returns
     -------
-    crarr : `~numpy.ndarray`
-      A boolean ndarray with the cosmic rays identified
+    nccd : `~ccdproc.ccddata.CCDData` or `~numpy.ndarray`
+        An object of the same type as ccd is returned.   If it is a
+        `~ccdproc.CCDData`, the mask attribute will also be updated with
+        areas identified with cosmic rays masked.
+
+    nccd : `~numpy.ndarray`
+        If an `~numpy.ndarray` is provided as ccd, a boolean ndarray with the
+        cosmic rays identified will also be returned.
 
     References
     ----------
@@ -891,66 +905,127 @@ def cosmicray_lacosmic(data, background, thresh=5, fthresh=5,
            Pacific, Volume 113, Issue 789, pp. 1420-1427.
            doi: 10.1086/323894
 
+    Example
+    -------
+
+    1) Given an numpy.ndarray object, the syntax for running
+       cosmicrar_lacosmic would be:
+
+       >>> newdata, mask = cosmicray_clean(data, variance_image=variance_image,
+                                           thresh=5, mbox=11, rbox=11, gbox=5)
+
+       where the variance is an array that is the same shape as data but
+       includes the pixel variance.  This would return a data array, newdata,
+       with the bad pixels replaced by the local median from a box of 11
+       pixels; and it would return a mask indicating the bad pixels.
+
+    2) Given an `~ccddata.CCDData` object with an uncertainty frame, the syntax
+       for running cosmicrar_lacosmic would be:
+
+       >>> newccd = cosmicray_clean(ccd, thresh=5, mbox=11, rbox=11, gbox=5)
+
+       The newccd object will have bad pixels in its data array replace and the
+       mask of the object will be created if it did not previously exist or be
+       updated with the detected cosmic rays.
 
     """
-    if not isinstance(data, np.ndarray):
-        raise TypeError('data is not a ndarray object')
 
-    if not isinstance(background, np.ndarray):
-        raise TypeError('background is not a ndarray object')
+    if isinstance(ccd, np.ndarray):
+        data = ccd
 
-    if data.shape != background.shape:
-        raise ValueError('background is not the same shape as data')
+        if not isinstance(variance_image, np.ndarray):
+            raise TypeError('variance_image is not a ndarray object')
+        if data.shape != variance_image.shape:
+            raise ValueError('variance_image is not the same shape as data')
 
-    #set up a copy of the array and original shape
-    shape = data.shape
+        #set up a copy of the array and original shape
+        shape = data.shape
 
-    #rebin the data
-    newshape = (b_factor*shape[0], b_factor*shape[1])
-    ldata = rebin(data, newshape)
+        #rebin the data
+        newshape = (b_factor*shape[0], b_factor*shape[1])
+        ldata = rebin(data, newshape)
 
-    #convolve with f_conv
-    ldata = ndimage.filters.convolve(ldata, f_conv)
-    ldata[ldata <= 0] = 0
+        #convolve with f_conv
+        ldata = ndimage.filters.convolve(ldata, f_conv)
+        ldata[ldata <= 0] = 0
 
-    #return to the original binning
-    ldata = _blkavg(ldata, shape)
+        #return to the original binning
+        ldata = _blkavg(ldata, shape)
 
-    #median the noise image
-    med_noise = ndimage.median_filter(background, size=(mbox, mbox))
+        #median the noise image
+        med_noise = ndimage.median_filter(variance_image, size=(mbox, mbox))
 
-    #create S/N image
-    sndata = ldata / med_noise / b_factor
+        #create S/N image
+        sndata = ldata / med_noise / b_factor
 
-    #remove extended objects
-    mdata = ndimage.median_filter(sndata, size=(mbox, mbox))
-    sndata = sndata - mdata
+        #remove extended objects
+        mdata = ndimage.median_filter(sndata, size=(mbox, mbox))
+        sndata = sndata - mdata
 
-    #select objects
-    masks = (sndata > thresh)
+        #select objects
+        masks = (sndata > thresh)
 
-    #remove compact bright sources
-    fdata = ndimage.median_filter(data, size=(mbox-2, mbox-2))
-    fdata = fdata - ndimage.median_filter(data, size=(mbox+2, mbox+2))
-    fdata = fdata / med_noise
+        #remove compact bright sources
+        fdata = ndimage.median_filter(data, size=(mbox-2, mbox-2))
+        fdata = fdata - ndimage.median_filter(data, size=(mbox+2, mbox+2))
+        fdata = fdata / med_noise
 
-    # set a minimum value for all pixels so no divide by zero problems
-    fdata[fdata < min_limit] = min_limit
+        # set a minimum value for all pixels so no divide by zero problems
+        fdata[fdata < min_limit] = min_limit
 
-    fdata = sndata * masks / fdata
-    maskf = (fdata > fthresh)
+        fdata = sndata * masks / fdata
+        maskf = (fdata > fthresh)
 
-    #make the list of cosmic rays
-    crarr = masks * (fdata > fthresh)
+        #make the list of cosmic rays
+        crarr = masks * (fdata > fthresh)
 
-    #check any of the neighboring pixels
-    gdata = sndata * ndimage.filters.maximum_filter(crarr, size=(3, 3))
-    crarr = crarr * (gdata > gthresh)
+        #check any of the neighboring pixels
+        gdata = sndata * ndimage.filters.maximum_filter(crarr, size=(3, 3))
+        crarr = crarr * (gdata > gthresh)
 
-    return crarr
+        # grow the pixels
+        if gbox > 0:
+            crarr = ndimage.maximum_filter(crarr, gbox)
+
+        #replace bad pixels in the image
+        ndata = data.copy()
+        if rbox > 0:
+            maskdata = np.ma.masked_array(data, crarr)
+            mdata = ndimage.median_filter(maskdata, rbox)
+            ndata[crarr == 1] = mdata[crarr == 1]
+
+        return ndata, crarr
+
+    elif isinstance(ccd, CCDData):
+
+        #set up the variance image
+        if variance_image is None and ccd.uncertainty is not None:
+            variance_image = ccd.uncertainty.array
+        if ccd.data.shape != variance_image.shape:
+            raise ValueError('variance_image is not the same shape as data')
+
+        data, crarr = cosmicray_lacosmic(ccd.data,
+                                         variance_image=variance_image,
+                                         thresh=thresh, fthresh=fthresh,
+                                         gthresh=gthresh, b_factor=b_factor,
+                                         mbox=mbox, min_limit=min_limit,
+                                         gbox=gbox, rbox=rbox, f_conv=f_conv)
+        #create the new ccd data object
+        nccd = ccd.copy()
+        nccd.data = data
+        if nccd.mask is None:
+            nccd.mask = crarr
+        else:
+            nccd.mask = nccd.mask + crarr
+
+        return nccd
+
+    else:
+        raise TypeError('ccddata is not a CCDData or ndarray object')
 
 
-def cosmicray_median(data, background, thresh=5, mbox=11):
+def cosmicray_median(ccd, variance_image=None, thresh=5, mbox=11, gbox=0,
+                     rbox=0):
     """
     Identify cosmic rays through median technique.  The median technique
     identifies cosmic rays by identifying pixels by subtracting a median image
@@ -959,90 +1034,19 @@ def cosmicray_median(data, background, thresh=5, mbox=11):
     Parameters
     ----------
 
-    ccd : numpy.ndarray or numpy.MaskedArary
+    ccd : `~ccdproc.CCDData` or numpy.ndarray or numpy.MaskedArary
         Data to have cosmic ray cleans
 
     thresh :  float
         Threshhold for detecting cosmic rays
 
-    background : None, float, or `~numpy.ndarray`
+    variance_image : None, float, or `~numpy.ndarray`
         Background variance level.   If None, the task will use the standard
         deviation of the data. If an ndarray, it should have the same shape
         as data.
 
     mbox :  int
         Median box for detecting cosmic rays
-
-    {log}
-
-    Notes
-    -----
-    Similar implimentation to crmedian in iraf.imred.crutil.crmedian
-
-    Returns
-    -------
-    crarr : `~numpy.ndarray`
-      A boolean ndarray with the cosmic rays identified
-
-    """
-    if not isinstance(data, np.ndarray):
-        raise TypeError('data is not a ndarray object')
-
-    if background is None:
-        background = data.std()
-    else:
-        if not isinstance(background, (float, np.ndarray)):
-            raise TypeError('Background is not a float or ndarray')
-
-    # create the median image
-    marr = ndimage.median_filter(data, size=(mbox, mbox))
-
-    # Only look at the data array
-    if isinstance(data, np.ma.MaskedArray):
-        data = data.data
-
-    # Find the residual image
-    rarr = (data - marr) / background
-
-    # identify all sources
-    crarr = (rarr > thresh)
-
-    return crarr
-
-
-@log_to_metadata
-def cosmicray_clean(ccd, thresh, cr_func, crargs={},
-                    background=None, bargs={}, gbox=0, rbox=0):
-    """
-    Cosmic ray clean a ccddata object.  This process will apply a cosmic ray
-    cleaning method, cr_func, to a data set.  The cosmic rays will be
-    identified based on being above a threshold, thresh, above the background.
-    The background can either be supplied by a function, an array, or a single
-    number.
-
-    Parameters
-    ----------
-
-    ccd : CCDData object
-        Data to have cosmic ray cleans
-
-    thresh :  float
-        Threshhold for detecting cosmic rays
-
-    cr_func :  function
-        Function for identifying cosmic rays
-
-    cargs :  tuple
-        This countains any extra arguments needed for the cosmic ray function
-
-    background : None, float, ndarray, or function
-        Background variance level. If None, the task will use the standard
-        deviation of the data.   If an ndarray, it should have the same shape
-        as data.
-
-    bargs :  tuple
-        If background is a function, any extra arguments that are needed should
-        be passed via bargs.
 
     gbox :  int
         Box size to grow cosmic rays. If zero, no growing will be done.
@@ -1053,62 +1057,103 @@ def cosmicray_clean(ccd, thresh, cr_func, crargs={},
 
     {log}
 
+    Notes
+    -----
+    Similar implimentation to crmedian in iraf.imred.crutil.crmedian
+
     Returns
     -------
-    ccddata : CCDData obejct
-        A CCDData object with cosmic rays cleaned.  The ccddata.mask object
-        will be updated to flag cosmic rays in the mask. If replace is set,
-        then the ccddata object will be replaced with median of the
-        surrounding unmasked pixels
+    nccd : `~ccdproc.ccddata.CCDData` or `~numpy.ndarray`
+        An object of the same type as ccd is returned.   If it is a
+        `~ccdproc.CCDData`, the mask attribute will also be updated with
+        areas identified with cosmic rays masked.
 
-    Examples
-    --------
+    nccd : `~numpy.ndarray`
+        If an `~numpy.ndarray` is provided as ccd, a boolean ndarray with the
+        cosmic rays identified will also be returned.
 
-    This will use the median method to clean cosmic rays based on a background
-    estimated in a box around the image.  It will then replace bad pixel value
-    with the median of the pixels in an 11 pixel wide box around the bad pixel.
+    Example
+    -------
 
-        >>> from ccdproc import background_variance_box, cosmicray_median, cosmicray_clean
-        >>> cosmicray_clean(ccddata, 10, cosmicray_median, crargs=(11,),
-               background=background_variance_box, bargs=(25,), rbox=11)
+    1) Given an numpy.ndarray object, the syntax for running
+       cosmicray_lacosmic would be:
 
+       >>> newdata, mask = cosmicray_lacosmic(data, variance_image=variance,
+                                           thresh=5, mbox=11, rbox=11, gbox=5)
+
+       where variance is an array that is the same shape as data but
+       includes the pixel variance.  This would return a data array, newdata,
+       with the bad pixels replaced by the local median from a box of 11
+       pixels; and it would return a mask indicating the bad pixels.
+
+    2) Given an `~ccddata.CCDData` object with an uncertainty frame, the syntax
+       for running cosmicray_median would be:
+
+       >>> newccd = cosmicray_median(ccd, thresh=5, mbox=11, rbox=11, gbox=5)
+
+       The newccd object will have bad pixels in its data array replace and the
+       mask of the object will be created if it did not previously exist or be
+       updated with the detected cosmic rays.
 
     """
 
-    # make a masked array that will be used for all calculations
-    if ccd.mask is None:
-        data = ccd.data
+    if isinstance(ccd, np.ndarray):
+        data = ccd
+
+        if variance_image is None:
+            variance_image = data.std()
+        else:
+            if not isinstance(variance_image, (float, np.ndarray)):
+                raise TypeError('variance_image is not a float or ndarray')
+
+        # create the median image
+        marr = ndimage.median_filter(data, size=(mbox, mbox))
+
+        # Only look at the data array
+        if isinstance(data, np.ma.MaskedArray):
+            data = data.data
+
+        # Find the residual image
+        rarr = (data - marr) / variance_image
+
+        # identify all sources
+        crarr = (rarr > thresh)
+
+        # grow the pixels
+        if gbox > 0:
+            crarr = ndimage.maximum_filter(crarr, gbox)
+
+        #replace bad pixels in the image
+        ndata = data.copy()
+        if rbox > 0:
+            data = np.ma.masked_array(data, (crarr == 1))
+            mdata = ndimage.median_filter(data, rbox)
+            ndata[crarr == 1] = mdata[crarr == 1]
+
+        return ndata, crarr
+    elif isinstance(ccd, CCDData):
+
+        #set up the variance image
+        if variance_image is None and ccd.uncertainty is not None:
+            variance_image = ccd.uncertainty.array
+        if ccd.data.shape != variance_image.shape:
+            raise ValueError('variance_image is not the same shape as data')
+
+        data, crarr = cosmicray_median(ccd.data, variance_image=variance_image,
+                                       thresh=thresh, mbox=mbox, gbox=gbox,
+                                       rbox=rbox)
+
+        #create the new ccd data object
+        nccd = ccd.copy()
+        nccd.data = data
+        if nccd.mask is None:
+            nccd.mask = crarr
+        else:
+            nccd.mask = nccd.mask + crarr
+        return nccd
+
     else:
-        data = np.ma.masked_array(ccd.data, ccd.mask)
-
-    if background is None:
-        background = sigma_func(data)
-    elif hasattr(background, '__call__'):
-        background = background(data, *bargs)
-
-    # identify the cosmic rays
-    crarr = cr_func(data, background, thresh, *crargs)
-
-    #create new output array
-    newccd = ccd.copy()
-
-    # upate the mask
-    if newccd.mask is None:
-        newccd.mask = crarr
-    else:
-        newccd.mask = newccd.mask + crarr
-
-    # grow the pixels
-    if gbox > 0:
-        newccd.mask = ndimage.maximum_filter(newccd.mask, gbox)
-
-    #replace bad pixels in the image
-    if rbox > 0:
-        data = np.ma.masked_array(newccd.data, (newccd.mask == 0))
-        mdata = ndimage.median_filter(data, rbox)
-        newccd.data[newccd.mask > 0] = mdata[newccd.mask > 0]
-
-    return newccd
+        raise TypeError('ccd is not an ndarray or a CCDData object')
 
 
 class Keyword(object):

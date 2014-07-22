@@ -8,6 +8,8 @@ import numpy as np
 from numpy.testing import assert_allclose
 from astropy.tests.helper import pytest
 from astropy.utils import NumpyRNGContext
+from astropy.nddata import StdDevUncertainty
+
 
 from ..core import *
 
@@ -29,86 +31,52 @@ def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
 
 
 @pytest.mark.data_scale(DATA_SCALE)
-@pytest.mark.parametrize("background_type", [
-                         (DATA_SCALE),
-                         (None)])
-def test_cosmicray_clean_scalar_background(ccd_data, background_type):
-    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
-    threshold = 5
-    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
-    testdata = 1.0 * ccd_data.data
-    cc = cosmicray_clean(ccd_data, 5, cosmicray_median, crargs=(11,),
-                         background=background_type, bargs=(), rbox=11, gbox=0)
-    assert abs(cc.data.std() - scale) < 0.1
-    assert ((testdata - cc.data) > 0).sum() == NCRAYS
-
-
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_clean_gbox(ccd_data):
-    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
-    threshold = 5
-    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
-    cc = ccd_data  # currently here because no copy command for NDData
-    cc = cosmicray_clean(cc, 5.0, cosmicray_median, crargs=(11,),
-                         background=background_variance_box, bargs=(25,),
-                         rbox=0, gbox=5)
-    data = np.ma.masked_array(cc.data, cc.mask)
-    assert abs(data.std() - scale) < 0.1
-    assert cc.mask.sum() > NCRAYS
-
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_clean_mask(ccd_data):
-    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
-    threshold = 5
-    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
-    cc = ccd_data  # currently here because no copy command for NDData
-    cc.mask = (ccd_data.data==0)
-    cc = cosmicray_clean(cc, 5.0, cosmicray_median, crargs=(11,),
-                         background=background_variance_box, bargs=(25,),
-                         rbox=0, gbox=5)
-    data = np.ma.masked_array(cc.data, cc.mask)
-    assert abs(data.std() - scale) < 0.1
-    assert cc.mask.sum() > NCRAYS
-
-
-
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_clean(ccd_data):
-    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
-    threshold = 5
-    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
-    testdata = 1.0 * ccd_data.data
-    cc = ccd_data  # currently here because no copy command for NDData
-    for i in range(5):
-        cc = cosmicray_clean(cc, 5.0, cosmicray_median, crargs=(11,),
-                             background=background_variance_box, bargs=(25,),
-                             rbox=11)
-    assert abs(cc.data.std() - scale) < 0.1
-    assert (testdata - cc.data > 0).sum() == NCRAYS
-
-
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_clean_rbox_zero_replaces_no_pixels(ccd_data):
-    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
-    threshold = 5
-    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
-
-    testdata = 1.0 * ccd_data.data
-    cc = cosmicray_clean(ccd_data, 5, cosmicray_median, crargs=(11,),
-                         background=scale, bargs=(), rbox=0, gbox=0)
-    assert_allclose(cc, testdata)
-
-
-@pytest.mark.data_scale(DATA_SCALE)
 def test_cosmicray_lacosmic(ccd_data):
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * np.ones_like(ccd_data.data)
-    crarr = cosmicray_lacosmic(ccd_data.data, noise, thresh=5,
-                               mbox=11)
+    data, crarr = cosmicray_lacosmic(ccd_data.data, noise, thresh=5,
+                                     mbox=11)
 
     # check the number of cosmic rays detected
     assert crarr.sum() == NCRAYS
+
+
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_lacosmic_gbox(ccd_data):
+    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
+    threshold = 5
+    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
+    variance = ccd_data.data*0.0+DATA_SCALE
+    data, crarr = cosmicray_lacosmic(ccd_data.data, variance_image=variance,
+                                     thresh=5, mbox=11, rbox=0, gbox=5)
+    data = np.ma.masked_array(data, crarr)
+    assert abs(data.std() - scale) < 0.1
+    assert crarr.sum() > NCRAYS
+
+
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_lacosmic_rbox(ccd_data):
+    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
+    threshold = 5
+    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
+    variance = ccd_data.data*0.0+DATA_SCALE
+    data, crarr = cosmicray_lacosmic(ccd_data.data, variance_image=variance,
+                                     thresh=5, mbox=11, rbox=21, gbox=5)
+    assert data[crarr].mean() < ccd_data.data[crarr].mean()
+    assert crarr.sum() > NCRAYS
+
+
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_lacosmic_ccddata(ccd_data):
+    threshold = 5
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    noise = DATA_SCALE * np.ones_like(ccd_data.data)
+    ccd_data.uncertainty = noise
+    nccd_data = cosmicray_lacosmic(ccd_data, thresh=5, mbox=11)
+
+    # check the number of cosmic rays detected
+    assert nccd_data.mask.sum() == NCRAYS
 
 
 @pytest.mark.data_scale(DATA_SCALE)
@@ -120,7 +88,7 @@ def test_cosmicray_lacosmic_check_data(ccd_data):
 
 
 @pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_lacosmic_check_background(ccd_data):
+def test_cosmicray_lacosmic_check_variance_image(ccd_data):
     with pytest.raises(TypeError):
         noise = DATA_SCALE * np.ones_like(ccd_data.data)
         cosmicray_lacosmic(ccd_data.data, 10, thresh=5,
@@ -139,19 +107,31 @@ def test_cosmicray_lacosmic_check_shape(ccd_data):
 @pytest.mark.data_scale(DATA_SCALE)
 def test_cosmicray_median_check_data(ccd_data):
     with pytest.raises(TypeError):
-        crarr = cosmicray_median(10, thresh=5, mbox=11,
-                                 background=DATA_SCALE)
+        ndata, crarr = cosmicray_median(10, thresh=5, mbox=11,
+                                        variance_image=DATA_SCALE)
 
 
 @pytest.mark.data_scale(DATA_SCALE)
 def test_cosmicray_median(ccd_data):
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11,
-                             background=DATA_SCALE)
+    ndata, crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11,
+                                    variance_image=DATA_SCALE)
 
     # check the number of cosmic rays detected
     assert crarr.sum() == NCRAYS
+
+
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_median_ccddata(ccd_data):
+    threshold = 5
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    ccd_data.uncertainty = ccd_data.data*0.0+DATA_SCALE
+    nccd = cosmicray_median(ccd_data, thresh=5, mbox=11,
+                            variance_image=None)
+
+    # check the number of cosmic rays detected
+    assert nccd.mask.sum() == NCRAYS
 
 
 @pytest.mark.data_scale(DATA_SCALE)
@@ -159,8 +139,8 @@ def test_cosmicray_median_masked(ccd_data):
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     data = np.ma.masked_array(ccd_data.data, (ccd_data.data > -1e6))
-    crarr = cosmicray_median(data, thresh=5, mbox=11,
-                             background=DATA_SCALE)
+    ndata, crarr = cosmicray_median(data, thresh=5, mbox=11,
+                                    variance_image=DATA_SCALE)
 
     # check the number of cosmic rays detected
     assert crarr.sum() == NCRAYS
@@ -170,18 +150,43 @@ def test_cosmicray_median_masked(ccd_data):
 def test_cosmicray_median_background_None(ccd_data):
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11, background=None)
+    data, crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11,
+                                   variance_image=None)
 
     # check the number of cosmic rays detected
     assert crarr.sum() == NCRAYS
 
+
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_median_gbox(ccd_data):
+    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
+    threshold = 5
+    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
+    variance = ccd_data.data*0.0+DATA_SCALE
+    data, crarr = cosmicray_median(ccd_data.data, variance_image=variance,
+                                   thresh=5, mbox=11, rbox=0, gbox=5)
+    data = np.ma.masked_array(data, crarr)
+    assert crarr.sum() > NCRAYS
+    assert abs(data.std() - scale) < 0.1
+
+
+@pytest.mark.data_scale(DATA_SCALE)
+def test_cosmicray_median_rbox(ccd_data):
+    scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
+    threshold = 5
+    add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
+    variance = ccd_data.data*0.0+DATA_SCALE
+    data, crarr = cosmicray_median(ccd_data.data, variance_image=variance,
+                                   thresh=5, mbox=11, rbox=21, gbox=5)
+    assert data[crarr].mean() < ccd_data.data[crarr].mean()
+    assert crarr.sum() > NCRAYS
+
+
 @pytest.mark.data_scale(DATA_SCALE)
 def test_cosmicray_median_background_error(ccd_data):
     with pytest.raises(TypeError):
-        crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11, 
-                                 background='blank')
-
-
+        crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11,
+                                 variance_image='blank')
 
 
 def test_background_variance_box():
