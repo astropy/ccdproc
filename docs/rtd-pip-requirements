@@ -1,4 +1,4 @@
 numpy>=1.7
 scipy
 numpydoc
-astropy>=0.3
+astropy>=0.4
