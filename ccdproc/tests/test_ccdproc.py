@@ -320,11 +320,13 @@ def test_subtract_dark_fails(ccd_data):
 # test for flat correction
 @pytest.mark.data_scale(10)
 def test_flat_correct(ccd_data):
+    # add metadata to header for a test below...
+    ccd_data.header['my_key'] = 42
     size = ccd_data.shape[0]
     # create the flat, with some scatter
     data = 2 * np.random.normal(loc=1.0, scale=0.05, size=(size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
-    flat_data = flat_correct(ccd_data, flat)
+    flat_data = flat_correct(ccd_data, flat, add_keyword=None)
 
     #check that the flat was normalized
     # Should be the case that flat * flat_data = ccd_data * flat.data.mean
@@ -333,6 +335,9 @@ def test_flat_correct(ccd_data):
                                    ccd_data.data.mean() * flat.data.mean())
     np.testing.assert_allclose(ccd_data.data / flat_data.data,
                                flat.data / flat.data.mean())
+
+    # check that metadata is unchanged (since logging is turned off)
+    assert flat_data.header == ccd_data.header
 
 
 # test for flat correction with min_value
@@ -373,8 +378,9 @@ def test_flat_correct_variance(ccd_data):
 # tests for gain correction
 def test_gain_correct(ccd_data):
     init_data = ccd_data.data
-    ccd_data = gain_correct(ccd_data, gain=3)
-    assert_array_equal(ccd_data.data, 3 * init_data)
+    gain_data = gain_correct(ccd_data, gain=3, add_keyword=None)
+    assert_array_equal(gain_data.data, 3 * init_data)
+    assert ccd_data.meta == gain_data.meta
 
 
 def test_gain_correct_quantity(ccd_data):

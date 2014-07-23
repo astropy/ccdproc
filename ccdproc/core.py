@@ -477,6 +477,8 @@ def flat_correct(ccd, flat, min_value=None):
     # multiply by the mean of the flat
     flat_corrected = flat_corrected.multiply(use_flat.data.mean() *
                                              use_flat.unit)
+
+    flat_corrected.meta = ccd.meta.copy()
     return flat_corrected
 
 

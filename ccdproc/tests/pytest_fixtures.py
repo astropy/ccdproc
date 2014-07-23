@@ -56,4 +56,7 @@ def ccd_data(request):
     with NumpyRNGContext(DEFAULTS['seed']):
         data = np.random.normal(loc=mean, size=[size, size], scale=scale)
 
-    return CCDData(data, unit=u.adu)
+    fake_meta = {'my_key': 42, 'your_key': 'not 42'}
+    ccd = CCDData(data, unit=u.adu)
+    ccd.header = fake_meta
+    return ccd
