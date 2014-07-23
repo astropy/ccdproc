@@ -19,7 +19,7 @@ from .ccddata import CCDData
 from .utils.slices import slice_from_string
 from .log_meta import log_to_metadata
 
-__all__ = ['background_variance_box', 'background_variance_filter',
+__all__ = ['background_deviation_box', 'background_deviation_filter',
            'cosmicray_median', 'cosmicray_lacosmic',
            'create_variance', 'flat_correct', 'gain_correct', 'rebin',
            'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
@@ -28,8 +28,8 @@ __all__ = ['background_variance_box', 'background_variance_filter',
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
 _short_names = {
-    'background_variance_box': 'bakvarbx',
-    'background_variance_filter': 'bakvfilt',
+    'background_deviation_box': 'bakdevbx',
+    'background_deviation_filter': 'bakdfilt',
     'cosmicray_median': 'crmedian',
     'create_variance': 'creatvar',
     'flat_correct': 'flatcor',
@@ -116,7 +116,7 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
     Parameters
     ----------
     ccd : `~ccdproc.ccddata.CCDData`
-        Data to have variance frame corrected
+        Data to have overscan frame corrected
 
     overscan : `~ccdproc.ccddata.CCDData`
         Slice from `ccd` that contains the overscan. Must provide either
@@ -412,7 +412,7 @@ def gain_correct(ccd, gain, gain_unit=None):
     Parameters
     ----------
     ccd : `~ccdproc.ccddata.CCDData`
-      Data to have variance frame corrected
+      Data to have gain corrected
 
     gain :  `~astropy.units.Quantity` or `~ccdproc.ccdproc.Keyword`
       gain value for the image expressed in electrons per adu
@@ -562,7 +562,7 @@ def transform_image(ccd, transform_func, **kwargs):
 
 def sigma_func(arr):
     """
-    Robust method for calculating the variance of an array. ``sigma_func`` uses
+    Robust method for calculating the deviation of an array. ``sigma_func`` uses
     the median absolute deviation to determine the variance.
 
     Parameters
@@ -623,20 +623,20 @@ def setbox(x, y, mbox, xmax, ymax):
     return x1, x2, y1, y2
 
 
-def background_variance_box(data, bbox):
+def background_deviation_box(data, bbox):
     """
-    Determine the background variance with a box size of bbox. The algorithm
-    steps through the image and calculates the variance within each box.
-    It returns an array with the pixels in each box filled with the variance
+    Determine the background deviation with a box size of bbox. The algorithm
+    steps through the image and calculates the deviation within each box.
+    It returns an array with the pixels in each box filled with the deviation
     value.
 
     Parameters
     ----------
     data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-        Data to measure background variance
+        Data to measure background deviation
 
     bbox :  int
-        Box size for calculating background variance
+        Box size for calculating background deviation
 
     Raises
     ------
@@ -646,7 +646,7 @@ def background_variance_box(data, bbox):
     Returns
     -------
     background : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-        An array with the measured background variance in each pixel
+        An array with the measured background deviation in each pixel
 
     """
     # Check to make sure the background box is an appropriate size
@@ -665,18 +665,18 @@ def background_variance_box(data, bbox):
     return barr
 
 
-def background_variance_filter(data, bbox):
+def background_deviation_filter(data, bbox):
     """
-    Determine the background variance for each pixel from a box with size of
+    Determine the background deviation for each pixel from a box with size of
     bbox.
 
     Parameters
     ----------
     data : `~numpy.ndarray`
-        Data to measure background variance
+        Data to measure background deviation
 
     bbox :  int
-        Box size for calculating background variance
+        Box size for calculating background deviation
 
     Raises
     ------
@@ -686,7 +686,7 @@ def background_variance_filter(data, bbox):
     Returns
     -------
     background : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-        An array with the measured background variance in each pixel
+        An array with the measured background deviation in each pixel
 
     """
     # Check to make sure the background box is an appropriate size
@@ -831,7 +831,7 @@ def _blkavg(data, newshape):
     return eval(''.join(evList))
 
 
-def cosmicray_lacosmic(ccd, variance_image=None, thresh=5, fthresh=5,
+def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
                        gthresh=1.5, b_factor=2, mbox=5, min_limit=0.01,
                        gbox=0, rbox=0,
                        f_conv=np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])):
@@ -847,8 +847,8 @@ def cosmicray_lacosmic(ccd, variance_image=None, thresh=5, fthresh=5,
     ccd: `~ccdproc.CCDData` or `numpy.ndarray`
         Data to have cosmic ray cleaned
 
-    variance_image : `numpy.ndarray`
-        Background variance level.   It should have the same shape as data
+    error_image : `numpy.ndarray`
+        Error level in the image.   It should have the same shape as data
         as data. This is the same as the noise array in lacosmic.cl
 
     thresh :  float
@@ -913,11 +913,11 @@ def cosmicray_lacosmic(ccd, variance_image=None, thresh=5, fthresh=5,
     1) Given an numpy.ndarray object, the syntax for running
        cosmicrar_lacosmic would be:
 
-       >>> newdata, mask = cosmicray_clean(data, variance_image=variance_image,
+       >>> newdata, mask = cosmicray_clean(data, error_image=error_image,
                                            thresh=5, mbox=11, rbox=11, gbox=5)
 
-       where the variance is an array that is the same shape as data but
-       includes the pixel variance.  This would return a data array, newdata,
+       where the error is an array that is the same shape as data but
+       includes the pixel error.  This would return a data array, newdata,
        with the bad pixels replaced by the local median from a box of 11
        pixels; and it would return a mask indicating the bad pixels.
 
@@ -935,10 +935,10 @@ def cosmicray_lacosmic(ccd, variance_image=None, thresh=5, fthresh=5,
     if isinstance(ccd, np.ndarray):
         data = ccd
 
-        if not isinstance(variance_image, np.ndarray):
-            raise TypeError('variance_image is not a ndarray object')
-        if data.shape != variance_image.shape:
-            raise ValueError('variance_image is not the same shape as data')
+        if not isinstance(error_image, np.ndarray):
+            raise TypeError('error_image is not a ndarray object')
+        if data.shape != error_image.shape:
+            raise ValueError('error_image is not the same shape as data')
 
         #set up a copy of the array and original shape
         shape = data.shape
@@ -955,7 +955,7 @@ def cosmicray_lacosmic(ccd, variance_image=None, thresh=5, fthresh=5,
         ldata = _blkavg(ldata, shape)
 
         #median the noise image
-        med_noise = ndimage.median_filter(variance_image, size=(mbox, mbox))
+        med_noise = ndimage.median_filter(error_image, size=(mbox, mbox))
 
         #create S/N image
         sndata = ldata / med_noise / b_factor
@@ -974,9 +974,7 @@ def cosmicray_lacosmic(ccd, variance_image=None, thresh=5, fthresh=5,
 
         # set a minimum value for all pixels so no divide by zero problems
         fdata[fdata < min_limit] = min_limit
-
         fdata = sndata * masks / fdata
-        maskf = (fdata > fthresh)
 
         #make the list of cosmic rays
         crarr = masks * (fdata > fthresh)
@@ -1000,14 +998,14 @@ def cosmicray_lacosmic(ccd, variance_image=None, thresh=5, fthresh=5,
 
     elif isinstance(ccd, CCDData):
 
-        #set up the variance image
-        if variance_image is None and ccd.uncertainty is not None:
-            variance_image = ccd.uncertainty.array
-        if ccd.data.shape != variance_image.shape:
-            raise ValueError('variance_image is not the same shape as data')
+        #set up the error image
+        if error_image is None and ccd.uncertainty is not None:
+            error_image = ccd.uncertainty.array
+        if ccd.data.shape != error_image.shape:
+            raise ValueError('error_image is not the same shape as data')
 
         data, crarr = cosmicray_lacosmic(ccd.data,
-                                         variance_image=variance_image,
+                                         error_image=error_image,
                                          thresh=thresh, fthresh=fthresh,
                                          gthresh=gthresh, b_factor=b_factor,
                                          mbox=mbox, min_limit=min_limit,
@@ -1026,7 +1024,7 @@ def cosmicray_lacosmic(ccd, variance_image=None, thresh=5, fthresh=5,
         raise TypeError('ccddata is not a CCDData or ndarray object')
 
 
-def cosmicray_median(ccd, variance_image=None, thresh=5, mbox=11, gbox=0,
+def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
                      rbox=0):
     """
     Identify cosmic rays through median technique.  The median technique
@@ -1042,8 +1040,8 @@ def cosmicray_median(ccd, variance_image=None, thresh=5, mbox=11, gbox=0,
     thresh :  float
         Threshhold for detecting cosmic rays
 
-    variance_image : None, float, or `~numpy.ndarray`
-        Background variance level.   If None, the task will use the standard
+    error_image : None, float, or `~numpy.ndarray`
+        Error level.   If None, the task will use the standard
         deviation of the data. If an ndarray, it should have the same shape
         as data.
 
@@ -1080,11 +1078,11 @@ def cosmicray_median(ccd, variance_image=None, thresh=5, mbox=11, gbox=0,
     1) Given an numpy.ndarray object, the syntax for running
        cosmicray_lacosmic would be:
 
-       >>> newdata, mask = cosmicray_lacosmic(data, variance_image=variance,
+       >>> newdata, mask = cosmicray_lacosmic(data, error_image=error,
                                            thresh=5, mbox=11, rbox=11, gbox=5)
 
-       where variance is an array that is the same shape as data but
-       includes the pixel variance.  This would return a data array, newdata,
+       where error is an array that is the same shape as data but
+       includes the pixel error.  This would return a data array, newdata,
        with the bad pixels replaced by the local median from a box of 11
        pixels; and it would return a mask indicating the bad pixels.
 
@@ -1102,11 +1100,11 @@ def cosmicray_median(ccd, variance_image=None, thresh=5, mbox=11, gbox=0,
     if isinstance(ccd, np.ndarray):
         data = ccd
 
-        if variance_image is None:
-            variance_image = data.std()
+        if error_image is None:
+            error_image = data.std()
         else:
-            if not isinstance(variance_image, (float, np.ndarray)):
-                raise TypeError('variance_image is not a float or ndarray')
+            if not isinstance(error_image, (float, np.ndarray)):
+                raise TypeError('error_image is not a float or ndarray')
 
         # create the median image
         marr = ndimage.median_filter(data, size=(mbox, mbox))
@@ -1116,7 +1114,7 @@ def cosmicray_median(ccd, variance_image=None, thresh=5, mbox=11, gbox=0,
             data = data.data
 
         # Find the residual image
-        rarr = (data - marr) / variance_image
+        rarr = (data - marr) / error_image
 
         # identify all sources
         crarr = (rarr > thresh)
@@ -1135,13 +1133,13 @@ def cosmicray_median(ccd, variance_image=None, thresh=5, mbox=11, gbox=0,
         return ndata, crarr
     elif isinstance(ccd, CCDData):
 
-        #set up the variance image
-        if variance_image is None and ccd.uncertainty is not None:
-            variance_image = ccd.uncertainty.array
-        if ccd.data.shape != variance_image.shape:
-            raise ValueError('variance_image is not the same shape as data')
+        #set up the error image
+        if error_image is None and ccd.uncertainty is not None:
+            error_image = ccd.uncertainty.array
+        if ccd.data.shape != error_image.shape:
+            raise ValueError('error_image is not the same shape as data')
 
-        data, crarr = cosmicray_median(ccd.data, variance_image=variance_image,
+        data, crarr = cosmicray_median(ccd.data, error_image=error_image,
                                        thresh=thresh, mbox=mbox, gbox=gbox,
                                        rbox=rbox)
 
