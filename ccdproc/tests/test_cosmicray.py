@@ -47,8 +47,8 @@ def test_cosmicray_lacosmic_gbox(ccd_data):
     scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
     threshold = 5
     add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
-    variance = ccd_data.data*0.0+DATA_SCALE
-    data, crarr = cosmicray_lacosmic(ccd_data.data, variance_image=variance,
+    error = ccd_data.data*0.0+DATA_SCALE
+    data, crarr = cosmicray_lacosmic(ccd_data.data, error_image=error,
                                      thresh=5, mbox=11, rbox=0, gbox=5)
     data = np.ma.masked_array(data, crarr)
     assert abs(data.std() - scale) < 0.1
@@ -60,8 +60,8 @@ def test_cosmicray_lacosmic_rbox(ccd_data):
     scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
     threshold = 5
     add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
-    variance = ccd_data.data*0.0+DATA_SCALE
-    data, crarr = cosmicray_lacosmic(ccd_data.data, variance_image=variance,
+    error = ccd_data.data*0.0+DATA_SCALE
+    data, crarr = cosmicray_lacosmic(ccd_data.data, error_image=error,
                                      thresh=5, mbox=11, rbox=21, gbox=5)
     assert data[crarr].mean() < ccd_data.data[crarr].mean()
     assert crarr.sum() > NCRAYS
@@ -88,7 +88,7 @@ def test_cosmicray_lacosmic_check_data(ccd_data):
 
 
 @pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_lacosmic_check_variance_image(ccd_data):
+def test_cosmicray_lacosmic_check_error_image(ccd_data):
     with pytest.raises(TypeError):
         noise = DATA_SCALE * np.ones_like(ccd_data.data)
         cosmicray_lacosmic(ccd_data.data, 10, thresh=5,
@@ -108,7 +108,7 @@ def test_cosmicray_lacosmic_check_shape(ccd_data):
 def test_cosmicray_median_check_data(ccd_data):
     with pytest.raises(TypeError):
         ndata, crarr = cosmicray_median(10, thresh=5, mbox=11,
-                                        variance_image=DATA_SCALE)
+                                        error_image=DATA_SCALE)
 
 
 @pytest.mark.data_scale(DATA_SCALE)
@@ -116,7 +116,7 @@ def test_cosmicray_median(ccd_data):
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     ndata, crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11,
-                                    variance_image=DATA_SCALE)
+                                    error_image=DATA_SCALE)
 
     # check the number of cosmic rays detected
     assert crarr.sum() == NCRAYS
@@ -128,7 +128,7 @@ def test_cosmicray_median_ccddata(ccd_data):
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     ccd_data.uncertainty = ccd_data.data*0.0+DATA_SCALE
     nccd = cosmicray_median(ccd_data, thresh=5, mbox=11,
-                            variance_image=None)
+                            error_image=None)
 
     # check the number of cosmic rays detected
     assert nccd.mask.sum() == NCRAYS
@@ -140,7 +140,7 @@ def test_cosmicray_median_masked(ccd_data):
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     data = np.ma.masked_array(ccd_data.data, (ccd_data.data > -1e6))
     ndata, crarr = cosmicray_median(data, thresh=5, mbox=11,
-                                    variance_image=DATA_SCALE)
+                                    error_image=DATA_SCALE)
 
     # check the number of cosmic rays detected
     assert crarr.sum() == NCRAYS
@@ -151,7 +151,7 @@ def test_cosmicray_median_background_None(ccd_data):
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     data, crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11,
-                                   variance_image=None)
+                                   error_image=None)
 
     # check the number of cosmic rays detected
     assert crarr.sum() == NCRAYS
@@ -162,8 +162,8 @@ def test_cosmicray_median_gbox(ccd_data):
     scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
     threshold = 5
     add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
-    variance = ccd_data.data*0.0+DATA_SCALE
-    data, crarr = cosmicray_median(ccd_data.data, variance_image=variance,
+    error = ccd_data.data*0.0+DATA_SCALE
+    data, crarr = cosmicray_median(ccd_data.data, error_image=error,
                                    thresh=5, mbox=11, rbox=0, gbox=5)
     data = np.ma.masked_array(data, crarr)
     assert crarr.sum() > NCRAYS
@@ -175,47 +175,47 @@ def test_cosmicray_median_rbox(ccd_data):
     scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
     threshold = 5
     add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
-    variance = ccd_data.data*0.0+DATA_SCALE
-    data, crarr = cosmicray_median(ccd_data.data, variance_image=variance,
+    error = ccd_data.data*0.0+DATA_SCALE
+    data, crarr = cosmicray_median(ccd_data.data, error_image=error,
                                    thresh=5, mbox=11, rbox=21, gbox=5)
     assert data[crarr].mean() < ccd_data.data[crarr].mean()
     assert crarr.sum() > NCRAYS
 
 
 @pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_median_background_error(ccd_data):
+def test_cosmicray_median_background_deviation(ccd_data):
     with pytest.raises(TypeError):
         crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11,
-                                 variance_image='blank')
+                                 error_image='blank')
 
 
-def test_background_variance_box():
+def test_background_deviation_box():
     with NumpyRNGContext(123):
         scale = 5.3
         cd = np.random.normal(loc=0, size=(100, 100), scale=scale)
-    bd = background_variance_box(cd, 25)
+    bd = background_deviation_box(cd, 25)
     assert abs(bd.mean() - scale) < 0.10
 
 
-def test_background_variance_box_fail():
+def test_background_deviation_box_fail():
     with NumpyRNGContext(123):
         scale = 5.3
         cd = np.random.normal(loc=0, size=(100, 100), scale=scale)
     with pytest.raises(ValueError):
-        background_variance_box(cd, 0.5)
+        background_deviation_box(cd, 0.5)
 
 
-def test_background_variance_filter():
+def test_background_deviation_filter():
     with NumpyRNGContext(123):
         scale = 5.3
         cd = np.random.normal(loc=0, size=(100, 100), scale=scale)
-    bd = background_variance_filter(cd, 25)
+    bd = background_deviation_filter(cd, 25)
     assert abs(bd.mean() - scale) < 0.10
 
 
-def test_background_variance_filter_fail():
+def test_background_deviation_filter_fail():
     with NumpyRNGContext(123):
         scale = 5.3
         cd = np.random.normal(loc=0, size=(100, 100), scale=scale)
     with pytest.raises(ValueError):
-        background_variance_filter(cd, 0.5)
+        background_deviation_filter(cd, 0.5)
