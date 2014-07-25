@@ -632,6 +632,7 @@ def background_deviation_box(data, bbox):
 
     Parameters
     ----------
+
     data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
         Data to measure background deviation
 
@@ -640,6 +641,7 @@ def background_deviation_box(data, bbox):
 
     Raises
     ------
+
     ValueError
         A value error is raised if bbox is less than 1
 
@@ -804,7 +806,7 @@ def _blkavg(data, newshape):
         A type error is raised if data is not an `numpy.ndarray`
 
     ValueError
-        A value error is raised if the dimenisions of new shape is not equal
+        A value error is raised if the dimensions of new shape is not equal
         to data
 
     Notes
@@ -838,7 +840,7 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
     """
     Identify cosmic rays through the lacosmic technique. The lacosmic technique
     identifies cosmic rays by identifying pixels based on a variation of the
-    Laplacian edge detection.  The algorithm is an implimentation of the
+    Laplacian edge detection.  The algorithm is an implementation of the
     code describe in van Dokkum (2001) [1]_.
 
     Parameters
@@ -852,15 +854,15 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
         as data. This is the same as the noise array in lacosmic.cl
 
     thresh :  float
-        Threshhold for detecting cosmic rays.  This is the same as sigmaclip
+        Threshold for detecting cosmic rays.  This is the same as sigmaclip
         in lacosmic.cl
 
     fthresh :  float
-        Threshhold for differentianting compact sources from cosmic rays.
+        Threshold for differentiating compact sources from cosmic rays.
         This is the same as objlim in lacosmic.cl
 
     gthresh :  float
-        Threshhold for checking for surrounding cosmic rays from source.
+        Threshold for checking for surrounding cosmic rays from source.
         This is the same as sigclip*sigfrac from lacosmic.cl
 
     b_factor :  int
@@ -880,18 +882,20 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
         be replaced.
 
     f_conv: `numpy.ndarray`, optional
-        Convolutoin kernal for detecting edges. The default kernel is
+        Convolution kernal for detecting edges. The default kernel is
         ``np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])``.
 
     {log}
 
     Notes
     -----
-    Implimentation of the cosmic ray identifcation L.A.Cosmic:
+
+    Implementation of the cosmic ray identification L.A.Cosmic:
     http://www.astro.yale.edu/dokkum/lacosmic/
 
     Returns
     -------
+
     nccd : `~ccdproc.ccddata.CCDData` or `~numpy.ndarray`
         An object of the same type as ccd is returned.   If it is a
         `~ccdproc.CCDData`, the mask attribute will also be updated with
@@ -908,10 +912,10 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
            Pacific, Volume 113, Issue 789, pp. 1420-1427.
            doi: 10.1086/323894
 
-    Example
-    -------
+    Examples
+    --------
 
-    1) Given an numpy.ndarray object, the syntax for running
+    1. Given an numpy.ndarray object, the syntax for running
        cosmicrar_lacosmic would be:
 
        >>> newdata, mask = cosmicray_clean(data, error_image=error_image,
@@ -922,7 +926,7 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
        with the bad pixels replaced by the local median from a box of 11
        pixels; and it would return a mask indicating the bad pixels.
 
-    2) Given an `~ccddata.CCDData` object with an uncertainty frame, the syntax
+    2. Given an `~ccddata.CCDData` object with an uncertainty frame, the syntax
        for running cosmicrar_lacosmic would be:
 
        >>> newccd = cosmicray_clean(ccd, thresh=5, mbox=11, rbox=11, gbox=5)
@@ -1041,7 +1045,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         Data to have cosmic ray cleans
 
     thresh :  float
-        Threshhold for detecting cosmic rays
+        Threshold for detecting cosmic rays
 
     error_image : None, float, or `~numpy.ndarray`
         Error level.   If None, the task will use the standard
@@ -1062,7 +1066,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
 
     Notes
     -----
-    Similar implimentation to crmedian in iraf.imred.crutil.crmedian
+    Similar implementation to crmedian in iraf.imred.crutil.crmedian
 
     Returns
     -------
@@ -1075,8 +1079,8 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         If an `~numpy.ndarray` is provided as ccd, a boolean ndarray with the
         cosmic rays identified will also be returned.
 
-    Example
-    -------
+    Examples
+    --------
 
     1) Given an numpy.ndarray object, the syntax for running
        cosmicray_lacosmic would be:
