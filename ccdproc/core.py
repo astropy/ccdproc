@@ -834,7 +834,7 @@ def _blkavg(data, newshape):
 def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
                        gthresh=1.5, b_factor=2, mbox=5, min_limit=0.01,
                        gbox=0, rbox=0,
-                       f_conv=np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])):
+                       f_conv=None):
     """
     Identify cosmic rays through the lacosmic technique. The lacosmic technique
     identifies cosmic rays by identifying pixels based on a variation of the
@@ -879,8 +879,9 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
         Median box for calculating replacement values.  If zero, no pixels will
         be replaced.
 
-    f_conv: `numpy.ndarray`
-        Convolutoin kernal for detecting edges.
+    f_conv: `numpy.ndarray`, optional
+        Convolutoin kernal for detecting edges. The default kernel is
+        ``np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])``.
 
     {log}
 
@@ -931,6 +932,8 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
        updated with the detected cosmic rays.
 
     """
+    if f_conv is None:
+        f_conv = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])
 
     if isinstance(ccd, np.ndarray):
         data = ccd
