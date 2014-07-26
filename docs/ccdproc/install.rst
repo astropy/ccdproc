@@ -6,9 +6,12 @@ Requirements
 ============
 
 Ccdproc has the following requirements:
-- astropy v0.4
+
+- astropy v0.4 or later
 - numpy
 - scipy
+
+One easy way to get these dependencies is to install a python distribution like `anaconda <http://continuum.io/>`_.
 
 Installing ccdproc
 ==================
