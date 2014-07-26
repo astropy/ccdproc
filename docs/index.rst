@@ -13,4 +13,5 @@ The documentation for this package is here:
 .. toctree::
   :maxdepth: 2
 
+  ccdproc/install.rst
   ccdproc/index.rst
