@@ -21,7 +21,7 @@ from .log_meta import log_to_metadata
 
 __all__ = ['background_deviation_box', 'background_deviation_filter',
            'cosmicray_median', 'cosmicray_lacosmic',
-           'create_variance', 'flat_correct', 'gain_correct', 'rebin',
+           'create_deviation', 'flat_correct', 'gain_correct', 'rebin',
            'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
            'transform_image', 'trim_image', 'Keyword']
 
@@ -31,7 +31,7 @@ _short_names = {
     'background_deviation_box': 'bakdevbx',
     'background_deviation_filter': 'bakdfilt',
     'cosmicray_median': 'crmedian',
-    'create_variance': 'creatvar',
+    'create_deviation': 'creatvar',
     'flat_correct': 'flatcor',
     'gain_correct': 'gaincor',
     'subtract_bias': 'subbias',
@@ -43,18 +43,18 @@ _short_names = {
 
 
 @log_to_metadata
-def create_variance(ccd_data, gain=None, readnoise=None):
+def create_deviation(ccd_data, gain=None, readnoise=None):
     """
-    Create a variance frame.  The function will update the uncertainty
-    plane which gives the variance for the data. Gain is used in this function
-    only to scale the data in constructing the variance; the data is not
-    scaled.
+    Create a uncertainty frame.  The function will update the uncertainty
+    plane which gives the standard deviation for the data. Gain is used in
+    this function only to scale the data in constructing the deviation; the
+    data is not scaled.
 
     Parameters
     ----------
 
     ccd_data : `~ccdproc.ccddata.CCDData`
-        Data whose variance will be calculated.
+        Data whose deviation will be calculated.
 
     gain : `~astropy.units.Quantity`, optional
         Gain of the CCD; necessary only if `ccd_data` and `readnoise` are not
@@ -101,7 +101,7 @@ def create_variance(ccd_data, gain=None, readnoise=None):
 
     var = (gain_value * ccd_data.data + readnoise_value ** 2) ** 0.5
     ccd = ccd_data.copy()
-    # ensure variance and image data have same unit
+    # ensure uncertainty and image data have same unit
     var /= gain_value
     ccd.uncertainty = StdDevUncertainty(var)
     return ccd
@@ -563,17 +563,17 @@ def transform_image(ccd, transform_func, **kwargs):
 def sigma_func(arr):
     """
     Robust method for calculating the deviation of an array. ``sigma_func`` uses
-    the median absolute deviation to determine the variance.
+    the median absolute deviation to determine the standard deviation.
 
     Parameters
     ----------
     arr : `~ccdproc.ccddata.CCDData` or `~numpy.ndarray`
-        Array whose variance is to be calculated.
+        Array whose deviation is to be calculated.
 
     Returns
     -------
     float
-        variance of array
+        standard deviation of array
     """
     return 1.4826 * stats.median_absolute_deviation(arr)
 

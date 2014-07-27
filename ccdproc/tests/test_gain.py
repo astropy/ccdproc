@@ -19,7 +19,7 @@ from ..core import *
                          Keyword('gainval', unit=u.electron / u.adu)])
 @pytest.mark.data_unit(u.adu)
 def test_linear_gain_correct(ccd_data, gain):
-    ccd_data = create_variance(ccd_data, readnoise=1.0 * u.adu)
+    ccd_data = create_deviation(ccd_data, readnoise=1.0 * u.adu)
     ccd_data.meta['gainval'] = 3.0
     orig_data = ccd_data.data
     ccd = gain_correct(ccd_data, gain)
@@ -43,7 +43,7 @@ def test_linear_gain_correct(ccd_data, gain):
 # test gain with gain_unit
 @pytest.mark.data_unit(u.adu)
 def test_linear_gain_unit_keyword(ccd_data):
-    ccd_data = create_variance(ccd_data, readnoise=1.0 * u.adu)
+    ccd_data = create_deviation(ccd_data, readnoise=1.0 * u.adu)
     orig_data = ccd_data.data
     gain = 3.0
     gain_unit = u.electron / u.adu

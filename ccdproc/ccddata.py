@@ -24,7 +24,7 @@ class CCDData(NDData):
     """A class describing basic CCD data
 
     The CCDData class is based on the NDData object and includes a data array,
-    variance frame, mask frame, meta data, units, and WCS information for a
+    uncertainty frame, mask frame, meta data, units, and WCS information for a
     single CCD image.
 
     Parameters

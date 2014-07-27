@@ -6,7 +6,7 @@ import numpy as np
 from astropy.extern import six
 from astropy.tests.helper import pytest
 
-from .. import subtract_bias, create_variance, Keyword, CCDData
+from .. import subtract_bias, create_deviation, Keyword, CCDData
 
 
 @pytest.mark.parametrize('key', [
@@ -14,7 +14,7 @@ from .. import subtract_bias, create_variance, Keyword, CCDData
                          'toolongforfits'])
 def test_log_string(ccd_data, key):
     add_key = key
-    new = create_variance(ccd_data, readnoise=3 * ccd_data.unit,
+    new = create_deviation(ccd_data, readnoise=3 * ccd_data.unit,
                           add_keyword=add_key)
     # Keys should be added to new but not to ccd_data and should have
     # no value.
@@ -29,7 +29,7 @@ def test_log_keyword(ccd_data):
     key = 'filter'
     key_val = 'V'
     kwd = Keyword(key, value=key_val)
-    new = create_variance(ccd_data, readnoise=3 * ccd_data.unit,
+    new = create_deviation(ccd_data, readnoise=3 * ccd_data.unit,
                           add_keyword=kwd)
     # Was the Keyword added with the correct value?
     assert kwd.name in new.meta
@@ -39,11 +39,11 @@ def test_log_keyword(ccd_data):
 
 def test_log_dict(ccd_data):
     keys_to_add = {
-        'process': 'Added variance',
+        'process': 'Added deviation',
         'n_images_input': 1,
         'current_temp': 42.9
     }
-    new = create_variance(ccd_data, readnoise=3 * ccd_data.unit,
+    new = create_deviation(ccd_data, readnoise=3 * ccd_data.unit,
                           add_keyword=keys_to_add)
     for k, v in six.iteritems(keys_to_add):
         # Were all dictionary items added?
@@ -56,12 +56,12 @@ def test_log_bad_type_fails(ccd_data):
     add_key = 15   # anything not string and not dict-like will work here
     # Do we fail with non-string, non-Keyword, non-dict-like value?
     with pytest.raises(AttributeError):
-        create_variance(ccd_data, readnoise=3 * ccd_data.unit,
+        create_deviation(ccd_data, readnoise=3 * ccd_data.unit,
                         add_keyword=add_key)
 
 
 def test_log_set_to_None_does_not_change_header(ccd_data):
-    new = create_variance(ccd_data, readnoise=3 * ccd_data.unit,
+    new = create_deviation(ccd_data, readnoise=3 * ccd_data.unit,
                           add_keyword=None)
     assert new.meta.keys() == ccd_data.header.keys()
 
@@ -76,6 +76,6 @@ def test_implicit_logging(ccd_data):
     assert "subtract_bias" in result.header
     assert result.header['subtract_bias'] == "ccd=<CCDData>, master=<CCDData>"
 
-    result = create_variance(ccd_data, readnoise=3 * ccd_data.unit)
+    result = create_deviation(ccd_data, readnoise=3 * ccd_data.unit)
     assert ("readnoise="+str(3 * ccd_data.unit) in
-            result.header['create_variance'])
+            result.header['create_deviation'])
