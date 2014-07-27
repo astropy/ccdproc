@@ -81,6 +81,26 @@ create a mask for a stack of images, as described in :ref:`clipping`.
 
 The other is to replace, in a single image, each pixel that is several
 standard deviations from a central value in a region surrounding that pixel.
+The methods below describe how to do that.
+
+LACosmic
+++++++++
+
+The lacosmic technique identifies cosmic rays by identifying pixels based on a
+variation of the Laplacian edge detection.  The algorithm is an implementation
+of the code describe in van Dokkum (2001) [1]_.
+
+Use this technique with `~ccdproc.cosmicray_lacosmic`:
+
+    >>> cr_cleaned = ccdproc.cosmicray_lacosmic(gain_corrected, threshold, cr_func,
+    ...                                         crargs=cr_func_args,
+    ...                                         background=background_func,
+    ...                                         bargs=bkgd_func_args,
+    ...                                             rbox=replacement_box)
+
+median
+++++++
+
 That is done with `~ccdproc.cosmicray_clean`:
 
     >>> threshold = 10.0  # number of standard deviations from central value
@@ -282,3 +302,9 @@ are replaced with ``min_value``):
 
     >>> reduced_image = ccdproc.flat_correct(dark_subtracted, master_flat,
     ...                                      min_value=0.9)
+
+
+.. [1] van Dokkum, P; 2001, "Cosmic-Ray Rejection by Laplacian Edge
+       Detection". The Publications of the Astronomical Society of the
+       Pacific, Volume 113, Issue 789, pp. 1420-1427.
+       doi: 10.1086/323894

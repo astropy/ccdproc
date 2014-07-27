@@ -292,7 +292,7 @@ class Combiner(object):
         mask = self.data_arr.mask.sum(axis=0)
         mask = (mask == len(self.data_arr))
 
-        #set up the variance
+        #set up the deviation
         uncertainty = ma.std(self.data_arr, axis=0)
 
         #create the combined image

@@ -19,7 +19,7 @@ from ..core import *
 from ..core import _blkavg
 
 
-# test creating variance
+# test creating deviation
 # success expected if u_image * u_gain = u_readnoise
 @pytest.mark.parametrize('u_image,u_gain,u_readnoise,expect_succes', [
                          (u.electron, None, u.electron, True),
@@ -31,8 +31,8 @@ from ..core import _blkavg
                          (u.adu, u.photon / u.adu, u.electron, False),
                          ])
 @pytest.mark.data_size(10)
-def test_create_variance(ccd_data, u_image, u_gain, u_readnoise,
-                         expect_succes):
+def test_create_deviation(ccd_data, u_image, u_gain, u_readnoise,
+                          expect_succes):
     ccd_data.unit = u_image
     if u_gain:
         gain = 2.0 * u_gain
@@ -40,7 +40,7 @@ def test_create_variance(ccd_data, u_image, u_gain, u_readnoise,
         gain = None
     readnoise = 5 * u_readnoise
     if expect_succes:
-        ccd_var = create_variance(ccd_data, gain=gain, readnoise=readnoise)
+        ccd_var = create_deviation(ccd_data, gain=gain, readnoise=readnoise)
         assert ccd_var.uncertainty.array.shape == (10, 10)
         assert ccd_var.uncertainty.array.size == 100
         assert ccd_var.uncertainty.array.dtype == np.dtype(float)
@@ -56,19 +56,19 @@ def test_create_variance(ccd_data, u_image, u_gain, u_readnoise,
             ccd_var.uncertainty.array.unit
     else:
         with pytest.raises(u.UnitsError):
-            ccd_var = create_variance(ccd_data, gain=gain, readnoise=readnoise)
+            ccd_var = create_deviation(ccd_data, gain=gain, readnoise=readnoise)
 
 
-def test_create_variance_keywords_must_have_unit(ccd_data):
+def test_create_deviation_keywords_must_have_unit(ccd_data):
     # gain must have units if provided
     with pytest.raises(TypeError):
-        create_variance(ccd_data, gain=3)
+        create_deviation(ccd_data, gain=3)
     # readnoise must have units
     with pytest.raises(TypeError):
-        create_variance(ccd_data, readnoise=5)
+        create_deviation(ccd_data, readnoise=5)
     # readnoise must be provided
     with pytest.raises(ValueError):
-        create_variance(ccd_data)
+        create_deviation(ccd_data)
 
 
 # tests for overscan
@@ -361,17 +361,17 @@ def test_flat_correct_min_value(ccd_data):
     assert (flat_orig_data == flat.data).all()
 
 
-# test for variance and for flat correction
+# test for deviation and for flat correction
 @pytest.mark.data_scale(10)
 @pytest.mark.data_mean(300)
-def test_flat_correct_variance(ccd_data):
+def test_flat_correct_deviation(ccd_data):
     size = ccd_data.shape[0]
     ccd_data.unit = u.electron
-    ccd_data = create_variance(ccd_data, readnoise=5 * u.electron)
+    ccd_data = create_deviation(ccd_data, readnoise=5 * u.electron)
     # create the flat
     data = 2 * np.ones((size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
-    flat = create_variance(flat, readnoise=0.5 * u.electron)
+    flat = create_deviation(flat, readnoise=0.5 * u.electron)
     ccd_data = flat_correct(ccd_data, flat)
 
 
