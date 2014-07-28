@@ -92,35 +92,29 @@ of the code describe in van Dokkum (2001) [1]_.
 
 Use this technique with `~ccdproc.cosmicray_lacosmic`:
 
-    >>> cr_cleaned = ccdproc.cosmicray_lacosmic(gain_corrected, threshold, cr_func,
-    ...                                         crargs=cr_func_args,
-    ...                                         background=background_func,
-    ...                                         bargs=bkgd_func_args,
-    ...                                             rbox=replacement_box)
+    >>> cr_cleaned = ccdproc.cosmicray_lacosmic(gain_corrected, threshold,  
+    ...                                         thresh=5, mbox=11, rbox=11, 
+    ...                                         gbox=5)
+
 
 median
 ++++++
 
-That is done with `~ccdproc.cosmicray_clean`:
+Another cosmic ray cleaning algorithm available in ccdproc is `cosmicray_median`
+that is analogous to iraf.imred.crutil.crmedian.   This technique can
+be used with `ccdproc.cosmicray_median`:
 
-    >>> threshold = 10.0  # number of standard deviations from central value
-    >>> cr_func = ccdproc.cosmicray_median  # function for identifying deviant pixels
-    >>> cr_func_args = (11,)  # this cr_func takes one argument, a box size
-    >>> background_func = ccdproc.background_variance_box  # to calculate variance
-    >>> bkgd_func_args = (25,)  # one argument, the size of the box
-    >>> replacement_box = 11  # size of box for calculating replacement value
-    >>> cr_cleaned = ccdproc.cosmicray_clean(gain_corrected, threshold, cr_func,
-    ...                                      crargs=cr_func_args,
-    ...                                      background=background_func,
-    ...                                      bargs=bkgd_func_args,
-    ...                                      rbox=replacement_box)
+    >>> cosmicray_median = ccdproc.cosmicray_median(gain_corrected, threshold, 
+    ...                                             mbox=11, rbox=11, gbox=5)
 
 Although `ccdproc` provides functions for identifying outlying pixels and for
-calculating the variance of the background you are free to provide your own
-functions instead.
+calculating the deviation of the background you are free to provide your own
+error image instead. 
 
 There is one additional argument, ``gbox``, that specifies the size of the box,
-centered on a outlying pixel, in which pixel values should be replaced.
+centered on a outlying pixel, in which pixel should be grown.  The argument 
+``rbox`` specifies the size of the box used to calculate a median value if 
+values for bad pixels should be replaced.
 
 Subtract overscan and trim images
 ---------------------------------
