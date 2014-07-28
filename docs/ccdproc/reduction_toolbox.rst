@@ -104,8 +104,8 @@ Another cosmic ray cleaning algorithm available in ccdproc is `cosmicray_median`
 that is analogous to iraf.imred.crutil.crmedian.   This technique can
 be used with `ccdproc.cosmicray_median`:
 
-    >>> cosmicray_median = ccdproc.cosmicray_median(gain_corrected, threshold, 
-    ...                                             mbox=11, rbox=11, gbox=5)
+    >>> cr_cleaned = ccdproc.cosmicray_median(gain_corrected, threshold, 
+    ...                                       mbox=11, rbox=11, gbox=5)
 
 Although `ccdproc` provides functions for identifying outlying pixels and for
 calculating the deviation of the background you are free to provide your own
