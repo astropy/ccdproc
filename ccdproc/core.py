@@ -918,8 +918,9 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
     1. Given an numpy.ndarray object, the syntax for running
        cosmicrar_lacosmic would be:
 
-       >>> newdata, mask = cosmicray_clean(data, error_image=error_image,
-                                           thresh=5, mbox=11, rbox=11, gbox=5)
+       >>> newdata, mask = cosmicray_lacosmic(data, error_image=error_image,
+                                              thresh=5, mbox=11, rbox=11, 
+                                              gbox=5)
 
        where the error is an array that is the same shape as data but
        includes the pixel error.  This would return a data array, newdata,
@@ -929,7 +930,7 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
     2. Given an `~ccddata.CCDData` object with an uncertainty frame, the syntax
        for running cosmicrar_lacosmic would be:
 
-       >>> newccd = cosmicray_clean(ccd, thresh=5, mbox=11, rbox=11, gbox=5)
+       >>> newccd = cosmicray_lacosmic(ccd, thresh=5, mbox=11, rbox=11, gbox=5)
 
        The newccd object will have bad pixels in its data array replace and the
        mask of the object will be created if it did not previously exist or be
@@ -1042,7 +1043,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
     ----------
 
     ccd : `~ccdproc.CCDData` or numpy.ndarray or numpy.MaskedArary
-        Data to have cosmic ray cleans
+        Data to have cosmic ray cleaned
 
     thresh :  float
         Threshold for detecting cosmic rays
