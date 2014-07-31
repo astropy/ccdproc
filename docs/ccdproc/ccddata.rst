@@ -1,7 +1,7 @@
 .. _ccddata:
 
-Image class
-===========
+CCDData class
+=============
 
 Getting started
 ---------------
