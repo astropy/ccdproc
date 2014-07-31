@@ -1,7 +1,7 @@
 .. _ccddata:
 
-Image class
-===========
+CCDData class
+=============
 
 Getting started
 ---------------
@@ -125,9 +125,9 @@ Pixel-by-pixel uncertainty can be calculated for you:
 
     >>> data = np.random.normal(size=(10, 10), loc=1.0, scale=0.1)
     >>> ccd = ccdproc.CCDData(data, unit="electron")
-    >>> ccd_new = ccdproc.create_variance(ccd, readnoise=5 * u.electron)
+    >>> ccd_new = ccdproc.create_deviation(ccd, readnoise=5 * u.electron)
 
-See :ref:`create_variance` for more details.
+See :ref:`create_deviation` for more details.
 
 You can also set the uncertainty directly, either by creating a
 `~astropy.nddata.StdDevUncertainty` object first:

@@ -97,7 +97,7 @@ image metadata and specify its unit:
 
     >>> image_2.header['gain']  = 1.5
     >>> gain = ccdproc.Keyword('gain', unit=u.photon/u.adu)
-    >>> image_2_var = ccdproc.create_variance(image_2,
+    >>> image_2_var = ccdproc.create_deviation(image_2,
     ...                                       gain=gain.value_from(image_2.header),
     ...                                       readnoise=3.0 * u.photon)
 
