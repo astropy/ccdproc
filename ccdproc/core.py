@@ -1084,9 +1084,9 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
     --------
 
     1) Given an numpy.ndarray object, the syntax for running
-       cosmicray_lacosmic would be:
+       cosmicray_median would be:
 
-       >>> newdata, mask = cosmicray_lacosmic(data, error_image=error,
+       >>> newdata, mask = cosmicray_median(data, error_image=error,
                                            thresh=5, mbox=11, rbox=11, gbox=5)
 
        where error is an array that is the same shape as data but
