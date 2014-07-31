@@ -22,26 +22,26 @@ There are basically three logging options:
 2. Explicit logging: You can specify what information is added to the metadata using the ``add_keyword`` argument for any of the functions below.
 3. No logging: If you prefer no logging be done you can "opt-out" by calling each function with ``add_keyword=None``.
 
-.. _create_variance:
+.. _create_deviation:
 
-Gain correct and create variance
---------------------------------
+Gain correct and create deviantion image
+----------------------------------------
 
 Uncertainty
 +++++++++++
 
 An uncertainty can be calculated from your data with
-`~ccdproc.create_variance`:
+`~ccdproc.create_deviation`:
 
     >>> from astropy import units as u
     >>> import numpy as np
     >>> import ccdproc
     >>> img = np.random.normal(loc=10, scale=0.5, size=(100, 232))
     >>> data = ccdproc.CCDData(img, unit=u.adu)
-    >>> data_with_variance = ccdproc.create_variance(data,
+    >>> data_with_deviatione = ccdproc.create_deviation(data,
     ...                                              gain=1.5 * u.electron/u.adu,
     ...                                              readnoise=5 * u.electron)
-    >>> data_with_variance.header['exposure'] = 30.0  # for dark subtraction
+    >>> data_with_deviation.header['exposure'] = 30.0  # for dark subtraction
 
 The uncertainty, :math:`u_{ij}`, at pixel :math:`(i,~j)` with value
 :math:`p_{ij}` is calculated as
@@ -56,7 +56,7 @@ to calculate the uncertainty. The data itself is not scaled by this function.
 
 As with all of the functions in `ccdproc`, *the input image is not modified*.
 
-In the example above the new image ``data_with_variance`` has its uncertainty
+In the example above the new image ``data_with_deviation`` has its uncertainty
 set.
 
 Gain
@@ -64,7 +64,7 @@ Gain
 
 To apply a gain to an image, do:
 
-    >>> gain_corrected = ccdproc.gain_correct(data_with_variance, 1.5*u.electron/u.adu)
+    >>> gain_corrected = ccdproc.gain_correct(data_with_deviation, 1.5*u.electron/u.adu)
 
 The result ``gain_corrected`` has its data *and uncertainty* scaled by the gain
 and its unit updated.
