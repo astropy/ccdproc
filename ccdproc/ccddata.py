@@ -165,17 +165,24 @@ class CCDData(NDData):
         """
         from .core import _short_names
 
-        header = fits.Header()
-        for k, v in self.header.items():
-            if k in _short_names:
-                # This keyword was (hopefully) added by autologging but the
-                # combination of it and its value FITS-compliant in two ways.
-                # Shorten, sort of...
-                short_name = _short_names[k]
-                header[k] = (short_name, "Shortened name for ccdproc command")
-                header[short_name] = v
-            else:
-                header[k] = v
+        if isinstance(self.header, fits.Header):
+            header = self.header
+        else:
+            header = fits.Header()
+            for k, v in self.header.items():
+                if k in _short_names:
+                    # This keyword was (hopefully) added by autologging but the
+                    # combination of it and its value not FITS-compliant in two
+                    # ways: the keyword name may be more than 8 characters and
+                    # the value may be too long. FITS cannot handle both of
+                    # those problems at once, so this fixes one of those
+                    # problems...
+                    # Shorten, sort of...
+                    short_name = _short_names[k]
+                    header[k] = (short_name, "Shortened name for ccdproc command")
+                    header[short_name] = v
+                else:
+                    header[k] = v
         hdu = fits.PrimaryHDU(self.data, header)
         hdulist = fits.HDUList([hdu])
         return hdulist
