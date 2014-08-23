@@ -405,7 +405,20 @@ def test_ccddata_with_fits_header_as_meta_works_with_autologging(ccd_data,
     ccd2.write(tmp_file.strpath)
     # And the header on ccd2 should be a subset of the written header; they
     # do not match exactly because the written header contains information
-    # about the array size that is the hdr we created manually. 
+    # about the array size that is the hdr we created manually.
     ccd2_read = CCDData.read(tmp_file.strpath, unit=u.adu)
     for k, v in six.iteritems(ccd2.header):
         assert ccd2_read.header[k] == v
+
+
+def test_history_preserved_if_metadata_is_fits_header(tmpdir):
+    hdu = fits.PrimaryHDU()
+    hdu.header['history'] = 'one'
+    hdu.header['history'] = 'two'
+    hdu.header['history'] = 'three'
+    assert len(hdu.header['history']) == 3
+    tmp_file = tmpdir.join('temp.fits').strpath
+    hdu.writeto(tmp_file)
+
+    ccd_read = CCDData.read(tmp_file, unit="adu")
+    assert ccd_read.header['history'] == hdu.header['history']
