@@ -143,7 +143,7 @@ def test_header2meta():
 def test_metafromstring_fail():
     hdr = 'this is not a valid header'
     with pytest.raises(TypeError):
-        CCDData(np.ones((5, 5)), meta=hdr)
+        CCDData(np.ones((5, 5)), meta=hdr, unit=u.adu)
 
 
 def test_setting_bad_uncertainty_raises_error(ccd_data):
