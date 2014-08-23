@@ -11,6 +11,7 @@ from astropy.nddata import StdDevUncertainty
 from astropy import units as u
 
 from ..ccddata import CCDData
+from .. import subtract_dark
 
 
 def test_ccddata_empty():
@@ -355,3 +356,26 @@ def test_arithmetic_overload_ccddata_operand(ccd_data):
                             ccd_data.uncertainty.array)
     np.testing.assert_allclose(result.uncertainty.array,
                                expected_uncertainty)
+
+
+def test_ccddata_header_does_not_corrupt_fits(ccd_data, tmpdir):
+    # This test is for the problem described in astropy/ccdproc#165
+    # The issue comes up when a long FITS keyword value is in a header
+    # that is read in and then converted to a non-fits.Header object
+    # that is dict-like, and then you try to write that out again as
+    # FITS. Certainly FITS files out to be able to round-trip, and
+    # this test checks for that.
+
+    fake_dark = ccd_data.copy()
+    # This generates a nice long log entry in the header.
+    ccd = subtract_dark(ccd_data, fake_dark, dark_exposure=30*u.second,
+                        data_exposure=30*u.second)
+    # The write below succeeds...
+    long_key = tmpdir.join('long_key.fit').strpath
+    ccd.write(long_key)
+
+    # And this read succeeds...
+    ccd_read = CCDData.read(long_key, unit="adu")
+
+    # This write failed in astropy/ccdproc#165 but should not:
+    ccd_read.write(tmpdir.join('should_work.fit').strpath)
