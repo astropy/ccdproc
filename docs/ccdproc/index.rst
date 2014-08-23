@@ -41,8 +41,7 @@ An example of reading from a FITS file is
 ``image_2 = ccdproc.CCDData.read('my_image.fits', unit="electron")`` (the 
 ``electron`` unit is defined as part of ``ccdproc``).
 
-The metadata of a ``CCDData`` object is a case-insensitive dictionary (though 
-this may change in future versions).
+The metadata of a ``CCDData`` object may be any dictionary-like object, including a FITS header. When a ``CCDData`` object is initialized from FITS file its metadata is a FITS header.
 
 The data is accessible either by indexing directly or through the ``data``
 attribute:
