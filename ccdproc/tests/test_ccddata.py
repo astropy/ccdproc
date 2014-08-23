@@ -378,4 +378,10 @@ def test_ccddata_header_does_not_corrupt_fits(ccd_data, tmpdir):
     ccd_read = CCDData.read(long_key, unit="adu")
 
     # This write failed in astropy/ccdproc#165 but should not:
-    ccd_read.write(tmpdir.join('should_work.fit').strpath)
+    rewritten = tmpdir.join('should_work.fit').strpath
+    ccd_read.write(rewritten)
+
+    # If all is well then reading the file we just wrote should result in an
+    # identical header.
+    ccd_reread = CCDData.read(rewritten, unit="adu")
+    assert ccd_reread.header == ccd_read.header
