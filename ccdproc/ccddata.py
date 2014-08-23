@@ -120,7 +120,7 @@ class CCDData(NDData):
     @meta.setter
     def meta(self, value):
         if value is None:
-            self._meta = CaseInsensitiveOrderedDict()
+            self._meta = {}
         else:
             if hasattr(value, 'keys'):
                 self._meta = value
@@ -163,26 +163,18 @@ class CCDData(NDData):
            hdulist : astropy.io.fits.HDUList object
 
         """
-        from .core import _short_names
-
         if isinstance(self.header, fits.Header):
             header = self.header
         else:
-            header = fits.Header()
+            # Because _insert_in_metadata_fits_safe is written as a method
+            # we need to create a dummy CCDData instance to hold the FITS
+            # header we are constructing. This probably indicates that
+            # _insert_in_metadata_fits_safe should be rewritten in a more
+            # sensible way...
+            dummy_ccd = CCDData(data=[1], meta=fits.Header(), unit="adu")
             for k, v in self.header.items():
-                if k in _short_names:
-                    # This keyword was (hopefully) added by autologging but the
-                    # combination of it and its value not FITS-compliant in two
-                    # ways: the keyword name may be more than 8 characters and
-                    # the value may be too long. FITS cannot handle both of
-                    # those problems at once, so this fixes one of those
-                    # problems...
-                    # Shorten, sort of...
-                    short_name = _short_names[k]
-                    header[k] = (short_name, "Shortened name for ccdproc command")
-                    header[short_name] = v
-                else:
-                    header[k] = v
+                dummy_ccd._insert_in_metadata_fits_safe(k, v)
+            header = dummy_ccd.header
         hdu = fits.PrimaryHDU(self.data, header)
         hdulist = fits.HDUList([hdu])
         return hdulist
@@ -254,6 +246,47 @@ class CCDData(NDData):
 
         return self._ccddata_arithmetic(other, np.subtract,
                                         scale_uncertainty=False)
+
+    def _insert_in_metadata_fits_safe(self, key, value):
+        """
+        Insert key/value pair into metadata in a way that FITS can serialize.
+
+        Parameters
+        ----------
+
+        key : str
+            Key to be inserted in dictionary.
+
+        value : str or None
+            Value to be inserted.
+
+        Notes
+        -----
+
+        This addresses a shortcoming of the FITS standard. There are length
+        restrictions on both the ``key`` (8 characters) and ``value`` (72
+        characters) in the FITS standard. There is a convention for handline
+        long keywords and a convention for handling long values, but the
+        two conventions cannot be used at the same time.
+
+        Autologging in `ccdproc` frequently creates keywords/values with this
+        combination. The workaround is to use a shortened name for the keyword.
+        """
+        from .core import _short_names
+
+        if key in _short_names and isinstance(self.meta, fits.Header):
+            # This keyword was (hopefully) added by autologging but the
+            # combination of it and its value not FITS-compliant in two
+            # ways: the keyword name may be more than 8 characters and
+            # the value may be too long. FITS cannot handle both of
+            # those problems at once, so this fixes one of those
+            # problems...
+            # Shorten, sort of...
+            short_name = _short_names[key]
+            self.meta[key] = (short_name, "Shortened name for ccdproc command")
+            self.meta[short_name] = value
+        else:
+            self.meta[key] = value
 
 
 def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
