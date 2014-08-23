@@ -122,13 +122,10 @@ class CCDData(NDData):
         if value is None:
             self._meta = CaseInsensitiveOrderedDict()
         else:
-            h = CaseInsensitiveOrderedDict()
-            try:
-                for k, v in value.items():
-                    h[k] = v
-            except (ValueError, AttributeError):
+            if hasattr(value, 'keys'):
+                self._meta = value
+            else:
                 raise TypeError('NDData meta attribute must be dict-like')
-            self._meta = h
 
     @property
     def uncertainty(self):
