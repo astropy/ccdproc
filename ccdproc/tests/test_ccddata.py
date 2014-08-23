@@ -87,11 +87,12 @@ def test_ccddata_writer(ccd_data, tmpdir):
     np.testing.assert_array_equal(ccd_data.data, ccd_disk.data)
 
 
-def test_ccddata_meta_is_case_insensitive(ccd_data):
+def test_ccddata_meta_is_case_sensitive(ccd_data):
     key = 'SoMeKEY'
     ccd_data.meta[key] = 10
-    assert key.lower() in ccd_data.meta
-    assert key.upper() in ccd_data.meta
+    assert key.lower() not in ccd_data.meta
+    assert key.upper() not in ccd_data.meta
+    assert key in ccd_data.meta
 
 
 def test_ccddata_meta_is_not_fits_header(ccd_data):
