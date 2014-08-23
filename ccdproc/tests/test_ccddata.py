@@ -9,6 +9,7 @@ from astropy.io import fits
 from astropy.tests.helper import pytest
 from astropy.nddata import StdDevUncertainty
 from astropy import units as u
+from astropy.extern import six
 
 from ..ccddata import CCDData
 from .. import subtract_dark
@@ -385,3 +386,25 @@ def test_ccddata_header_does_not_corrupt_fits(ccd_data, tmpdir):
     # identical header.
     ccd_reread = CCDData.read(rewritten, unit="adu")
     assert ccd_reread.header == ccd_read.header
+
+
+def test_ccddata_with_fits_header_as_meta_works_with_autologging(ccd_data,
+                                                                 tmpdir):
+    tmp_file = tmpdir.join('tmp.fits')
+    hdr = fits.Header(ccd_data.header)
+    ccd_data.header = hdr
+    fake_dark = ccd_data.copy()
+    # The combination below will generate a long keyword ('subtract_dark')
+    # and a long value (the function signature) in autlogging.
+    ccd2 = subtract_dark(ccd_data, fake_dark,
+                         dark_exposure=30*u.second,
+                         data_exposure=15*u.second,
+                         scale=True)
+    # This should not fail....
+    ccd2.write(tmp_file.strpath)
+    # And the header on ccd2 should be a subset of the written header; they
+    # do not match exactly because the written header contains information
+    # about the array size that is the hdr we created manually. 
+    ccd2_read = CCDData.read(tmp_file.strpath, unit=u.adu)
+    for k, v in six.iteritems(ccd2.header):
+        assert ccd2_read.header[k] == v
