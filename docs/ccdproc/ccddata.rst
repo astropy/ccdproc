@@ -60,14 +60,9 @@ dictionary or dict-like object:
     >>> my_meta = {'observer': 'Edwin Hubble', 'exposure': 30.0}
     >>> ccd_simple.header = my_meta  # or use ccd_simple.meta = my_meta
 
-Search of the metadata is case-insensitive:
-
-    >>> 'OBSERVER' in ccd_simple.header
-    True
-    >>> ccd_simple.header['ExPoSuRe']
-    30.0
-
-Note, however, that internally all keywords are converted to lowercase.
+Whether the metadata is case sensitive or not depends on how it is
+initialized. A FITS header, for example, is not case sensitive, but a python
+dictionary is.
 
 Getting data out
 ++++++++++++++++
