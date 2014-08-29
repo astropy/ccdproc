@@ -67,8 +67,11 @@ def log_to_metadata(func):
         log_result = kwd.pop(_LOG_ARGUMENT, False)
         result = func(*args, **kwd)
 
-        if log_result:
-            _insert_in_metadata(result.meta, log_result)
+        if log_result is None:
+            # No need to add metadata....
+            meta_dict = {}
+        elif log_result:
+            meta_dict = _metadata_to_dict(log_result)
         elif log_result is not None:
             # Logging is not turned off, but user did not provide a value
             # so construct one.
@@ -82,24 +85,23 @@ def log_to_metadata(func):
             pos_args.extend(kwd_args)
             log_val = ", ".join(pos_args)
             log_val = log_val.replace("\n", "")
-            to_log = {key: log_val}
-            _insert_in_metadata(result.meta, to_log)
+            meta_dict = {key: log_val}
+
+        for k, v in six.iteritems(meta_dict):
+            result._insert_in_metadata_fits_safe(k, v)
         return result
+
     return wrapper
 
 
-def _insert_in_metadata(metadata, arg):
+def _metadata_to_dict(arg):
     if isinstance(arg, six.string_types):
         # add the key, no value
-        metadata[arg] = None
+        return {arg: None}
     elif isinstance(arg, ccdproc.Keyword):
-        metadata[arg.name] = arg.value
+        return {arg.name: arg.value}
     else:
-        try:
-            for k, v in six.iteritems(arg):
-                metadata[k] = v
-        except AttributeError:
-            raise
+        return arg
 
 
 def _replace_array_with_placeholder(value):

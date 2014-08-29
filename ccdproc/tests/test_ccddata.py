@@ -9,8 +9,10 @@ from astropy.io import fits
 from astropy.tests.helper import pytest
 from astropy.nddata import StdDevUncertainty
 from astropy import units as u
+from astropy.extern import six
 
 from ..ccddata import CCDData
+from .. import subtract_dark
 
 
 def test_ccddata_empty():
@@ -85,11 +87,12 @@ def test_ccddata_writer(ccd_data, tmpdir):
     np.testing.assert_array_equal(ccd_data.data, ccd_disk.data)
 
 
-def test_ccddata_meta_is_case_insensitive(ccd_data):
+def test_ccddata_meta_is_case_sensitive(ccd_data):
     key = 'SoMeKEY'
     ccd_data.meta[key] = 10
-    assert key.lower() in ccd_data.meta
-    assert key.upper() in ccd_data.meta
+    assert key.lower() not in ccd_data.meta
+    assert key.upper() not in ccd_data.meta
+    assert key in ccd_data.meta
 
 
 def test_ccddata_meta_is_not_fits_header(ccd_data):
@@ -142,7 +145,7 @@ def test_header2meta():
 def test_metafromstring_fail():
     hdr = 'this is not a valid header'
     with pytest.raises(TypeError):
-        CCDData(np.ones((5, 5)), meta=hdr)
+        CCDData(np.ones((5, 5)), meta=hdr, unit=u.adu)
 
 
 def test_setting_bad_uncertainty_raises_error(ccd_data):
@@ -355,3 +358,67 @@ def test_arithmetic_overload_ccddata_operand(ccd_data):
                             ccd_data.uncertainty.array)
     np.testing.assert_allclose(result.uncertainty.array,
                                expected_uncertainty)
+
+
+def test_ccddata_header_does_not_corrupt_fits(ccd_data, tmpdir):
+    # This test is for the problem described in astropy/ccdproc#165
+    # The issue comes up when a long FITS keyword value is in a header
+    # that is read in and then converted to a non-fits.Header object
+    # that is dict-like, and then you try to write that out again as
+    # FITS. Certainly FITS files out to be able to round-trip, and
+    # this test checks for that.
+
+    fake_dark = ccd_data.copy()
+    # This generates a nice long log entry in the header.
+    ccd = subtract_dark(ccd_data, fake_dark, dark_exposure=30*u.second,
+                        data_exposure=30*u.second)
+    # The write below succeeds...
+    long_key = tmpdir.join('long_key.fit').strpath
+    ccd.write(long_key)
+
+    # And this read succeeds...
+    ccd_read = CCDData.read(long_key, unit="adu")
+
+    # This write failed in astropy/ccdproc#165 but should not:
+    rewritten = tmpdir.join('should_work.fit').strpath
+    ccd_read.write(rewritten)
+
+    # If all is well then reading the file we just wrote should result in an
+    # identical header.
+    ccd_reread = CCDData.read(rewritten, unit="adu")
+    assert ccd_reread.header == ccd_read.header
+
+
+def test_ccddata_with_fits_header_as_meta_works_with_autologging(ccd_data,
+                                                                 tmpdir):
+    tmp_file = tmpdir.join('tmp.fits')
+    hdr = fits.Header(ccd_data.header)
+    ccd_data.header = hdr
+    fake_dark = ccd_data.copy()
+    # The combination below will generate a long keyword ('subtract_dark')
+    # and a long value (the function signature) in autlogging.
+    ccd2 = subtract_dark(ccd_data, fake_dark,
+                         dark_exposure=30*u.second,
+                         data_exposure=15*u.second,
+                         scale=True)
+    # This should not fail....
+    ccd2.write(tmp_file.strpath)
+    # And the header on ccd2 should be a subset of the written header; they
+    # do not match exactly because the written header contains information
+    # about the array size that is the hdr we created manually.
+    ccd2_read = CCDData.read(tmp_file.strpath, unit=u.adu)
+    for k, v in six.iteritems(ccd2.header):
+        assert ccd2_read.header[k] == v
+
+
+def test_history_preserved_if_metadata_is_fits_header(tmpdir):
+    hdu = fits.PrimaryHDU()
+    hdu.header['history'] = 'one'
+    hdu.header['history'] = 'two'
+    hdu.header['history'] = 'three'
+    assert len(hdu.header['history']) == 3
+    tmp_file = tmpdir.join('temp.fits').strpath
+    hdu.writeto(tmp_file)
+
+    ccd_read = CCDData.read(tmp_file, unit="adu")
+    assert ccd_read.header['history'] == hdu.header['history']
