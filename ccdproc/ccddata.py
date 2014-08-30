@@ -175,6 +175,8 @@ class CCDData(NDData):
             for k, v in self.header.items():
                 dummy_ccd._insert_in_metadata_fits_safe(k, v)
             header = dummy_ccd.header
+        if self.unit is not u.dimensionless_unscaled:
+            header['bunit'] = self.unit.to_string()
         hdu = fits.PrimaryHDU(self.data, header)
         hdulist = fits.HDUList([hdu])
         return hdulist
