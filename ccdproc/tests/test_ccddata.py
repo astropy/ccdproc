@@ -66,6 +66,13 @@ def test_initialize_from_fits_with_unit_in_header(tmpdir):
     assert ccd2.unit is u.photon
 
 
+def test_write_unit_to_hdu(ccd_data, tmpdir):
+    ccd_unit = ccd_data.unit
+    hdulist = ccd_data.to_hdu()
+    assert 'bunit' in hdulist[0].header
+    assert hdulist[0].header['bunit'] == ccd_unit.to_string()
+
+
 def test_initialize_from_FITS_bad_keyword_raises_error(ccd_data, tmpdir):
     # There are two fits.open keywords that are not permitted in ccdpro:
     #     do_not_scale_image_data and scale_back
