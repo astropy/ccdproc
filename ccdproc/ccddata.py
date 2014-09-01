@@ -339,7 +339,8 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
 
     if unit is not None and fits_unit_string:
         log.info("Using the unit {0} passed to the FITS reader instead of "
-                 "the unit {1} in the FITS file.", unit, fits_unit_string)
+                 "the unit {1} in the FITS file.".format(unit,
+                                                         fits_unit_string))
 
     use_unit = unit or fits_unit_string
     ccd_data = CCDData(hdus[hdu].data, meta=hdus[hdu].header, unit=use_unit)

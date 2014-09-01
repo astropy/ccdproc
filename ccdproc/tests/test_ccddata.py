@@ -10,6 +10,7 @@ from astropy.tests.helper import pytest
 from astropy.nddata import StdDevUncertainty
 from astropy import units as u
 from astropy.extern import six
+from astropy import log
 
 from ..ccddata import CCDData
 from .. import subtract_dark
@@ -429,3 +430,13 @@ def test_history_preserved_if_metadata_is_fits_header(tmpdir):
 
     ccd_read = CCDData.read(tmp_file, unit="adu")
     assert ccd_read.header['history'] == hdu.header['history']
+
+
+def test_infol_logged_if_unit_in_fits_header(ccd_data, tmpdir):
+    tmpfile = tmpdir.join('temp.fits')
+    ccd_data.write(tmpfile.strpath)
+    log.setLevel('INFO')
+    explicit_unit_name = "photon"
+    with log.log_to_list() as log_list:
+        ccd_from_disk = CCDData.read(tmpfile.strpath, unit=explicit_unit_name)
+        assert explicit_unit_name in log_list[0].message
