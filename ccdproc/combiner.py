@@ -43,9 +43,12 @@ class Combiner(object):
 
     """
 
-    def __init__(self, ccd_list):
+    def __init__(self, ccd_list, dtype=None):
         if ccd_list is None:
             raise TypeError("ccd_list should be a list of CCDData objects")
+
+        if dtype is None:
+            dtype = np.float64
 
         default_shape = None
         default_unit = None
@@ -75,7 +78,7 @@ class Combiner(object):
         #set up the data array
         ydim, xdim = default_shape
         new_shape = (len(ccd_list), ydim, xdim)
-        self.data_arr = ma.masked_all(new_shape)
+        self.data_arr = ma.masked_all(new_shape, dtype=dtype)
 
         #populate self.data_arr
         for i, ccd in enumerate(ccd_list):
