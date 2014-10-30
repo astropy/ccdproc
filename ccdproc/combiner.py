@@ -26,6 +26,9 @@ class Combiner(object):
     ccd_list : `list`
         A list of CCDData objects that will be combined together.
 
+    dtype : 'numpy dtype'
+        Allows user to set dtype.
+
     Raises
     ------
     TypeError
