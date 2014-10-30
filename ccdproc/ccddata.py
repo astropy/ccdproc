@@ -334,6 +334,9 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
 
     try:
         fits_unit_string = hdr['bunit']
+        #patch to handle FITS files using ADU for the unit instead of the 
+        #standard version of 'adu'
+        if fits_unit_string.strip().lower()=='adu': fits_unit_string=fits_unit_string.lower()
     except KeyError:
         fits_unit_string = None
 

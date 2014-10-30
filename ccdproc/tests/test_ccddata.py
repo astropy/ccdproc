@@ -66,6 +66,17 @@ def test_initialize_from_fits_with_unit_in_header(tmpdir):
     ccd2 = CCDData.read(filename, unit="photon")
     assert ccd2.unit is u.photon
 
+def test_initialize_from_fits_with_ADU_in_header(tmpdir):
+    fake_img = np.random.random(size=(100, 100))
+    hdu = fits.PrimaryHDU(fake_img)
+    hdu.header['bunit'] = 'ADU'
+    filename = tmpdir.join('afile.fits').strpath
+    hdu.writeto(filename)
+    ccd = CCDData.read(filename)
+    # ccd should pick up the unit adu from the fits header...did it?
+    assert ccd.unit is u.adu
+
+
 
 def test_write_unit_to_hdu(ccd_data, tmpdir):
     ccd_unit = ccd_data.unit
