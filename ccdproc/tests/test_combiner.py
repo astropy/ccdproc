@@ -61,6 +61,13 @@ def test_combiner_create(ccd_data):
     assert c.data_arr.mask.shape == (3, 100, 100)
 
 
+#test if dtype matches the value that is passed
+def test_combiner_dtype(ccd_data):
+    ccd_list = [ccd_data, ccd_data, ccd_data]
+    c = Combiner(ccd_list, dtype = np.float32)
+    assert c.data_arr.dtype == np.float32
+
+
 #test mask is created from ccd.data
 def test_combiner_mask(ccd_data):
     data = np.zeros((10, 10))
