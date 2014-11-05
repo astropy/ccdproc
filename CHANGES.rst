@@ -18,9 +18,12 @@ Bug Fixes
 New Features
 ^^^^^^^^^^^^
 
+- Add dtype argument to `ccdproc.Combiner` to help control memory use [#178]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Allow the unit string "adu" to be upper or lower case in a FIS header [#182]
 
 Bug Fixes
 ^^^^^^^^^
