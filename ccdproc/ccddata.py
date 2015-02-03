@@ -106,6 +106,14 @@ class CCDData(NDDataArray):
             raise ValueError("Unit for CCDData must be specified")
 
     @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, value):
+        self._data = value
+
+    @property
     def shape(self):
         return self.data.shape
 
