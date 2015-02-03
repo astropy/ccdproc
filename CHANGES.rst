@@ -7,6 +7,9 @@ New Features
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 
+- Updated CCDData to use the new version of NDDATA in astropy v1.0.   This
+  breaks backward compatibility with earlier versions of astropy.  
 
 Bug Fixes
 ^^^^^^^^^
