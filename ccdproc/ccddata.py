@@ -114,6 +114,17 @@ class CCDData(NDDataArray):
         self._data = value
 
     @property
+    def unit(self):
+        return self._unit
+
+    @unit.setter
+    def unit(self, value):
+        if value is not None:
+            self._unit = u.Unit(value)
+        else:
+            self._unit = None
+
+    @property
     def shape(self):
         return self.data.shape
 
