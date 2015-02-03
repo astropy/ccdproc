@@ -231,8 +231,8 @@ def test_combiner_with_scaling(ccd_data):
     assert avg_ccd.shape == ccd_data.shape
     median_ccd = combiner.median_combine()
     # Does median also scale to the correct value?
-    np.testing.assert_almost_equal(np.ma.median(median_ccd),
-                                   np.ma.median(ccd_data.data))
+    np.testing.assert_almost_equal(np.median(median_ccd),
+                                   np.median(ccd_data.data))
 
     # Set the scaling manually...
     combiner.scaling = [scale_by_mean(combiner.data_arr[i]) for i in range(3)]
