@@ -129,6 +129,10 @@ class CCDData(NDDataArray):
         return self.data.shape
 
     @property
+    def size(self):
+        return self.data.size
+
+    @property
     def header(self):
         return self._meta
 
