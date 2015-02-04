@@ -8,7 +8,7 @@ import numbers
 
 import numpy as np
 
-from astropy.nddata import NDData
+from astropy.nddata import NDDataArray
 from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
 from astropy.io import fits, registry
 from astropy import units as u
@@ -19,7 +19,7 @@ from .utils.collections import CaseInsensitiveOrderedDict
 __all__ = ['CCDData']
 
 
-class CCDData(NDData):
+class CCDData(NDDataArray):
 
     """A class describing basic CCD data
 
@@ -104,6 +104,37 @@ class CCDData(NDData):
         super(CCDData, self).__init__(*args, **kwd)
         if self.unit is None:
             raise ValueError("Unit for CCDData must be specified")
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, value):
+        self._data = value
+
+    @property
+    def unit(self):
+        return self._unit
+
+    @unit.setter
+    def unit(self, value):
+        if value is not None:
+            self._unit = u.Unit(value)
+        else:
+            self._unit = None
+
+    @property
+    def shape(self):
+        return self.data.shape
+
+    @property
+    def size(self):
+        return self.data.size
+
+    @property
+    def dtype(self):
+        return self.data.dtype
 
     @property
     def header(self):

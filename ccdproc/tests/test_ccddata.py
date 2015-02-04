@@ -431,7 +431,8 @@ def test_ccddata_with_fits_header_as_meta_works_with_autologging(ccd_data,
 
 
 def test_history_preserved_if_metadata_is_fits_header(tmpdir):
-    hdu = fits.PrimaryHDU()
+    fake_img = np.random.random(size=(100, 100))
+    hdu = fits.PrimaryHDU(fake_img)
     hdu.header['history'] = 'one'
     hdu.header['history'] = 'two'
     hdu.header['history'] = 'three'
