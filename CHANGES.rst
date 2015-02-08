@@ -23,7 +23,7 @@ New Features
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
+-Added Changes to the docs [#183]
 
 Bug Fixes
 ^^^^^^^^^
