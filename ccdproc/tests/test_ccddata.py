@@ -487,13 +487,12 @@ def test_wcs_attribute(ccd_data, tmpdir):
     tmpfile = tmpdir.join('temp.fits')
     # This wcs example is taken from the astropy.wcs docs.
     wcs = WCS(naxis=2)
-    wcs.crpix = np.array(ccd_data.shape)/2
-    wcs.cdelt = np.array([-0.066667, 0.066667])
-    wcs.crval = [0, -90]
-    wcs.ctype = ["RA---AIR", "DEC--AIR"]
-    #wcs.set_pv([(2, 1, 45.0)])
+    wcs.wcs.crpix = np.array(ccd_data.shape)/2
+    wcs.wcs.cdelt = np.array([-0.066667, 0.066667])
+    wcs.wcs.crval = [0, -90]
+    wcs.wcs.ctype = ["RA---AIR", "DEC--AIR"]
+    wcs.wcs.set_pv([(2, 1, 45.0)])
     ccd_data.header = ccd_data.to_hdu()[0].header
-    print(type(ccd_data.header))
 
     ccd_data.header.extend(wcs.to_header())
     ccd_data.write(tmpfile.strpath)
@@ -501,4 +500,4 @@ def test_wcs_attribute(ccd_data, tmpdir):
     # WCS attribute should be set for ccd_new
     assert ccd_new.wcs is not None
     # WCS attribute should be equal to wcs above.
-    assert ccd_new.wcs == wcs
+    assert ccd_new.wcs.wcs == wcs.wcs
