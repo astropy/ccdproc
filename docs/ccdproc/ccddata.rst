@@ -49,6 +49,15 @@ FITS file.
 There is no restriction at all on what the unit can be -- any unit in
 `astropy.units` or that you create yourself will work.
 
+In addition, the user can specify the extension in a FITS file to use:
+
+    >>> ccd = ccdproc.CCDData.read('my_file.fits', hdu=1, unit="adu")  # doctest: +SKIP
+
+If ``hdu`` is not specified, it will assume the data is in the primary 
+extension.  If there is no data in the primary extension, the first extension
+with data will be used.
+
+
 Metadata
 ++++++++
 

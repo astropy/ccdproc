@@ -5,6 +5,10 @@
 New Features
 ^^^^^^^^^^^^
 
+- When reading in a FITS file, the extension to be used can be specified.  If
+  it is not and there is no data in the primary extension, the first extension
+  with data will be used.
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
  
