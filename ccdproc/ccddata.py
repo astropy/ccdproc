@@ -13,6 +13,7 @@ from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
 from astropy.io import fits, registry
 from astropy import units as u
 from astropy import log
+from astropy.wcs import WCS
 
 from .utils.collections import CaseInsensitiveOrderedDict
 
@@ -52,13 +53,8 @@ class CCDData(NDDataArray):
         data, or as a `~astropy.nddata.FlagCollection` instance which has a
         shape matching that of the data.
 
-    wcs : undefined, optional
+    wcs : `~astropy.wcs.WCS` object, optional
         WCS-object containing the world coordinate system for the data.
-
-        .. warning::
-            This is not yet defind because the discussion of how best to
-            represent this class's WCS system generically is still under
-            consideration. For now just leave it as None
 
     meta : `dict`-like object, optional
         Metadata for this object.  "Metadata" here means all information that
@@ -388,7 +384,14 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
                                                          fits_unit_string))
 
     use_unit = unit or fits_unit_string
-    ccd_data = CCDData(hdus[hdu].data, meta=hdus[hdu].header, unit=use_unit)
+    # Try constructing a WCS object. This may generate a warning, but never
+    # an error.
+    wcs = WCS(hdr)
+    # Test for success by checking to see if the wcs ctype has a non-empty
+    # value.
+    wcs = wcs if wcs.wcs.ctype[0] else None
+    ccd_data = CCDData(hdus[hdu].data, meta=hdus[hdu].header, unit=use_unit,
+                       wcs=wcs)
     hdus.close()
     return ccd_data
 
