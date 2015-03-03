@@ -11,6 +11,7 @@ from astropy.nddata import StdDevUncertainty
 from astropy import units as u
 from astropy.extern import six
 from astropy import log
+from astropy.wcs import WCS
 
 from ..ccddata import CCDData
 from .. import subtract_dark
@@ -480,3 +481,24 @@ def test_infol_logged_if_unit_in_fits_header(ccd_data, tmpdir):
     with log.log_to_list() as log_list:
         ccd_from_disk = CCDData.read(tmpfile.strpath, unit=explicit_unit_name)
         assert explicit_unit_name in log_list[0].message
+
+
+def test_wcs_attribute(ccd_data, tmpdir):
+    tmpfile = tmpdir.join('temp.fits')
+    # This wcs example is taken from the astropy.wcs docs.
+    wcs = WCS(naxis=2)
+    wcs.crpix = np.array(ccd_data.shape)/2
+    wcs.cdelt = np.array([-0.066667, 0.066667])
+    wcs.crval = [0, -90]
+    wcs.ctype = ["RA---AIR", "DEC--AIR"]
+    #wcs.set_pv([(2, 1, 45.0)])
+    ccd_data.header = ccd_data.to_hdu()[0].header
+    print(type(ccd_data.header))
+
+    ccd_data.header.extend(wcs.to_header())
+    ccd_data.write(tmpfile.strpath)
+    ccd_new = CCDData.read(tmpfile.strpath)
+    # WCS attribute should be set for ccd_new
+    assert ccd_new.wcs is not None
+    # WCS attribute should be equal to wcs above.
+    assert ccd_new.wcs == wcs
