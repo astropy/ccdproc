@@ -66,6 +66,7 @@ def test_initialize_from_fits_with_unit_in_header(tmpdir):
     ccd2 = CCDData.read(filename, unit="photon")
     assert ccd2.unit is u.photon
 
+
 def test_initialize_from_fits_with_ADU_in_header(tmpdir):
     fake_img = np.random.random(size=(100, 100))
     hdu = fits.PrimaryHDU(fake_img)
@@ -76,6 +77,18 @@ def test_initialize_from_fits_with_ADU_in_header(tmpdir):
     # ccd should pick up the unit adu from the fits header...did it?
     assert ccd.unit is u.adu
 
+
+def test_initialize_from_fits_with_data_in_different_extension(tmpdir):
+    fake_img = np.random.random(size=(100, 100))
+    new_hdul = fits.HDUList()
+    hdu1 = fits.PrimaryHDU()
+    hdu2 = fits.ImageHDU(fake_img)
+    hdus = fits.HDUList([hdu1, hdu2])
+    filename = tmpdir.join('afile.fits').strpath
+    hdus.writeto(filename)
+    ccd = CCDData.read(filename, unit='adu')
+    # ccd should pick up the unit adu from the fits header...did it?
+    np.testing.assert_array_equal(ccd.data, fake_img)
 
 
 def test_write_unit_to_hdu(ccd_data, tmpdir):
