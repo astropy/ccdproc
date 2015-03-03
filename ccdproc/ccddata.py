@@ -35,8 +35,8 @@ class CCDData(NDDataArray):
         make copy the `data` before passing it in if that's the  desired
         behavior.
 
-    uncertainty : `~astropy.nddata.StdDevUncertainty` or `~numpy.ndarray`, optional
-        Uncertainties on the data.
+    uncertainty : `~astropy.nddata.StdDevUncertainty` or `~numpy.ndarray`,
+        optional Uncertainties on the data.
 
     mask : `~numpy.ndarray`, optional
         Mask for the data, given as a boolean Numpy array with a shape
@@ -333,7 +333,9 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
         Name of fits file.
 
     hdu : int, optional
-        FITS extension from which CCDData should be initialized.
+        FITS extension from which CCDData should be initialized.  If zero and
+        and no data in the primary extention, it will search for the first
+        extension with data.
 
     unit : astropy.units.Unit, optional
         Units of the image data. If this argument is provided and there is a
@@ -363,11 +365,20 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
     hdus = fits.open(filename, **kwd)
     hdr = hdus[hdu].header
 
+    # search for the first instance with data if the primary header is empty
+    if hdu == 0 and hdus[hdu].data is None:
+        for i in range(len(hdus)):
+            if hdus.fileinfo(i)['datSpan'] > 0:
+                hdu = i
+                log.info("First HDU with data is exention {0}".format(hdu))
+                break
+
     try:
         fits_unit_string = hdr['bunit']
-        #patch to handle FITS files using ADU for the unit instead of the 
-        #standard version of 'adu'
-        if fits_unit_string.strip().lower()=='adu': fits_unit_string=fits_unit_string.lower()
+        # patch to handle FITS files using ADU for the unit instead of the
+        # standard version of 'adu'
+        if fits_unit_string.strip().lower() == 'adu':
+            fits_unit_string = fits_unit_string.lower()
     except KeyError:
         fits_unit_string = None
 
