@@ -53,7 +53,7 @@ In addition, the user can specify the extension in a FITS file to use:
 
     >>> ccd = ccdproc.CCDData.read('my_file.fits', hdu=1, unit="adu")  # doctest: +SKIP
 
-If ``hdu`` is not specified, it will assume the data is in the primary 
+If ``hdu`` is not specified, it will assume the data is in the primary
 extension.  If there is no data in the primary extension, the first extension
 with data will be used.
 
@@ -122,6 +122,21 @@ Flags are one or more additional arrays (of any type) whose shape matches the
 shape of the data. For more details on setting flags see
 `astropy.nddata.NDData`.
 
+WCS
++++
+
+The  ``wcs`` attribute of `~ccdproc.ccddata.CCDData` object can be set two ways.
+
++ If the `~ccdproc.ccddata.CCDData` object is created from a FITS file that has
+  WCS keywords in the header, the ``wcs`` attribute is set to a
+  `astropy.wcs.WCS` object using the information in the FITS header.
+
++ The WCS can also be provided when the `~ccdproc.ccddata.CCDData` object is
+  constructed with the ``wcs`` argument.
+
+Either way, the ``wcs`` attribute is kept up to date if the
+`~ccdproc.ccddata.CCDData` image is trimmed.
+
 Uncertainty
 -----------
 
@@ -176,7 +191,7 @@ appropriately. Note that the metadata of the result is *not* set:
     >>> result.header
     CaseInsensitiveOrderedDict()
 
-.. note::      
+.. note::
     In most cases you should use the functions described in
     :ref:`reduction_toolbox` to perform common operations like scaling by gain or
     doing dark or sky subtraction. Those functions try to construct a sensible
