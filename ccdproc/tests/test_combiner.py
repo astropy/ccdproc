@@ -66,6 +66,12 @@ def test_combiner_dtype(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list, dtype = np.float32)
     assert c.data_arr.dtype == np.float32
+    avg = c.average_combine()
+    # dtype of average should match input dtype
+    assert avg.dtype == c.dtype
+    med = c.median_combine()
+    # dtype of median should match dtype of input
+    assert med.dtype == c.dtype
 
 
 #test mask is created from ccd.data

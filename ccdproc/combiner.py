@@ -77,6 +77,7 @@ class Combiner(object):
         self.ccd_list = ccd_list
         self.unit = default_unit
         self.weights = None
+        self._dtype = dtype
 
         #set up the data array
         ydim, xdim = default_shape
@@ -94,6 +95,10 @@ class Combiner(object):
         # Must be after self.data_arr is defined because it checks the
         # length of the data array.
         self.scaling = None
+
+    @property
+    def dtype(self):
+        return self._dtype
 
     @property
     def weights(self):
@@ -260,8 +265,9 @@ class Combiner(object):
         uncertainty = 1.4826 * median_absolute_deviation(self.data_arr.data,
                                                          axis=0)
 
-        #create the combined image
-        combined_image = CCDData(data.data, mask=mask, unit=self.unit,
+        # create the combined image with a dtype matching the combiner
+        combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
+                                 mask=mask, unit=self.unit,
                                  uncertainty=StdDevUncertainty(uncertainty))
 
         #update the meta data
@@ -301,8 +307,9 @@ class Combiner(object):
         #set up the deviation
         uncertainty = ma.std(self.data_arr, axis=0)
 
-        #create the combined image
-        combined_image = CCDData(data.data, mask=mask, unit=self.unit,
+        # create the combined image with a dtype that matches the combiner
+        combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
+                                 mask=mask, unit=self.unit,
                                  uncertainty=StdDevUncertainty(uncertainty))
 
         #update the meta data

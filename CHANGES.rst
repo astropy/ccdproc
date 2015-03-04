@@ -11,13 +11,15 @@ New Features
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 
+
 - Updated CCDData to use the new version of NDDATA in astropy v1.0.   This
-  breaks backward compatibility with earlier versions of astropy.  
+  breaks backward compatibility with earlier versions of astropy.
 
 Bug Fixes
 ^^^^^^^^^
 
+- Ensure ``dtype`` of combined images matches the ``dtype`` of the
+  ``Combiner`` object. [#189]
 
 0.2.2 (unreleased)
 ------------------
