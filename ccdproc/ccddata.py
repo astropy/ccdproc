@@ -191,7 +191,9 @@ class CCDData(NDDataArray):
 
         """
         if isinstance(self.header, fits.Header):
-            header = self.header
+            # Copy here so that we can modify the HDU header by adding WCS
+            # information without changing the header of the CCDData object.
+            header = self.header.copy()
         else:
             # Because _insert_in_metadata_fits_safe is written as a method
             # we need to create a dummy CCDData instance to hold the FITS
@@ -204,6 +206,13 @@ class CCDData(NDDataArray):
             header = dummy_ccd.header
         if self.unit is not u.dimensionless_unscaled:
             header['bunit'] = self.unit.to_string()
+        if self.wcs:
+            # Simply extending the FITS header with the WCS can lead to
+            # duplicates of the WCS keywords; iterating over the WCS
+            # header should be safer.
+            wcs_header = self.wcs.to_header()
+            for k in wcs_header.keys():
+                header[k] = wcs_header[k]
         hdu = fits.PrimaryHDU(self.data, header)
         hdulist = fits.HDUList([hdu])
         return hdulist

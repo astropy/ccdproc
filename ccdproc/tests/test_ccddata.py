@@ -497,7 +497,24 @@ def test_wcs_attribute(ccd_data, tmpdir):
     ccd_data.header.extend(wcs.to_header())
     ccd_data.write(tmpfile.strpath)
     ccd_new = CCDData.read(tmpfile.strpath)
+    original_header_length = len(ccd_new.header)
     # WCS attribute should be set for ccd_new
     assert ccd_new.wcs is not None
     # WCS attribute should be equal to wcs above.
     assert ccd_new.wcs.wcs == wcs.wcs
+
+    # Converting CCDData object with wcs to an hdu shouldn't
+    # create duplicate wcs-related entries in the header.
+    ccd_new_hdu = ccd_new.to_hdu()[0]
+    assert len(ccd_new_hdu.header) == original_header_length
+
+    # Making a CCDData with WCS (but not WCS in the header) should lead to
+    # WCS information in the header when it is converted to an HDU.
+    ccd_wcs_not_in_header = CCDData(ccd_data.data, wcs=wcs, unit="adu")
+    hdu = ccd_wcs_not_in_header.to_hdu()[0]
+    wcs_header = wcs.to_header()
+    for k in wcs_header.keys():
+        # No keyword from the WCS should be in the header.
+        assert k not in ccd_wcs_not_in_header.header
+        # Every keyword in the WCS should be in the header of the HDU
+        assert hdu.header[k] == wcs_header[k]
