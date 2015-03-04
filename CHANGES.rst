@@ -9,11 +9,14 @@ New Features
   it is not and there is no data in the primary extension, the first extension
   with data will be used.
 
+- Set wcs attribute when reading from a FITS file that contains WCS keywords
+  and write WCS keywords to header when converting to an HDU. [#195]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 
+
 - Updated CCDData to use the new version of NDDATA in astropy v1.0.   This
-  breaks backward compatibility with earlier versions of astropy.  
+  breaks backward compatibility with earlier versions of astropy.
 
 Bug Fixes
 ^^^^^^^^^
@@ -27,7 +30,7 @@ New Features
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
--Added Changes to the docs [#183]
+- Added Changes to the docs [#183]
 
 Bug Fixes
 ^^^^^^^^^

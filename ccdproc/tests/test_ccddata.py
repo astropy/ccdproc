@@ -11,6 +11,7 @@ from astropy.nddata import StdDevUncertainty
 from astropy import units as u
 from astropy.extern import six
 from astropy import log
+from astropy.wcs import WCS
 
 from ..ccddata import CCDData
 from .. import subtract_dark
@@ -480,3 +481,40 @@ def test_infol_logged_if_unit_in_fits_header(ccd_data, tmpdir):
     with log.log_to_list() as log_list:
         ccd_from_disk = CCDData.read(tmpfile.strpath, unit=explicit_unit_name)
         assert explicit_unit_name in log_list[0].message
+
+
+def test_wcs_attribute(ccd_data, tmpdir):
+    tmpfile = tmpdir.join('temp.fits')
+    # This wcs example is taken from the astropy.wcs docs.
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = np.array(ccd_data.shape)/2
+    wcs.wcs.cdelt = np.array([-0.066667, 0.066667])
+    wcs.wcs.crval = [0, -90]
+    wcs.wcs.ctype = ["RA---AIR", "DEC--AIR"]
+    wcs.wcs.set_pv([(2, 1, 45.0)])
+    ccd_data.header = ccd_data.to_hdu()[0].header
+
+    ccd_data.header.extend(wcs.to_header())
+    ccd_data.write(tmpfile.strpath)
+    ccd_new = CCDData.read(tmpfile.strpath)
+    original_header_length = len(ccd_new.header)
+    # WCS attribute should be set for ccd_new
+    assert ccd_new.wcs is not None
+    # WCS attribute should be equal to wcs above.
+    assert ccd_new.wcs.wcs == wcs.wcs
+
+    # Converting CCDData object with wcs to an hdu shouldn't
+    # create duplicate wcs-related entries in the header.
+    ccd_new_hdu = ccd_new.to_hdu()[0]
+    assert len(ccd_new_hdu.header) == original_header_length
+
+    # Making a CCDData with WCS (but not WCS in the header) should lead to
+    # WCS information in the header when it is converted to an HDU.
+    ccd_wcs_not_in_header = CCDData(ccd_data.data, wcs=wcs, unit="adu")
+    hdu = ccd_wcs_not_in_header.to_hdu()[0]
+    wcs_header = wcs.to_header()
+    for k in wcs_header.keys():
+        # No keyword from the WCS should be in the header.
+        assert k not in ccd_wcs_not_in_header.header
+        # Every keyword in the WCS should be in the header of the HDU
+        assert hdu.header[k] == wcs_header[k]

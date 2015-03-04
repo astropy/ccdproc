@@ -8,6 +8,7 @@ from astropy.io import fits
 from astropy.modeling import models
 from astropy.units.quantity import Quantity
 import astropy.units as u
+from astropy.wcs import WCS
 
 from astropy.nddata import StdDevUncertainty
 
@@ -213,6 +214,22 @@ def test_trim_image_no_section(ccd_data):
     trimmed = trim_image(ccd_data[:, 19:40])
     assert trimmed.shape == (50, 21)
     np.testing.assert_array_equal(trimmed.data, ccd_data[:, 19:40])
+
+
+def test_trim_with_wcs_alters_wcs(ccd_data):
+    # WCS construction example pulled form astropy.wcs docs
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = np.array(ccd_data.shape)/2
+    wcs.wcs.cdelt = np.array([-0.066667, 0.066667])
+    wcs.wcs.crval = [0, -90]
+    wcs.wcs.ctype = ["RA---AIR", "DEC--AIR"]
+    wcs.wcs.set_pv([(2, 1, 45.0)])
+    ccd_wcs = CCDData(ccd_data, wcs=wcs)
+    # The trim below should subtract 10 from the 2nd element of crpix.
+    # (Second element because the FITS convention for index ordering is
+    #  opposite that of python)
+    trimmed = trim_image(ccd_wcs[10:, :])
+    assert trimmed.wcs.wcs.crpix[1] == wcs.wcs.crpix[1] - 10
 
 
 def test_subtract_bias(ccd_data):

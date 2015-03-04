@@ -13,6 +13,7 @@ from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
 from astropy.io import fits, registry
 from astropy import units as u
 from astropy import log
+from astropy.wcs import WCS
 
 from .utils.collections import CaseInsensitiveOrderedDict
 
@@ -52,13 +53,8 @@ class CCDData(NDDataArray):
         data, or as a `~astropy.nddata.FlagCollection` instance which has a
         shape matching that of the data.
 
-    wcs : undefined, optional
+    wcs : `~astropy.wcs.WCS` object, optional
         WCS-object containing the world coordinate system for the data.
-
-        .. warning::
-            This is not yet defind because the discussion of how best to
-            represent this class's WCS system generically is still under
-            consideration. For now just leave it as None
 
     meta : `dict`-like object, optional
         Metadata for this object.  "Metadata" here means all information that
@@ -195,7 +191,9 @@ class CCDData(NDDataArray):
 
         """
         if isinstance(self.header, fits.Header):
-            header = self.header
+            # Copy here so that we can modify the HDU header by adding WCS
+            # information without changing the header of the CCDData object.
+            header = self.header.copy()
         else:
             # Because _insert_in_metadata_fits_safe is written as a method
             # we need to create a dummy CCDData instance to hold the FITS
@@ -208,6 +206,13 @@ class CCDData(NDDataArray):
             header = dummy_ccd.header
         if self.unit is not u.dimensionless_unscaled:
             header['bunit'] = self.unit.to_string()
+        if self.wcs:
+            # Simply extending the FITS header with the WCS can lead to
+            # duplicates of the WCS keywords; iterating over the WCS
+            # header should be safer.
+            wcs_header = self.wcs.to_header()
+            for k in wcs_header.keys():
+                header[k] = wcs_header[k]
         hdu = fits.PrimaryHDU(self.data, header)
         hdulist = fits.HDUList([hdu])
         return hdulist
@@ -388,7 +393,14 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
                                                          fits_unit_string))
 
     use_unit = unit or fits_unit_string
-    ccd_data = CCDData(hdus[hdu].data, meta=hdus[hdu].header, unit=use_unit)
+    # Try constructing a WCS object. This may generate a warning, but never
+    # an error.
+    wcs = WCS(hdr)
+    # Test for success by checking to see if the wcs ctype has a non-empty
+    # value.
+    wcs = wcs if wcs.wcs.ctype[0] else None
+    ccd_data = CCDData(hdus[hdu].data, meta=hdus[hdu].header, unit=use_unit,
+                       wcs=wcs)
     hdus.close()
     return ccd_data
 
