@@ -21,6 +21,8 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- Ensure ``dtype`` of combined images matches the ``dtype`` of the
+  ``Combiner`` object. [#189]
 
 0.2.2 (unreleased)
 ------------------
