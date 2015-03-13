@@ -518,3 +518,6 @@ def test_wcs_attribute(ccd_data, tmpdir):
         assert k not in ccd_wcs_not_in_header.header
         # Every keyword in the WCS should be in the header of the HDU
         assert hdu.header[k] == wcs_header[k]
+
+def test_header(ccd_data):
+    ccd = CCDData(ccd_data, header={}, unit='adu')
