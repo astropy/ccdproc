@@ -520,4 +520,4 @@ def test_wcs_attribute(ccd_data, tmpdir):
         assert hdu.header[k] == wcs_header[k]
 
 def test_header(ccd_data):
-    ccd = CCDData(ccd_data, header={}, unit='adu')
+    ccd = CCDData(ccd_data, header={})
