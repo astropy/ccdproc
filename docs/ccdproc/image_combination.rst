@@ -72,8 +72,7 @@ deviations below the median with
     (in the case the number of frames in the combiner) is much smaller than
     the number of pixels.
 
-    A much faster library for this case is `bottleneck`_; a detailed example
-    which uses `bottleneck`_ is at :ref:`bottleneck_example`.
+    A
 
 Iterative clipping
 ++++++++++++++++++
@@ -103,11 +102,7 @@ Performing a median combination is also straightforward,
 
     >>> combined_median = combiner.median_combine()  # can be slow, see below 
 
-The masked median function provided by numpy (and used by default in
-``median_combine``) can be very slow, so ``median_combine`` accepts an
-argument ``median_func`` for calculating the median instead. One fast
-alternative is provided by the `bottleneck`_ package; an example using it is
-at :ref:`bottleneck_example`.
+
 
 With image scaling
 ------------------
@@ -127,6 +122,4 @@ using `~ccdproc.Combiner.average_combine` or
 With image transformation
 -------------------------
 
-TBD
 
-.. _bottleneck: http://berkeleyanalytics.com/bottleneck/
