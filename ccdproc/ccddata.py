@@ -97,6 +97,11 @@ class CCDData(NDDataArray):
 
     """
     def __init__(self, *args, **kwd):
+        if 'meta' not in kwd:
+            kwd['meta'] = kwd.pop('header', None)
+        if 'header' in kwd:
+            raise ValueError("Can't have both header and meta")
+        
         super(CCDData, self).__init__(*args, **kwd)
         if self.unit is None:
             raise ValueError("Unit for CCDData must be specified")
