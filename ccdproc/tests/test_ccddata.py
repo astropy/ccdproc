@@ -520,4 +520,6 @@ def test_wcs_attribute(ccd_data, tmpdir):
         assert hdu.header[k] == wcs_header[k]
 
 def test_header(ccd_data):
-    ccd = CCDData(ccd_data, header={})
+    a = {'Observer': 'Hubble'}
+    ccd = CCDData(ccd_data, a)
+    assert ccd.meta == a

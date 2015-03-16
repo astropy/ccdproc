@@ -98,7 +98,7 @@ class CCDData(NDDataArray):
     """
     def __init__(self, *args, **kwd):
         if 'meta' not in kwd:
-            kwd['meta']=kwd.pop('header', None)
+            kwd['meta'] = kwd.pop('header', None)
         if 'header' in kwd:
             raise ValueError("Can't have both header and meta")
         
