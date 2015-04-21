@@ -531,3 +531,10 @@ def test__blkavg_larger(ccd_data):
 
     assert b.shape == (10, 10)
     np.testing.assert_almost_equal(b.sum(), 0.25 * a.sum())
+
+#test overscan changes
+def test__overscan_schange(ccd_data):
+    old_data=ccd_data.copy()
+    new_data=subtract_overscan(ccd_data,overscan=ccd_data[:,1],overscan_axis=0)
+    assert old_data != new_data
+    np.testing.assert_array_equal(old_data.data,ccd_data.data)
