@@ -534,7 +534,7 @@ def test__blkavg_larger(ccd_data):
 
 #test overscan changes
 def test__overscan_schange(ccd_data):
-    old_data=ccd_data.copy()
-    new_data=subtract_overscan(ccd_data,overscan=ccd_data[:,1],overscan_axis=0)
-    assert old_data != new_data
-    np.testing.assert_array_equal(old_data.data,ccd_data.data)
+    old_data = ccd_data.copy()
+    new_data = subtract_overscan(ccd_data, overscan=ccd_data[:,1], overscan_axis=0)
+    assert not np.allclose(old_data.data, new_data.data)
+    np.testing.assert_array_equal(old_data.data, ccd_data.data)
