@@ -221,9 +221,11 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
     else:
         oscan = np.reshape(oscan, oscan.shape + (1,))
 
+    subtracted = ccd.copy()
+
     # subtract the overscan
-    ccd.data = ccd.data - oscan
-    return ccd
+    subtracted.data = ccd.data - oscan
+    return subtracted
 
 
 @log_to_metadata
