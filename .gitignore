@@ -62,3 +62,4 @@ nosetests.xml
 
 #editors
 .swp
+.idea
