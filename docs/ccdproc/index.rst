@@ -21,14 +21,6 @@ The `ccdproc` package provides:
 Getting Started
 ---------------
 
-.. warning::
-    `ccdproc` is still under active development. The API will almost
-    certainly change.
-
-    In addition, testing of `ccdproc` on real data is currently very limited.
-    Use with caution, and please report any errors you find at the 
-    `GitHub repo`_ for this project.
-
 A ``CCDData`` object can be created from a numpy array (masked or not) or from
 a FITS file:
 
