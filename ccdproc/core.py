@@ -44,8 +44,8 @@ _short_names = {
 
 @log_to_metadata
 def ccd_process(ccd, oscan=None, trim=None, error=False, masterbias=None,
-                bad_pixel_mask=None, gain=None, rdnoise=None,
-                oscan_median=True, oscan_model=None):
+                master_flat=None, bad_pixel_mask=None, gain=None, rdnoise=None,
+                oscan_median=True, oscan_model=None, min_value=None):
     """Perform basic processing on ccd data.
 
     The following steps can be included:
@@ -80,6 +80,9 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, masterbias=None,
     masterbias: None, `~numpy.ndarray`,  or `~ccdproc.CCDData`
         A materbias frame to be subtracted from ccd.
 
+    masterflat: None, `~numpy.ndarray`,  or `~ccdproc.CCDData`
+        A materflat frame to be divided into ccd.
+
     bad_pixel_mask: None or `~numpy.ndarray`
         A bad pixel mask for the data. The bad pixel mask should be in given
         such that bad pixels havea value of 1 and good pixels a value of 0.
@@ -91,13 +94,18 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, masterbias=None,
         Read noise for the observations.  The read noise should be in
         `~astropy.units.electron`
 
-
     oscan_median :  bool, optional
         If true, takes the median of each line.  Otherwise, uses the mean
 
     oscan_model :  `~astropy.modeling.Model`, optional
         Model to fit to the data.  If None, returns the values calculated
         by the median or the mean.
+ 
+    min_value : None or float
+        Minimum value for flat field.  The value can either be None and no
+        minimum value is applied to the flat or specified by a float which
+        will replace all values in the flat by the min_value.
+
 
     Returns
     -------
@@ -176,6 +184,17 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, masterbias=None,
     else:
         raise TypeError(
             'masterbias is not None, numpy.ndarray,  or a CCDData object')
+
+    # test dividing the master flat 
+    if isinstance(masterflat, ccdproc.CCDData):
+        nccd = nccd.flat_correct(masterflat, min_value=min_value)
+    elif isinstance(masterbias, np.ndarray):
+        nccd.data = nccd.data / masterflat * masterflat.mean()
+    elif masterbias is None:
+        pass
+    else:
+        raise TypeError(
+            'masterflat is not None, numpy.ndarray,  or a CCDData object')
 
     return nccd
 
