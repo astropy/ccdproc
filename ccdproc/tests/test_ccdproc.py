@@ -2,13 +2,13 @@
 # This module implements the base CCDData class
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
 import numpy as np
 from astropy.io import fits
 from astropy.modeling import models
 from astropy.units.quantity import Quantity
 import astropy.units as u
 from astropy.wcs import WCS
+
 
 from astropy.nddata import StdDevUncertainty
 
@@ -532,9 +532,71 @@ def test__blkavg_larger(ccd_data):
     assert b.shape == (10, 10)
     np.testing.assert_almost_equal(b.sum(), 0.25 * a.sum())
 
+
 #test overscan changes
 def test__overscan_schange(ccd_data):
     old_data = ccd_data.copy()
     new_data = subtract_overscan(ccd_data, overscan=ccd_data[:,1], overscan_axis=0)
     assert not np.allclose(old_data.data, new_data.data)
     np.testing.assert_array_equal(old_data.data, ccd_data.data)
+
+    
+def test_create_deviation_does_not_change_input(ccd_data):
+    original = ccd_data.copy()
+    ccd = create_deviation(ccd_data, gain=5 * u.electron / u.adu, readnoise=10 * u.electron)
+    np.testing.assert_array_equal(original.data, ccd_data.data)
+    assert original.unit == ccd_data.unit
+
+def test_cosmicray_median_does_not_change_input(ccd_data):
+	original = ccd_data.copy()
+	error = np.zeros_like(ccd_data)
+	ccd = cosmicray_median(ccd_data,error_image = error, thresh = 5, mbox = 11, gbox = 0, rbox = 0)
+	np.testing.assert_array_equal(original.data,ccd_data.data)
+	assert original.unit == ccd_data.unit
+
+def test_cosmicray_lacosmic_does_not_change_input(ccd_data):
+	original = ccd_data.copy()
+	error = np.zeros_like(ccd_data)
+	ccd = cosmicray_lacosmic(ccd_data, error_image = error, thresh = 5, fthresh = 5, gthresh = 1.5, b_factor = 2, mbox = 5, min_limit = 0.01, gbox = 0, rbox = 0)
+	np.testing.assert_array_equal(original.data, ccd_data.data)
+	assert original.unit == ccd_data.unit
+
+def test_flat_correct_does_not_change_input(ccd_data):
+	original = ccd_data.copy()
+	flat = CCDData(np.zeros_like(ccd_data), unit = ccd_data.unit)
+	ccd = flat_correct(ccd_data,flat=flat)
+	np.testing.assert_array_equal(original.data, ccd_data.data)
+	assert original.unit == ccd_data.unit
+
+def test_gain_correct_does_not_change_input(ccd_data):
+    original = ccd_data.copy()
+    ccd = gain_correct(ccd_data, gain = 1, gain_unit = ccd_data.unit)
+    np.testing.assert_array_equal(original.data, ccd_data.data)
+    assert original.unit == ccd_data.unit
+
+def test_subtract_bias_does_not_change_input(ccd_data):
+    original = ccd_data.copy()
+    master_frame = CCDData(np.zeros_like(ccd_data),unit = ccd_data.unit)
+    ccd = subtract_bias(ccd_data, master = master_frame)
+    np.testing.assert_array_equal(original.data, ccd_data.data)
+    assert original.unit == ccd_data.unit
+
+def test_trim_image_does_not_change_input(ccd_data):
+    original = ccd_data.copy()
+    ccd = trim_image(ccd_data, fits_section = None)
+    np.testing.assert_array_equal(original.data, ccd_data.data)
+    assert original.unit == ccd_data.unit
+
+def test_rebin_does_not_change_input(ccd_data):
+    original = ccd_data.copy()
+    ccd = rebin(ccd_data, (20,20))
+    np.testing.assert_array_equal(original.data, ccd_data.data)
+    assert original.unit == ccd_data.unit
+
+def test_transform_image_does_not_change_input(ccd_data):
+    original = ccd_data.copy()
+    ccd = transform_image(ccd_data,np.sqrt)
+    np.testing.assert_array_equal(original.data, ccd_data)
+    assert original.unit == ccd_data.unit
+
+
