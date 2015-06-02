@@ -6,6 +6,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from numpy import ma
 from .ccddata import CCDData
+from .core import trim_image
 
 from astropy.stats import median_absolute_deviation
 from astropy.nddata import StdDevUncertainty
@@ -317,3 +318,107 @@ class Combiner(object):
 
         #return the combined image
         return combined_image
+
+
+class Combine_fits(object):
+
+    """A class for combining fits images with limited memory usage
+
+    The Combine_fits class is used to combine together fits images with
+    limit on the maximum memory usage, it including all the  methods
+    of the Combiner class for combining the data, rejecting outlying data,
+    and weighting used for combining frames etc.
+
+    Parameters
+    -----------
+    img_list : `list`
+        A list of fits filenames that will be combined together.
+    memlimit : float (default 16e9)
+        Maximum memory which should be used for combining in bytes.
+    output_fits: 'string'
+        Optional output fits filename
+    
+             : Other keyword arguments for CCD Object fits reader
+    """
+    def __init__(self, img_list, mem_limit=16e9, output_fits=None, **kwargs):
+        self.img_list = img_list
+        self.mem_limit = mem_limit
+        self.output_fits = output_fits
+        self.ccdkwargs = kwargs
+        # We create a dummy output CCDObject from first image for storing output
+        self.ccd_dummy = CCDData.read(img_list[0],**self.ccdkwargs)
+        
+        size_of_an_img = self.ccd_dummy.data.nbytes
+        no_of_img = len(self.img_list)
+        
+        #determine the number of chunks to split the images into
+        no_chunks = int((size_of_an_img*no_of_img)/self.mem_limit)+1
+        self.Xs, self.Ys = self.ccd_dummy.data.shape
+        self.Xstep = max(1, int(self.Xs/no_chunks)) # First we try to split only along fast x axis
+        # If more chunks need to be created we split in Y axis for remaining number of chunks
+        self.Ystep = max(1, int(self.Ys/(1+ no_chunks - int(self.Xs/self.Xstep)) ) ) 
+        
+        # List of Combiner properties to set and methods to call before combining
+        self.to_set_in_combiner = []
+        self.to_call_in_combiner = []
+
+    # Define all the Combiner properties one wants to apply before combining images
+    def set_weights(self, value):
+        """ Sets the weights in the Combiner"""
+        self.to_set_in_combiner.append(('weights',value))
+
+    def set_scaling(self, value):
+        """ Sets the scaling property of Combiner"""
+        self.to_set_in_combiner.append(('scaling',value))
+
+
+    def minmax_clipping(self, **kwargs):
+        """Sets to Mask all pixels that are below min_clip or above max_clip."""
+        self.to_call_in_combiner.append(('minmax_clipping',kwargs))
+
+    def sigma_clipping(self, **kwargs):
+        """Sets to Mask all pixels that are below or above certain sigma."""
+        self.to_call_in_combiner.append(('sigma_clipping',kwargs))
+
+
+    # Define Combiner's combining methods
+    def median_combine(self, **kwargs):
+        """ Run Combiner to Median combine a set of images """
+        self.run_on_all_tiles('median_combine', **kwargs)
+
+    def average_combine(self, **kwargs):
+        """ Run Combiner to Average combine a set of images """
+        self.run_on_all_tiles('average_combine', **kwargs)
+
+
+    def run_on_all_tiles(self, method, **kwargs):
+        """ Runs the input method on all the subsectiosn of the image and return final stitched image"""
+        for x in range(0,self.Xs,self.Xstep):
+            for y in range(0,self.Ys,self.Ystep):
+                xend, yend = min(self.Xs, x + self.Xstep), min(self.Ys, y + self.Ystep)
+                ccd_list = []
+                for image in self.img_list:
+                    imgccd = CCDData.read(image,**self.ccdkwargs)
+                    ## To ADD : some scaling function need to be applied on full image, those to be added here.
+                    ccd_list.append(trim_image(imgccd[x:xend, y:yend]))
+
+                Tile_combiner = Combiner(ccd_list) # Create Combiner for tile
+                # Set all properties and call all methods
+                for to_set, value in self.to_set_in_combiner:
+                    setattr(Tile_combiner, to_set, value)
+                for to_call, fkwargs in self.to_call_in_combiner:
+                    getattr(Tile_combiner, to_call)(**fkwargs)
+
+                # Finally call the combine algorithm
+                comb_tile = getattr(Tile_combiner, method)(**kwargs)
+ 
+                #add it back into the master image
+                self.ccd_dummy.data[x:xend, y:yend] = comb_tile.data
+                self.ccd_dummy.mask[x:xend, y:yend] = comb_tile.mask
+                self.ccd_dummy.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
+  
+        # Write fits file if filename was provided
+        if self.output_fits is not None:
+            self.ccd_dummy.write(self.output_fits)
+        
+        return self.ccd_dummy
