@@ -385,11 +385,12 @@ class Combine_fits(object):
     def median_combine(self, **kwargs):
         """ Run Combiner to Median combine a set of images """
         self.run_on_all_tiles('median_combine', **kwargs)
+        return self.ccd_dummy
 
     def average_combine(self, **kwargs):
         """ Run Combiner to Average combine a set of images """
         self.run_on_all_tiles('average_combine', **kwargs)
-
+        return self.ccd_dummy
 
     def run_on_all_tiles(self, method, **kwargs):
         """ Runs the input method on all the subsectiosn of the image and return final stitched image"""
@@ -414,11 +415,12 @@ class Combine_fits(object):
  
                 #add it back into the master image
                 self.ccd_dummy.data[x:xend, y:yend] = comb_tile.data
-                self.ccd_dummy.mask[x:xend, y:yend] = comb_tile.mask
-                self.ccd_dummy.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
+                if self.ccd_dummy.mask is not None:
+                    self.ccd_dummy.mask[x:xend, y:yend] = comb_tile.mask
+                if self.ccd_dummy.uncertainty is not None:
+                    self.ccd_dummy.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
   
         # Write fits file if filename was provided
         if self.output_fits is not None:
             self.ccd_dummy.write(self.output_fits)
         
-        return self.ccd_dummy
