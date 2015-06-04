@@ -338,7 +338,7 @@ class Combine_fits(object):
     output_fits: 'string'
         Optional output fits filename
     
-             : Other keyword arguments for CCD Object fits reader
+    **kwargs: Other keyword arguments for CCD Object's fits reader.
     """
     def __init__(self, img_list, mem_limit=16e9, output_fits=None, **kwargs):
         self.img_list = img_list
@@ -355,7 +355,8 @@ class Combine_fits(object):
         no_chunks = int((size_of_an_img*no_of_img)/self.mem_limit)+1
         print('Spliting each image into {1} chunks to limit memory usage to {0} bytes.'.format(self.mem_limit,no_chunks))
         self.Xs, self.Ys = self.ccd_dummy.data.shape
-        self.Xstep = max(1, int(self.Xs/no_chunks)) # First we try to split only along fast x axis
+        # First we try to split only along fast x axis
+        self.Xstep = max(1, int(self.Xs/no_chunks)) 
         # If more chunks need to be created we split in Y axis for remaining number of chunks
         self.Ystep = max(1, int(self.Ys/(1+ no_chunks - int(self.Xs/self.Xstep)) ) ) 
         
@@ -401,11 +402,12 @@ class Combine_fits(object):
         return self.ccd_dummy
 
     def run_on_all_tiles(self, method, **kwargs):
-        """ Runs the input method on all the subsections of the image and return final stitched image"""
+        """ Runs the input method on all the subsections of the image 
+        and write final stitched image to self.ccd_dummy """
         try:
             calculate_scalevalue = callable(self.to_set_in_combiner['scaling'])
         except KeyError:
-            # No scaling requested..
+            # No scaling requested.
             calculate_scalevalue = False
 
         if calculate_scalevalue:
@@ -420,14 +422,17 @@ class Combine_fits(object):
                     #Scaling function need to be applied on full image to obtain scaling factor
                     if calculate_scalevalue:
                         scalevalues.append(self.to_set_in_combiner['scaling'](imgccd.data))
-                        
-                    ccd_list.append(trim_image(imgccd[x:xend, y:yend])) #Trim image
+    
+                    #Trim image
+                    ccd_list.append(trim_image(imgccd[x:xend, y:yend])) 
 
                 if calculate_scalevalue:
-                    self.to_set_in_combiner['scaling'] = np.array(scalevalues) #Replace callable with array
+                    #Replace callable with array
+                    self.to_set_in_combiner['scaling'] = np.array(scalevalues) 
                     calculate_scalevalue = False
 
-                Tile_combiner = Combiner(ccd_list) # Create Combiner for tile
+                # Create Combiner for tile
+                Tile_combiner = Combiner(ccd_list) 
                 # Set all properties and call all methods
                 for to_set in self.to_set_in_combiner:
                     setattr(Tile_combiner, to_set, self.to_set_in_combiner[to_set])
