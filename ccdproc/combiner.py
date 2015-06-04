@@ -353,6 +353,7 @@ class Combine_fits(object):
         
         #determine the number of chunks to split the images into
         no_chunks = int((size_of_an_img*no_of_img)/self.mem_limit)+1
+        print('Spliting each image into {1} chunks to limit memory usage to {0} bytes.'.format(self.mem_limit,no_chunks))
         self.Xs, self.Ys = self.ccd_dummy.data.shape
         self.Xstep = max(1, int(self.Xs/no_chunks)) # First we try to split only along fast x axis
         # If more chunks need to be created we split in Y axis for remaining number of chunks
@@ -393,7 +394,7 @@ class Combine_fits(object):
         return self.ccd_dummy
 
     def run_on_all_tiles(self, method, **kwargs):
-        """ Runs the input method on all the subsectiosn of the image and return final stitched image"""
+        """ Runs the input method on all the subsections of the image and return final stitched image"""
         for x in range(0,self.Xs,self.Xstep):
             for y in range(0,self.Ys,self.Ystep):
                 xend, yend = min(self.Xs, x + self.Xstep), min(self.Ys, y + self.Ystep)
