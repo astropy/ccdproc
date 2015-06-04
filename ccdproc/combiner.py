@@ -360,8 +360,8 @@ class Combine_fits(object):
         self.Ystep = max(1, int(self.Ys/(1+ no_chunks - int(self.Xs/self.Xstep)) ) ) 
         
         # List of Combiner properties to set and methods to call before combining
-        self.to_set_in_combiner = []
-        self.to_call_in_combiner = []
+        self.to_set_in_combiner = {}
+        self.to_call_in_combiner = {}
 
         # Replace all the doc strings with the original doc strings in Combiner class
         self.set_scaling.__func__.__doc__ = Combiner.scaling.__doc__ 
@@ -373,20 +373,20 @@ class Combine_fits(object):
     # Define all the Combiner properties one wants to apply before combining images
     def set_weights(self, value):
         """ Sets the weights in the Combiner"""
-        self.to_set_in_combiner.append(('weights',value))
+        self.to_set_in_combiner['weights'] = value
 
     def set_scaling(self, value):
         """ Sets the scaling property of Combiner."""
-        self.to_set_in_combiner.append(('scaling',value))
+        self.to_set_in_combiner['scaling'] = value
 
 
     def minmax_clipping(self, **kwargs):
         """Sets to Mask all pixels that are below min_clip or above max_clip."""
-        self.to_call_in_combiner.append(('minmax_clipping',kwargs))
+        self.to_call_in_combiner['minmax_clipping'] = kwargs
 
     def sigma_clipping(self, **kwargs):
         """Sets to Mask all pixels that are below or above certain sigma."""
-        self.to_call_in_combiner.append(('sigma_clipping',kwargs))
+        self.to_call_in_combiner['sigma_clipping'] = kwargs
 
 
     # Define Combiner's combining methods
@@ -402,21 +402,37 @@ class Combine_fits(object):
 
     def run_on_all_tiles(self, method, **kwargs):
         """ Runs the input method on all the subsections of the image and return final stitched image"""
+        try:
+            calculate_scalevalue = callable(self.to_set_in_combiner['scaling'])
+        except KeyError:
+            # No scaling requested..
+            calculate_scalevalue = False
+
+        if calculate_scalevalue:
+            scalevalues = []
+
         for x in range(0,self.Xs,self.Xstep):
             for y in range(0,self.Ys,self.Ystep):
                 xend, yend = min(self.Xs, x + self.Xstep), min(self.Ys, y + self.Ystep)
                 ccd_list = []
                 for image in self.img_list:
                     imgccd = CCDData.read(image,**self.ccdkwargs)
-                    ## To ADD : some scaling function need to be applied on full image, those to be added here.
-                    ccd_list.append(trim_image(imgccd[x:xend, y:yend]))
+                    #Scaling function need to be applied on full image to obtain scaling factor
+                    if calculate_scalevalue:
+                        scalevalues.append(self.to_set_in_combiner['scaling'](imgccd.data))
+                        
+                    ccd_list.append(trim_image(imgccd[x:xend, y:yend])) #Trim image
+
+                if calculate_scalevalue:
+                    self.to_set_in_combiner['scaling'] = np.array(scalevalues) #Replace callable with array
+                    calculate_scalevalue = False
 
                 Tile_combiner = Combiner(ccd_list) # Create Combiner for tile
                 # Set all properties and call all methods
-                for to_set, value in self.to_set_in_combiner:
-                    setattr(Tile_combiner, to_set, value)
-                for to_call, fkwargs in self.to_call_in_combiner:
-                    getattr(Tile_combiner, to_call)(**fkwargs)
+                for to_set in self.to_set_in_combiner:
+                    setattr(Tile_combiner, to_set, self.to_set_in_combiner[to_set])
+                for to_call in self.to_call_in_combiner:
+                    getattr(Tile_combiner, to_call)(**self.to_call_in_combiner[to_call])
 
                 # Finally call the combine algorithm
                 comb_tile = getattr(Tile_combiner, method)(**kwargs)
