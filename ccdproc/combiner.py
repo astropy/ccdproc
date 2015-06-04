@@ -363,13 +363,20 @@ class Combine_fits(object):
         self.to_set_in_combiner = []
         self.to_call_in_combiner = []
 
+        # Replace all the doc strings with the original doc strings in Combiner class
+        self.set_scaling.__func__.__doc__ = Combiner.scaling.__doc__ 
+        self.minmax_clipping.__func__.__doc__ = Combiner.minmax_clipping.__doc__ 
+        self.sigma_clipping.__func__.__doc__ = Combiner.sigma_clipping.__doc__ 
+        self.median_combine.__func__.__doc__ = Combiner.median_combine.__doc__ 
+        self.average_combine.__func__.__doc__ = Combiner.average_combine.__doc__ 
+
     # Define all the Combiner properties one wants to apply before combining images
     def set_weights(self, value):
         """ Sets the weights in the Combiner"""
         self.to_set_in_combiner.append(('weights',value))
 
     def set_scaling(self, value):
-        """ Sets the scaling property of Combiner"""
+        """ Sets the scaling property of Combiner."""
         self.to_set_in_combiner.append(('scaling',value))
 
 
@@ -384,12 +391,12 @@ class Combine_fits(object):
 
     # Define Combiner's combining methods
     def median_combine(self, **kwargs):
-        """ Run Combiner to Median combine a set of images """
+        """ Run Combiner to Median combine a set of images."""
         self.run_on_all_tiles('median_combine', **kwargs)
         return self.ccd_dummy
 
     def average_combine(self, **kwargs):
-        """ Run Combiner to Average combine a set of images """
+        """ Run Combiner to Average combine a set of images."""
         self.run_on_all_tiles('average_combine', **kwargs)
         return self.ccd_dummy
 
