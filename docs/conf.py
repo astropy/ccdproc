@@ -153,3 +153,4 @@ if eval(setup_cfg.get('edit_on_github')):
 
 github_issues_url = 'https://github.com/astropy/ccdproc/issues/'
 
+nitpicky = True
