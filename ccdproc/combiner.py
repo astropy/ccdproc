@@ -220,11 +220,11 @@ class Combiner(object):
             mask = (self.data_arr - baseline > high_thresh * dev)
             self.data_arr.mask[mask] = True
 
-    #set up the combining algorithms
-    def median_combine(self, median_func=ma.median):
+    # set up the combining algorithms
+    def median_combine(self, median_func=ma.median, scale_to=None):
         """Median combine a set of arrays.
 
-           A CCDData object is returned
+           A `~ccdproc.CCDData` object is returned
            with the data property set to the median of the arrays.  If the data
            was masked or any data have been rejected, those pixels will not be
            included in the median.   A mask will be returned, and if a pixel
@@ -238,6 +238,10 @@ class Combiner(object):
                Function that calculates median of a ``numpy.ma.masked_array``.
                Default is to use ``np.ma.median`` to calculate median.
 
+           scale_to : float, optional
+               Scaling factor used in the average combined image. If given,
+               it overrides ``CCDData.scaling``. Defaults to None.
+
            Returns
            -------
            combined_image: `~ccdproc.CCDData`
@@ -246,22 +250,24 @@ class Combiner(object):
            Warnings
            --------
            The uncertainty currently calculated using the median absolute
-           deviation does not account for rejected pixels
+           deviation does not account for rejected pixels.
 
         """
-        if self.scaling is not None:
+        if scale_to is not None:
+            scalings = scale_to
+        elif self.scaling is not None:
             scalings = self.scaling
         else:
             scalings = 1.0
 
-        #set the data
+        # set the data
         data = median_func(scalings * self.data_arr, axis=0)
 
-        #set the mask
+        # set the mask
         mask = self.data_arr.mask.sum(axis=0)
         mask = (mask == len(self.data_arr))
 
-        #set the uncertainty
+        # set the uncertainty
         uncertainty = 1.4826 * median_absolute_deviation(self.data_arr.data,
                                                          axis=0)
 
@@ -270,20 +276,32 @@ class Combiner(object):
                                  mask=mask, unit=self.unit,
                                  uncertainty=StdDevUncertainty(uncertainty))
 
-        #update the meta data
+        # update the meta data
         combined_image.meta['NCOMBINE'] = len(self.data_arr)
 
-        #return the combined image
+        # return the combined image
         return combined_image
 
-    def average_combine(self, scale_func=None, scale_to=1.0):
-        """Average combine together a set of arrays.   A CCDData object is
-           returned with the data property set to the average of the arrays.
-           If the data was masked or any data have been rejected, those pixels
-           will not be included in the median.   A mask will be returned, and
-           if a pixel has been rejected in all images, it will be masked.   The
-           uncertainty of the combined image is set by the standard deviation
-           of the input images.
+    def average_combine(self, scale_func=ma.average, scale_to=None):
+        """ Average combine together a set of arrays.
+
+           A `~ccdproc.CCDData` object is returned with the data property
+           set to the average of the arrays.  If the data was masked or any
+           data have been rejected, those pixels will not be included in the
+           average.  A mask will be returned, and if a pixel has been
+           rejected in all images, it will be masked.  The uncertainty of
+           the combined image is set by the standard deviation of the input
+           images.
+
+           Parameters
+           ----------
+           scale_func : function, optional
+               Function to calculate the average. Defaults to
+               `~numpy.ma.average`.
+
+           scale_to : float, optional
+               Scaling factor used in the average combined image. If given,
+               it overrides ``CCDData.scaling``. Defaults to None.
 
            Returns
            -------
@@ -291,20 +309,23 @@ class Combiner(object):
                CCDData object based on the combined input of CCDData objects.
 
         """
-        if self.scaling is not None:
+        if scale_to is not None:
+            scalings = scale_to
+        elif self.scaling is not None:
             scalings = self.scaling
         else:
             scalings = 1.0
-        #set up the data
-        data, wei = ma.average(scalings * self.data_arr,
+
+        # set up the data
+        data, wei = scale_func(scalings * self.data_arr,
                                axis=0, weights=self.weights,
                                returned=True)
 
-        #set up the mask
+        # set up the mask
         mask = self.data_arr.mask.sum(axis=0)
         mask = (mask == len(self.data_arr))
 
-        #set up the deviation
+        # set up the deviation
         uncertainty = ma.std(self.data_arr, axis=0)
 
         # create the combined image with a dtype that matches the combiner
@@ -312,8 +333,8 @@ class Combiner(object):
                                  mask=mask, unit=self.unit,
                                  uncertainty=StdDevUncertainty(uncertainty))
 
-        #update the meta data
+        # update the meta data
         combined_image.meta['NCOMBINE'] = len(self.data_arr)
 
-        #return the combined image
+        # return the combined image
         return combined_image
