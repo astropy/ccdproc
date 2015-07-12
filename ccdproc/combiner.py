@@ -40,9 +40,19 @@ class Combiner(object):
     The following is an example of combining together different
     `~ccdproc.CCDData` objects:
 
-        >>> from combiner import combiner
-        >>> c = combiner([ccddata1, cccdata2, ccddata3])
-        >>> ccdall = c.median_combine()
+        >>> import numpy as np
+        >>> import astropy.units as u
+        >>> from ccdproc import Combiner, CCDData
+        >>> ccddata1 = CCDData(np.ones((4, 4)), unit=u.adu)
+        >>> ccddata2 = CCDData(np.zeros((4, 4)), unit=u.adu)
+        >>> ccddata3 = CCDData(np.ones((4, 4)), unit=u.adu)
+        >>> c = Combiner([ccddata1, ccddata2, ccddata3])
+        >>> ccdall = c.average_combine()
+        >>> ccdall
+        CCDData([[ 0.66666667,  0.66666667,  0.66666667,  0.66666667],
+                 [ 0.66666667,  0.66666667,  0.66666667,  0.66666667],
+                 [ 0.66666667,  0.66666667,  0.66666667,  0.66666667],
+                 [ 0.66666667,  0.66666667,  0.66666667,  0.66666667]])
 
     """
 

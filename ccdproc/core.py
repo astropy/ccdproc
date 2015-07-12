@@ -532,7 +532,8 @@ def transform_image(ccd, transform_func, **kwargs):
     scipy.ndimage.interpolation.shift
 
     >>> from scipy.ndimage.interpolation import shift
-    >>> transformed = transform(arr1, shift, shift=(5.5, 8.1))
+    >>> from ccdproc import transform_image
+    >>> transformed = transform_image(arr1, shift, shift=(5.5, 8.1))
 
     """
     #check that it is a ccddata object
@@ -921,8 +922,8 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
        cosmicrar_lacosmic would be:
 
        >>> newdata, mask = cosmicray_lacosmic(data, error_image=error_image,
-                                              thresh=5, mbox=11, rbox=11, 
-                                              gbox=5)
+       ...                                    thresh=5, mbox=11, rbox=11,
+       ...                                    gbox=5)   # doctest: +SKIP
 
        where the error is an array that is the same shape as data but
        includes the pixel error.  This would return a data array, newdata,
@@ -932,7 +933,8 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
     2. Given an `~ccddata.CCDData` object with an uncertainty frame, the syntax
        for running cosmicrar_lacosmic would be:
 
-       >>> newccd = cosmicray_lacosmic(ccd, thresh=5, mbox=11, rbox=11, gbox=5)
+       >>> newccd = cosmicray_lacosmic(ccd, thresh=5, mbox=11,
+       ...                             rbox=11, gbox=5)   # doctest: +SKIP
 
        The newccd object will have bad pixels in its data array replace and the
        mask of the object will be created if it did not previously exist or be
@@ -1089,7 +1091,8 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
        cosmicray_median would be:
 
        >>> newdata, mask = cosmicray_median(data, error_image=error,
-                                           thresh=5, mbox=11, rbox=11, gbox=5)
+       ...                                  thresh=5, mbox=11,
+       ...                                  rbox=11, gbox=5)   # doctest: +SKIP
 
        where error is an array that is the same shape as data but
        includes the pixel error.  This would return a data array, newdata,
@@ -1099,7 +1102,8 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
     2) Given an `~ccddata.CCDData` object with an uncertainty frame, the syntax
        for running cosmicray_median would be:
 
-       >>> newccd = cosmicray_median(ccd, thresh=5, mbox=11, rbox=11, gbox=5)
+       >>> newccd = cosmicray_median(ccd, thresh=5, mbox=11,
+       ...                           rbox=11, gbox=5)   # doctest: +SKIP
 
        The newccd object will have bad pixels in its data array replace and the
        mask of the object will be created if it did not previously exist or be

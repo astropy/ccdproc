@@ -38,9 +38,9 @@ An uncertainty can be calculated from your data with
     >>> import ccdproc
     >>> img = np.random.normal(loc=10, scale=0.5, size=(100, 232))
     >>> data = ccdproc.CCDData(img, unit=u.adu)
-    >>> data_with_deviatione = ccdproc.create_deviation(data,
-    ...                                              gain=1.5 * u.electron/u.adu,
-    ...                                              readnoise=5 * u.electron)
+    >>> data_with_deviation = ccdproc.create_deviation(
+    ...                           data, gain=1.5 * u.electron/u.adu,
+    ...                           readnoise=5 * u.electron)
     >>> data_with_deviation.header['exposure'] = 30.0  # for dark subtraction
 
 The uncertainty, :math:`u_{ij}`, at pixel :math:`(i,~j)` with value
@@ -92,9 +92,8 @@ of the code describe in van Dokkum (2001) [1]_.
 
 Use this technique with `~ccdproc.cosmicray_lacosmic`:
 
-    >>> cr_cleaned = ccdproc.cosmicray_lacosmic(gain_corrected, threshold,  
-    ...                                         thresh=5, mbox=11, rbox=11, 
-    ...                                         gbox=5)
+    >>> cr_cleaned = ccdproc.cosmicray_lacosmic(gain_corrected, thresh=5,
+    ...                                         mbox=11, rbox=11, gbox=5)
 
 
 median
@@ -104,16 +103,16 @@ Another cosmic ray cleaning algorithm available in ccdproc is `cosmicray_median`
 that is analogous to iraf.imred.crutil.crmedian.   This technique can
 be used with `ccdproc.cosmicray_median`:
 
-    >>> cr_cleaned = ccdproc.cosmicray_median(gain_corrected, threshold, 
-    ...                                       mbox=11, rbox=11, gbox=5)
+    >>> cr_cleaned = ccdproc.cosmicray_median(gain_corrected, mbox=11,
+    ...                                       rbox=11, gbox=5)
 
 Although `ccdproc` provides functions for identifying outlying pixels and for
 calculating the deviation of the background you are free to provide your own
-error image instead. 
+error image instead.
 
 There is one additional argument, ``gbox``, that specifies the size of the box,
-centered on a outlying pixel, in which pixel should be grown.  The argument 
-``rbox`` specifies the size of the box used to calculate a median value if 
+centered on a outlying pixel, in which pixel should be grown.  The argument
+``rbox`` specifies the size of the box used to calculate a median value if
 values for bad pixels should be replaced.
 
 Subtract overscan and trim images
@@ -181,7 +180,7 @@ To subtract the overscan in our image from a FITS file in which ``NAXIS1=232`` a
     ...                                              overscan_axis=1)
 
 **Note well** that the argument ``overscan_axis`` *always* follows the python
-convention for axis ordering. Since the order of the  indexes in the 
+convention for axis ordering. Since the order of the  indexes in the
 ``fits_section`` get switched in the (internal) conversion to a python index,
 the overscan axis ends up being the *second* axis, which is numbered 1 in
 python zero-based numbering.

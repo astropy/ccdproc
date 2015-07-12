@@ -189,7 +189,7 @@ appropriately. Note that the metadata of the result is *not* set:
     >>> result.unit
     Unit("adu electron")
     >>> result.header
-    CaseInsensitiveOrderedDict()
+    OrderedDict()
 
 .. note::
     In most cases you should use the functions described in
