@@ -184,7 +184,7 @@ appropriately. Note that the metadata of the result is *not* set:
 
     >>> result = ccd.multiply(0.2 * u.adu)
     >>> uncertainty_ratio = result.uncertainty.array[0, 0]/ccd.uncertainty.array[0, 0]
-    >>> round(uncertainty_ratio, 5)
+    >>> round(uncertainty_ratio, 5)   # doctest: +FLOAT_CMP
     0.2
     >>> result.unit
     Unit("adu electron")
