@@ -102,6 +102,18 @@ class Combiner(object):
 
     @property
     def weights(self):
+        """
+        Weights used when combining the `~ccdproc.CCDData` objects.
+
+
+        Parameters
+        ----------
+
+        weight_values : `~numpy.ndarray`
+            An array with the weight values. The dimensions should match the
+            the dimensions of the data arrays being combined.
+        """
+
         return self._weights
 
     @weights.setter
