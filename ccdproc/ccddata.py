@@ -88,14 +88,12 @@ class CCDData(NDDataArray):
     return a Numpy masked array.
 
     This is useful, for example, when plotting a 2D image using
-    matplotlib:
+    matplotlib.
 
-    .. doctest-skip::
-
-        >>> from astropy.nddata import NDData
-        >>> from matplotlib import pyplot as plt
-        >>> x = NDData([[1,2,3], [4,5,6]])
-        >>> plt.imshow(x)
+        >>> from astropy.nddata import NDData   # doctest: +SKIP
+        >>> from matplotlib import pyplot as plt   # doctest: +SKIP
+        >>> x = NDData([[1,2,3], [4,5,6]])   # doctest: +SKIP
+        >>> plt.imshow(x)   # doctest: +SKIP
 
     """
     def __init__(self, *args, **kwd):
