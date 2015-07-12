@@ -11,12 +11,6 @@ Ccdproc has the following requirements:
 - `Numpy <http://www.numpy.org/>`_
 - `Scipy <http://www.scipy.org/>`_
 
-Some functionality is available only if the following optional dependencies
-are installed:
-
-- `matplotlib <http://matplotlib.org/>`_:  For plotting functions.
-
-
 One easy way to get these dependencies is to install a python distribution like `anaconda <http://continuum.io/>`_.
 
 Installing ccdproc
