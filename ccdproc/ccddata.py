@@ -82,18 +82,18 @@ class CCDData(NDDataArray):
         >>> import numpy as np
         >>> x = NDData([1,2,3])
         >>> np.asarray(x)
-        array([1, 2, 3])
+        array(NDData([1, 2, 3]), dtype=object)
 
     If the `~astropy.nddata.NDData` object has a `mask`, `numpy.asarray` will
     return a Numpy masked array.
 
     This is useful, for example, when plotting a 2D image using
-    matplotlib::
+    matplotlib.
 
-        >>> from astropy.nddata import NDData
-        >>> from matplotlib import pyplot as plt
-        >>> x = NDData([[1,2,3], [4,5,6]])
-        >>> plt.imshow(x)
+        >>> from astropy.nddata import NDData   # doctest: +SKIP
+        >>> from matplotlib import pyplot as plt   # doctest: +SKIP
+        >>> x = NDData([[1,2,3], [4,5,6]])   # doctest: +SKIP
+        >>> plt.imshow(x)   # doctest: +SKIP
 
     """
     def __init__(self, *args, **kwd):
@@ -101,7 +101,7 @@ class CCDData(NDDataArray):
             kwd['meta'] = kwd.pop('header', None)
         if 'header' in kwd:
             raise ValueError("Can't have both header and meta")
-        
+
         super(CCDData, self).__init__(*args, **kwd)
         if self.unit is None:
             raise ValueError("Unit for CCDData must be specified")
