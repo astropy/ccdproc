@@ -18,7 +18,7 @@ _LOG_ARGUMENT = 'add_keyword'
 
 _LOG_ARG_HELP = \
     """
-    {arg} : str, `~ccdproc.ccdproc.Keyword` or dict-like, optional
+    {arg} : str, `~ccdproc.Keyword` or dict-like, optional
         Item(s) to add to metadata of result. Set to None to completely
         disable logging. Default is to add a dictionary with a single item:
         the key is the name of this function  and the value is a string

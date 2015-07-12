@@ -15,7 +15,6 @@ from astropy import units as u
 from astropy import log
 from astropy.wcs import WCS
 
-from .utils.collections import CaseInsensitiveOrderedDict
 
 __all__ = ['CCDData']
 
@@ -33,7 +32,7 @@ class CCDData(NDDataArray):
     data : `~numpy.ndarray` or :class:`~astropy.nddata.NDData`
         The actual data contained in this `~astropy.nddata.NDData` object.
         Note that this will always be copies by *reference* , so you should
-        make copy the `data` before passing it in if that's the  desired
+        make copy the ``data`` before passing it in if that's the  desired
         behavior.
 
     uncertainty : `~astropy.nddata.StdDevUncertainty` or `~numpy.ndarray`,
@@ -41,10 +40,10 @@ class CCDData(NDDataArray):
 
     mask : `~numpy.ndarray`, optional
         Mask for the data, given as a boolean Numpy array with a shape
-        matching that of the data. The values must be ``False`` where
-        the data is *valid* and ``True`` when it is not (like Numpy
-        masked arrays). If `data` is a numpy masked array, providing
-        `mask` here will causes the mask from the masked array to be
+        matching that of the data. The values must be `False` where
+        the data is *valid* and `True` when it is not (like Numpy
+        masked arrays). If ``data`` is a numpy masked array, providing
+        ``mask`` here will causes the mask from the masked array to be
         ignored.
 
     flags : `~numpy.ndarray` or `~astropy.nddata.FlagCollection`, optional
@@ -68,13 +67,13 @@ class CCDData(NDDataArray):
     Raises
     ------
     ValueError
-        If the `uncertainty` or `.mask` inputs cannot be broadcast (e.g., match
-        shape) onto `data`.
+        If the ``uncertainty`` or ``mask`` inputs cannot be broadcast (e.g.,
+        match shape) onto ``data``.
 
     Notes
     -----
-    `NDData` objects can be easily converted to a regular Numpy array
-    using `numpy.asarray`
+    `~astropy.nddata.NDData` objects can be easily converted to a regular
+     Numpy array using `numpy.asarray`
 
     For example::
 
@@ -84,7 +83,7 @@ class CCDData(NDDataArray):
         >>> np.asarray(x)
         array(NDData([1, 2, 3]), dtype=object)
 
-    If the `~astropy.nddata.NDData` object has a `mask`, `numpy.asarray` will
+    If the `~astropy.nddata.NDData` object has a ``mask``, `numpy.asarray` will
     return a Numpy masked array.
 
     This is useful, for example, when plotting a 2D image using
@@ -240,7 +239,7 @@ class CCDData(NDDataArray):
         """
         Perform the common parts of arithmetic operations on CCDData objects
 
-        This should only be called when `other` is a Quantity or a number
+        This should only be called when ``other`` is a Quantity or a number
         """
         # THE "1 *" IS NECESSARY to get the right result, at least in
         # astropy-0.4dev. Using the np.multiply, etc, methods with a Unit

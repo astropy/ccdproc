@@ -95,11 +95,10 @@ Use this technique with `~ccdproc.cosmicray_lacosmic`:
     >>> cr_cleaned = ccdproc.cosmicray_lacosmic(gain_corrected, thresh=5,
     ...                                         mbox=11, rbox=11, gbox=5)
 
-
 median
 ++++++
 
-Another cosmic ray cleaning algorithm available in ccdproc is `cosmicray_median`
+Another cosmic ray cleaning algorithm available in ccdproc is `~ccdproc.cosmicray_median`
 that is analogous to iraf.imred.crutil.crmedian.   This technique can
 be used with `ccdproc.cosmicray_median`:
 
