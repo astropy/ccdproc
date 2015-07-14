@@ -22,8 +22,11 @@ and working on it!
 Documentation is at `ccdproc.readthedocs.org
 <http://ccdproc.readthedocs.org/en/latest/>`_
 
+Thanks to Kyle Barbary (`@kbarbary`_) for designing the `ccdproc` logo.
+
 .. _Astropy: http://www.astropy.org/
 .. _git: http://git-scm.com/
 .. _github: http://github.com
 .. _Cython: http://cython.org/
 .. _online documentation: http://ccdproc.readthedocs.org/en/latest/ccdproc/install.html
+.. _@kbarbary: https://github.com/kbarbary
