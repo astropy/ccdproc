@@ -216,8 +216,8 @@ class CCDData(NDDataArray):
             # duplicates of the WCS keywords; iterating over the WCS
             # header should be safer.
             wcs_header = self.wcs.to_header()
-            for k in wcs_header.keys():
-                header[k] = wcs_header[k]
+            for k, v in wcs_header.iteritems():
+                header[k] = v
         hdu = fits.PrimaryHDU(self.data, header)
         hdulist = fits.HDUList([hdu])
         return hdulist
