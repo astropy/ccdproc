@@ -215,9 +215,17 @@ class CCDData(NDDataArray):
             # Simply extending the FITS header with the WCS can lead to
             # duplicates of the WCS keywords; iterating over the WCS
             # header should be safer.
+            #
+            # Turns out if I had read the io.fits.Header.extend docs more
+            # carefully, I would have realized that the keywords exist to
+            # avoid duplicates and preserve, as much as possible, the
+            # structure of the commentary cards.
+            #
+            # Note that until astropy/astropy#3967 is closed, the extend
+            # will fail if there are comment cards in the WCS header but
+            # not header.
             wcs_header = self.wcs.to_header()
-            for k, v in wcs_header.iteritems():
-                header[k] = v
+            header.extend(wcs_header, useblanks=False, unique=True)
         hdu = fits.PrimaryHDU(self.data, header)
         hdulist = fits.HDUList([hdu])
         return hdulist
