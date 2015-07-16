@@ -15,6 +15,7 @@ from astropy.extern import six
 logger = logging.getLogger(__name__)
 
 __all__ = ['ImageFileCollection']
+__doctest_skip__ = ['*']
 
 
 class ImageFileCollection(object):
