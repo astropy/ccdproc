@@ -493,8 +493,7 @@ def test_wcs_attribute(ccd_data, tmpdir):
     wcs.wcs.ctype = ["RA---AIR", "DEC--AIR"]
     wcs.wcs.set_pv([(2, 1, 45.0)])
     ccd_data.header = ccd_data.to_hdu()[0].header
-
-    ccd_data.header.extend(wcs.to_header())
+    ccd_data.header.extend(wcs.to_header(), useblanks=False)
     ccd_data.write(tmpfile.strpath)
     ccd_new = CCDData.read(tmpfile.strpath)
     original_header_length = len(ccd_new.header)
@@ -514,6 +513,10 @@ def test_wcs_attribute(ccd_data, tmpdir):
     hdu = ccd_wcs_not_in_header.to_hdu()[0]
     wcs_header = wcs.to_header()
     for k in wcs_header.keys():
+        # Skip these keywords if they are in the WCS header because they are
+        # not WCS-specific.
+        if k in ['', 'COMMENT', 'HISTORY']:
+            continue
         # No keyword from the WCS should be in the header.
         assert k not in ccd_wcs_not_in_header.header
         # Every keyword in the WCS should be in the header of the HDU
