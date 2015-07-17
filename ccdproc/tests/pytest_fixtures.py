@@ -3,7 +3,6 @@ from __future__ import (absolute_import, division, print_function,
 
 from tempfile import mkdtemp
 import os
-import gzip
 from shutil import rmtree
 
 import numpy as np
@@ -12,6 +11,8 @@ from astropy.tests.helper import pytest
 from astropy import units as u
 from astropy.utils import NumpyRNGContext
 from astropy.io import fits
+
+from astropy.utils.compat import gzip
 
 from ..ccddata import CCDData
 
