@@ -316,8 +316,15 @@ class ImageFileCollection(object):
 
     def _set_column_name_case_to_match_keywords(self, header_keys,
                                                 summary_table):
-        key_name_dict = {k.lower(): k for k in header_keys
-                         if k != k.lower()}
+        # Workaround for python 2.6, which doesn't have dict comprehensions.
+        key_name_dict = {}
+        for k in header_keys:
+            if k != k.lower():
+                key_name_dict[k.lower()] = k
+
+        # Once ccdproc drops support for python 2.6, change to this:
+        # key_name_dict = {k.lower(): k for k in header_keys
+        #                  if k != k.lower()}
 
         for lcase, user_case in six.iteritems(key_name_dict):
             try:
