@@ -83,8 +83,11 @@ class TestImageFileCollection(object):
         for hdu in collection.hdus():
             assert isinstance(hdu, fits.PrimaryHDU)
             data = hdu.data  # must access the data to force scaling
-            with pytest.raises(KeyError):
-                hdu.header['bzero']
+            # pre-astropy 1.1 unsigned data was changed to float32 and BZERO
+            # removed. In 1.1 and later, BZERO stays but the data type is
+            # unsigned int.
+            assert (('BZERO' not in hdu.header) or
+                    (data.dtype is np.dtype(np.uint16)))
             n_hdus += 1
         assert n_hdus == triage_setup.n_test['files']
 
