@@ -258,7 +258,7 @@ class ImageFileCollection(object):
 
         file_table : astropy.table.Table
         """
-        from collections import OrderedDict
+        from astropy.utils.compat.odict import OrderedDict
 
         def _add_val_to_dict(key, value, tbl_dict, n_prev):
             try:
