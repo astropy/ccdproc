@@ -484,6 +484,12 @@ def test_infol_logged_if_unit_in_fits_header(ccd_data, tmpdir):
 
 
 def test_wcs_attribute(ccd_data, tmpdir):
+    """
+    Check that WCS attribute gets added to header, and that if a CCDData
+    object is created from a FITS file with a header, and the WCS attribute
+    is modified, then the CCDData object is turned back into an hdu, the
+    WCS object overwrites the old WCS information in the header.
+    """
     tmpfile = tmpdir.join('temp.fits')
     # This wcs example is taken from the astropy.wcs docs.
     wcs = WCS(naxis=2)
@@ -521,6 +527,18 @@ def test_wcs_attribute(ccd_data, tmpdir):
         assert k not in ccd_wcs_not_in_header.header
         # Every keyword in the WCS should be in the header of the HDU
         assert hdu.header[k] == wcs_header[k]
+
+    # Now check that if WCS of a CCDData is modified, then the CCDData is
+    # converted to an HDU, the WCS keywords in the header are overwritten
+    # with the appropriate keywords from the header.
+    #
+    # ccd_new has a WCS and WCS keywords in the header, so try modifying
+    # the WCS.
+    ccd_new.wcs.wcs.cdelt *= 2
+    ccd_new_hdu_mod_wcs = ccd_new.to_hdu()[0]
+    assert ccd_new_hdu_mod_wcs.header['CDELT1'] == ccd_new.wcs.wcs.cdelt[0]
+    assert ccd_new_hdu_mod_wcs.header['CDELT2'] == ccd_new.wcs.wcs.cdelt[1]
+
 
 def test_header(ccd_data):
     a = {'Observer': 'Hubble'}
