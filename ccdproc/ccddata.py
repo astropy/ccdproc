@@ -225,7 +225,7 @@ class CCDData(NDDataArray):
             # will fail if there are comment cards in the WCS header but
             # not header.
             wcs_header = self.wcs.to_header()
-            header.extend(wcs_header, useblanks=False, unique=True)
+            header.extend(wcs_header, useblanks=False, update=True)
         hdu = fits.PrimaryHDU(self.data, header)
         hdulist = fits.HDUList([hdu])
         return hdulist
