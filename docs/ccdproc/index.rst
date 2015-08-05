@@ -9,7 +9,7 @@ Introduction
 
 The `ccdproc` package provides:
 
-+ An image class, `~ccdproc.CCDData`, that includes an uncertainty for the 
++ An image class, `~ccdproc.CCDData`, that includes an uncertainty for the
   data, units and methods for performing arithmetic with images including the
   propagation of uncertainties.
 + A set of functions performing common CCD data reduction steps (e.g. dark
@@ -30,7 +30,7 @@ a FITS file:
     >>> image_1 = ccdproc.CCDData(np.ones((10, 10)), unit="adu")
 
 An example of reading from a FITS file is
-``image_2 = ccdproc.CCDData.read('my_image.fits', unit="electron")`` (the 
+``image_2 = ccdproc.CCDData.read('my_image.fits', unit="electron")`` (the
 ``electron`` unit is defined as part of ``ccdproc``).
 
 The metadata of a ``CCDData`` object may be any dictionary-like object, including a FITS header. When a ``CCDData`` object is initialized from FITS file its metadata is a FITS header.
@@ -75,7 +75,7 @@ a dictionary to ``add_keyword``:
     ...                                       1.5 * u.photon/u.adu,
     ...                                       add_keyword=my_log)
 
-The `~ccdproc.ccdproc.Keyword` class provides a compromise between the simple
+The `~ccdproc.Keyword` class provides a compromise between the simple
 and complicated cases for providing a single key/value pair:
 
     >>> key = ccdproc.Keyword('gain_corrected', value='Yes')
@@ -83,7 +83,7 @@ and complicated cases for providing a single key/value pair:
     ...                                       1.5 * u.photon/u.adu,
     ...                                       add_keyword=key)
 
-`~ccdproc.ccdproc.Keyword` also provides a convenient way to get a value from
+`~ccdproc.Keyword` also provides a convenient way to get a value from
 image metadata and specify its unit:
 
     >>> image_2.header['gain']  = 1.5

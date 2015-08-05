@@ -32,7 +32,7 @@ class Combiner(object):
     Raises
     ------
     TypeError
-        If the `ccd_list` are not `~ccdproc.CCDData` objects, have different
+        If the ``ccd_list`` are not `~ccdproc.CCDData` objects, have different
         units, or are different shapes
 
     Notes
@@ -148,11 +148,13 @@ class Combiner(object):
         ----------
 
         scale : function or array-like or None, optional
-            Images are multiplied by scaling prior to combining them. Scaling
-            may be either a function, which will be applied to each image
-            to determine the scaling factor, or a list or array whose length
-            is the number of images in the `Combiner`. Default is ``None``.
+            Images are multiplied by scaling prior to combining
+            them. Scaling may be either a function, which will be applied to
+            each image to determine the scaling factor, or a list or array
+            whose length is the number of images in the `~ccdproc.Combiner`.
+            Default is `None`.
         """
+
         return self._scaling
 
     @scaling.setter
@@ -257,8 +259,8 @@ class Combiner(object):
            Parameters
            ----------
            median_func : function, optional
-               Function that calculates median of a ``numpy.ma.masked_array``.
-               Default is to use ``np.ma.median`` to calculate median.
+               Function that calculates median of a `~numpy.ma.masked_array`.
+               Default is to use `numpy.ma.median` to calculate median.
 
            scale_to : float, optional
                Scaling factor used in the average combined image. If given,

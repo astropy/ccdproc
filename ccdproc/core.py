@@ -53,13 +53,14 @@ def create_deviation(ccd_data, gain=None, readnoise=None):
     Parameters
     ----------
 
-    ccd_data : `~ccdproc.ccddata.CCDData`
+    ccd_data : `~ccdproc.CCDData`
         Data whose deviation will be calculated.
 
     gain : `~astropy.units.Quantity`, optional
-        Gain of the CCD; necessary only if `ccd_data` and `readnoise` are not
-        in the same units. In that case, the units of `gain` should be those
-        that convert `ccd_data.data` to the same units as `readnoise`.
+        Gain of the CCD; necessary only if ``ccd_data`` and ``readnoise``
+        are not in the same units. In that case, the units of ``gain``
+        should be those that convert ``ccd_data.data`` to the same units as
+        ``readnoise``.
 
     readnoise :  `~astropy.units.Quantity`
         Read noise per pixel.
@@ -69,14 +70,14 @@ def create_deviation(ccd_data, gain=None, readnoise=None):
     Raises
     ------
     UnitsError
-        Raised if `readnoise` units are not equal to product of `gain` and
-        `ccd_data` units.
+        Raised if ``readnoise`` units are not equal to product of ``gain`` and
+        ``ccd_data`` units.
 
     Returns
     -------
-    ccd :  `~ccdproc.ccddata.CCDData`
+    ccd :  `~ccdproc.CCDData`
         CCDData object with uncertainty created; uncertainty is in the same
-        units as the data in the parameter `ccd_data`.
+        units as the data in the parameter ``ccd_data``.
 
     """
     if gain is not None and not isinstance(gain, Quantity):
@@ -115,12 +116,12 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 
     Parameters
     ----------
-    ccd : `~ccdproc.ccddata.CCDData`
+    ccd : `~ccdproc.CCDData`
         Data to have overscan frame corrected
 
-    overscan : `~ccdproc.ccddata.CCDData`
-        Slice from `ccd` that contains the overscan. Must provide either
-        this argument or `fits_section`, but not both.
+    overscan : `~ccdproc.CCDData`
+        Slice from ``ccd`` that contains the overscan. Must provide either
+        this argument or ``fits_section``, but not both.
 
     overscan_axis : 0 or 1, optional
         Axis along which overscan should combined with mean or median. Axis
@@ -128,9 +129,9 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
         first axis and 1 is the second axis.
 
     fits_section :  str
-        Region of `ccd` from which the overscan is extracted, using the FITS
+        Region of ``ccd`` from which the overscan is extracted, using the FITS
         conventions for index order and index start. See Notes and Examples
-        below. Must provide either this argument or `overscan`, but not both.
+        below. Must provide either this argument or ``overscan``, but not both.
 
     median :  bool, optional
         If true, takes the median of each line.  Otherwise, uses the mean
@@ -144,19 +145,19 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
     Raises
     ------
     TypeError
-        A TypeError is raised if either `ccd` or `overscan` are not the correct
-        objects.
+        A TypeError is raised if either ``ccd`` or ``overscan`` are not the
+        correct objects.
 
     Returns
     -------
-    ccd :  `~ccdproc.ccddata.CCDData`
+    ccd :  `~ccdproc.CCDData`
         CCDData object with overscan subtracted
 
 
     Notes
     -----
 
-    The format of the `fits_section` string follow the rules for slices that
+    The format of the ``fits_section`` string follow the rules for slices that
     are consistent with the FITS standard (v3) and IRAF usage of keywords like
     TRIMSEC and BIASSEC. Its indexes are one-based, instead of the
     python-standard zero-based, and the first index is the one that increases
@@ -166,7 +167,7 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
     The 'fits_section' argument is provided as a convenience for those who are
     processing files that contain TRIMSEC and BIASSEC. The preferred, more
     pythonic, way of specifying the overscan is to do it by indexing the data
-    array directly with the `overscan` argument.
+    array directly with the ``overscan`` argument.
 
     Examples
     --------
@@ -186,7 +187,7 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
     >>> no_scan = subtract_overscan(arr1, fits_section='[91:100, :]')
     >>> assert (no_scan.data == 0).all()
 
-    Spaces are stripped out of the `fits_section` string.
+    Spaces are stripped out of the ``fits_section`` string.
     """
     if not (isinstance(ccd, CCDData) or isinstance(ccd, np.ndarray)):
         raise TypeError('ccddata is not a CCDData or ndarray object')
@@ -236,19 +237,19 @@ def trim_image(ccd, fits_section=None):
     Parameters
     ----------
 
-    ccd : `~ccdproc.ccddata.CCDData`
+    ccd : `~ccdproc.CCDData`
         CCD image to be trimmed, sliced if desired.
 
     fits_section : str
-        Region of `ccd` from which the overscan is extracted; see
-        :func:`subtract_overscan` for details.
+        Region of ``ccd`` from which the overscan is extracted; see
+        `~ccdproc.subtract_overscan` for details.
 
     {log}
 
     Returns
     -------
 
-    trimmed_ccd : `~ccdproc.ccddata.CCDData`
+    trimmed_ccd : `~ccdproc.CCDData`
         Trimmed image.
 
     Examples
@@ -279,8 +280,8 @@ def trim_image(ccd, fits_section=None):
     >>> arr1.data[0, 0]
     2.0
 
-    In this case, `not_really_trimmed` is a view of the underlying array
-    `arr1`, not a copy.
+    In this case, ``not_really_trimmed`` is a view of the underlying array
+    ``arr1``, not a copy.
     """
     if fits_section is not None and not isinstance(fits_section, six.string_types):
         raise TypeError("fits_section must be a string.")
@@ -308,14 +309,14 @@ def subtract_bias(ccd, master):
         Image from which bias will be subtracted
 
     master : `~ccdproc.CCDData`
-        Master image to be subtracted from `ccd`
+        Master image to be subtracted from ``ccd``
 
     {log}
 
     Returns
     -------
 
-    result :  `~ccdproc.ccddata.CCDData`
+    result :  `~ccdproc.CCDData`
         CCDData object with bias subtracted
     """
     result = ccd.subtract(master)
@@ -333,21 +334,21 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
     Parameters
     ----------
 
-    ccd : `~ccdproc.ccddata.CCDData`
+    ccd : `~ccdproc.CCDData`
         Image from which dark will be subtracted
 
-    master : `~ccdproc.ccddata.CCDData`
+    master : `~ccdproc.CCDData`
         Dark image
 
     dark_exposure : `~astropy.units.Quantity`
         Exposure time of the dark image; if specified, must also provided
-        `data_exposure`.
+        ``data_exposure``.
 
     data_exposure : `~astropy.units.Quantity`
         Exposure time of the science image; if specified, must also provided
-        `dark_exposure`.
+        ``dark_exposure``.
 
-    exposure_time : str or `~ccdproc.ccdproc.Keyword`
+    exposure_time : str or `~ccdproc.Keyword`
         Name of key in image metadata that contains exposure time.
 
     exposure_unit : `~astropy.units.Unit`
@@ -359,7 +360,7 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
     Returns
     -------
 
-    result : `~ccdproc.ccddata.CCDData`
+    result : `~ccdproc.CCDData`
         Dark-subtracted image
     """
     if not (isinstance(ccd, CCDData) and isinstance(master, CCDData)):
@@ -413,21 +414,21 @@ def gain_correct(ccd, gain, gain_unit=None):
 
     Parameters
     ----------
-    ccd : `~ccdproc.ccddata.CCDData`
+    ccd : `~ccdproc.CCDData`
       Data to have gain corrected
 
-    gain :  `~astropy.units.Quantity` or `~ccdproc.ccdproc.Keyword`
+    gain :  `~astropy.units.Quantity` or `~ccdproc.Keyword`
       gain value for the image expressed in electrons per adu
 
     gain_unit : `~astropy.units.Unit`, optional
-        Unit for the `gain`; used only if `gain` itself does not provide
+        Unit for the ``gain``; used only if ``gain`` itself does not provide
         units.
 
     {log}
 
     Returns
     -------
-    result :  `~ccdproc.ccddata.CCDData`
+    result :  `~ccdproc.CCDData`
       CCDData object with gain corrected
     """
     if isinstance(gain, Keyword):
@@ -449,10 +450,10 @@ def flat_correct(ccd, flat, min_value=None):
 
     Parameters
     ----------
-    ccd : `~ccdproc.ccddata.CCDData`
+    ccd : `~ccdproc.CCDData`
         Data to be flatfield corrected
 
-    flat : `~ccdproc.ccddata.CCDData`
+    flat : `~ccdproc.CCDData`
         Flatfield to apply to the data
 
     min_value : None or float
@@ -464,10 +465,10 @@ def flat_correct(ccd, flat, min_value=None):
 
     Returns
     -------
-    ccd :  `~ccdproc.ccddata.CCDData`
+    ccd :  `~ccdproc.CCDData`
         CCDData object with flat corrected
     """
-    #Use the min_value to replace any values in the flat
+    # Use the min_value to replace any values in the flat
     use_flat = flat
     if min_value is not None:
         flat_min = flat.copy()
@@ -493,7 +494,7 @@ def transform_image(ccd, transform_func, **kwargs):
 
     Parameters
     ----------
-    ccd : `~ccdproc.ccddata.CCDData`
+    ccd : `~ccdproc.CCDData`
         Data to be flatfield corrected
 
     transform_func : function
@@ -506,7 +507,7 @@ def transform_image(ccd, transform_func, **kwargs):
 
     Returns
     -------
-    ccd :  `~ccdproc.ccddata.CCDData`
+    ccd :  `~ccdproc.CCDData`
         A transformed CCDData object
 
     Notes
@@ -536,26 +537,26 @@ def transform_image(ccd, transform_func, **kwargs):
     >>> transformed = transform_image(arr1, shift, shift=(5.5, 8.1))
 
     """
-    #check that it is a ccddata object
+    # check that it is a ccddata object
     if not (isinstance(ccd, CCDData)):
         raise TypeError('ccd is not a CCDData')
 
-    #check that transform is a callable function
+    # check that transform is a callable function
     if not hasattr(transform_func, '__call__'):
         raise TypeError('transform is not a function')
 
-    #make a copy of the object
+    # make a copy of the object
     nccd = ccd.copy()
 
-    #transform the image plane
+    # transform the image plane
     nccd.data = transform_func(nccd.data, **kwargs)
 
-    #transform the uncertainty plane if it exists
+    # transform the uncertainty plane if it exists
     if nccd.uncertainty is not None:
         nccd.uncertainty.array = transform_func(nccd.uncertainty.array,
                                                 **kwargs)
 
-    #transform the mask plane
+    # transform the mask plane
     if nccd.mask is not None:
         mask = transform_func(nccd.mask, **kwargs)
         nccd.mask = (mask > 0)
@@ -565,12 +566,12 @@ def transform_image(ccd, transform_func, **kwargs):
 
 def sigma_func(arr):
     """
-    Robust method for calculating the deviation of an array. ``sigma_func`` uses
-    the median absolute deviation to determine the standard deviation.
+    Robust method for calculating the deviation of an array. ``sigma_func``
+    uses the median absolute deviation to determine the standard deviation.
 
     Parameters
     ----------
-    arr : `~ccdproc.ccddata.CCDData` or `~numpy.ndarray`
+    arr : `~ccdproc.CCDData` or `~numpy.ndarray`
         Array whose deviation is to be calculated.
 
     Returns
@@ -722,7 +723,7 @@ def rebin(ccd, newshape):
     Raises
     ------
     TypeError
-        A type error is raised if data is not an `numpy.ndarray` or
+        A type error is raised if data is not an `~numpy.ndarray` or
         `~ccdproc.CCDData`
 
     ValueError
@@ -849,10 +850,10 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
     Parameters
     ----------
 
-    ccd: `~ccdproc.CCDData` or `numpy.ndarray`
+    ccd: `~ccdproc.CCDData` or `~numpy.ndarray`
         Data to have cosmic ray cleaned
 
-    error_image : `numpy.ndarray`
+    error_image : `~numpy.ndarray`
         Error level in the image.   It should have the same shape as data
         as data. This is the same as the noise array in lacosmic.cl
 
@@ -884,7 +885,7 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
         Median box for calculating replacement values.  If zero, no pixels will
         be replaced.
 
-    f_conv: `numpy.ndarray`, optional
+    f_conv: `~numpy.ndarray`, optional
         Convolution kernal for detecting edges. The default kernel is
         ``np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])``.
 
@@ -899,7 +900,7 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
     Returns
     -------
 
-    nccd : `~ccdproc.ccddata.CCDData` or `~numpy.ndarray`
+    nccd : `~ccdproc.CCDData` or `~numpy.ndarray`
         An object of the same type as ccd is returned.   If it is a
         `~ccdproc.CCDData`, the mask attribute will also be updated with
         areas identified with cosmic rays masked.
@@ -930,7 +931,7 @@ def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
        with the bad pixels replaced by the local median from a box of 11
        pixels; and it would return a mask indicating the bad pixels.
 
-    2. Given an `~ccddata.CCDData` object with an uncertainty frame, the syntax
+    2. Given an `~ccdproc.CCDData` object with an uncertainty frame, the syntax
        for running cosmicrar_lacosmic would be:
 
        >>> newccd = cosmicray_lacosmic(ccd, thresh=5, mbox=11,
@@ -1075,7 +1076,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
 
     Returns
     -------
-    nccd : `~ccdproc.ccddata.CCDData` or `~numpy.ndarray`
+    nccd : `~ccdproc.CCDData` or `~numpy.ndarray`
         An object of the same type as ccd is returned.   If it is a
         `~ccdproc.CCDData`, the mask attribute will also be updated with
         areas identified with cosmic rays masked.
@@ -1099,7 +1100,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
        with the bad pixels replaced by the local median from a box of 11
        pixels; and it would return a mask indicating the bad pixels.
 
-    2) Given an `~ccddata.CCDData` object with an uncertainty frame, the syntax
+    2) Given an `~ccdproc.CCDData` object with an uncertainty frame, the syntax
        for running cosmicray_median would be:
 
        >>> newccd = cosmicray_median(ccd, thresh=5, mbox=11,
@@ -1216,7 +1217,7 @@ class Keyword(object):
         Parameters
         ----------
 
-        header : `astropy.io.fits.Header`
+        header : `~astropy.io.fits.Header`
             FITS header containing a value for this keyword
         """
 
