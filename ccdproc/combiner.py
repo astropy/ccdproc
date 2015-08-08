@@ -432,7 +432,7 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
             raise
             
 
-    size_of_an_img = ccd_dummy.data.nbytes
+    size_of_an_img = ccd_dummy.data.nbytes + ccd_dummy.uncertainty.nbytes + ccd_dummy.mask.nbytes + ccd_dummy.flags.nbytes
     no_of_img = len(img_list)
         
     #determine the number of chunks to split the images into
