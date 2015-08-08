@@ -329,8 +329,9 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
 
     Parameters
     -----------
-    img_list : `list`
+    img_list : `list`, 'string'
         A list of fits filenames or CCDData objects that will be combined together.
+        Or a string of fits filenames seperated by comma ",".
 
     output_file: 'string', optional
         Optional output fits filename to which the final output can be directly written.
@@ -402,9 +403,14 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
         CCDData object based on the combined input of CCDData objects.
 
     """
-    assert isinstance(img_list,list)
+    if not isinstance(img_list,list):
+        # If not a list, check wheter it is a string of filenames seperated by comma
+        if isinstance(img_list,str) and (',' in img_list):
+            img_list = img_list.split(',')
+        else:
+            raise ValueError("Unrecognised input for list of images to combine.")
 
-    # Combine function to call
+    # Select Combine function to call in Combiner
     if method == 'average':
         combine_function = 'average_combine'
     elif method == 'median':
@@ -421,11 +427,10 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
         try:
             ccd_dummy = CCDData.read(img_list[0],**ccdkwargs)
         except IOError as e:
-            print('Input fits file not found')
+            print('Input fits file {0} not found.'.format(img_list[0]))
             print(e)
             raise
             
-    ## TO DO: Need to implement sanity checks in a better way above.
 
     size_of_an_img = ccd_dummy.data.nbytes
     no_of_img = len(img_list)
