@@ -16,3 +16,4 @@ if not _ASTROPY_SETUP_:
     from .core import *
     from .ccddata import *
     from .combiner import *
+    from .image_collection import *
