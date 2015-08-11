@@ -12,16 +12,16 @@ Working with a directory of images
 For the sake of argument all of the examples below assume you are working in
 a directory that contains FITS images.
 
-The class :class:`~msumastro.image_collection.ImageFileCollection` is meant to
+The class :class:`~ccdproc.image_collection.ImageFileCollection` is meant to
 make working with a directory of FITS images easier by allowing you select the
 files you act on based on the values of FITS keywords in their headers.
 
 It is initialized with the name of a directory containing FITS images and a
 list of FITS keywords you want the
-:class:`~msumastro.image_collection.ImageFileCollection` to be aware of. An
+:class:`~ccdproc.image_collection.ImageFileCollection` to be aware of. An
 example initialization looks like::
 
-    >>> from msumastro import ImageFileCollection
+    >>> from ccdproc import ImageFileCollection
     >>> keys = ['imagetyp', 'object', 'filter', 'exposure']
     >>> ic1 = ImageFileCollection('.', keywords=keys) # only keep track of keys
 
