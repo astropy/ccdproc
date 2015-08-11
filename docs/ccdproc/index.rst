@@ -121,11 +121,11 @@ use an `~ccdproc.image_collection.ImageFileCollection`. It constructs, given a d
     >>> dirs = glob('/Users/mcraig/Documents/Data/feder-images/fixed_headers/20*-??-??')
 
     >>> for d in dirs:
-    >>>     print(d)
-    >>>     ic = ImageFileCollection(d, keywords='*')
-    >>>     for data, fname in ic.data(imagetyp='LIGHT', return_fname=True):
-    >>>         if data.mean() > 4000.:
-    >>>             print(fname)
+    ...     print(d)
+    ...     ic = ImageFileCollection(d, keywords='*')
+    ...     for data, fname in ic.data(imagetyp='LIGHT', return_fname=True):
+    ...         if data.mean() > 4000.:
+    ...             print(fname)
 
 Using `ccdproc`
 ---------------
