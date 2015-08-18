@@ -419,30 +419,30 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
         raise ValueError("Unrecognised combine method : {0}".format(method))
     
     
-    # First we create a dummy output CCDObject from first image for storing output       
+    # First we create a CCDObject from first image for storing output       
     if isinstance(img_list[0],CCDData):
-        ccd_dummy = img_list[0].copy()
+        ccd = img_list[0].copy()
     else:
         # User has provided fits filenames to read from  
         try:
-            ccd_dummy = CCDData.read(img_list[0],**ccdkwargs)
+            ccd = CCDData.read(img_list[0],**ccdkwargs)
         except IOError as e:
             print('Input fits file {0} not found.'.format(img_list[0]))
             print(e)
             raise
             
 
-    size_of_an_img = ccd_dummy.data.nbytes + ccd_dummy.uncertainty.nbytes + ccd_dummy.mask.nbytes + ccd_dummy.flags.nbytes
+    size_of_an_img = ccd.data.nbytes + ccd.uncertainty.nbytes + ccd.mask.nbytes + ccd.flags.nbytes
     no_of_img = len(img_list)
         
     #determine the number of chunks to split the images into
     no_chunks = int((size_of_an_img*no_of_img)/mem_limit)+1
     print('Spliting each image into {1} chunks to limit memory usage to {0} bytes.'.format(self.mem_limit,no_chunks))
-    Xs, Ys = ccd_dummy.data.shape
+    xs, ys = ccd.data.shape
     # First we try to split only along fast x axis
-    Xstep = max(1, int(Xs/no_chunks)) 
+    xstep = max(1, int(xs/no_chunks)) 
     # If more chunks need to be created we split in Y axis for remaining number of chunks
-    Ystep = max(1, int(Ys/(1+ no_chunks - int(Xs/Xstep)) ) ) 
+    ystep = max(1, int(ys/(1+ no_chunks - int(xs/xstep)) ) ) 
         
     # Dictionary of Combiner properties to set and methods to call before combining
     to_set_in_combiner = {}
@@ -482,11 +482,11 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
                                                  'dev_func':sigma_clip_dev_func}
 
     # Finally Run the input method on all the subsections of the image        
-    # and write final stitched image to ccd_dummy
+    # and write final stitched image to ccd
 
-    for x in range(0,Xs,Xstep):
-        for y in range(0,Ys,Ystep):
-            xend, yend = min(Xs, x + Xstep), min(Ys, y + Ystep)
+    for x in range(0,xs,xstep):
+        for y in range(0,ys,ystep):
+            xend, yend = min(xs, x + xstep), min(ys, y + ystep)
             ccd_list = []
             for image in self.img_list:
                 if isinstance(image,CCDData):
@@ -498,26 +498,26 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
                 ccd_list.append(trim_image(imgccd[x:xend, y:yend])) 
 
             # Create Combiner for tile
-            Tile_combiner = Combiner(ccd_list) 
+            tile_combiner = Combiner(ccd_list) 
             # Set all properties and call all methods
             for to_set in to_set_in_combiner:
-                setattr(Tile_combiner, to_set, to_set_in_combiner[to_set])
+                setattr(tile_combiner, to_set, to_set_in_combiner[to_set])
             for to_call in to_call_in_combiner:
-                getattr(Tile_combiner, to_call)(**to_call_in_combiner[to_call])
+                getattr(tile_combiner, to_call)(**to_call_in_combiner[to_call])
 
             # Finally call the combine algorithm
-            comb_tile = getattr(Tile_combiner, combine_function)()
+            comb_tile = getattr(tile_combiner, combine_function)()
  
             #add it back into the master image
-            ccd_dummy.data[x:xend, y:yend] = comb_tile.data
-            if ccd_dummy.mask is not None:
-                ccd_dummy.mask[x:xend, y:yend] = comb_tile.mask
-            if ccd_dummy.uncertainty is not None:
-                ccd_dummy.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
+            ccd.data[x:xend, y:yend] = comb_tile.data
+            if ccd.mask is not None:
+                ccd.mask[x:xend, y:yend] = comb_tile.mask
+            if ccd.uncertainty is not None:
+                ccd.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
   
     # Write fits file if filename was provided
     if output_file is not None:
-        ccd_dummy.write(output_file)
+        ccd.write(output_file)
 
-    return ccd_dummy
+    return ccd
         
