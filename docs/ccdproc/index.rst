@@ -51,13 +51,10 @@ Most operations are performed by functions in `ccdproc`:
     ...                                  data_exposure=15*u.second,
     ...                                  scale=True)
 
-Every function returns a *copy* of the data with the operation performed. If,
-for some reason, you wanted to modify the data in-place, do this:
-
-    >>> image_2 = ccdproc.subtract_dark(image_1, dark, dark_exposure=30*u.second, data_exposure=15*u.second, scale=True)
-
 See the documentation for `~ccdproc.subtract_dark` for more compact
 ways of providing exposure times.
+
+Every function returns a *copy* of the data with the operation performed.
 
 Every function in `ccdproc` supports logging through the addition of
 information to the image metadata.
