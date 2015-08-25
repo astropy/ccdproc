@@ -61,33 +61,33 @@ information to the image metadata.
 
 Logging can be simple -- add a string to the metadata:
 
-    >>> image_2_gained = ccdproc.gain_correct(image_2, 1.5 * u.photon/u.adu, add_keyword='gain_corrected')
+    >>> dark_sub_gained = ccdproc.gain_correct(dark_sub, 1.5 * u.photon/u.adu, add_keyword='gain_corrected')
 
 Logging can be more complicated -- add several keyword/value pairs by passing
 a dictionary to ``add_keyword``:
 
     >>> my_log = {'gain_correct': 'Gain value was 1.5',
     ...           'calstat': 'G'}
-    >>> image_2_gained = ccdproc.gain_correct(image_2,
-    ...                                       1.5 * u.photon/u.adu,
-    ...                                       add_keyword=my_log)
+    >>> dark_sub_gained = ccdproc.gain_correct(dark_sub,
+    ...                                        1.5 * u.photon/u.adu,
+    ...                                        add_keyword=my_log)
 
 The `~ccdproc.Keyword` class provides a compromise between the simple
 and complicated cases for providing a single key/value pair:
 
     >>> key = ccdproc.Keyword('gain_corrected', value='Yes')
-    >>> image_2_gained = ccdproc.gain_correct(image_2,
-    ...                                       1.5 * u.photon/u.adu,
-    ...                                       add_keyword=key)
+    >>> dark_sub_gained = ccdproc.gain_correct(dark_sub,
+    ...                                        1.5 * u.photon/u.adu,
+    ...                                        add_keyword=key)
 
 `~ccdproc.Keyword` also provides a convenient way to get a value from
 image metadata and specify its unit:
 
-    >>> image_2.header['gain']  = 1.5
+    >>> dark_sub.header['gain']  = 1.5
     >>> gain = ccdproc.Keyword('gain', unit=u.photon/u.adu)
-    >>> image_2_var = ccdproc.create_deviation(image_2,
-    ...                                       gain=gain.value_from(image_2.header),
-    ...                                       readnoise=3.0 * u.photon)
+    >>> dark_sub_var = ccdproc.create_deviation(dark_sub,
+    ...                                         gain=gain.value_from(dark_sub.header),
+    ...                                         readnoise=3.0 * u.photon)
 
 You might wonder why there is a `~ccdproc.gain_correct` at all, since the implemented
 gain correction simple multiplies by a constant. There are two things you get
