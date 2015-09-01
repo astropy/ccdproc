@@ -37,7 +37,9 @@ def test_fits_summary(triage_setup):
     assert (summary['filter'][no_filter_no_object_row].mask)
 
 
-# this should work, but doesn't:
+# This should work mark all test methods as using the triage_setup
+# fixture, but it doesn't, so the fixture is given explicitly as an
+# argument to each method.
 # @pytest.mark.usefixtures("triage_setup")
 class TestImageFileCollection(object):
     def test_filter_files(self, triage_setup):
