@@ -37,9 +37,12 @@ class ImageFileCollection(object):
         Keywords that should be used as column headings in the summary table.
         If the value is or includes '*' then all keywords that appear in any
         of the FITS headers of the files in the collection become table
-        columns.
+        columns. Default value is '*' unless ``info_file`` is specified.
     info_file : str, optional
         Path to file that contains a table of information about FITS files.
+        In this case the keywords are set to the names of the columns of the
+        ``info_file`` unless ``keywords`` is explicitly set to a different
+        list.
 
     Attributes
     ----------
@@ -63,7 +66,13 @@ class ImageFileCollection(object):
             self._files = self._fits_files_in_directory()
         self._summary_info = {}
         if keywords is None:
-            keywords = []
+            if info_file is not None:
+                # Default to empty list so that keywords will be populated
+                # from table columns names.
+                keywords = []
+            else:
+                # Otherwise use all keywords.
+                keywords = '*'
         if info_file is not None:
             try:
                 info_path = path.join(self.location, info_file)

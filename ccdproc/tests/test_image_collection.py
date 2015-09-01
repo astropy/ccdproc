@@ -269,7 +269,8 @@ class TestImageFileCollection(object):
         # make sure an error will be generated if the FITS file is read
         with pytest.raises(IOError):
             fits.getheader(not_really_fits.strpath)
-        ic = image_collection.ImageFileCollection(location=bad_dir.strpath)
+        ic = image_collection.ImageFileCollection(location=bad_dir.strpath,
+                                                  keywords=[])
         # ImageFileCollection will suppress the IOError but log a warning
         # so check the log for the appropriate warning
         warnings = [rec for rec in caplog.records()
@@ -434,7 +435,10 @@ class TestImageFileCollection(object):
                                          info_file='iufadsdhfasdifre')
 
     def test_initialization_with_no_keywords(self, triage_setup):
-        ic = image_collection.ImageFileCollection(location=triage_setup.test_dir)
+        # This test is primarily historical -- the old default for
+        # keywords was an empty list (it is now the wildcard '*').
+        ic = image_collection.ImageFileCollection(location=triage_setup.test_dir,
+                                                  keywords=[])
         # iteration below failed before bugfix...
         execs = 0
         for h in ic.headers():
