@@ -46,7 +46,7 @@ Selecting the files that match a set of criteria, for example all images in
 the I band with exposure time less than 60 seconds you could do::
 
     >>> matches = (ic1.summary['filter'] == 'I' & ic1.summary['exposure'] < 60)
-    >>> my_files = summary['file'][matches]
+    >>> my_files = ic1.summary['file'][matches]
 
 The column ``file`` is added automatically when the image collection is created.
 
@@ -107,10 +107,10 @@ the mean from each image and saving to a new file::
     ...    hdu.header['meansub'] = True
     ...    hdu.data = hdu.data - hdu.data.mean()
 
-   It saves, in the ``location`` of the image collection, a new FITS file with
-   the mean subtracted from the data, with ``_new`` added to the name; as an
-   example, if one of the files iterated over was ``intput001.fit`` then a new
-   file, in the same directory, called ``input001_new.fit`` would be created.
+It saves, in the ``location`` of the image collection, a new FITS file with
+the mean subtracted from the data, with ``_new`` added to the name; as an
+example, if one of the files iterated over was ``intput001.fit`` then a new
+file, in the same directory, called ``input001_new.fit`` would be created.
 
 2. You can also provide the directory to which you want to save the files with
 ``save_location``; note that you do not need to actually do anything to the
@@ -122,8 +122,8 @@ location to ``"other_dir"``::
     ...                     imagetyp='LiGhT', filter='I', exposure=30):
     ...     pass
 
-   This option can be combined with the previous one to also give the files a
-   new name.
+This option can be combined with the previous one to also give the files a
+new name.
 
 3. Finally, if you want to live dangerously, you can overwrite the files in
 the location with the ``overwrite`` argument; use it carefully because it
