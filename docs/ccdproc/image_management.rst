@@ -36,7 +36,7 @@ file in the collection::
 
     >>> ic1.summary.colnames
     ['file', 'filter', 'object', 'imagetyp', 'exposure']
-    >>> ic_all.summary.colnames
+    >>> ic_all.summary.colnames # doctest: +SKIP
     # long list of keyword names omitted
 
 Note that the name of the file is automatically added to the table as a
