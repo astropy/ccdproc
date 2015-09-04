@@ -48,7 +48,7 @@ Selecting files
 Selecting the files that match a set of criteria, for example all images in
 the I band with exposure time less than 60 seconds you could do::
 
-    >>> matches = (ic1.summary['filter'] == 'I' & ic1.summary['exposure'] < 60)
+    >>> matches = (ic1.summary['filter'] == 'I') & (ic1.summary['exposure'] < 60)
     >>> my_files = ic1.summary['file'][matches]
 
 The column ``file`` is added automatically when the image collection is created.
