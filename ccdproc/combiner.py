@@ -11,7 +11,7 @@ from .core import trim_image
 from astropy.stats import median_absolute_deviation
 from astropy.nddata import StdDevUncertainty
 
-__all__ = ['Combiner']
+__all__ = ['Combiner','combine']
 
 
 class Combiner(object):

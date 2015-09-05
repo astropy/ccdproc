@@ -268,3 +268,60 @@ def test_combiner_mask_media(ccd_data):
     assert ccd.data[5, 5] == 1
     assert ccd.mask[0, 0]
     assert not ccd.mask[5, 5]
+
+#test combiner convenience function reads fits file and combine as expected
+def test_combine_average_fitsimages(fitsfile='files/a8280271.fits'):
+    ccd = CCDData.read(fitsfile)
+    ccd_list = [ccd]*3
+    c = Combiner(ccd_list)
+    ccd_by_combiner = c.average_combine()
+
+    fitsfilename_list = [fitsfile]*3
+    avgccd = combine(fitsfilename_list,output_file=None, method='average')
+    # averaging same fits images should give back same fits image
+    assert avgccd.data == ccd_by_combiner.data
+
+
+#test combiner convenience function works with list of ccddata objects
+def test_combine_average_ccddata(fitsfile='files/a8280271.fits'):
+    ccd = CCDData.read(fitsfile)
+    ccd_list = [ccd]*3
+    c = Combiner(ccd_list)
+    ccd_by_combiner = c.average_combine()
+
+    avgccd = combine(ccd_list,output_file=None, method='average')
+    # averaging same ccdData should give back same images
+    assert avgccd.data == ccd_by_combiner.data
+
+
+#test combiner convenience function reads fits file and 
+# and combine as expected when asked to run in limited memory
+def test_combine_limitedmem_fitsimages(fitsfile='files/a8280271.fits'):
+    ccd = CCDData.read(fitsfile)
+    ccd_list = [ccd]*5
+    c = Combiner(ccd_list)
+    ccd_by_combiner = c.average_combine()
+
+    fitsfilename_list = [fitsfile]*5
+    avgccd = combine(fitsfilename_list,output_file=None, method='average',mem_limit=1e6)
+    # averaging same ccdData should give back same images
+    assert avgccd.data == ccd_by_combiner.data
+
+
+#test combiner convenience function reads fits file and 
+# and combine as expected when asked to run in limited memory with scaling
+def test_combine_limitedmem_scale_fitsimages(fitsfile='files/a8280271.fits'):
+    ccd = CCDData.read(fitsfile)
+    ccd_list = [ccd]*5
+    c = Combiner(ccd_list)
+    # scale each array to the mean of the first image
+    scale_by_mean = lambda x: ccd.data.mean()/np.ma.average(x)
+    c.scaling = scale_by_mean
+    ccd_by_combiner = c.average_combine()
+
+    fitsfilename_list = [fitsfile]*5
+    avgccd = combine(fitsfilename_list,output_file=None, method='average',mem_limit=1e6,
+                     scale=scale_by_mean)
+
+    assert avgccd.data == ccd_by_combiner.data
+
