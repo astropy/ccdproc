@@ -44,13 +44,6 @@ class ImageFileCollection(object):
         ``info_file`` unless ``keywords`` is explicitly set to a different
         list.
 
-    Attributes
-    ----------
-    location
-    keywords
-    files
-    summary_info
-
     Raises
     ------
 
@@ -530,14 +523,14 @@ class ImageFileCollection(object):
         save_with_name : str
             string added to end of file name (before extension) if
             FITS file should be saved after iteration. Unless
-            `save_location` is set, files will be saved to location of
-            the source files `self.location`
+            ``save_location`` is set, files will be saved to location of
+            the source files ``self.location``
 
         save_location : str
             Directory in which to save FITS files; implies that FITS
             files will be saved. Note this provides an easy way to
             copy a directory of files--loop over the {name} with
-            `save_location` set.
+            ``save_location`` set.
 
         overwrite : bool
             If ``True``, overwrite input FITS files.
@@ -562,7 +555,7 @@ class ImageFileCollection(object):
 
         ({return_type}, str)
             If ``return_fname`` is ``True``, yield a tuple of
-            ({name}, `file path`) for next the  item in the collection.
+            ({name}, ``file path``) for next the  item in the collection.
 
         """
         # store mask so we can reset at end--must COPY, otherwise

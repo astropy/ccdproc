@@ -31,7 +31,7 @@ collection to use all keywords in the headers::
     >>> ic_all = ImageFileCollection('.', keywords='*')
 
 Most of the useful interaction with the image collection is via its
-``.summary`` property, an `~astropy.table.Table`_ of the value of each keyword for each
+``.summary`` property, an :class:`~astropy.table.Table` of the value of each keyword for each
 file in the collection::
 
     >>> ic1.summary.colnames
@@ -137,8 +137,3 @@ with 30 second exposure with a file that has had the mean subtracted::
     ...                     imagetyp='LiGhT', filter='I', exposure=30):
     ...    hdu.header['meansub'] = True
     ...    hdu.data = hdu.data - hdu.data.mean()
-
-
-.. automodapi:: ccdproc.image_collection
-    :skip: Table
-
