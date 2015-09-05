@@ -211,7 +211,7 @@ class ImageFileCollection(object):
     def files_filtered(self, **kwd):
         """Determine files whose keywords have listed values.
 
-        `**kwd` is list of keywords and values the files must have.
+        ``**kwd`` is list of keywords and values the files must have.
 
         The value '*' represents any value.
          A missing keyword is indicated by value ''
