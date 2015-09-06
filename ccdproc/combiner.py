@@ -431,13 +431,20 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
             print(e)
             raise
             
+    
+    size_of_an_img = ccd.data.nbytes 
+    if ccd.uncertainty is not None:
+        size_of_an_img += ccd.uncertainty.nbytes 
+    if ccd.mask is not None:
+        size_of_an_img += ccd.mask.nbytes 
+    if ccd.flags is not None:
+        size_of_an_img += ccd.flags.nbytes
 
-    size_of_an_img = ccd.data.nbytes + ccd.uncertainty.nbytes + ccd.mask.nbytes + ccd.flags.nbytes
     no_of_img = len(img_list)
         
     #determine the number of chunks to split the images into
     no_chunks = int((size_of_an_img*no_of_img)/mem_limit)+1
-    print('Spliting each image into {1} chunks to limit memory usage to {0} bytes.'.format(self.mem_limit,no_chunks))
+    print('Spliting each image into {1} chunks to limit memory usage to {0} bytes.'.format(mem_limit,no_chunks))
     xs, ys = ccd.data.shape
     # First we try to split only along fast x axis
     xstep = max(1, int(xs/no_chunks)) 
@@ -488,7 +495,7 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
         for y in range(0,ys,ystep):
             xend, yend = min(xs, x + xstep), min(ys, y + ystep)
             ccd_list = []
-            for image in self.img_list:
+            for image in img_list:
                 if isinstance(image,CCDData):
                     imgccd = image
                 else:
