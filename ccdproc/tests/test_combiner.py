@@ -183,18 +183,18 @@ def test_combiner_sigmaclip_low():
     assert c.data_arr[5].mask.all()
 
 
-#test that the average combination works and returns a ccddata object
+#test that the median combination works and returns a ccddata object
 def test_combiner_median(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
-    ccd = c.average_combine()
+    ccd = c.median_combine()
     assert isinstance(ccd, CCDData)
     assert ccd.shape == (100, 100)
     assert ccd.unit == u.adu
     assert ccd.meta['NCOMBINE'] == len(ccd_list)
 
 
-#test that the median combination works and returns a ccddata object
+#test that the average combination works and returns a ccddata object
 def test_combiner_average(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
