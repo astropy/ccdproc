@@ -271,7 +271,7 @@ def test_combiner_mask_media(ccd_data):
 
 #test combiner convenience function reads fits file and combine as expected
 def test_combine_average_fitsimages():
-    fitsfile = get_pkg_data_filename('../data/a8280271.fits')
+    fitsfile = get_pkg_data_filename('data/a8280271.fits')
     ccd = CCDData.read(fitsfile, unit=u.adu)
     ccd_list = [ccd]*3
     c = Combiner(ccd_list)
@@ -285,7 +285,7 @@ def test_combine_average_fitsimages():
 
 #test combiner convenience function works with list of ccddata objects
 def test_combine_average_ccddata():
-    fitsfile = get_pkg_data_filename('../data/a8280271.fits')
+    fitsfile = get_pkg_data_filename('data/a8280271.fits')
     ccd = CCDData.read(fitsfile, unit=u.adu)
     ccd_list = [ccd]*3
     c = Combiner(ccd_list)
@@ -299,7 +299,7 @@ def test_combine_average_ccddata():
 #test combiner convenience function reads fits file and 
 # and combine as expected when asked to run in limited memory
 def test_combine_limitedmem_fitsimages():
-    fitsfile = get_pkg_data_filename('../data/a8280271.fits')
+    fitsfile = get_pkg_data_filename('data/a8280271.fits')
     ccd = CCDData.read(fitsfile, unit=u.adu)
     ccd_list = [ccd]*5
     c = Combiner(ccd_list)
@@ -317,7 +317,7 @@ def test_combine_limitedmem_fitsimages():
 @pytest.mark.xfail(np.__version__ < (1,9),
                    reason="numpy < 1.9 loses precision in np.ma.average")
 def test_combine_limitedmem_scale_fitsimages():
-    fitsfile = get_pkg_data_filename('../data/a8280271.fits')
+    fitsfile = get_pkg_data_filename('data/a8280271.fits')
     ccd = CCDData.read(fitsfile, unit=u.adu)
     ccd_list = [ccd]*5
     c = Combiner(ccd_list)
