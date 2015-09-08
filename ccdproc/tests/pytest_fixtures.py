@@ -1,11 +1,18 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+from tempfile import mkdtemp
+import os
+from shutil import rmtree
+
 import numpy as np
 
 from astropy.tests.helper import pytest
 from astropy import units as u
 from astropy.utils import NumpyRNGContext
+from astropy.io import fits
+
+from astropy.utils.compat import gzip
 
 from ..ccddata import CCDData
 
@@ -60,3 +67,86 @@ def ccd_data(request):
     ccd = CCDData(data, unit=u.adu)
     ccd.header = fake_meta
     return ccd
+
+
+@pytest.fixture
+def triage_setup(request):
+    n_test = {'files': 0, 'need_object': 0,
+              'need_filter': 0, 'bias': 0,
+              'compressed': 0, 'light': 0,
+              'need_pointing': 0}
+
+    test_dir = ''
+
+    for key in n_test.keys():
+        n_test[key] = 0
+
+    test_dir = mkdtemp()
+    original_dir = os.getcwd()
+    os.chdir(test_dir)
+    img = np.uint16(np.arange(100))
+
+    no_filter_no_object = fits.PrimaryHDU(img)
+    no_filter_no_object.header['imagetyp'] = 'light'.upper()
+    no_filter_no_object.writeto('no_filter_no_object_light.fit')
+    n_test['files'] += 1
+    n_test['need_object'] += 1
+    n_test['need_filter'] += 1
+    n_test['light'] += 1
+    n_test['need_pointing'] += 1
+
+    no_filter_no_object.header['imagetyp'] = 'bias'.upper()
+    no_filter_no_object.writeto('no_filter_no_object_bias.fit')
+    n_test['files'] += 1
+    n_test['bias'] += 1
+
+    filter_no_object = fits.PrimaryHDU(img)
+    filter_no_object.header['imagetyp'] = 'light'.upper()
+    filter_no_object.header['filter'] = 'R'
+    filter_no_object.writeto('filter_no_object_light.fit')
+    n_test['files'] += 1
+    n_test['need_object'] += 1
+    n_test['light'] += 1
+    n_test['need_pointing'] += 1
+
+    filter_no_object.header['imagetyp'] = 'bias'.upper()
+    filter_no_object.writeto('filter_no_object_bias.fit')
+    n_test['files'] += 1
+    n_test['bias'] += 1
+
+    filter_object = fits.PrimaryHDU(img)
+    filter_object.header['imagetyp'] = 'light'.upper()
+    filter_object.header['filter'] = 'R'
+    filter_object.header['OBJCTRA'] = '00:00:00'
+    filter_object.header['OBJCTDEC'] = '00:00:00'
+    filter_object.writeto('filter_object_light.fit')
+    n_test['files'] += 1
+    n_test['light'] += 1
+    n_test['need_object'] += 1
+    with open('filter_object_light.fit', 'rb') as f_in:
+        with gzip.open('filter_object_light.fit.gz', 'wb') as f_out:
+            f_out.write(f_in.read())
+    n_test['files'] += 1
+    n_test['compressed'] += 1
+    n_test['light'] += 1
+    n_test['need_object'] += 1
+
+    filter_object.header['RA'] = filter_object.header['OBJCTRA']
+    filter_object.header['Dec'] = filter_object.header['OBJCTDEC']
+    filter_object.writeto('filter_object_RA_keyword_light.fit')
+    n_test['files'] += 1
+    n_test['light'] += 1
+    n_test['need_object'] += 1
+
+    def teardown():
+        for key in n_test.keys():
+            n_test[key] = 0
+        rmtree(test_dir)
+        os.chdir(original_dir)
+    request.addfinalizer(teardown)
+
+    class Result(object):
+        def __init__(self, n, directory):
+            self.n_test = n
+            self.test_dir = directory
+    return Result(n_test, test_dir)

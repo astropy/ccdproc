@@ -17,6 +17,8 @@ The `ccdproc` package provides:
   reduction steps in the image metadata.
 + A class for combining and/or clipping images, `~ccdproc.Combiner`, and
   associated functions.
++ A class, `~ccdproc.ImageFileCollection`, for working with a directory of
+  images.
 
 Getting Started
 ---------------
@@ -106,6 +108,21 @@ correction, in which one image is divided by another:
 In addition to doing the necessary division, `~ccdproc.flat_correct` propagates
 uncertainties (if they are set).
 
+To make applying the same operations to a set of files in a directory easier,
+use an `~ccdproc.image_collection.ImageFileCollection`. It constructs, given a directory, an `~astropy.table.Table` containing the values of user-selected keywords in the directory. It also provides methods for iterating over the files. The example below was used to find an image in which the sky background was high for use in a talk:
+
+    >>> from __future__ import division, print_function
+    >>> from ccdproc import ImageFileCollection
+    >>> import numpy as np
+    >>> from glob import glob
+    >>> dirs = glob('/Users/mcraig/Documents/Data/feder-images/fixed_headers/20*-??-??')
+
+    >>> for d in dirs:
+    ...     print(d)
+    ...     ic = ImageFileCollection(d, keywords='*')
+    ...     for data, fname in ic.data(imagetyp='LIGHT', return_fname=True):
+    ...         if data.mean() > 4000.:
+    ...             print(fname)
 
 Using `ccdproc`
 ---------------
@@ -116,6 +133,7 @@ Using `ccdproc`
     ccddata.rst
     image_combination.rst
     reduction_toolbox.rst
+    image_management.rst
     reduction_examples.rst
 
 .. automodapi:: ccdproc
