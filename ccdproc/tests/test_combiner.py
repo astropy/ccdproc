@@ -314,6 +314,8 @@ def test_combine_limitedmem_fitsimages():
 
 #test combiner convenience function reads fits file and 
 # and combine as expected when asked to run in limited memory with scaling
+@pytest.mark.xfail(np.__version__ < (1,9),
+                   reason="numpy < 1.9 loses precision in np.ma.average")
 def test_combine_limitedmem_scale_fitsimages():
     fitsfile = get_pkg_data_filename('../data/a8280271.fits')
     ccd = CCDData.read(fitsfile, unit=u.adu)
