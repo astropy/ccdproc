@@ -6,11 +6,12 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from numpy import ma
 from .ccddata import CCDData
+from .core import trim_image
 
 from astropy.stats import median_absolute_deviation
 from astropy.nddata import StdDevUncertainty
 
-__all__ = ['Combiner']
+__all__ = ['Combiner','combine']
 
 
 class Combiner(object):
@@ -362,3 +363,213 @@ class Combiner(object):
 
         # return the combined image
         return combined_image
+
+
+def combine(img_list, output_file=None, method='average', weights=None, scale=None, mem_limit=16e9, 
+            minmax_clip=False, minmax_clip_min=None, minmax_clip_max=None, 
+            sigma_clip=False, sigma_clip_low_thresh=3, sigma_clip_high_thresh=3, 
+            sigma_clip_func=ma.mean, sigma_clip_dev_func=ma.std, **ccdkwargs):
+
+    """Convenience function for combining multiple images
+
+    Parameters
+    -----------
+    img_list : `list`, 'string'
+        A list of fits filenames or CCDData objects that will be combined together.
+        Or a string of fits filenames seperated by comma ",".
+
+    output_file: 'string', optional
+        Optional output fits filename to which the final output can be directly written.
+
+    method: 'string' (default average)
+        Method to combine images. 
+             'average' : To combine by calculating average
+             'median'  : To combine by calculating median 
+
+    weights: `~numpy.ndarray`, optional
+        Weights to be used when combining images.
+        An array with the weight values. The dimensions should match the
+        the dimensions of the data arrays being combined.
+
+    scale : function or array-like or None, optional
+        Scaling factor to be used when combining images.
+        Images are multiplied by scaling prior to combining them. Scaling
+        may be either a function, which will be applied to each image
+        to determine the scaling factor, or a list or array whose length
+        is the number of images in the `Combiner`. Default is ``None``.
+
+    mem_limit : float (default 16e9)
+        Maximum memory which should be used while combining (in bytes).
+
+    minmax_clip : Boolean (default False)
+        Set to True if you want to mask all pixels that are below minmax_clip_min or above minmax_clip_max before combining.
+
+        Parameters below are valid only when minmax_clip is set to True.
+
+        minmax_clip_min: None, float
+             All pixels with values below minmax_clip_min will be masked.
+        minmax_clip_max: None or float
+             All pixels with values above minmax_clip_max will be masked.
+
+    sigma_clip : Boolean (default False)
+        Set to True if you want to reject pixels which have deviations greater than those
+        set by the threshold values.   The algorithm will first calculated
+        a baseline value using the function specified in func and deviation
+        based on sigma_clip_dev_func and the input data array.   Any pixel with a
+        deviation from the baseline value greater than that set by
+        sigma_clip_high_thresh or lower than that set by sigma_clip_low_thresh will be rejected.
+
+        Parameters below are valid only when sigma_clip is set to True.
+
+        sigma_clip_low_thresh : positive float or None
+            Threshold for rejecting pixels that deviate below the baseline
+            value.  If negative value, then will be convert to a positive
+            value.   If None, no rejection will be done based on sigma_clip_low_thresh.
+
+        sigma_clip_high_thresh : positive float or None
+            Threshold for rejecting pixels that deviate above the baseline
+            value. If None, no rejection will be done based on sigma_clip_high_thresh.
+
+        sigma_clip_func : function
+            Function for calculating the baseline values (i.e. mean or median).
+            This should be a function that can handle
+            numpy.ma.core.MaskedArray objects.
+
+        sigma_clip_dev_func : function
+            Function for calculating the deviation from the baseline value
+            (i.e. std).  This should be a function that can handle
+            numpy.ma.core.MaskedArray objects.
+    
+    **ccdkwargs: Other keyword arguments for CCD Object's fits reader.
+
+    Returns
+    -------
+    combined_image: `~ccdproc.CCDData`
+        CCDData object based on the combined input of CCDData objects.
+
+    """
+    if not isinstance(img_list,list):
+        # If not a list, check wheter it is a string of filenames seperated by comma
+        if isinstance(img_list,str) and (',' in img_list):
+            img_list = img_list.split(',')
+        else:
+            raise ValueError("Unrecognised input for list of images to combine.")
+
+    # Select Combine function to call in Combiner
+    if method == 'average':
+        combine_function = 'average_combine'
+    elif method == 'median':
+        combine_function = 'median_combine'
+    else:
+        raise ValueError("Unrecognised combine method : {0}".format(method))
+    
+    
+    # First we create a CCDObject from first image for storing output       
+    if isinstance(img_list[0],CCDData):
+        ccd = img_list[0].copy()
+    else:
+        # User has provided fits filenames to read from  
+        try:
+            ccd = CCDData.read(img_list[0],**ccdkwargs)
+        except IOError as e:
+            print('Input fits file {0} not found.'.format(img_list[0]))
+            print(e)
+            raise
+            
+    
+    size_of_an_img = ccd.data.nbytes 
+    if ccd.uncertainty is not None:
+        size_of_an_img += ccd.uncertainty.nbytes 
+    if ccd.mask is not None:
+        size_of_an_img += ccd.mask.nbytes 
+    if ccd.flags is not None:
+        size_of_an_img += ccd.flags.nbytes
+
+    no_of_img = len(img_list)
+        
+    #determine the number of chunks to split the images into
+    no_chunks = int((size_of_an_img*no_of_img)/mem_limit)+1
+    print('Spliting each image into {1} chunks to limit memory usage to {0} bytes.'.format(mem_limit,no_chunks))
+    xs, ys = ccd.data.shape
+    # First we try to split only along fast x axis
+    xstep = max(1, int(xs/no_chunks)) 
+    # If more chunks need to be created we split in Y axis for remaining number of chunks
+    ystep = max(1, int(ys/(1+ no_chunks - int(xs/xstep)) ) ) 
+        
+    # Dictionary of Combiner properties to set and methods to call before combining
+    to_set_in_combiner = {}
+    to_call_in_combiner = {}
+
+    # Define all the Combiner properties one wants to apply before combining images
+
+    if weights is not None:
+        to_set_in_combiner['weights'] = weights
+
+    if scale is not None:
+        # If the scale is a function, then scaling function need to be applied 
+        # on full image to obtain scaling factor and create an array instead.
+        if callable(scale):
+            scalevalues = []
+            for image in img_list:
+                if isinstance(image,CCDData):
+                    imgccd = image
+                else:
+                    imgccd = CCDData.read(image,**ccdkwargs)
+
+                scalevalues.append(scale(imgccd.data))
+
+            to_set_in_combiner['scaling'] = np.array(scalevalues)
+        else:
+            to_set_in_combiner['scaling'] = scale
+
+
+    if minmax_clip:
+        to_call_in_combiner['minmax_clipping'] = {'min_clip':minmax_clip_min, 
+                                                  'max_clip':minmax_clip_max}
+
+    if sigma_clip:
+        to_call_in_combiner['sigma_clipping'] = {'low_thresh':sigma_clip_low_thresh, 
+                                                 'high_thresh':sigma_clip_high_thresh,
+                                                 'func':sigma_clip_func, 
+                                                 'dev_func':sigma_clip_dev_func}
+
+    # Finally Run the input method on all the subsections of the image        
+    # and write final stitched image to ccd
+
+    for x in range(0,xs,xstep):
+        for y in range(0,ys,ystep):
+            xend, yend = min(xs, x + xstep), min(ys, y + ystep)
+            ccd_list = []
+            for image in img_list:
+                if isinstance(image,CCDData):
+                    imgccd = image
+                else:
+                    imgccd = CCDData.read(image,**ccdkwargs)
+
+                #Trim image
+                ccd_list.append(trim_image(imgccd[x:xend, y:yend])) 
+
+            # Create Combiner for tile
+            tile_combiner = Combiner(ccd_list) 
+            # Set all properties and call all methods
+            for to_set in to_set_in_combiner:
+                setattr(tile_combiner, to_set, to_set_in_combiner[to_set])
+            for to_call in to_call_in_combiner:
+                getattr(tile_combiner, to_call)(**to_call_in_combiner[to_call])
+
+            # Finally call the combine algorithm
+            comb_tile = getattr(tile_combiner, combine_function)()
+ 
+            #add it back into the master image
+            ccd.data[x:xend, y:yend] = comb_tile.data
+            if ccd.mask is not None:
+                ccd.mask[x:xend, y:yend] = comb_tile.mask
+            if ccd.uncertainty is not None:
+                ccd.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
+  
+    # Write fits file if filename was provided
+    if output_file is not None:
+        ccd.write(output_file)
+
+    return ccd
+        

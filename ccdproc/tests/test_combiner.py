@@ -9,8 +9,8 @@ import astropy.units as u
 from astropy.stats import median_absolute_deviation as mad
 
 from astropy.tests.helper import pytest
-
-
+from astropy.utils.data import get_pkg_data_filename
+from astropy.utils.compat import NUMPY_LT_1_9
 from ..ccddata import CCDData
 from ..combiner import *
 
@@ -268,3 +268,67 @@ def test_combiner_mask_media(ccd_data):
     assert ccd.data[5, 5] == 1
     assert ccd.mask[0, 0]
     assert not ccd.mask[5, 5]
+
+#test combiner convenience function reads fits file and combine as expected
+def test_combine_average_fitsimages():
+    fitsfile = get_pkg_data_filename('data/a8280271.fits')
+    ccd = CCDData.read(fitsfile, unit=u.adu)
+    ccd_list = [ccd]*3
+    c = Combiner(ccd_list)
+    ccd_by_combiner = c.average_combine()
+
+    fitsfilename_list = [fitsfile]*3
+    avgccd = combine(fitsfilename_list, output_file=None, method='average', unit=u.adu)
+    # averaging same fits images should give back same fits image
+    np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data)
+
+
+#test combiner convenience function works with list of ccddata objects
+def test_combine_average_ccddata():
+    fitsfile = get_pkg_data_filename('data/a8280271.fits')
+    ccd = CCDData.read(fitsfile, unit=u.adu)
+    ccd_list = [ccd]*3
+    c = Combiner(ccd_list)
+    ccd_by_combiner = c.average_combine()
+
+    avgccd = combine(ccd_list,output_file=None, method='average', unit=u.adu)
+    # averaging same ccdData should give back same images
+    np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data)
+
+
+#test combiner convenience function reads fits file and 
+# and combine as expected when asked to run in limited memory
+def test_combine_limitedmem_fitsimages():
+    fitsfile = get_pkg_data_filename('data/a8280271.fits')
+    ccd = CCDData.read(fitsfile, unit=u.adu)
+    ccd_list = [ccd]*5
+    c = Combiner(ccd_list)
+    ccd_by_combiner = c.average_combine()
+
+    fitsfilename_list = [fitsfile]*5
+    avgccd = combine(fitsfilename_list,output_file=None, method='average', mem_limit=1e6,
+                     unit=u.adu)
+    # averaging same ccdData should give back same images
+    np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data)
+
+
+#test combiner convenience function reads fits file and 
+# and combine as expected when asked to run in limited memory with scaling
+@pytest.mark.xfail(NUMPY_LT_1_9,
+                   reason="numpy < 1.9 loses precision in np.ma.average")
+def test_combine_limitedmem_scale_fitsimages():
+    fitsfile = get_pkg_data_filename('data/a8280271.fits')
+    ccd = CCDData.read(fitsfile, unit=u.adu)
+    ccd_list = [ccd]*5
+    c = Combiner(ccd_list)
+    # scale each array to the mean of the first image
+    scale_by_mean = lambda x: ccd.data.mean()/np.ma.average(x)
+    c.scaling = scale_by_mean
+    ccd_by_combiner = c.average_combine()
+
+    fitsfilename_list = [fitsfile]*5
+    avgccd = combine(fitsfilename_list,output_file=None, method='average',mem_limit=1e6,
+                     scale=scale_by_mean, unit=u.adu)
+
+    np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data, decimal = 4)
+
