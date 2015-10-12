@@ -204,7 +204,7 @@ class CCDData(NDDataArray):
             # header we are constructing. This probably indicates that
             # _insert_in_metadata_fits_safe should be rewritten in a more
             # sensible way...
-            dummy_ccd = CCDData(data=[1], meta=fits.Header(), unit="adu")
+            dummy_ccd = CCDData([1], meta=fits.Header(), unit="adu")
             for k, v in self.header.items():
                 dummy_ccd._insert_in_metadata_fits_safe(k, v)
             header = dummy_ccd.header
@@ -264,7 +264,7 @@ class CCDData(NDDataArray):
         else:
             result_uncertainty = None
 
-        result = CCDData(data=result_data, unit=result_unit,
+        result = CCDData(result_data, unit=result_unit,
                          uncertainty=result_uncertainty,
                          meta=self.meta)
         return result
