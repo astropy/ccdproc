@@ -107,6 +107,12 @@ install:
 
     # COVERAGE DEPENDENCIES
     - if [[ $SETUP_CMD == 'test --coverage' ]]; then $PIP_INSTALL coverage coveralls; fi
+       # TODO can use latest version of coverage (4.0) once
+       # https://github.com/astropy/astropy/issues/4175 is addressed in
+       # astropy release version.
+       pip install coverage==3.7.1;
+       pip install coveralls;
+       fi		 
 
 script:
    - python setup.py $SETUP_CMD
