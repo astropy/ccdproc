@@ -270,7 +270,7 @@ def test_subtract_dark(ccd_data, explicit_times, scale, exposure_keyword):
     exposure_unit = u.second
     dark_level = 1.7
     master_dark_data = np.zeros_like(ccd_data.data) + dark_level
-    master_dark = CCDData(data=master_dark_data, unit=u.adu)
+    master_dark = CCDData(master_dark_data, unit=u.adu)
     master_dark.header[exptime_key] = 2 * exptime
     dark_exptime = master_dark.header[exptime_key]
     ccd_data.header[exptime_key] = exptime
