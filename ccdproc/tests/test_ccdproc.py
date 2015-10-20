@@ -73,11 +73,16 @@ def test_create_deviation_keywords_must_have_unit(ccd_data):
 
 
 # tests for overscan
+@pytest.mark.parametrize('data_rectangle', [False, True])
 @pytest.mark.parametrize('median,transpose', [
                          (False, False),
                          (False, True),
                          (True, False), ])
-def test_subtract_overscan(ccd_data, median, transpose):
+def test_subtract_overscan(ccd_data, median, transpose, data_rectangle):
+    # Make data non-square if desired
+    if data_rectangle:
+        ccd_data.data = ccd_data.data[:, :-30]
+
     # create the overscan region
     oscan = 300.
     oscan_region = (slice(None), slice(0, 10))  # indices 0 through 9
@@ -540,7 +545,7 @@ def test__overscan_schange(ccd_data):
     assert not np.allclose(old_data.data, new_data.data)
     np.testing.assert_array_equal(old_data.data, ccd_data.data)
 
-    
+
 def test_create_deviation_does_not_change_input(ccd_data):
     original = ccd_data.copy()
     ccd = create_deviation(ccd_data, gain=5 * u.electron / u.adu, readnoise=10 * u.electron)
