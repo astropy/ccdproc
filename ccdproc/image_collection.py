@@ -12,6 +12,9 @@ from astropy.table import Table, vstack
 import astropy.io.fits as fits
 from astropy.extern import six
 
+import warnings
+from astropy.utils.exceptions import AstropyUserWarning
+
 logger = logging.getLogger(__name__)
 
 __all__ = ['ImageFileCollection']
@@ -57,6 +60,8 @@ class ImageFileCollection(object):
         self._files = []
         if location:
             self._files = self._fits_files_in_directory()
+        if self._files==[]:
+            warnings.warn("No fits files in the collection.", AstropyUserWarning)
         self._summary_info = {}
         if keywords is None:
             if info_file is not None:
