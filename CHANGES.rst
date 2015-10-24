@@ -1,4 +1,35 @@
 
+0.3.2 (unreleased)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Bug Fixes
+^^^^^^^^^
+
+0.3.1 (2015-05-12)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Add extensive tests to ensure ``ccdproc`` functions do not modify the input
+  data. [#208]
+
+- Remove red-box warning about API stability from docs. [#210]
+
+Bug Fixes
+^^^^^^^^^
+
+- Make ``subtract_overscan`` act on a copy of the input data. [#206]
+
 0.3.0 (2015-03-17)
 ------------------
 
