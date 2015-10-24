@@ -20,8 +20,15 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Opt in to new container-based builds on travis. [#227]
+
+- Update astropy_helpers to 1.0.5. [#245]
+
 Bug Fixes
 ^^^^^^^^^
+
+- Ensure that creating a WCS from a header that contains list-like keywords
+  (e.g. ``BLANK`` or ``HISTORY``) succeeds. [#229, #231]
 
 0.3.1 (2015-05-12)
 ------------------
@@ -37,10 +44,15 @@ Other Changes and Additions
 
 - Remove red-box warning about API stability from docs. [#210]
 
+- Support astropy 1.0.5, which made changes to ``NDData``. [#242]
+
 Bug Fixes
 ^^^^^^^^^
 
 - Make ``subtract_overscan`` act on a copy of the input data. [#206]
+
+- Overscan subtraction failed on non-square images if the overscan axis was the
+  first index, ``0``. [#240, #244]
 
 0.3.0 (2015-03-17)
 ------------------
