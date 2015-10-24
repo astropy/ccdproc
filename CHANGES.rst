@@ -24,11 +24,13 @@ Bug Fixes
 - Ensure ``dtype`` of combined images matches the ``dtype`` of the
   ``Combiner`` object. [#189]
 
-0.2.2 (unreleased)
+0.2.2 (2014-11-05)
 ------------------
 
 New Features
 ^^^^^^^^^^^^
+
+- Add dtype argument to `ccdproc.Combiner` to help control memory use [#178]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,6 +39,7 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- Allow the unit string "adu" to be upper or lower case in a FIS header [#182]
 
 0.2.1 (2014-09-09)
 ------------------
