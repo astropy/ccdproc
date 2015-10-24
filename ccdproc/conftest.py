@@ -6,6 +6,23 @@ from astropy.tests.pytest_plugins import *
 
 from .tests.pytest_fixtures import *
 
+# This is to figure out photutils version, rather than using Astropy's
+from . import version
+
+try:
+    packagename = os.path.basename(os.path.dirname(__file__))
+    TESTED_VERSIONS[packagename] = version.version
+except NameError:
+    pass
+
 ## Uncomment the following line to treat all DeprecationWarnings as
 ## exceptions
 # enable_deprecations_as_exceptions()
+
+# Add astropy to test header information and remove unused packages.
+
+try:
+    PYTEST_HEADER_MODULES['Astropy'] = 'astropy'
+    del PYTEST_HEADER_MODULES['h5py']
+except NameError:
+    pass
