@@ -1,4 +1,47 @@
 
+0.4.0 (unreleased)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Bug Fixes
+^^^^^^^^^
+
+0.3.2 (unreleased)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Bug Fixes
+^^^^^^^^^
+
+0.3.1 (2015-05-12)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Add extensive tests to ensure ``ccdproc`` functions do not modify the input
+  data. [#208]
+
+- Remove red-box warning about API stability from docs. [#210]
+
+Bug Fixes
+^^^^^^^^^
+
+- Make ``subtract_overscan`` act on a copy of the input data. [#206]
+
 0.3.0 (2015-03-17)
 ------------------
 
@@ -24,11 +67,13 @@ Bug Fixes
 - Ensure ``dtype`` of combined images matches the ``dtype`` of the
   ``Combiner`` object. [#189]
 
-0.2.2 (unreleased)
+0.2.2 (2014-11-05)
 ------------------
 
 New Features
 ^^^^^^^^^^^^
+
+- Add dtype argument to `ccdproc.Combiner` to help control memory use [#178]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,6 +82,7 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- Allow the unit string "adu" to be upper or lower case in a FIS header [#182]
 
 0.2.1 (2014-09-09)
 ------------------
