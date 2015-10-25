@@ -1,17 +1,4 @@
-
-0.4.0 (unreleased)
-------------------
-
-New Features
-^^^^^^^^^^^^
-
-Other Changes and Additions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Bug Fixes
-^^^^^^^^^
-
-0.3.2 (unreleased)
+0.3.2 (2015-10-24)
 ------------------
 
 New Features
