@@ -12,6 +12,10 @@ import astropy.io.fits as fits
 import numpy as np
 import pytest
 
+from astropy.tests.helper import catch_warnings
+import warnings
+from astropy.utils.exceptions import AstropyUserWarning
+
 from .. import image_collection
 
 _filters = []
@@ -433,6 +437,10 @@ class TestImageFileCollection(object):
         with pytest.raises(OSError):
             ic = image_collection.ImageFileCollection(location='dasifjoaurun',
                                          info_file='iufadsdhfasdifre')
+
+    def test_no_fits_files_in_collection(self,tmpdir):
+        with catch_warnings(AstropyUserWarning) as warning_lines:
+            assert("No fits files in the collection.")
 
     def test_initialization_with_no_keywords(self, triage_setup):
         # This test is primarily historical -- the old default for
