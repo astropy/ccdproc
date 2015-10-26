@@ -442,9 +442,6 @@ class TestImageFileCollection(object):
         with catch_warnings(AstropyUserWarning) as warning_lines:
             assert("No fits files in the collection.")
 
-
-
-
     def test_initialization_with_no_keywords(self, triage_setup):
         # This test is primarily historical -- the old default for
         # keywords was an empty list (it is now the wildcard '*').
