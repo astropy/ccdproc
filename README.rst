@@ -23,9 +23,8 @@ Documentation is at `ccdproc.readthedocs.org
 <http://ccdproc.readthedocs.org/en/latest/>`_
 
 If you have found ccdproc useful to your research, please considering adding a
-citation to:   
-Crawford, S. M.,  Craig, M. W., & ccdproc collaborators, 2015,  Astrophysics Source 
-Code Library, 1510.007
+citation to:  
+  Crawford, S. M.,  Craig, M. W., & ccdproc collaborators, 2015,  Astrophysics Source Code Library, 1510.007
 
 Thanks to Kyle Barbary (`@kbarbary`_) for designing the `ccdproc` logo.
 
