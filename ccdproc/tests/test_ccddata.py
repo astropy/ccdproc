@@ -574,6 +574,7 @@ def test_header(ccd_data):
 def test_wcs(ccd_data):
     ccd_data.wcs = 5
     assert ccd_data.wcs == 5
+<<<<<<< HEAD
 
 
 def test_wcs_arithmetic(ccd_data):
@@ -644,3 +645,7 @@ def test_write_read_multiextensionfits_custom_ext_names(ccd_data, tmpdir):
     np.testing.assert_array_equal(ccd_data.mask, ccd_after.mask)
     np.testing.assert_array_equal(ccd_data.uncertainty.array,
                                   ccd_after.uncertainty.array)
+
+def test_wcs(ccd_data):
+    ccd_data.wcs = 5
+    assert ccd_data.wcs == 5
