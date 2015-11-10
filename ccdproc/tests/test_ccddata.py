@@ -544,3 +544,8 @@ def test_header(ccd_data):
     a = {'Observer': 'Hubble'}
     ccd = CCDData(ccd_data, header = a)
     assert ccd.meta == a
+
+
+def test_wcs(ccd_data):
+    ccd_data.wcs = 5
+    assert ccd_data.wcs == 5
