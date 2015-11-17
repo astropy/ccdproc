@@ -6,7 +6,7 @@ from astropy.tests.pytest_plugins import *
 
 from .tests.pytest_fixtures import *
 
-# This is to figure out photutils version, rather than using Astropy's
+# This is to figure out ccdproc version, rather than using Astropy's
 from . import version
 
 try:
