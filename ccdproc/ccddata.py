@@ -112,6 +112,14 @@ class CCDData(NDDataArray):
     @data.setter
     def data(self, value):
         self._data = value
+        
+    @property
+    def wcs(self):
+        return self._wcs
+    
+    @wcs.setter
+    def wcs(self, value):
+        self._wcs = value
 
     @property
     def unit(self):
