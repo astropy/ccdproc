@@ -54,13 +54,14 @@ matrix:
         - python: 2.7
           env: ASTROPY_VERSION=LTS SETUP_CMD='test'
 
-        # Try all python versions with the latest numpy
+        # Try all python versions with the latest numpy available on that
+        # python version.
         - python: 2.6
-          env: SETUP_CMD='test'
+          env: NUMPY_VERSION=1.9 SETUP_CMD='test'
         - python: 2.7
           env: SETUP_CMD='test'
         - python: 3.3
-          env: SETUP_CMD='test'
+          env: NUMPY_VERSION=1.9 SETUP_CMD='test'
         - python: 3.4
           env: SETUP_CMD='test'
         - python: 3.5
