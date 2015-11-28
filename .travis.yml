@@ -17,14 +17,16 @@ python:
     - 2.7
     - 3.3
     - 3.4
+    - 3.5
     # This is just for "egg_info".  All other builds are explicitly given in the matrix
 env:
     global:
         # The following versions are the 'default' for tests, unless
         # overidden underneath. They are defined here in order to save having
         # to repeat them for all configurations.
-        - NUMPY_VERSION=1.9
+        - NUMPY_VERSION=1.10
         - ASTROPY_VERSION=stable
+        - ASTROPY_LTS=1.0
         - CONDA_INSTALL='conda install -c astropy-ci-extras --yes'
         - PIP_INSTALL='pip install'
     matrix:
@@ -45,26 +47,33 @@ matrix:
         # Try Astropy development version
         - python: 2.7
           env: ASTROPY_VERSION=development SETUP_CMD='test'
-        - python: 3.4
+        - python: 3.5
           env: ASTROPY_VERSION=development SETUP_CMD='test'
 
-        # Try all python versions with the latest numpy
+        # Check compatibility with the current astropy LTS release
+        - python: 2.7
+          env: ASTROPY_VERSION=LTS SETUP_CMD='test'
+
+        # Try all python versions with the latest numpy available on that
+        # python version.
         - python: 2.6
-          env: SETUP_CMD='test'
+          env: NUMPY_VERSION=1.9 SETUP_CMD='test'
         - python: 2.7
           env: SETUP_CMD='test'
         - python: 3.3
-          env: SETUP_CMD='test'
+          env: NUMPY_VERSION=1.9 SETUP_CMD='test'
         - python: 3.4
+          env: SETUP_CMD='test'
+        - python: 3.5
           env: SETUP_CMD='test'
 
         # Try older numpy versions
         - python: 2.7
+          env: NUMPY_VERSION=1.9 SETUP_CMD='test'
+        - python: 2.7
           env: NUMPY_VERSION=1.8 SETUP_CMD='test'
         - python: 2.7
           env: NUMPY_VERSION=1.7 SETUP_CMD='test'
-        - python: 2.7
-          env: NUMPY_VERSION=1.6 SETUP_CMD='test'
 
 before_install:
 
@@ -94,6 +103,7 @@ install:
     # ASTROPY
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == development ]]; then $PIP_INSTALL git+http://github.com/astropy/astropy.git#egg=astropy; fi
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy; fi
+    - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == LTS ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy=$ASTROPY_LTS; fi
 
     # OPTIONAL DEPENDENCIES
     # Here you can add any dependencies your package may have. You can use
