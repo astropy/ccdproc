@@ -308,7 +308,7 @@ class Combiner(object):
         # return the combined image
         return combined_image
 
-    def average_combine(self, scale_func=ma.average, scale_to=None):
+    def average_combine(self, scale_func=ma.average, scale_to=None, uncertainty_func=ma.std):
         """ Average combine together a set of arrays.
 
            A `~ccdproc.CCDData` object is returned with the data property
@@ -352,7 +352,7 @@ class Combiner(object):
         mask = (mask == len(self.data_arr))
 
         # set up the deviation
-        uncertainty = ma.std(self.data_arr, axis=0)
+        uncertainty = uncertainty_func(self.data_arr, axis=0)
 
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
