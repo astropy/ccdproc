@@ -94,12 +94,18 @@ release = package.__version__
 
 # Add any paths that contain custom themes here, relative to this directory.
 # To use a different custom theme, add the directory containing the theme.
-#html_theme_path = []
+#html_theme_path = ['/Users/crawford/programs/ccdproc/docs/themes/']
+html_theme_options = {
+    'logotext1': 'ccd',   # white, semi-bold
+    'logotext2': 'proc',  # orange, light
+    'logotext3': ':docs'   # white, light
+}
+
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes. To override the custom theme, set this to the
 # name of a builtin theme or the name of a custom theme in html_theme_path.
-#html_theme = None
+#html_theme = 'bootstrap-ccdproc'
 
 # Custom sidebar templates, maps document names to template names.
 #html_sidebars = {}
@@ -108,6 +114,9 @@ release = package.__version__
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
 #html_favicon = ''
+from os.path import join
+html_favicon = join('_static', 'ccd_proc.ico')
+
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -119,6 +128,11 @@ html_title = '{0} v{1}'.format(project, release)
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = project + 'doc'
+
+# Static files to copy after template files
+html_static_path = ['_static']
+html_style = 'ccdproc.css'
+
 
 
 # -- Options for LaTeX output --------------------------------------------------

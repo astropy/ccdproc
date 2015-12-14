@@ -1,0 +1,11 @@
+
+
+@import url("bootstrap-astropy.css");
+
+div.topbar a.brand {
+  background: transparent url("ccd_proc.png") no-repeat 10px 4px;
+  background-image: url("ccdproc.svg"), none;
+  background-size: 32px 32px;
+
+}
+
