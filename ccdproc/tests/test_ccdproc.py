@@ -134,6 +134,37 @@ def test_subtract_overscan(ccd_data, median, transpose, data_rectangle):
     np.testing.assert_array_equal(ccd_data_overscan[science_region],
                                   ccd_data_fits_section[science_region])
 
+    # Set overscan_axis to None, and let the routine figure out the axis.
+    # This should lead to the same results as before.
+    ccd_data_overscan_auto = subtract_overscan(
+        ccd_data, overscan_axis=None, overscan=ccd_data[oscan_region],
+        median=median, model=None)
+    np.testing.assert_almost_equal(
+        ccd_data_overscan_auto.data[science_region].mean(),
+        sky + original_mean)
+    # Use overscan_axis=None with a FITS section
+    ccd_data_fits_section_overscan_auto = subtract_overscan(
+        ccd_data, overscan_axis=None, fits_section=fits_section,
+        median=median, model=None)
+    np.testing.assert_almost_equal(
+        ccd_data_fits_section_overscan_auto.data[science_region].mean(),
+        sky + original_mean)
+    # overscan_axis should be 1 for a square overscan region
+    # This test only works for a non-square data region, but the
+    # default has the wrong axis.
+    if data_rectangle:
+        ccd_data.data = ccd_data.data.T
+        oscan_region = (slice(None), slice(0, -30))
+        science_region = (slice(None), slice(-30, None))
+        ccd_data_square_overscan_auto = subtract_overscan(
+            ccd_data, overscan_axis=None, overscan=ccd_data[oscan_region],
+            median=median, model=None)
+        ccd_data_square = subtract_overscan(
+            ccd_data, overscan_axis=1, overscan=ccd_data[oscan_region],
+            median=median, model=None)
+        np.testing.assert_allclose(ccd_data_square_overscan_auto,
+                                   ccd_data_square)
+
 
 # A more substantial test of overscan modeling
 @pytest.mark.parametrize('transpose', [
@@ -164,6 +195,13 @@ def test_subtract_overscan_model(ccd_data, transpose):
 
     ccd_data = subtract_overscan(ccd_data, overscan=ccd_data[oscan_region],
                                  overscan_axis=overscan_axis,
+                                 median=False, model=models.Polynomial1D(2))
+    np.testing.assert_almost_equal(ccd_data.data[science_region].mean(),
+                                   original_mean)
+    # Set the overscan_axis exlicitly to None, and let the routine
+    # figure it out.
+    ccd_data = subtract_overscan(ccd_data, overscan=ccd_data[oscan_region],
+                                 overscan_axis=None,
                                  median=False, model=models.Polynomial1D(2))
     np.testing.assert_almost_equal(ccd_data.data[science_region].mean(),
                                    original_mean)
@@ -603,5 +641,3 @@ def test_transform_image_does_not_change_input(ccd_data):
     ccd = transform_image(ccd_data,np.sqrt)
     np.testing.assert_array_equal(original.data, ccd_data)
     assert original.unit == ccd_data.unit
-
-
