@@ -11,6 +11,8 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Add support for wildcard and reversed FITS style slicing. [#265]
+
 Bug Fixes
 ^^^^^^^^^
 
