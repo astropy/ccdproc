@@ -373,8 +373,12 @@ class ImageFileCollection(object):
         if not self.files:
             return None
 
+        # Make sure we have a list...for example, in python 3, dict.keys()
+        # is not a list.
+        original_keywords = list(header_keywords)
+
         # Get rid of any duplicate keywords, also forces a copy.
-        header_keys = set(header_keywords)
+        header_keys = set(original_keywords)
         header_keys.add('file')
 
         file_name_column = MaskedColumn(name='file', data=self.files)
@@ -421,7 +425,8 @@ class ImageFileCollection(object):
             # Rearrange table columns to match order of keywords.
             # File always comes first.
             header_keys -= set(['file'])
-            original_order = ['file'] + sorted(header_keys, key=header_keywords.index)
+            original_order = ['file'] + sorted(header_keys,
+                                               key=original_keywords.index)
             summary_table = summary_table[original_order]
 
         if not summary_table.masked:
