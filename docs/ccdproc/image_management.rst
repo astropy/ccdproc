@@ -35,7 +35,7 @@ Most of the useful interaction with the image collection is via its
 file in the collection::
 
     >>> ic1.summary.colnames
-    ['file', 'filter', 'object', 'imagetyp', 'exposure']
+    ['file', 'imagetyp', 'object', 'filter', 'exposure']
     >>> ic_all.summary.colnames # doctest: +SKIP
     # long list of keyword names omitted
 

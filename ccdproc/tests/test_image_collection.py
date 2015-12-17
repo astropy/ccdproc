@@ -551,3 +551,9 @@ class TestImageFileCollection(object):
         new_len = len(ic.summary_info) - triage_setup.n_test['compressed']
         print(ic.summary_info['file'])
         assert new_len == 2 * original_len
+
+    def test_keyword_order_is_preserved(self, triage_setup):
+        keywords = ['imagetyp', 'exposure', 'filter']
+        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
+                                                  keywords=keywords)
+        assert ic.keywords == ['file'] + keywords
