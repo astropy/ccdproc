@@ -10,6 +10,7 @@ from .core import trim_image
 
 from astropy.stats import median_absolute_deviation
 from astropy.nddata import StdDevUncertainty
+from astropy import log
 
 __all__ = ['Combiner','combine']
 
@@ -365,9 +366,9 @@ class Combiner(object):
         return combined_image
 
 
-def combine(img_list, output_file=None, method='average', weights=None, scale=None, mem_limit=16e9, 
-            minmax_clip=False, minmax_clip_min=None, minmax_clip_max=None, 
-            sigma_clip=False, sigma_clip_low_thresh=3, sigma_clip_high_thresh=3, 
+def combine(img_list, output_file=None, method='average', weights=None, scale=None, mem_limit=16e9,
+            minmax_clip=False, minmax_clip_min=None, minmax_clip_max=None,
+            sigma_clip=False, sigma_clip_low_thresh=3, sigma_clip_high_thresh=3,
             sigma_clip_func=ma.mean, sigma_clip_dev_func=ma.std, **ccdkwargs):
 
     """Convenience function for combining multiple images
@@ -382,9 +383,9 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
         Optional output fits filename to which the final output can be directly written.
 
     method: 'string' (default average)
-        Method to combine images. 
+        Method to combine images.
              'average' : To combine by calculating average
-             'median'  : To combine by calculating median 
+             'median'  : To combine by calculating median
 
     weights: `~numpy.ndarray`, optional
         Weights to be used when combining images.
@@ -439,7 +440,7 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
             Function for calculating the deviation from the baseline value
             (i.e. std).  This should be a function that can handle
             numpy.ma.core.MaskedArray objects.
-    
+
     **ccdkwargs: Other keyword arguments for CCD Object's fits reader.
 
     Returns
@@ -462,40 +463,35 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
         combine_function = 'median_combine'
     else:
         raise ValueError("Unrecognised combine method : {0}".format(method))
-    
-    
-    # First we create a CCDObject from first image for storing output       
+
+
+    # First we create a CCDObject from first image for storing output
     if isinstance(img_list[0],CCDData):
         ccd = img_list[0].copy()
     else:
-        # User has provided fits filenames to read from  
-        try:
-            ccd = CCDData.read(img_list[0],**ccdkwargs)
-        except IOError as e:
-            print('Input fits file {0} not found.'.format(img_list[0]))
-            print(e)
-            raise
-            
-    
-    size_of_an_img = ccd.data.nbytes 
+        # User has provided fits filenames to read from
+        ccd = CCDData.read(img_list[0],**ccdkwargs)
+
+    size_of_an_img = ccd.data.nbytes
     if ccd.uncertainty is not None:
-        size_of_an_img += ccd.uncertainty.nbytes 
+        size_of_an_img += ccd.uncertainty.nbytes
     if ccd.mask is not None:
-        size_of_an_img += ccd.mask.nbytes 
+        size_of_an_img += ccd.mask.nbytes
     if ccd.flags is not None:
         size_of_an_img += ccd.flags.nbytes
 
     no_of_img = len(img_list)
-        
+
     #determine the number of chunks to split the images into
     no_chunks = int((size_of_an_img*no_of_img)/mem_limit)+1
-    print('Spliting each image into {1} chunks to limit memory usage to {0} bytes.'.format(mem_limit,no_chunks))
+    log.info('Splitting each image into %d chunks to limit memory usage to %d bytes.',
+             no_chunks, mem_limit)
     xs, ys = ccd.data.shape
     # First we try to split only along fast x axis
-    xstep = max(1, int(xs/no_chunks)) 
+    xstep = max(1, int(xs/no_chunks))
     # If more chunks need to be created we split in Y axis for remaining number of chunks
-    ystep = max(1, int(ys/(1+ no_chunks - int(xs/xstep)) ) ) 
-        
+    ystep = max(1, int(ys/(1+ no_chunks - int(xs/xstep)) ) )
+
     # Dictionary of Combiner properties to set and methods to call before combining
     to_set_in_combiner = {}
     to_call_in_combiner = {}
@@ -506,7 +502,7 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
         to_set_in_combiner['weights'] = weights
 
     if scale is not None:
-        # If the scale is a function, then scaling function need to be applied 
+        # If the scale is a function, then scaling function need to be applied
         # on full image to obtain scaling factor and create an array instead.
         if callable(scale):
             scalevalues = []
@@ -524,16 +520,16 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
 
 
     if minmax_clip:
-        to_call_in_combiner['minmax_clipping'] = {'min_clip':minmax_clip_min, 
+        to_call_in_combiner['minmax_clipping'] = {'min_clip':minmax_clip_min,
                                                   'max_clip':minmax_clip_max}
 
     if sigma_clip:
-        to_call_in_combiner['sigma_clipping'] = {'low_thresh':sigma_clip_low_thresh, 
+        to_call_in_combiner['sigma_clipping'] = {'low_thresh':sigma_clip_low_thresh,
                                                  'high_thresh':sigma_clip_high_thresh,
-                                                 'func':sigma_clip_func, 
+                                                 'func':sigma_clip_func,
                                                  'dev_func':sigma_clip_dev_func}
 
-    # Finally Run the input method on all the subsections of the image        
+    # Finally Run the input method on all the subsections of the image
     # and write final stitched image to ccd
 
     for x in range(0,xs,xstep):
@@ -547,10 +543,10 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
                     imgccd = CCDData.read(image,**ccdkwargs)
 
                 #Trim image
-                ccd_list.append(trim_image(imgccd[x:xend, y:yend])) 
+                ccd_list.append(trim_image(imgccd[x:xend, y:yend]))
 
             # Create Combiner for tile
-            tile_combiner = Combiner(ccd_list) 
+            tile_combiner = Combiner(ccd_list)
             # Set all properties and call all methods
             for to_set in to_set_in_combiner:
                 setattr(tile_combiner, to_set, to_set_in_combiner[to_set])
@@ -559,17 +555,16 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
 
             # Finally call the combine algorithm
             comb_tile = getattr(tile_combiner, combine_function)()
- 
+
             #add it back into the master image
             ccd.data[x:xend, y:yend] = comb_tile.data
             if ccd.mask is not None:
                 ccd.mask[x:xend, y:yend] = comb_tile.mask
             if ccd.uncertainty is not None:
                 ccd.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
-  
+
     # Write fits file if filename was provided
     if output_file is not None:
         ccd.write(output_file)
 
     return ccd
-        
