@@ -360,7 +360,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
     hdu : int, optional
         FITS extension from which CCDData should be initialized.  If zero and
         and no data in the primary extention, it will search for the first
-        extension with data.
+        extension with data.  The header will be added to the primary header.
 
     unit : astropy.units.Unit, optional
         Units of the image data. If this argument is provided and there is a
@@ -395,7 +395,8 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
         for i in range(len(hdus)):
             if hdus.fileinfo(i)['datSpan'] > 0:
                 hdu = i
-                log.info("First HDU with data is exention {0}".format(hdu))
+                hdr = hdr + hdus[hdu].header
+                log.info("First HDU with data is exention {0}.".format(hdu))
                 break
 
     try:
@@ -419,7 +420,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
     # Test for success by checking to see if the wcs ctype has a non-empty
     # value.
     wcs = wcs if wcs.wcs.ctype[0] else None
-    ccd_data = CCDData(hdus[hdu].data, meta=hdus[hdu].header, unit=use_unit,
+    ccd_data = CCDData(hdus[hdu].data, meta=hdr, unit=use_unit,
                        wcs=wcs)
     hdus.close()
     return ccd_data
