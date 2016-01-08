@@ -377,6 +377,13 @@ class TestImageFileCollection(object):
         should_not_be_zero = ic.files_filtered(naxis=1)
         assert len(should_not_be_zero) == triage_setup.n_test['files']
 
+    def test_files_filtered_with_full_path(self, triage_setup):
+        ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords=['naxis'])
+        files = ic.files_filtered(naxis=1, include_path=True)
+
+        for f in files:
+            assert f.startswith(triage_setup.test_dir)
+
     def test_unknown_generator_type_raises_error(self, triage_setup):
         ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords=['naxis'])
         with pytest.raises(ValueError):
