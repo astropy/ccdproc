@@ -571,3 +571,20 @@ class TestImageFileCollection(object):
         ic = image_collection.ImageFileCollection(triage_setup.test_dir,
                                                   keywords=keywords)
         assert ic.keywords == ['file'] + keywords
+
+    def test_sorting(self, triage_setup):
+        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
+                                             keywords=['imagetyp',
+                                                       'filter',
+                                                       'object'])
+
+        all_elements = []
+        for hdu, fname in collection.hdus(return_fname=True):
+            all_elements.append((str(hdu.header), fname))
+        # Now sort
+        collection.sort(keys=['filter', 'object'])
+        # and check it's all still right
+        for hdu, fname in collection.hdus(return_fname=True):
+            assert((str(hdu.header), fname) in all_elements)
+        for i in range(len(collection.summary)):
+            assert(collection.summary['file'][i] == collection.files[i])
