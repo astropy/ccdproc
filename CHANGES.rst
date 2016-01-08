@@ -5,6 +5,9 @@
 New Features
 ^^^^^^^^^^^^
 
+- Add a new keyword to ImageFileCollection.files_filtered to return the full
+  path to a file [#275]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
