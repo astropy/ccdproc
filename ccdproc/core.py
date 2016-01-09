@@ -981,8 +981,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     1. Given an numpy.ndarray object, the syntax for running
        cosmicrar_lacosmic would be:
 
-       >>> newdata, mask = cosmicray_lacosmic(data, error_image=error_image,
-       ...                                    sigclip=5)  #doctest: +skip
+       >>> newdata, mask = cosmicray_lacosmic(data, sigclip=5)  #doctest: +skip
 
        where the error is an array that is the same shape as data but
        includes the pixel error.  This would return a data array, newdata,
