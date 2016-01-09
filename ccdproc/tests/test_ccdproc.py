@@ -562,7 +562,7 @@ def test_cosmicray_median_does_not_change_input(ccd_data):
 def test_cosmicray_lacosmic_does_not_change_input(ccd_data):
 	original = ccd_data.copy()
 	error = np.zeros_like(ccd_data)
-	ccd = cosmicray_lacosmic(ccd_data, error_image = error, thresh = 5, fthresh = 5, gthresh = 1.5, b_factor = 2, mbox = 5, min_limit = 0.01, gbox = 0, rbox = 0)
+	ccd = cosmicray_lacosmic(ccd_data)
 	np.testing.assert_array_equal(original.data, ccd_data.data)
 	assert original.unit == ccd_data.unit
 
