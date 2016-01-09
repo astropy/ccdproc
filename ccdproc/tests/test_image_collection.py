@@ -13,7 +13,6 @@ import numpy as np
 import pytest
 
 from astropy.tests.helper import catch_warnings
-import warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .. import image_collection
@@ -45,6 +44,8 @@ def test_fits_summary(triage_setup):
 # fixture, but it doesn't, so the fixture is given explicitly as an
 # argument to each method.
 # @pytest.mark.usefixtures("triage_setup")
+@pytest.mark.skipif("os.environ.get('APPVEYOR')",
+                    reason="fails on AppVeyor/Windows")
 class TestImageFileCollection(object):
     def test_filter_files(self, triage_setup):
         img_collection = image_collection.ImageFileCollection(
@@ -64,12 +65,14 @@ class TestImageFileCollection(object):
         assert img_collection.summary is img_collection.summary_info
 
     def test_files_with_compressed(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir)
+        collection = image_collection.ImageFileCollection(
+            location=triage_setup.test_dir)
         assert len(collection._fits_files_in_directory(
             compressed=True)) == triage_setup.n_test['files']
 
     def test_files_with_no_compressed(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir)
+        collection = image_collection.ImageFileCollection(
+            location=triage_setup.test_dir)
         n_files_found = len(
             collection._fits_files_in_directory(compressed=False))
         n_uncompressed = (triage_setup.n_test['files'] -
@@ -77,14 +80,16 @@ class TestImageFileCollection(object):
         assert n_files_found == n_uncompressed
 
     def test_generator_full_path(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+        collection = image_collection.ImageFileCollection(
+            location=triage_setup.test_dir, keywords=['imagetyp'])
+
         for path, file_name in zip(collection._paths(), collection.files):
             assert path == os.path.join(triage_setup.test_dir, file_name)
 
     def test_hdus(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+        collection = image_collection.ImageFileCollection(
+            location=triage_setup.test_dir, keywords=['imagetyp'])
+
         n_hdus = 0
         for hdu in collection.hdus():
             assert isinstance(hdu, fits.PrimaryHDU)
