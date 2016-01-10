@@ -158,8 +158,8 @@ You can also set the uncertainty directly, either by creating a
 
 or by providing a `~numpy.ndarray` with the same shape as the data:
 
-    >>> ccd.uncertainty = 0.1 * ccd.data
-    INFO: Array provided for uncertainty; assuming it is a StdDevUncertainty. [ccdproc.ccddata]
+    >>> ccd.uncertainty = 0.1 * ccd.data  # doctest: +ELLIPSIS
+    INFO: Array provided for uncertainty; assuming it is a StdDevUncertainty. [...]
 
 In this case the uncertainty is assumed to be
 `~astropy.nddata.StdDevUncertainty`. Using `~astropy.nddata.StdDevUncertainty`
