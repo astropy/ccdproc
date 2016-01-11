@@ -234,6 +234,9 @@ class ImageFileCollection(object):
 
         ``**kwd`` is list of keywords and values the files must have.
 
+        If the keyword ``include_path=True`` is set, the returned list
+        contains not just the filename, but the full path to each file.
+
         The value '*' represents any value.
          A missing keyword is indicated by value ''
 
@@ -247,9 +250,14 @@ class ImageFileCollection(object):
         """
         # force a copy by explicitly converting to a list
         current_file_mask = list(self.summary_info['file'].mask)
+
+        include_path = kwd.pop('include_path', False)
+
         self._find_keywords_by_values(**kwd)
         filtered_files = self.summary_info['file'].compressed()
         self.summary_info['file'].mask = current_file_mask
+        if include_path:
+            filtered_files = [self._location + f for f in filtered_files]
         return filtered_files
 
     def refresh(self):
