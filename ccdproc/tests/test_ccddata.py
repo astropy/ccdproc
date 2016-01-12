@@ -90,6 +90,8 @@ def test_initialize_from_fits_with_data_in_different_extension(tmpdir):
     ccd = CCDData.read(filename, unit='adu')
     # ccd should pick up the unit adu from the fits header...did it?
     np.testing.assert_array_equal(ccd.data, fake_img)
+    #check that the header is the combined header
+    assert hdu1.header+hdu2.header==ccd.header
 
 
 def test_initialize_from_fits_with_extension(tmpdir):
