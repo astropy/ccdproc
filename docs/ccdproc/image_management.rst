@@ -62,6 +62,16 @@ seconds, there is a convenience method ``.files_filtered``::
 The optional arguments to ``files_filtered`` are used to filter the list of
 files.
 
+Sorting files
+-------------
+Sometimes it is useful to bring the files into a specific order, e.g. if you
+make a plot for each object you probably want all images of the same object
+next to each other. To do this, the images in a collection can be sorted with
+the ``sort`` method using the fits header keys in the same way you would sort a
+:class:`~astropy.table.Table`::
+
+    >>> ic1.sort(['object', 'filter'])
+
 Iterating over hdus, headers or data
 ------------------------------------
 

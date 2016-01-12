@@ -20,6 +20,8 @@ Bug Fixes
 New Features
 ^^^^^^^^^^^^
 
+- add a ``sort`` method to ImageFileCollection [#274]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

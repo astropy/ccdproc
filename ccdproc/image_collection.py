@@ -269,6 +269,21 @@ class ImageFileCollection(object):
         self._files = self._fits_files_in_directory()
         self._summary_info = self._fits_summary(header_keywords=keywords)
 
+    def sort(self, keys=None):
+        """Sort the list of files to determine the order of iteration.
+
+        Sort the table of files according to one or more keys. This does not
+        create a new object, instead is sorts in place.
+
+        Parameters
+        ----------
+        keys : str or list of str
+            The key(s) to order the table by.
+        """
+        if len(self._summary_info) > 0:
+            self._summary_info.sort(keys)
+            self._files = list(self.summary_info['file'])
+
     def _dict_from_fits_header(self, file_name, input_summary=None,
                                missing_marker=None):
         """
@@ -540,6 +555,7 @@ class ImageFileCollection(object):
         for extension in full_extensions:
             files.extend(fnmatch.filter(all_files, '*' + extension))
 
+        files.sort()
         return files
 
     def _generator(self, return_type,
