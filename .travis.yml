@@ -26,7 +26,10 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=1.10
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy'
+        - ASTROPY_LTS=1.0
+        - CONDA_INSTALL='conda install -c astropy-ci-extras --yes'
+        - PIP_INSTALL='pip install'
+        - CONDA_DEPENDENCIES='scipy astroscappy'
         - PIP_DEPENDENCIES='pytest-capturelog'
 
     matrix:
