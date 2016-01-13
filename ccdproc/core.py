@@ -854,7 +854,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                        sepmed=True, cleantype='meanmask', fsmode='median',
                        psfmodel='gauss',  psffwhm=2.5, psfsize=7,
                        psfk=None,  psfbeta=4.765, verbose=False):
-    """
+    r"""
     Identify cosmic rays through the lacosmic technique. The lacosmic technique
     identifies cosmic rays by identifying pixels based on a variation of the
     Laplacian edge detection.  The algorithm is an implementation of the
@@ -955,17 +955,17 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
            https://github.com/astropy/astroscrappy
     Examples
     --------
-    1. Given an numpy.ndarray object, the syntax for running
+    1) Given an numpy.ndarray object, the syntax for running
        cosmicrar_lacosmic would be:
 
-       >>> newdata, mask = cosmicray_lacosmic(data, sigclip=5)  #doctest: +skip
+       >>> newdata, mask = cosmicray_lacosmic(data, sigclip=5)  #doctest: +SKIP
 
        where the error is an array that is the same shape as data but
        includes the pixel error.  This would return a data array, newdata,
        with the bad pixels replaced by the local median from a box of 11
        pixels; and it would return a mask indicating the bad pixels.
 
-    2. Given an `~ccdproc.CCDData` object with an uncertainty frame, the syntax
+    2) Given an `~ccdproc.CCDData` object with an uncertainty frame, the syntax
        for running cosmicrar_lacosmic would be:
 
        >>> newccd = cosmicray_lacosmic(ccd, sigclip=5)   # doctest: +SKIP
