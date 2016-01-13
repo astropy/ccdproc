@@ -11,7 +11,7 @@ environment:
                         # of 32 bit and 64 bit builds are needed, move this
                         # to the matrix section.
       CONDA_DEPENDENCIES: "scipy"
-      PIP_DEPENDENCIES: "pytest-capturelog"
+      PIP_DEPENDENCIES: "pytest-capturelog astroscrappy"
 
   matrix:
 
