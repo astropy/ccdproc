@@ -11,7 +11,7 @@ environment:
                         # of 32 bit and 64 bit builds are needed, move this
                         # to the matrix section.
       CONDA_DEPENDENCIES: "scipy"
-      PIP_DEPENDENCIES: "pytest-capturelog astroscrappy"
+      PIP_DEPENDENCIES: "pytest-capturelog"
 
   matrix:
 
@@ -34,6 +34,7 @@ install:
     - "powershell ci-helpers/appveyor/install-miniconda.ps1"
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "activate test"
+    - "pip install astroscrappy"
 
 # Not a .NET project, we build astroplan in the install step instead
 build: false
