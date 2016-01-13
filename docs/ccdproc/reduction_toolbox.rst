@@ -88,12 +88,12 @@ LACosmic
 
 The lacosmic technique identifies cosmic rays by identifying pixels based on a
 variation of the Laplacian edge detection.  The algorithm is an implementation
-of the code describe in van Dokkum (2001) [1]_.
+of the code describe in van Dokkum (2001) [1]_ as implemented 
+in `astroscrappy` [2]_.
 
 Use this technique with `~ccdproc.cosmicray_lacosmic`:
 
-    >>> cr_cleaned = ccdproc.cosmicray_lacosmic(gain_corrected, thresh=5,
-    ...                                         mbox=11, rbox=11, gbox=5)
+    >>> cr_cleaned = ccdproc.cosmicray_lacosmic(gain_corrected, sigclip=5)
 
 median
 ++++++
@@ -300,3 +300,7 @@ are replaced with ``min_value``):
        Detection". The Publications of the Astronomical Society of the
        Pacific, Volume 113, Issue 789, pp. 1420-1427.
        doi: 10.1086/323894
+
+.. [2] McCully, C., 2014, "Astro-SCRAPPY", 
+       https://github.com/astropy/astroscrappy
+
