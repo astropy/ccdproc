@@ -29,6 +29,9 @@ env:
         - ASTROPY_LTS=1.0
         - CONDA_INSTALL='conda install -c astropy-ci-extras --yes'
         - PIP_INSTALL='pip install'
+        - CONDA_DEPENDENCIES='scipy astroscappy'
+        - PIP_DEPENDENCIES='pytest-capturelog'
+
     matrix:
         - SETUP_CMD='egg_info'
 
