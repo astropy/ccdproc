@@ -763,10 +763,10 @@ def rebin(ccd, newshape):
     >>> rebinned = rebin(arr1, (20,20))
 
     """
-    #check to see that is in a nddata type
+    # check to see that is in a nddata type
     if isinstance(ccd, np.ndarray):
 
-        #check to see that the two arrays are going to be the same length
+        # check to see that the two arrays are going to be the same length
         if len(ccd.shape) != len(newshape):
             raise ValueError('newshape does not have the same dimensions as ccd')
 
@@ -777,19 +777,19 @@ def rebin(ccd, newshape):
         return ccd[tuple(indices)]
 
     elif isinstance(ccd, CCDData):
-        #check to see that the two arrays are going to be the same length
+        # check to see that the two arrays are going to be the same length
         if len(ccd.shape) != len(newshape):
             raise ValueError('newshape does not have the same dimensions as ccd')
 
         nccd = ccd.copy()
-        #rebin the data plane
+        # rebin the data plane
         nccd.data = rebin(nccd.data, newshape)
 
-        #rebin the uncertainty plane
+        # rebin the uncertainty plane
         if nccd.uncertainty is not None:
             nccd.uncertainty.array = rebin(nccd.uncertainty.array, newshape)
 
-        #rebin the mask plane
+        # rebin the mask plane
         if nccd.mask is not None:
             nccd.mask = rebin(nccd.mask, newshape)
 
@@ -829,11 +829,11 @@ def _blkavg(data, newshape):
     This is based on the scipy cookbook for rebinning:
     http://wiki.scipy.org/Cookbook/Rebinning
     """
-    #check to see that is in a nddata type
+    # check to see that is in a nddata type
     if not isinstance(data, np.ndarray):
         raise TypeError('data is not a ndarray object')
 
-    #check to see that the two arrays are going to be the same length
+    # check to see that the two arrays are going to be the same length
     if len(data.shape) != len(newshape):
         raise ValueError('newshape does not have the same dimensions as data')
 
@@ -849,17 +849,18 @@ def _blkavg(data, newshape):
 
 
 def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
-                   objlim=5.0,  gain=1.0,  readnoise=6.5,
-                   satlevel=65536.0,  pssl=0.0, niter=4,
-                   sepmed=True, cleantype='meanmask', fsmode='median',
-                   psfmodel='gauss',  psffwhm=2.5, psfsize=7,
-                   psfk=None,  psfbeta=4.765, verbose=False):
+                       objlim=5.0,  gain=1.0,  readnoise=6.5,
+                       satlevel=65536.0,  pssl=0.0, niter=4,
+                       sepmed=True, cleantype='meanmask', fsmode='median',
+                       psfmodel='gauss',  psffwhm=2.5, psfsize=7,
+                       psfk=None,  psfbeta=4.765, verbose=False):
     """
     Identify cosmic rays through the lacosmic technique. The lacosmic technique
     identifies cosmic rays by identifying pixels based on a variation of the
     Laplacian edge detection.  The algorithm is an implementation of the
     code describe in van Dokkum (2001) [1]_  as implemented by McCully (2014) [2].
-    If you use this algorithm, please cite these two works. 
+    If you use this algorithm, please cite these two works.
+
     Parameters
     ----------
     ccd: `~ccdproc.CCDData` or `~numpy.ndarray`
@@ -950,20 +951,25 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
            Detection". The Publications of the Astronomical Society of the
            Pacific, Volume 113, Issue 789, pp. 1420-1427.
            doi: 10.1086/323894
-    .. [2] McCully, C., 2014, "Astro-SCRAPPY", 
+    .. [2] McCully, C., 2014, "Astro-SCRAPPY",
            https://github.com/astropy/astroscrappy
     Examples
     --------
     1. Given an numpy.ndarray object, the syntax for running
        cosmicrar_lacosmic would be:
+
        >>> newdata, mask = cosmicray_lacosmic(data, sigclip=5)  #doctest: +skip
+
        where the error is an array that is the same shape as data but
        includes the pixel error.  This would return a data array, newdata,
        with the bad pixels replaced by the local median from a box of 11
        pixels; and it would return a mask indicating the bad pixels.
+
     2. Given an `~ccdproc.CCDData` object with an uncertainty frame, the syntax
        for running cosmicrar_lacosmic would be:
+
        >>> newccd = cosmicray_lacosmic(ccd, sigclip=5)   # doctest: +SKIP
+
        The newccd object will have bad pixels in its data array replace and the
        mask of the object will be created if it did not previously exist or be
        updated with the detected cosmic rays.
@@ -972,27 +978,28 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     if isinstance(ccd, np.ndarray):
         data = ccd
 
-        crmask, cleanarr = detect_cosmics(data, inmask=None, sigclip=sigclip,  
-                   sigfrac=sigfrac, objlim=objlim, gain=gain, 
-                   readnoise=readnoise, satlevel=satlevel,  pssl=pssl, 
-                   niter=niter, sepmed=sepmed,  cleantype=cleantype, 
-                   fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm, 
-                   psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, 
+        crmask, cleanarr = detect_cosmics(
+                   data, inmask=None, sigclip=sigclip,
+                   sigfrac=sigfrac, objlim=objlim, gain=gain,
+                   readnoise=readnoise, satlevel=satlevel,  pssl=pssl,
+                   niter=niter, sepmed=sepmed,  cleantype=cleantype,
+                   fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
+                   psfsize=psfsize, psfk=psfk, psfbeta=psfbeta,
                    verbose=verbose)
 
-        return cleanarr, crmask 
+        return cleanarr, crmask
 
     elif isinstance(ccd, CCDData):
 
-        crmask, cleanarr = detect_cosmics(ccd.data, inmask=ccd.mask, sigclip=sigclip,  
-                   sigfrac=sigfrac, objlim=objlim, gain=gain, 
-                   readnoise=readnoise, satlevel=satlevel,  pssl=pssl, 
-                   niter=niter, sepmed=sepmed,  cleantype=cleantype, 
-                   fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm, 
-                   psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, 
-                   verbose=verbose)
+        crmask, cleanarr = detect_cosmics(
+            ccd.data, inmask=ccd.mask,
+            sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain,
+            readnoise=readnoise, satlevel=satlevel,  pssl=pssl,
+            niter=niter, sepmed=sepmed,  cleantype=cleantype,
+            fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
+            psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, verbose=verbose)
 
-        #create the new ccd data object
+        # create the new ccd data object
         nccd = ccd.copy()
         nccd.data = cleanarr
         if nccd.mask is None:
@@ -1004,7 +1011,6 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
     else:
         raise TypeError('ccddata is not a CCDData or ndarray object')
-
 
 
 def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
@@ -1108,7 +1114,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         if gbox > 0:
             crarr = ndimage.maximum_filter(crarr, gbox)
 
-        #replace bad pixels in the image
+        # replace bad pixels in the image
         ndata = data.copy()
         if rbox > 0:
             data = np.ma.masked_array(data, (crarr == 1))
@@ -1118,7 +1124,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         return ndata, crarr
     elif isinstance(ccd, CCDData):
 
-        #set up the error image
+        # set up the error image
         if error_image is None and ccd.uncertainty is not None:
             error_image = ccd.uncertainty.array
         if ccd.data.shape != error_image.shape:
@@ -1128,7 +1134,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
                                        thresh=thresh, mbox=mbox, gbox=gbox,
                                        rbox=rbox)
 
-        #create the new ccd data object
+        # create the new ccd data object
         nccd = ccd.copy()
         nccd.data = data
         if nccd.mask is None:
