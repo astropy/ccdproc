@@ -858,8 +858,8 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     Identify cosmic rays through the lacosmic technique. The lacosmic technique
     identifies cosmic rays by identifying pixels based on a variation of the
     Laplacian edge detection.  The algorithm is an implementation of the
-    code describe in van Dokkum (2001) [1]_  as implemented by McCully (2014) [2].
-    If you use this algorithm, please cite these two works.
+    code describe in van Dokkum (2001) :ref:[1]_ as implemented by McCully (2014)
+    [2]_.  If you use this algorithm, please cite these two works.
 
     Parameters
     ----------
@@ -932,10 +932,12 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     verbose : boolean, optional
         Print to the screen or not. Default: False.
     {log}
+
     Notes
     -----
     Implementation of the cosmic ray identification L.A.Cosmic:
     http://www.astro.yale.edu/dokkum/lacosmic/
+
     Returns
     -------
     nccd : `~ccdproc.CCDData` or `~numpy.ndarray`
@@ -945,14 +947,17 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     crmask : `~numpy.ndarray`
         If an `~numpy.ndarray` is provided as ccd, a boolean ndarray with the
         cosmic rays identified will also be returned.
+
     References
     ----------
     .. [1] van Dokkum, P; 2001, "Cosmic-Ray Rejection by Laplacian Edge
-           Detection". The Publications of the Astronomical Society of the
-           Pacific, Volume 113, Issue 789, pp. 1420-1427.
-           doi: 10.1086/323894
+       Detection". The Publications of the Astronomical Society of the
+       Pacific, Volume 113, Issue 789, pp. 1420-1427.
+       doi: 10.1086/323894
+
     .. [2] McCully, C., 2014, "Astro-SCRAPPY",
-           https://github.com/astropy/astroscrappy
+       https://github.com/astropy/astroscrappy
+
     Examples
     --------
     1) Given an numpy.ndarray object, the syntax for running
