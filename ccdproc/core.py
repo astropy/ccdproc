@@ -123,10 +123,14 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
         Slice from ``ccd`` that contains the overscan. Must provide either
         this argument or ``fits_section``, but not both.
 
-    overscan_axis : 0 or 1, optional
+    overscan_axis : None, 0 or 1, optional
         Axis along which overscan should combined with mean or median. Axis
         numbering follows the *python* convention for ordering, so 0 is the
         first axis and 1 is the second axis.
+
+        If overscan_axis is explicitly set to None, the axis is set to
+        the shortest dimension of the overscan section (or 1 in case
+        of a square overscan).
 
     fits_section :  str
         Region of ``ccd`` from which the overscan is extracted, using the FITS
@@ -188,6 +192,7 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
     >>> assert (no_scan.data == 0).all()
 
     Spaces are stripped out of the ``fits_section`` string.
+
     """
     if not (isinstance(ccd, CCDData) or isinstance(ccd, np.ndarray)):
         raise TypeError('ccddata is not a CCDData or ndarray object')
@@ -204,6 +209,9 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 
     if fits_section is not None:
         overscan = ccd[slice_from_string(fits_section, fits_convention=True)]
+
+    if overscan_axis is None:
+        overscan_axis = 0 if overscan.shape[1] > overscan.shape[0] else 1
 
     if median:
         oscan = np.median(overscan.data, axis=overscan_axis)

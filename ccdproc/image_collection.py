@@ -234,6 +234,9 @@ class ImageFileCollection(object):
 
         ``**kwd`` is list of keywords and values the files must have.
 
+        If the keyword ``include_path=True`` is set, the returned list
+        contains not just the filename, but the full path to each file.
+
         The value '*' represents any value.
          A missing keyword is indicated by value ''
 
@@ -247,9 +250,14 @@ class ImageFileCollection(object):
         """
         # force a copy by explicitly converting to a list
         current_file_mask = list(self.summary_info['file'].mask)
+
+        include_path = kwd.pop('include_path', False)
+
         self._find_keywords_by_values(**kwd)
         filtered_files = self.summary_info['file'].compressed()
         self.summary_info['file'].mask = current_file_mask
+        if include_path:
+            filtered_files = [self._location + f for f in filtered_files]
         return filtered_files
 
     def refresh(self):
@@ -260,6 +268,21 @@ class ImageFileCollection(object):
         # Re-load list of files
         self._files = self._fits_files_in_directory()
         self._summary_info = self._fits_summary(header_keywords=keywords)
+
+    def sort(self, keys=None):
+        """Sort the list of files to determine the order of iteration.
+
+        Sort the table of files according to one or more keys. This does not
+        create a new object, instead is sorts in place.
+
+        Parameters
+        ----------
+        keys : str or list of str
+            The key(s) to order the table by.
+        """
+        if len(self._summary_info) > 0:
+            self._summary_info.sort(keys)
+            self._files = list(self.summary_info['file'])
 
     def _dict_from_fits_header(self, file_name, input_summary=None,
                                missing_marker=None):
@@ -532,6 +555,7 @@ class ImageFileCollection(object):
         for extension in full_extensions:
             files.extend(fnmatch.filter(all_files, '*' + extension))
 
+        files.sort()
         return files
 
     def _generator(self, return_type,

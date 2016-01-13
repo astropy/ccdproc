@@ -75,6 +75,23 @@ def test_slice_from_string_fits_style():
     # second index left unchanged?
     assert (sli[1].start == 0 and
             sli[1].stop == 5)
+    sli = slice_from_string('[1:10:2, 4:5:2]', fits_convention=True)
+    assert sli[0] == slice(3, 5, 2)
+    assert sli[1] == slice(0, 10, 2)
+
+
+def test_slice_from_string_fits_inverted():
+    sli = slice_from_string('[20:10:2, 10:5, 5:4]', fits_convention=True)
+    assert sli[0] == slice(4, 2, -1)
+    assert sli[1] == slice(9, 3, -1)
+    assert sli[2] == slice(19, 8, -2)
+    # Handle a bunch of special cases for inverted slices, when the
+    # stop index is 1 or 2
+    sli = slice_from_string('[20:1:4, 21:1:4, 22:2:4, 2:1]', fits_convention=True)
+    assert sli[0] == slice(1, None, -1)
+    assert sli[1] == slice(21, 0, -4)
+    assert sli[2] == slice(20, None, -4)
+    assert sli[3] == slice(19, None, -4)
 
 
 def test_slice_from_string_empty():
@@ -91,3 +108,12 @@ def test_slice_from_string_bad_fits_slice():
     with pytest.raises(ValueError):
         # Do I error if an ending index is negative?
         slice_from_string('[1:10, 10:-1]', fits_convention=True)
+
+
+def test_slice_from_string_fits_wildcard():
+    sli = slice_from_string('[*,-*]', fits_convention=True)
+    assert sli[0] == slice(None, None, -1)
+    assert sli[1] == slice(None, None, None)
+    sli = slice_from_string('[*:2,-*:2]', fits_convention=True)
+    assert sli[0] == slice(None, None, -2)
+    assert sli[1] == slice(None, None, 2)
