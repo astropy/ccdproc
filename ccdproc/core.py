@@ -299,11 +299,7 @@ def trim_image(ccd, fits_section=None):
     trimmed = ccd.copy()
     if fits_section:
         python_slice = slice_from_string(fits_section, fits_convention=True)
-        trimmed.data = trimmed.data[python_slice]
-        if trimmed.mask is not None:
-            trimmed.mask = trimmed.mask[python_slice]
-        if trimmed.uncertainty is not None:
-            trimmed.uncertainty.array = trimmed.uncertainty.array[python_slice]
+        trimmed = trimmed[python_slice]
 
     return trimmed
 
