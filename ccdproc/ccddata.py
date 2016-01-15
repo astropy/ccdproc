@@ -274,7 +274,7 @@ class CCDData(NDDataArray):
 
         result = CCDData(result_data, unit=result_unit,
                          uncertainty=result_uncertainty,
-                         meta=self.meta)
+                         meta=self.meta, wcs=self.wcs)
         return result
 
     def multiply(self, other):
