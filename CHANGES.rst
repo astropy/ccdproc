@@ -18,6 +18,7 @@ Other Changes and Additions
   primary hdu, the resultant header object is a combination of the 
   header information in the primary hdu and the first hdu with data. [#271]
 - Changed cosmicray_lacosmic to use astroscrappy for cleaning. [#272]
+- CCDData arithmetic with number/Quantity now preserves any existing WCS. [#278]
 
 Bug Fixes
 ^^^^^^^^^
