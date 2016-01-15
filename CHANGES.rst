@@ -17,6 +17,7 @@ Other Changes and Additions
 - When reading a FITS file with CCDData.read, if no data exists in the 
   primary hdu, the resultant header object is a combination of the 
   header information in the primary hdu and the first hdu with data. [#271]
+- Changed cosmicray_lacosmic to use astroscrappy for cleaning. [#272]
 
 Bug Fixes
 ^^^^^^^^^

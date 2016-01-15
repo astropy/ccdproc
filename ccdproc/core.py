@@ -763,10 +763,10 @@ def rebin(ccd, newshape):
     >>> rebinned = rebin(arr1, (20,20))
 
     """
-    #check to see that is in a nddata type
+    # check to see that is in a nddata type
     if isinstance(ccd, np.ndarray):
 
-        #check to see that the two arrays are going to be the same length
+        # check to see that the two arrays are going to be the same length
         if len(ccd.shape) != len(newshape):
             raise ValueError('newshape does not have the same dimensions as ccd')
 
@@ -777,19 +777,19 @@ def rebin(ccd, newshape):
         return ccd[tuple(indices)]
 
     elif isinstance(ccd, CCDData):
-        #check to see that the two arrays are going to be the same length
+        # check to see that the two arrays are going to be the same length
         if len(ccd.shape) != len(newshape):
             raise ValueError('newshape does not have the same dimensions as ccd')
 
         nccd = ccd.copy()
-        #rebin the data plane
+        # rebin the data plane
         nccd.data = rebin(nccd.data, newshape)
 
-        #rebin the uncertainty plane
+        # rebin the uncertainty plane
         if nccd.uncertainty is not None:
             nccd.uncertainty.array = rebin(nccd.uncertainty.array, newshape)
 
-        #rebin the mask plane
+        # rebin the mask plane
         if nccd.mask is not None:
             nccd.mask = rebin(nccd.mask, newshape)
 
@@ -829,11 +829,11 @@ def _blkavg(data, newshape):
     This is based on the scipy cookbook for rebinning:
     http://wiki.scipy.org/Cookbook/Rebinning
     """
-    #check to see that is in a nddata type
+    # check to see that is in a nddata type
     if not isinstance(data, np.ndarray):
         raise TypeError('data is not a ndarray object')
 
-    #check to see that the two arrays are going to be the same length
+    # check to see that the two arrays are going to be the same length
     if len(data.shape) != len(newshape):
         raise ValueError('newshape does not have the same dimensions as data')
 
@@ -848,199 +848,169 @@ def _blkavg(data, newshape):
     return eval(''.join(evList))
 
 
-def cosmicray_lacosmic(ccd, error_image=None, thresh=5, fthresh=5,
-                       gthresh=1.5, b_factor=2, mbox=5, min_limit=0.01,
-                       gbox=0, rbox=0,
-                       f_conv=None):
-    """
+def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
+                       objlim=5.0,  gain=1.0,  readnoise=6.5,
+                       satlevel=65536.0,  pssl=0.0, niter=4,
+                       sepmed=True, cleantype='meanmask', fsmode='median',
+                       psfmodel='gauss',  psffwhm=2.5, psfsize=7,
+                       psfk=None,  psfbeta=4.765, verbose=False):
+    r"""
     Identify cosmic rays through the lacosmic technique. The lacosmic technique
     identifies cosmic rays by identifying pixels based on a variation of the
     Laplacian edge detection.  The algorithm is an implementation of the
-    code describe in van Dokkum (2001) [1]_.
+    code describe in van Dokkum (2001) :ref:[1]_ as implemented by McCully (2014)
+    [2]_.  If you use this algorithm, please cite these two works.
 
     Parameters
     ----------
-
     ccd: `~ccdproc.CCDData` or `~numpy.ndarray`
         Data to have cosmic ray cleaned
-
-    error_image : `~numpy.ndarray`
-        Error level in the image.   It should have the same shape as data
-        as data. This is the same as the noise array in lacosmic.cl
-
-    thresh :  float
-        Threshold for detecting cosmic rays.  This is the same as sigmaclip
-        in lacosmic.cl
-
-    fthresh :  float
-        Threshold for differentiating compact sources from cosmic rays.
-        This is the same as objlim in lacosmic.cl
-
-    gthresh :  float
-        Threshold for checking for surrounding cosmic rays from source.
-        This is the same as sigclip*sigfrac from lacosmic.cl
-
-    b_factor :  int
-        Factor for block replication
-
-    mbox :  int
-        Median box for detecting cosmic rays
-
-    min_limit: float
-        Minimum value for all pixels so as to avoid division by zero errors
-
-    gbox :  int
-        Box size to grow cosmic rays. If zero, no growing will be done.
-
-    rbox :  int
-        Median box for calculating replacement values.  If zero, no pixels will
-        be replaced.
-
-    f_conv: `~numpy.ndarray`, optional
-        Convolution kernal for detecting edges. The default kernel is
-        ``np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])``.
-
+    sigclip : float, optional
+        Laplacian-to-noise limit for cosmic ray detection. Lower values will
+        flag more pixels as cosmic rays. Default: 4.5.
+    sigfrac : float, optional
+        Fractional detection limit for neighboring pixels. For cosmic ray
+        neighbor pixels, a lapacian-to-noise detection limit of
+        sigfrac * sigclip will be used. Default: 0.3.
+    objlim : float, optional
+        Minimum contrast between Laplacian image and the fine structure image.
+        Increase this value if cores of bright stars are flagged as cosmic
+        rays. Default: 5.0.
+    pssl : float, optional
+        Previously subtracted sky level in ADU. We always need to work in
+        electrons for cosmic ray detection, so we need to know the sky level
+        that has been subtracted so we can add it back in. Default: 0.0.
+    gain : float, optional
+        Gain of the image (electrons / ADU). We always need to work in
+        electrons for cosmic ray detection. Default: 1.0
+    readnoise : float, optional
+        Read noise of the image (electrons). Used to generate the noise model
+        of the image. Default: 6.5.
+    satlevel : float, optional
+        Saturation of level of the image (electrons). This value is used to
+        detect saturated stars and pixels at or above this level are added to
+        the mask. Default: 65536.0.
+    niter : int, optional
+        Number of iterations of the LA Cosmic algorithm to perform. Default: 4.
+    sepmed : boolean, optional
+        Use the separable median filter instead of the full median filter.
+        The separable median is not identical to the full median filter, but
+        they are approximately the same and the separable median filter is
+        significantly faster and still detects cosmic rays well. Default: True
+    cleantype : {'median', 'medmask', 'meanmask', 'idw'}, optional
+        Set which clean algorithm is used:\n
+        'median': An umasked 5x5 median filter\n
+        'medmask': A masked 5x5 median filter\n
+        'meanmask': A masked 5x5 mean filter\n
+        'idw': A masked 5x5 inverse distance weighted interpolation\n
+        Default: "meanmask".
+    fsmode : {'median', 'convolve'}, optional
+        Method to build the fine structure image:\n
+        'median': Use the median filter in the standard LA Cosmic algorithm
+        'convolve': Convolve the image with the psf kernel to calculate the
+        fine structure image.
+        Default: 'median'.
+    psfmodel : {'gauss', 'gaussx', 'gaussy', 'moffat'}, optional
+        Model to use to generate the psf kernel if fsmode == 'convolve' and
+        psfk is None. The current choices are Gaussian and Moffat profiles.
+        'gauss' and 'moffat' produce circular PSF kernels. The 'gaussx' and
+        'gaussy' produce Gaussian kernels in the x and y directions
+        respectively. Default: "gauss".
+    psffwhm : float, optional
+        Full Width Half Maximum of the PSF to use to generate the kernel.
+        Default: 2.5.
+    psfsize : int, optional
+        Size of the kernel to calculate. Returned kernel will have size
+        psfsize x psfsize. psfsize should be odd. Default: 7.
+    psfk : float numpy array, optional
+        PSF kernel array to use for the fine structure image if
+        fsmode == 'convolve'. If None and fsmode == 'convolve', we calculate
+        the psf kernel using 'psfmodel'. Default: None.
+    psfbeta : float, optional
+        Moffat beta parameter. Only used if fsmode=='convolve' and
+        psfmodel=='moffat'. Default: 4.765.
+    verbose : boolean, optional
+        Print to the screen or not. Default: False.
     {log}
 
     Notes
     -----
-
     Implementation of the cosmic ray identification L.A.Cosmic:
     http://www.astro.yale.edu/dokkum/lacosmic/
 
     Returns
     -------
-
     nccd : `~ccdproc.CCDData` or `~numpy.ndarray`
         An object of the same type as ccd is returned.   If it is a
         `~ccdproc.CCDData`, the mask attribute will also be updated with
         areas identified with cosmic rays masked.
-
-    nccd : `~numpy.ndarray`
+    crmask : `~numpy.ndarray`
         If an `~numpy.ndarray` is provided as ccd, a boolean ndarray with the
         cosmic rays identified will also be returned.
 
     References
     ----------
     .. [1] van Dokkum, P; 2001, "Cosmic-Ray Rejection by Laplacian Edge
-           Detection". The Publications of the Astronomical Society of the
-           Pacific, Volume 113, Issue 789, pp. 1420-1427.
-           doi: 10.1086/323894
+       Detection". The Publications of the Astronomical Society of the
+       Pacific, Volume 113, Issue 789, pp. 1420-1427.
+       doi: 10.1086/323894
+
+    .. [2] McCully, C., 2014, "Astro-SCRAPPY",
+       https://github.com/astropy/astroscrappy
 
     Examples
     --------
-
-    1. Given an numpy.ndarray object, the syntax for running
+    1) Given an numpy.ndarray object, the syntax for running
        cosmicrar_lacosmic would be:
 
-       >>> newdata, mask = cosmicray_lacosmic(data, error_image=error_image,
-       ...                                    thresh=5, mbox=11, rbox=11,
-       ...                                    gbox=5)   # doctest: +SKIP
+       >>> newdata, mask = cosmicray_lacosmic(data, sigclip=5)  #doctest: +SKIP
 
        where the error is an array that is the same shape as data but
        includes the pixel error.  This would return a data array, newdata,
        with the bad pixels replaced by the local median from a box of 11
        pixels; and it would return a mask indicating the bad pixels.
 
-    2. Given an `~ccdproc.CCDData` object with an uncertainty frame, the syntax
+    2) Given an `~ccdproc.CCDData` object with an uncertainty frame, the syntax
        for running cosmicrar_lacosmic would be:
 
-       >>> newccd = cosmicray_lacosmic(ccd, thresh=5, mbox=11,
-       ...                             rbox=11, gbox=5)   # doctest: +SKIP
+       >>> newccd = cosmicray_lacosmic(ccd, sigclip=5)   # doctest: +SKIP
 
        The newccd object will have bad pixels in its data array replace and the
        mask of the object will be created if it did not previously exist or be
        updated with the detected cosmic rays.
-
     """
-    if f_conv is None:
-        f_conv = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])
-
+    from astroscrappy import detect_cosmics
     if isinstance(ccd, np.ndarray):
         data = ccd
 
-        if not isinstance(error_image, np.ndarray):
-            raise TypeError('error_image is not a ndarray object')
-        if data.shape != error_image.shape:
-            raise ValueError('error_image is not the same shape as data')
+        crmask, cleanarr = detect_cosmics(
+                   data, inmask=None, sigclip=sigclip,
+                   sigfrac=sigfrac, objlim=objlim, gain=gain,
+                   readnoise=readnoise, satlevel=satlevel,  pssl=pssl,
+                   niter=niter, sepmed=sepmed,  cleantype=cleantype,
+                   fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
+                   psfsize=psfsize, psfk=psfk, psfbeta=psfbeta,
+                   verbose=verbose)
 
-        #set up a copy of the array and original shape
-        shape = data.shape
-
-        #rebin the data
-        newshape = (b_factor*shape[0], b_factor*shape[1])
-        ldata = rebin(data, newshape)
-
-        #convolve with f_conv
-        ldata = ndimage.filters.convolve(ldata, f_conv)
-        ldata[ldata <= 0] = 0
-
-        #return to the original binning
-        ldata = _blkavg(ldata, shape)
-
-        #median the noise image
-        med_noise = ndimage.median_filter(error_image, size=(mbox, mbox))
-
-        #create S/N image
-        sndata = ldata / med_noise / b_factor
-
-        #remove extended objects
-        mdata = ndimage.median_filter(sndata, size=(mbox, mbox))
-        sndata = sndata - mdata
-
-        #select objects
-        masks = (sndata > thresh)
-
-        #remove compact bright sources
-        fdata = ndimage.median_filter(data, size=(mbox-2, mbox-2))
-        fdata = fdata - ndimage.median_filter(data, size=(mbox+2, mbox+2))
-        fdata = fdata / med_noise
-
-        # set a minimum value for all pixels so no divide by zero problems
-        fdata[fdata < min_limit] = min_limit
-        fdata = sndata * masks / fdata
-
-        #make the list of cosmic rays
-        crarr = masks * (fdata > fthresh)
-
-        #check any of the neighboring pixels
-        gdata = sndata * ndimage.filters.maximum_filter(crarr, size=(3, 3))
-        crarr = crarr * (gdata > gthresh)
-
-        # grow the pixels
-        if gbox > 0:
-            crarr = ndimage.maximum_filter(crarr, gbox)
-
-        #replace bad pixels in the image
-        ndata = data.copy()
-        if rbox > 0:
-            maskdata = np.ma.masked_array(data, crarr)
-            mdata = ndimage.median_filter(maskdata, rbox)
-            ndata[crarr == 1] = mdata[crarr == 1]
-
-        return ndata, crarr
+        return cleanarr, crmask
 
     elif isinstance(ccd, CCDData):
 
-        #set up the error image
-        if error_image is None and ccd.uncertainty is not None:
-            error_image = ccd.uncertainty.array
-        if ccd.data.shape != error_image.shape:
-            raise ValueError('error_image is not the same shape as data')
+        crmask, cleanarr = detect_cosmics(
+            ccd.data, inmask=ccd.mask,
+            sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain,
+            readnoise=readnoise, satlevel=satlevel,  pssl=pssl,
+            niter=niter, sepmed=sepmed,  cleantype=cleantype,
+            fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
+            psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, verbose=verbose)
 
-        data, crarr = cosmicray_lacosmic(ccd.data,
-                                         error_image=error_image,
-                                         thresh=thresh, fthresh=fthresh,
-                                         gthresh=gthresh, b_factor=b_factor,
-                                         mbox=mbox, min_limit=min_limit,
-                                         gbox=gbox, rbox=rbox, f_conv=f_conv)
-        #create the new ccd data object
+        # create the new ccd data object
         nccd = ccd.copy()
-        nccd.data = data
+        nccd.data = cleanarr
         if nccd.mask is None:
-            nccd.mask = crarr
+            nccd.mask = crmask
         else:
-            nccd.mask = nccd.mask + crarr
+            nccd.mask = nccd.mask + crmask
 
         return nccd
 
@@ -1149,7 +1119,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         if gbox > 0:
             crarr = ndimage.maximum_filter(crarr, gbox)
 
-        #replace bad pixels in the image
+        # replace bad pixels in the image
         ndata = data.copy()
         if rbox > 0:
             data = np.ma.masked_array(data, (crarr == 1))
@@ -1159,7 +1129,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         return ndata, crarr
     elif isinstance(ccd, CCDData):
 
-        #set up the error image
+        # set up the error image
         if error_image is None and ccd.uncertainty is not None:
             error_image = ccd.uncertainty.array
         if ccd.data.shape != error_image.shape:
@@ -1169,7 +1139,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
                                        thresh=thresh, mbox=mbox, gbox=gbox,
                                        rbox=rbox)
 
-        #create the new ccd data object
+        # create the new ccd data object
         nccd = ccd.copy()
         nccd.data = data
         if nccd.mask is None:
