@@ -272,9 +272,11 @@ class CCDData(NDDataArray):
         else:
             result_uncertainty = None
 
+        new_meta = copy.deepcopy(self.meta)
+        new_wcs = copy.deepcopy(self.wcs)
         result = CCDData(result_data, unit=result_unit,
                          uncertainty=result_uncertainty,
-                         meta=self.meta)
+                         meta=new_meta, wcs=new_wcs)
         return result
 
     def multiply(self, other):

@@ -551,3 +551,8 @@ def test_header(ccd_data):
 def test_wcs(ccd_data):
     ccd_data.wcs = 5
     assert ccd_data.wcs == 5
+
+def test_wcs_arithmetic(ccd_data):
+    ccd_data.wcs = 5
+    result = ccd_data.multiply(1.0)
+    assert result.wcs == 5
