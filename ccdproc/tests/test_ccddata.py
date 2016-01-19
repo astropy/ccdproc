@@ -90,8 +90,8 @@ def test_initialize_from_fits_with_data_in_different_extension(tmpdir):
     ccd = CCDData.read(filename, unit='adu')
     # ccd should pick up the unit adu from the fits header...did it?
     np.testing.assert_array_equal(ccd.data, fake_img)
-    #check that the header is the combined header
-    assert hdu1.header+hdu2.header==ccd.header
+    # check that the header is the combined header
+    assert hdu1.header + hdu2.header == ccd.header
 
 
 def test_initialize_from_fits_with_extension(tmpdir):
@@ -544,7 +544,7 @@ def test_wcs_attribute(ccd_data, tmpdir):
 
 def test_header(ccd_data):
     a = {'Observer': 'Hubble'}
-    ccd = CCDData(ccd_data, header = a)
+    ccd = CCDData(ccd_data, header=a)
     assert ccd.meta == a
 
 
@@ -552,19 +552,23 @@ def test_wcs(ccd_data):
     ccd_data.wcs = 5
     assert ccd_data.wcs == 5
 
+
 def test_wcs_arithmetic(ccd_data):
     ccd_data.wcs = 5
     result = ccd_data.multiply(1.0)
     assert result.wcs == 5
 
-@pytest.mark.parametrize('operation', ['multiply', 'divide', 'add', 'subtract'])
+
+@pytest.mark.parametrize('operation',
+                         ['multiply', 'divide', 'add', 'subtract'])
 def test_wcs_arithmetic_ccd(ccd_data, operation):
     ccd_data2 = ccd_data.copy()
     ccd_data.wcs = 5
     method = ccd_data.__getattribute__(operation)
     result = method(ccd_data2)
     assert result.wcs == ccd_data.wcs
-    assert ccd_data2.wcs is None 
+    assert ccd_data2.wcs is None
+
 
 def test_wcs_add_raise_ValueError(ccd_data):
     ccd_data2 = ccd_data.copy()
