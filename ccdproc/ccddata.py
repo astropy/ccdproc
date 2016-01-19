@@ -112,11 +112,11 @@ class CCDData(NDDataArray):
     @data.setter
     def data(self, value):
         self._data = value
-        
+
     @property
     def wcs(self):
         return self._wcs
-    
+
     @wcs.setter
     def wcs(self, value):
         self._wcs = value
@@ -282,7 +282,8 @@ class CCDData(NDDataArray):
     def multiply(self, other, compare_wcs=False):
         if isinstance(other, CCDData):
             nother = other.copy()
-            if not compare_wcs: nother.wcs = self.wcs
+            if not compare_wcs:
+                nother.wcs = self.wcs
             return super(CCDData, self).multiply(nother)
 
         return self._ccddata_arithmetic(other, np.multiply,
@@ -292,7 +293,8 @@ class CCDData(NDDataArray):
         if isinstance(other, CCDData):
             nother = other.copy()
             nother.wcs = self.wcs
-            if not compare_wcs: nother.wcs = self.wcs
+            if not compare_wcs:
+                nother.wcs = self.wcs
             return super(CCDData, self).divide(nother)
 
         return self._ccddata_arithmetic(other, np.divide,
@@ -301,7 +303,8 @@ class CCDData(NDDataArray):
     def add(self, other, compare_wcs=False):
         if isinstance(other, CCDData):
             nother = other.copy()
-            if not compare_wcs: nother.wcs = self.wcs
+            if not compare_wcs:
+                nother.wcs = self.wcs
             return super(CCDData, self).add(nother)
 
         return self._ccddata_arithmetic(other, np.add,
@@ -310,7 +313,8 @@ class CCDData(NDDataArray):
     def subtract(self, other, compare_wcs=False):
         if isinstance(other, CCDData):
             nother = other.copy()
-            if not compare_wcs: nother.wcs = self.wcs
+            if not compare_wcs:
+                nother.wcs = self.wcs
             return super(CCDData, self).subtract(nother)
 
         return self._ccddata_arithmetic(other, np.subtract,
