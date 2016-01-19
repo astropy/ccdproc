@@ -556,3 +556,18 @@ def test_wcs_arithmetic(ccd_data):
     ccd_data.wcs = 5
     result = ccd_data.multiply(1.0)
     assert result.wcs == 5
+
+@pytest.mark.parametrize('operation', ['multiply', 'divide', 'add', 'subtract'])
+def test_wcs_arithmetic_ccd(ccd_data, operation):
+    ccd_data2 = ccd_data.copy()
+    ccd_data.wcs = 5
+    method = ccd_data.__getattribute__(operation)
+    result = method(ccd_data2)
+    assert result.wcs == ccd_data.wcs
+    assert ccd_data2.wcs is None 
+
+def test_wcs_add_raise_ValueError(ccd_data):
+    ccd_data2 = ccd_data.copy()
+    ccd_data.wcs = 5
+    with pytest.raises(ValueError):
+        result = ccd_data.add(ccd_data2, compare_wcs=True)
