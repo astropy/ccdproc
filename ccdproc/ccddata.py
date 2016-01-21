@@ -112,11 +112,11 @@ class CCDData(NDDataArray):
     @data.setter
     def data(self, value):
         self._data = value
-        
+
     @property
     def wcs(self):
         return self._wcs
-    
+
     @wcs.setter
     def wcs(self, value):
         self._wcs = value
@@ -279,30 +279,43 @@ class CCDData(NDDataArray):
                          meta=new_meta, wcs=new_wcs)
         return result
 
-    def multiply(self, other):
+    def multiply(self, other, compare_wcs=False):
         if isinstance(other, CCDData):
-            return super(CCDData, self).multiply(other)
+            nother = other.copy()
+            if not compare_wcs:
+                nother.wcs = self.wcs
+            return super(CCDData, self).multiply(nother)
 
         return self._ccddata_arithmetic(other, np.multiply,
                                         scale_uncertainty=True)
 
-    def divide(self, other):
+    def divide(self, other, compare_wcs=False):
         if isinstance(other, CCDData):
-            return super(CCDData, self).divide(other)
+            nother = other.copy()
+            nother.wcs = self.wcs
+            if not compare_wcs:
+                nother.wcs = self.wcs
+            return super(CCDData, self).divide(nother)
 
         return self._ccddata_arithmetic(other, np.divide,
                                         scale_uncertainty=True)
 
-    def add(self, other):
+    def add(self, other, compare_wcs=False):
         if isinstance(other, CCDData):
-            return super(CCDData, self).add(other)
+            nother = other.copy()
+            if not compare_wcs:
+                nother.wcs = self.wcs
+            return super(CCDData, self).add(nother)
 
         return self._ccddata_arithmetic(other, np.add,
                                         scale_uncertainty=False)
 
-    def subtract(self, other):
+    def subtract(self, other, compare_wcs=False):
         if isinstance(other, CCDData):
-            return super(CCDData, self).subtract(other)
+            nother = other.copy()
+            if not compare_wcs:
+                nother.wcs = self.wcs
+            return super(CCDData, self).subtract(nother)
 
         return self._ccddata_arithmetic(other, np.subtract,
                                         scale_uncertainty=False)
