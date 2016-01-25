@@ -26,8 +26,8 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=1.10
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy'
-        - PIP_DEPENDENCIES='pytest-capturelog astroscrappy'
+        - CONDA_DEPENDENCIES='scipy astroscrappy'
+        - PIP_DEPENDENCIES='pytest-capturelog'
 
     matrix:
         - SETUP_CMD='egg_info'
