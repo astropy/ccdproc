@@ -292,7 +292,6 @@ class CCDData(NDDataArray):
     def divide(self, other, compare_wcs=False):
         if isinstance(other, CCDData):
             nother = other.copy()
-            nother.wcs = self.wcs
             if not compare_wcs:
                 nother.wcs = self.wcs
             return super(CCDData, self).divide(nother)
