@@ -284,6 +284,11 @@ class CCDData(NDDataArray):
             nother = other.copy()
             if not compare_wcs:
                 nother.wcs = self.wcs
+            elif hasattr(self, '_arithmetic_wcs'):
+                # We want to compare the WCS but for astropy v1.2+ compare_wcs
+                # must be a callable which compares the wcs.
+                raise ValueError('Astropy Version > 1.2 does not support'
+                                 'CCDProcs "compare_wcs" parameter.')
             return super(CCDData, self).multiply(nother)
 
         return self._ccddata_arithmetic(other, np.multiply,
@@ -295,6 +300,9 @@ class CCDData(NDDataArray):
             nother.wcs = self.wcs
             if not compare_wcs:
                 nother.wcs = self.wcs
+            elif hasattr(self, '_arithmetic_wcs'):
+                raise ValueError('Astropy Version > 1.2 does not support'
+                                 'CCDProcs "compare_wcs" parameter.')
             return super(CCDData, self).divide(nother)
 
         return self._ccddata_arithmetic(other, np.divide,
@@ -305,6 +313,9 @@ class CCDData(NDDataArray):
             nother = other.copy()
             if not compare_wcs:
                 nother.wcs = self.wcs
+            elif hasattr(self, '_arithmetic_wcs'):
+                raise ValueError('Astropy Version > 1.2 does not support'
+                                 'CCDProcs "compare_wcs" parameter.')
             return super(CCDData, self).add(nother)
 
         return self._ccddata_arithmetic(other, np.add,
@@ -315,6 +326,9 @@ class CCDData(NDDataArray):
             nother = other.copy()
             if not compare_wcs:
                 nother.wcs = self.wcs
+            elif hasattr(self, '_arithmetic_wcs'):
+                raise ValueError('Astropy Version > 1.2 does not support'
+                                 'CCDProcs "compare_wcs" parameter.')
             return super(CCDData, self).subtract(nother)
 
         return self._ccddata_arithmetic(other, np.subtract,
