@@ -279,43 +279,66 @@ class CCDData(NDDataArray):
                          meta=new_meta, wcs=new_wcs)
         return result
 
-    def multiply(self, other, compare_wcs=False):
+    def multiply(self, other, compare_wcs='first_found'):
         if isinstance(other, CCDData):
-            nother = other.copy()
-            if not compare_wcs:
+            if compare_wcs is None or compare_wcs == 'first_found':
+                nother = other.copy()
                 nother.wcs = self.wcs
-            return super(CCDData, self).multiply(nother)
+                return super(CCDData, self).multiply(nother)
+            else:
+                try:
+                    return super(CCDData, self).multiply(
+                        other, compare_wcs=compare_wcs)
+                except:
+                    raise ValueError('WCS can not be compared')
 
         return self._ccddata_arithmetic(other, np.multiply,
                                         scale_uncertainty=True)
 
-    def divide(self, other, compare_wcs=False):
+    def divide(self, other, compare_wcs='first_found'):
         if isinstance(other, CCDData):
-            nother = other.copy()
-            nother.wcs = self.wcs
-            if not compare_wcs:
+            if compare_wcs is None or compare_wcs == 'first_found':
+                nother = other.copy()
                 nother.wcs = self.wcs
-            return super(CCDData, self).divide(nother)
+                return super(CCDData, self).divide(nother)
+            else:
+                try:
+                    return super(CCDData, self).divide(other,
+                                                       compare_wcs=compare_wcs)
+                except:
+                    raise ValueError('WCS can not be compared')
 
         return self._ccddata_arithmetic(other, np.divide,
                                         scale_uncertainty=True)
 
-    def add(self, other, compare_wcs=False):
+    def add(self, other, compare_wcs='first_found'):
         if isinstance(other, CCDData):
-            nother = other.copy()
-            if not compare_wcs:
+            if compare_wcs is None or compare_wcs == 'first_found':
+                nother = other.copy()
                 nother.wcs = self.wcs
-            return super(CCDData, self).add(nother)
+                return super(CCDData, self).add(nother)
+            else:
+                try:
+                    return super(CCDData, self).add(other,
+                                                    compare_wcs=compare_wcs)
+                except:
+                    raise ValueError('WCS can not be compared')
 
         return self._ccddata_arithmetic(other, np.add,
                                         scale_uncertainty=False)
 
-    def subtract(self, other, compare_wcs=False):
+    def subtract(self, other, compare_wcs='first_found'):
         if isinstance(other, CCDData):
-            nother = other.copy()
-            if not compare_wcs:
+            if compare_wcs is None or compare_wcs == 'first_found':
+                nother = other.copy()
                 nother.wcs = self.wcs
-            return super(CCDData, self).subtract(nother)
+                return super(CCDData, self).subtract(nother)
+            else:
+                try:
+                    return super(CCDData, self).subtract(
+                        other, compare_wcs=compare_wcs)
+                except:
+                    raise ValueError('WCS can not be compared')
 
         return self._ccddata_arithmetic(other, np.subtract,
                                         scale_uncertainty=False)
