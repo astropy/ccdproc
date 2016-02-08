@@ -570,16 +570,3 @@ def test_wcs_arithmetic_ccd(ccd_data, operation):
     assert ccd_data2.wcs is None
 
 
-@pytest.mark.parametrize('operation',
-                         ['multiply', 'divide', 'add', 'subtract'])
-def test_wcs_add_raise_ValueError(ccd_data, operation):
-    def wcs_comp_func(wcs1, wcs2, tolerance=0.1):
-        if abs(wcs1 - wcs2) <= tolerance:
-            return True
-        else:
-            return False
-    ccd_data2 = ccd_data.copy()
-    ccd_data.wcs = 5
-    method = ccd_data.__getattribute__(operation)
-    with pytest.raises(ValueError):
-        result = method(ccd_data2, compare_wcs=wcs_comp_func)
