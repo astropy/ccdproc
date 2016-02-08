@@ -570,8 +570,3 @@ def test_wcs_arithmetic_ccd(ccd_data, operation):
     assert ccd_data2.wcs is None
 
 
-def test_wcs_add_raise_ValueError(ccd_data):
-    ccd_data2 = ccd_data.copy()
-    ccd_data.wcs = 5
-    with pytest.raises(ValueError):
-        result = ccd_data.add(ccd_data2, compare_wcs=True)
