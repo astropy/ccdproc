@@ -282,15 +282,25 @@ class CCDData(NDDataArray):
     def multiply(self, other, compare_wcs='first_found'):
         if isinstance(other, CCDData):
             if compare_wcs is None or compare_wcs == 'first_found':
-                nother = other.copy()
-                nother.wcs = self.wcs
-                return super(CCDData, self).multiply(nother)
+                tmp_wcs_1, tmp_wcs_2 = self.wcs, other.wcs
+                self.wcs, other.wcs = None, None
+
+                # Determine the WCS of the result
+                if compare_wcs is None:
+                    result_wcs = None
+                else:
+                    result_wcs = tmp_wcs_1 if tmp_wcs_1 else tmp_wcs_2 
+   
+                result = super(CCDData, self).multiply(other)
+                result.wcs = result_wcs
+                self.wcs, other.wcs = tmp_wcs_1, tmp_wcs_2
+                return result
             else:
-                try:
-                    return super(CCDData, self).multiply(
-                        other, compare_wcs=compare_wcs)
-                except:
-                    raise ValueError('WCS can not be compared')
+                if hasattr(self, '_arithmetics_wcs'):
+                    return super(CCDData, self).multiply(other,
+                                                    compare_wcs=compare_wcs)
+                else:
+                    raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
 
         return self._ccddata_arithmetic(other, np.multiply,
                                         scale_uncertainty=True)
@@ -298,15 +308,25 @@ class CCDData(NDDataArray):
     def divide(self, other, compare_wcs='first_found'):
         if isinstance(other, CCDData):
             if compare_wcs is None or compare_wcs == 'first_found':
-                nother = other.copy()
-                nother.wcs = self.wcs
-                return super(CCDData, self).divide(nother)
+                tmp_wcs_1, tmp_wcs_2 = self.wcs, other.wcs
+                self.wcs, other.wcs = None, None
+
+                # Determine the WCS of the result
+                if compare_wcs is None:
+                    result_wcs = None
+                else:
+                    result_wcs = tmp_wcs_1 if tmp_wcs_1 else tmp_wcs_2 
+   
+                result = super(CCDData, self).divide(other)
+                result.wcs = result_wcs
+                self.wcs, other.wcs = tmp_wcs_1, tmp_wcs_2
+                return result
             else:
-                try:
+                if hasattr(self, '_arithmetics_wcs'):
                     return super(CCDData, self).divide(other,
-                                                       compare_wcs=compare_wcs)
-                except:
-                    raise ValueError('WCS can not be compared')
+                                                    compare_wcs=compare_wcs)
+                else:
+                    raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
 
         return self._ccddata_arithmetic(other, np.divide,
                                         scale_uncertainty=True)
@@ -314,15 +334,25 @@ class CCDData(NDDataArray):
     def add(self, other, compare_wcs='first_found'):
         if isinstance(other, CCDData):
             if compare_wcs is None or compare_wcs == 'first_found':
-                nother = other.copy()
-                nother.wcs = self.wcs
-                return super(CCDData, self).add(nother)
+                tmp_wcs_1, tmp_wcs_2 = self.wcs, other.wcs
+                self.wcs, other.wcs = None, None
+
+                # Determine the WCS of the result
+                if compare_wcs is None:
+                    result_wcs = None
+                else:
+                    result_wcs = tmp_wcs_1 if tmp_wcs_1 else tmp_wcs_2 
+   
+                result = super(CCDData, self).add(other)
+                result.wcs = result_wcs
+                self.wcs, other.wcs = tmp_wcs_1, tmp_wcs_2
+                return result
             else:
-                try:
+                if hasattr(self, '_arithmetics_wcs'):
                     return super(CCDData, self).add(other,
                                                     compare_wcs=compare_wcs)
-                except:
-                    raise ValueError('WCS can not be compared')
+                else:
+                    raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
 
         return self._ccddata_arithmetic(other, np.add,
                                         scale_uncertainty=False)
@@ -330,15 +360,26 @@ class CCDData(NDDataArray):
     def subtract(self, other, compare_wcs='first_found'):
         if isinstance(other, CCDData):
             if compare_wcs is None or compare_wcs == 'first_found':
-                nother = other.copy()
-                nother.wcs = self.wcs
-                return super(CCDData, self).subtract(nother)
+                tmp_wcs_1, tmp_wcs_2 = self.wcs, other.wcs
+                self.wcs, other.wcs = None, None
+
+                # Determine the WCS of the result
+                if compare_wcs is None:
+                    result_wcs = None
+                else:
+                    result_wcs = tmp_wcs_1 if tmp_wcs_1 else tmp_wcs_2 
+   
+                result = super(CCDData, self).subtract(other)
+                result.wcs = result_wcs
+                self.wcs, other.wcs = tmp_wcs_1, tmp_wcs_2
+                return result
+
             else:
-                try:
-                    return super(CCDData, self).subtract(
-                        other, compare_wcs=compare_wcs)
-                except:
-                    raise ValueError('WCS can not be compared')
+                if hasattr(self, '_arithmetics_wcs'):
+                    return super(CCDData, self).subtract(other,
+                                                    compare_wcs=compare_wcs)
+                else:
+                    raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
 
         return self._ccddata_arithmetic(other, np.subtract,
                                         scale_uncertainty=False)
