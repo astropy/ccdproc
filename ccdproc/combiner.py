@@ -12,7 +12,7 @@ from astropy.stats import median_absolute_deviation
 from astropy.nddata import StdDevUncertainty
 from astropy import log
 
-__all__ = ['Combiner','combine']
+__all__ = ['Combiner', 'combine', 'wcs_combine']
 
 
 class Combiner(object):
@@ -573,3 +573,34 @@ def combine(img_list, output_file=None, method='average', weights=None, scale=No
         ccd.write(output_file)
 
     return ccd
+
+
+def wcs_combine(image_list, target_wcs):
+    """
+    Given a list of CCDData images, project them onto a common WCS and
+    return a new CCDData image.
+
+    Any mask, flags, weight, or uncertainty are ignored in doing the
+    combination.
+
+    Parameters
+    ----------
+
+    image_list : list of images
+        The list can have any number of images.
+
+    target_wcs: `astropy.wcs.WCS` object
+        WCS onto which all images should be projected.
+    """
+    from reproject import reproject_interp
+
+    # Build up a list of reprojected images
+    reprojected_images = []
+    for image in image_list:
+        projected_image_raw, footprint = reproject_interp(image, target_wcs)
+        projected_image = CCDData(projected_image_raw, wcs=target_wcs,
+                                  header=image.header)
+        reprojected_images.append(projected_image)
+
+    combined_projected = Combiner(reprojected_images)
+    return combined_projected.average_combine()
