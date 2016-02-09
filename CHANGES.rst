@@ -25,6 +25,7 @@ Other Changes and Additions
 - Changed cosmicray_lacosmic to use astroscrappy for cleaning. [#272]
 - CCDData arithmetic with number/Quantity now preserves any existing WCS. [#278]
 - Update astropy_helpers to 1.1.1. [#287]
+- Drop support for Python 2.6. [#300]
 
 Bug Fixes
 ^^^^^^^^^
