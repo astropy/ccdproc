@@ -8,7 +8,7 @@ import logging
 import numpy as np
 import numpy.ma as ma
 
-from astropy.table import Table, vstack
+from astropy.table import Table
 import astropy.io.fits as fits
 from astropy.extern import six
 
@@ -306,7 +306,7 @@ class ImageFileCollection(object):
 
         file_table : astropy.table.Table
         """
-        from astropy.utils.compat.odict import OrderedDict
+        from collections import OrderedDict
 
         def _add_val_to_dict(key, value, tbl_dict, n_prev):
             try:
@@ -364,15 +364,8 @@ class ImageFileCollection(object):
 
     def _set_column_name_case_to_match_keywords(self, header_keys,
                                                 summary_table):
-        # Workaround for python 2.6, which doesn't have dict comprehensions.
-        key_name_dict = {}
-        for k in header_keys:
-            if k != k.lower():
-                key_name_dict[k.lower()] = k
-
-        # Once ccdproc drops support for python 2.6, change to this:
-        # key_name_dict = {k.lower(): k for k in header_keys
-        #                  if k != k.lower()}
+        key_name_dict = {k.lower(): k for k in header_keys
+                         if k != k.lower()}
 
         for lcase, user_case in six.iteritems(key_name_dict):
             try:

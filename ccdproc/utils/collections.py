@@ -4,7 +4,7 @@ Useful objects based on collections
 
 from __future__ import (absolute_import, print_function)
 
-from astropy.utils.compat.odict import OrderedDict
+from collections import OrderedDict
 
 
 class CaseInsensitiveOrderedDict(OrderedDict):
