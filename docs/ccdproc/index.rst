@@ -74,23 +74,6 @@ a dictionary to ``add_keyword``:
     ...                                        1.5 * u.photon/u.adu,
     ...                                        add_keyword=my_log)
 
-The `~ccdproc.Keyword` class provides a compromise between the simple
-and complicated cases for providing a single key/value pair:
-
-    >>> key = ccdproc.Keyword('gain_corrected', value='Yes')
-    >>> dark_sub_gained = ccdproc.gain_correct(dark_sub,
-    ...                                        1.5 * u.photon/u.adu,
-    ...                                        add_keyword=key)
-
-`~ccdproc.Keyword` also provides a convenient way to get a value from
-image metadata and specify its unit:
-
-    >>> dark_sub.header['gain']  = 1.5
-    >>> gain = ccdproc.Keyword('gain', unit=u.photon/u.adu)
-    >>> dark_sub_var = ccdproc.create_deviation(dark_sub,
-    ...                                         gain=gain.value_from(dark_sub.header),
-    ...                                         readnoise=3.0 * u.photon)
-
 You might wonder why there is a `~ccdproc.gain_correct` at all, since the implemented
 gain correction simple multiplies by a constant. There are two things you get
 with `~ccdproc.gain_correct` that you do not get with multiplication:
