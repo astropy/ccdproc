@@ -23,6 +23,7 @@ except NameError:
 
 try:
     PYTEST_HEADER_MODULES['Astropy'] = 'astropy'
+    PYTEST_HEADER_MODULES['astroscrappy'] = 'astroscrappy'
     del PYTEST_HEADER_MODULES['h5py']
 except NameError:
     pass

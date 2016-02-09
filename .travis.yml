@@ -13,9 +13,7 @@ addons:
             - dvipng
 
 python:
-    - 2.6
     - 2.7
-    - 3.3
     - 3.4
     - 3.5
 
@@ -26,8 +24,8 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=1.10
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy'
-        - PIP_DEPENDENCIES='pytest-capturelog astroscrappy'
+        - CONDA_DEPENDENCIES='scipy astroscrappy'
+        - PIP_DEPENDENCIES='pytest-capturelog'
 
     matrix:
         - SETUP_CMD='egg_info'
@@ -56,12 +54,8 @@ matrix:
 
         # Try all python versions with the latest numpy available on that
         # python version.
-        - python: 2.6
-          env: NUMPY_VERSION=1.9 SETUP_CMD='test'
         - python: 2.7
           env: SETUP_CMD='test'
-        - python: 3.3
-          env: NUMPY_VERSION=1.9 SETUP_CMD='test'
         - python: 3.4
           env: SETUP_CMD='test'
         - python: 3.5
@@ -70,10 +64,6 @@ matrix:
         # Try older numpy versions
         - python: 2.7
           env: NUMPY_VERSION=1.9 SETUP_CMD='test'
-        - python: 2.7
-          env: NUMPY_VERSION=1.8 SETUP_CMD='test'
-        - python: 2.7
-          env: NUMPY_VERSION=1.7 SETUP_CMD='test'
 
 install:
 
