@@ -571,7 +571,7 @@ def test_wcs_arithmetic_ccd(ccd_data, operation):
 
 
 def test_write_read_multiextensionfits_mask_default(ccd_data, tmpdir):
-    # Test that is a mask is present the mask is saved and loaded by default.
+    # Test that if a mask is present the mask is saved and loaded by default.
     ccd_data.mask = ccd_data.data > 10
     filename = tmpdir.join('afile.fits').strpath
     ccd_data.write(filename)
@@ -581,7 +581,7 @@ def test_write_read_multiextensionfits_mask_default(ccd_data, tmpdir):
 
 
 def test_write_read_multiextensionfits_uncertainty_default(ccd_data, tmpdir):
-    # Test that is a uncertainty is present it is saved and loaded by default.
+    # Test that if a uncertainty is present it is saved and loaded by default.
     ccd_data.uncertainty = StdDevUncertainty(ccd_data.data * 10)
     filename = tmpdir.join('afile.fits').strpath
     ccd_data.write(filename)
