@@ -570,3 +570,54 @@ def test_wcs_arithmetic_ccd(ccd_data, operation):
     assert ccd_data2.wcs is None
 
 
+def test_write_read_multiextensionfits_mask_default(ccd_data, tmpdir):
+    # Test that if a mask is present the mask is saved and loaded by default.
+    ccd_data.mask = ccd_data.data > 10
+    filename = tmpdir.join('afile.fits').strpath
+    ccd_data.write(filename)
+    ccd_after = CCDData.read(filename)
+    assert ccd_after.mask is not None
+    np.testing.assert_array_equal(ccd_data.mask, ccd_after.mask)
+
+
+def test_write_read_multiextensionfits_uncertainty_default(ccd_data, tmpdir):
+    # Test that if a uncertainty is present it is saved and loaded by default.
+    ccd_data.uncertainty = StdDevUncertainty(ccd_data.data * 10)
+    filename = tmpdir.join('afile.fits').strpath
+    ccd_data.write(filename)
+    ccd_after = CCDData.read(filename)
+    assert ccd_after.uncertainty is not None
+    np.testing.assert_array_equal(ccd_data.uncertainty.array,
+                                  ccd_after.uncertainty.array)
+
+
+def test_write_read_multiextensionfits_not(ccd_data, tmpdir):
+    # Test that writing mask and uncertainty can be disabled
+    ccd_data.mask = ccd_data.data > 10
+    ccd_data.uncertainty = StdDevUncertainty(ccd_data.data * 10)
+    filename = tmpdir.join('afile.fits').strpath
+    ccd_data.write(filename, hdu_mask=None, hdu_uncertainty=None)
+    ccd_after = CCDData.read(filename)
+    assert ccd_after.uncertainty is None
+    assert ccd_after.mask is None
+
+
+def test_write_read_multiextensionfits_custom_ext_names(ccd_data, tmpdir):
+    # Test writing mask, uncertainty in another extension than default
+    ccd_data.mask = ccd_data.data > 10
+    ccd_data.uncertainty = StdDevUncertainty(ccd_data.data * 10)
+    filename = tmpdir.join('afile.fits').strpath
+    ccd_data.write(filename, hdu_mask='Fun', hdu_uncertainty='NoFun')
+
+    # Try reading with defaults extension names
+    ccd_after = CCDData.read(filename)
+    assert ccd_after.uncertainty is None
+    assert ccd_after.mask is None
+
+    # Try reading with custom extension names
+    ccd_after = CCDData.read(filename, hdu_mask='Fun', hdu_uncertainty='NoFun')
+    assert ccd_after.uncertainty is not None
+    assert ccd_after.mask is not None
+    np.testing.assert_array_equal(ccd_data.mask, ccd_after.mask)
+    np.testing.assert_array_equal(ccd_data.uncertainty.array,
+                                  ccd_after.uncertainty.array)
