@@ -14,11 +14,12 @@ Other Changes and Additions
 - The overscan_axis argument in subtract_overscan can now be set to
   None, to let subtract_overscan provide a best guess for the axis. [#263]
 - Add support for wildcard and reversed FITS style slicing. [#265]
-- When reading a FITS file with CCDData.read, if no data exists in the 
-  primary hdu, the resultant header object is a combination of the 
+- When reading a FITS file with CCDData.read, if no data exists in the
+  primary hdu, the resultant header object is a combination of the
   header information in the primary hdu and the first hdu with data. [#271]
 - Changed cosmicray_lacosmic to use astroscrappy for cleaning. [#272]
 - CCDData arithmetic with number/Quantity now preserves any existing WCS. [#278]
+- Update astropy_helpers to 1.1.1. [#287]
 
 Bug Fixes
 ^^^^^^^^^
