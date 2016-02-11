@@ -7,6 +7,11 @@ New Features
 
 - Add a new keyword to ImageFileCollection.files_filtered to return the full
   path to a file [#275]
+- CCDData.write now writes multi-extension-FITS files. The mask and uncertainty
+  are saved as extensions if these attributes were set. The name of the
+  extensions can be altered with the parameters ``hdu_mask`` (default extension
+  name ``'MASK'``) and ``hdu_uncertainty`` (default ``'UNCERT'``).
+  CCDData.read can read these files and has the same optional parameters.
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
