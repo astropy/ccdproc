@@ -502,19 +502,19 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
         unit for the image in the FITS header (the keyword ``BUNIT`` is used
         as the unit, if present), this argument is used for the unit.
 
-    hdu_uncertainty : str or int, optional
+    hdu_uncertainty : str or None, optional
         FITS extension from which the uncertainty should be initialized. If the
         extension does not exist the uncertainty of the CCDData is ``None``.
         Default is ``'UNCERT'``.
 
-    hdu_mask : str or int, optional
+    hdu_mask : str or None, optional
         FITS extension from which the mask should be initialized. If the
         extension does not exist the mask of the CCDData is ``None``.
         Default is ``'MASK'``.
 
-    hdu_flags : str or int, optional
+    hdu_flags : str or None, optional
         Currently not implemented.
-        Default is None.
+        Default is ``None``.
 
     kwd :
         Any additional keyword parameters are passed through to the FITS reader
