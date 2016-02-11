@@ -206,10 +206,14 @@ class CCDData(NDDataArray):
            Raises
            -------
            ValueError
-              Multi-Exenstion FITS files are not supported
+              - If ``self.mask`` is set but not a `~numpy.ndarray`.
+              - If ``self.uncertainty`` is set but not a
+                `~astropy.nddata.StdDevUncertainty`.
+              - If ``self.uncertainty`` is set but has another unit then
+                ``self.data``.
 
            NotImplementedError
-              Saving flags is not supported
+              Saving flags is not supported.
 
            Returns
            -------
@@ -609,9 +613,15 @@ def fits_ccddata_writer(ccd_data, filename, hdu_mask='MASK',
 
     Raises
     -------
+    ValueError
+        - If ``self.mask`` is set but not a `~numpy.ndarray`.
+        - If ``self.uncertainty`` is set but not a
+          `~astropy.nddata.StdDevUncertainty`.
+        - If ``self.uncertainty`` is set but has another unit then
+          ``self.data``.
 
     NotImplementedError
-        Saving flags is not supported
+        Saving flags is not supported.
     """
     hdu = ccd_data.to_hdu(hdu_mask=hdu_mask, hdu_uncertainty=hdu_uncertainty,
                           hdu_flags=hdu_flags)
