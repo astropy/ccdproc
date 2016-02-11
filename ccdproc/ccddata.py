@@ -189,13 +189,27 @@ class CCDData(NDDataArray):
         else:
             self._uncertainty = value
 
-    def to_hdu(self):
+    def to_hdu(self, hdu_mask='MASK', hdu_uncertainty='UNCERT',
+               hdu_flags=None):
         """Creates an HDUList object from a CCDData object.
+
+           Parameters
+           ----------
+           hdu_mask, hdu_uncertainty, hdu_flags : str or None, optional
+              If it is a string append this attribute to the HDUList as
+              `~astropy.io.fits.ImageHDU` with the string as extension name.
+              Flags are not supported at this time. If ``None`` this attribute
+              is not appended.
+              Default is ``'MASK'`` for mask, ``'UNCERT'`` for uncertainty and
+              ``None`` for flags.
 
            Raises
            -------
            ValueError
               Multi-Exenstion FITS files are not supported
+
+           NotImplementedError
+              Saving flags is not supported
 
            Returns
            -------
@@ -233,8 +247,45 @@ class CCDData(NDDataArray):
             # not header.
             wcs_header = self.wcs.to_header()
             header.extend(wcs_header, useblanks=False, update=True)
-        hdu = fits.PrimaryHDU(self.data, header)
-        hdulist = fits.HDUList([hdu])
+        hdus = [fits.PrimaryHDU(self.data, header)]
+
+        if hdu_mask and self.mask is not None:
+            # Always assuming that the mask is a np.ndarray (check that it has
+            # a 'shape').
+            if not hasattr(self.mask, 'shape'):
+                raise ValueError('Only a numpy.ndarray mask can be saved.')
+
+            # Convert boolean mask to uint since io.fits cannot handle bool.
+            hduMask = fits.ImageHDU(self.mask.astype(np.uint8), name=hdu_mask)
+            hdus.append(hduMask)
+
+        if hdu_uncertainty and self.uncertainty is not None:
+            # We need to save some kind of information which uncertainty was
+            # used so that loading the HDUList can infer the uncertainty type.
+            # No idea how this can be done so only allow StdDevUncertainty.
+            if self.uncertainty.__class__.__name__ != 'StdDevUncertainty':
+                raise ValueError('Only StdDevUncertainty can be saved.')
+
+            # Assuming uncertainty is an StdDevUncertainty save just the array
+            # this might be problematic if the Uncertainty has a unit differing
+            # from the data so abort for different units. This is important for
+            # astropy > 1.2
+            if (hasattr(self.uncertainty, 'unit') and
+                    self.uncertainty.unit is not None and
+                    self.uncertainty.unit != self.unit):
+                raise ValueError('Saving uncertainties with a unit differing'
+                                 'from the data unit is not supported')
+
+            hduUncert = fits.ImageHDU(self.uncertainty.array,
+                                      name=hdu_uncertainty)
+            hdus.append(hduUncert)
+
+        if hdu_flags and self.flags:
+            raise NotImplementedError('Adding the flags to a HDU is not '
+                                      'supported at this time.')
+
+        hdulist = fits.HDUList(hdus)
+
         return hdulist
 
     def copy(self):
@@ -289,8 +340,8 @@ class CCDData(NDDataArray):
                 if compare_wcs is None:
                     result_wcs = None
                 else:
-                    result_wcs = tmp_wcs_1 if tmp_wcs_1 else tmp_wcs_2 
-   
+                    result_wcs = tmp_wcs_1 if tmp_wcs_1 else tmp_wcs_2
+
                 result = super(CCDData, self).multiply(other)
                 result.wcs = result_wcs
                 self.wcs, other.wcs = tmp_wcs_1, tmp_wcs_2
@@ -298,7 +349,7 @@ class CCDData(NDDataArray):
             else:
                 if hasattr(self, '_arithmetics_wcs'):
                     return super(CCDData, self).multiply(other,
-                                                    compare_wcs=compare_wcs)
+                                                         compare_wcs=compare_wcs)
                 else:
                     raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
 
@@ -315,8 +366,8 @@ class CCDData(NDDataArray):
                 if compare_wcs is None:
                     result_wcs = None
                 else:
-                    result_wcs = tmp_wcs_1 if tmp_wcs_1 else tmp_wcs_2 
-   
+                    result_wcs = tmp_wcs_1 if tmp_wcs_1 else tmp_wcs_2
+
                 result = super(CCDData, self).divide(other)
                 result.wcs = result_wcs
                 self.wcs, other.wcs = tmp_wcs_1, tmp_wcs_2
@@ -324,7 +375,7 @@ class CCDData(NDDataArray):
             else:
                 if hasattr(self, '_arithmetics_wcs'):
                     return super(CCDData, self).divide(other,
-                                                    compare_wcs=compare_wcs)
+                                                       compare_wcs=compare_wcs)
                 else:
                     raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
 
@@ -341,8 +392,8 @@ class CCDData(NDDataArray):
                 if compare_wcs is None:
                     result_wcs = None
                 else:
-                    result_wcs = tmp_wcs_1 if tmp_wcs_1 else tmp_wcs_2 
-   
+                    result_wcs = tmp_wcs_1 if tmp_wcs_1 else tmp_wcs_2
+
                 result = super(CCDData, self).add(other)
                 result.wcs = result_wcs
                 self.wcs, other.wcs = tmp_wcs_1, tmp_wcs_2
@@ -367,8 +418,8 @@ class CCDData(NDDataArray):
                 if compare_wcs is None:
                     result_wcs = None
                 else:
-                    result_wcs = tmp_wcs_1 if tmp_wcs_1 else tmp_wcs_2 
-   
+                    result_wcs = tmp_wcs_1 if tmp_wcs_1 else tmp_wcs_2
+
                 result = super(CCDData, self).subtract(other)
                 result.wcs = result_wcs
                 self.wcs, other.wcs = tmp_wcs_1, tmp_wcs_2
@@ -377,7 +428,7 @@ class CCDData(NDDataArray):
             else:
                 if hasattr(self, '_arithmetics_wcs'):
                     return super(CCDData, self).subtract(other,
-                                                    compare_wcs=compare_wcs)
+                                                         compare_wcs=compare_wcs)
                 else:
                     raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
 
@@ -426,7 +477,8 @@ class CCDData(NDDataArray):
             self.meta[key] = value
 
 
-def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
+def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
+                        hdu_mask='MASK', hdu_flags=None, **kwd):
     """
     Generate a CCDData object from a FITS file.
 
@@ -445,6 +497,20 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
         Units of the image data. If this argument is provided and there is a
         unit for the image in the FITS header (the keyword ``BUNIT`` is used
         as the unit, if present), this argument is used for the unit.
+
+    hdu_uncertainty : str or int, optional
+        FITS extension from which the uncertainty should be initialized. If the
+        extension does not exist the uncertainty of the CCDData is ``None``.
+        Default is ``'UNCERT'``.
+
+    hdu_mask : str or int, optional
+        FITS extension from which the mask should be initialized. If the
+        extension does not exist the mask of the CCDData is ``None``.
+        Default is ``'MASK'``.
+
+    hdu_flags : str or int, optional
+        Currently not implemented.
+        Default is None.
 
     kwd :
         Any additional keyword parameters are passed through to the FITS reader
@@ -466,46 +532,61 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, **kwd):
         if key in kwd:
             prefix = 'Unsupported keyword: {0}.'.format(key)
             raise TypeError(' '.join([prefix, msg]))
-    hdus = fits.open(filename, **kwd)
-    hdr = hdus[hdu].header
+    with fits.open(filename, **kwd) as hdus:
+        hdr = hdus[hdu].header
 
-    # search for the first instance with data if the primary header is empty
-    if hdu == 0 and hdus[hdu].data is None:
-        for i in range(len(hdus)):
-            if hdus.fileinfo(i)['datSpan'] > 0:
-                hdu = i
-                hdr = hdr + hdus[hdu].header
-                log.info("First HDU with data is exention {0}.".format(hdu))
-                break
+        if hdu_uncertainty in hdus:
+            uncertainty = StdDevUncertainty(hdus[hdu_uncertainty].data)
+        else:
+            uncertainty = None
 
-    try:
-        fits_unit_string = hdr['bunit']
-        # patch to handle FITS files using ADU for the unit instead of the
-        # standard version of 'adu'
-        if fits_unit_string.strip().lower() == 'adu':
-            fits_unit_string = fits_unit_string.lower()
-    except KeyError:
-        fits_unit_string = None
+        if hdu_mask in hdus:
+            # Mask is saved as uint but we want it to be boolean.
+            mask = hdus[hdu_mask].data.astype(np.bool_)
+        else:
+            mask = None
 
-    if unit is not None and fits_unit_string:
-        log.info("Using the unit {0} passed to the FITS reader instead of "
-                 "the unit {1} in the FITS file.".format(unit,
-                                                         fits_unit_string))
+        if hdu_flags in hdus:
+            raise NotImplementedError('Loading flags is currently not supported.')
 
-    use_unit = unit or fits_unit_string
-    # Try constructing a WCS object. This may generate a warning, but never
-    # an error.
-    wcs = WCS(hdr)
-    # Test for success by checking to see if the wcs ctype has a non-empty
-    # value.
-    wcs = wcs if wcs.wcs.ctype[0] else None
-    ccd_data = CCDData(hdus[hdu].data, meta=hdr, unit=use_unit,
-                       wcs=wcs)
-    hdus.close()
+        # search for the first instance with data if the primary header is empty
+        if hdu == 0 and hdus[hdu].data is None:
+            for i in range(len(hdus)):
+                if hdus.fileinfo(i)['datSpan'] > 0:
+                    hdu = i
+                    hdr = hdr + hdus[hdu].header
+                    log.info("First HDU with data is exention {0}.".format(hdu))
+                    break
+
+        if 'bunit' in hdr:
+            fits_unit_string = hdr['bunit']
+            # patch to handle FITS files using ADU for the unit instead of the
+            # standard version of 'adu'
+            if fits_unit_string.strip().lower() == 'adu':
+                fits_unit_string = fits_unit_string.lower()
+        else:
+            fits_unit_string = None
+
+        if unit is not None and fits_unit_string:
+            log.info("Using the unit {0} passed to the FITS reader instead of "
+                     "the unit {1} in the FITS file.".format(unit,
+                                                             fits_unit_string))
+
+        use_unit = unit or fits_unit_string
+        # Try constructing a WCS object. This may generate a warning, but never
+        # an error.
+        wcs = WCS(hdr)
+        # Test for success by checking to see if the wcs ctype has a non-empty
+        # value.
+        wcs = wcs if wcs.wcs.ctype[0] else None
+        ccd_data = CCDData(hdus[hdu].data, meta=hdr, unit=use_unit,
+                           mask=mask, uncertainty=uncertainty, wcs=wcs)
+
     return ccd_data
 
 
-def fits_ccddata_writer(ccd_data, filename, **kwd):
+def fits_ccddata_writer(ccd_data, filename, hdu_mask='MASK',
+                        hdu_uncertainty='UNCERT', hdu_flags=None, **kwd):
     """
     Write CCDData object to FITS file.
 
@@ -515,10 +596,25 @@ def fits_ccddata_writer(ccd_data, filename, **kwd):
     filename : str
         Name of file
 
+    hdu_mask, hdu_uncertainty, hdu_flags : str or None, optional
+        If it is a string append this attribute to the HDUList as
+        `~astropy.io.fits.ImageHDU` with the string as extension name.
+        Flags are not supported at this time. If ``None`` this attribute
+        is not appended.
+        Default is ``'MASK'`` for mask, ``'UNCERT'`` for uncertainty and
+        ``None`` for flags.
+
     kwd :
         All additional keywords are passed to :py:mod:`astropy.io.fits`
+
+    Raises
+    -------
+
+    NotImplementedError
+        Saving flags is not supported
     """
-    hdu = ccd_data.to_hdu()
+    hdu = ccd_data.to_hdu(hdu_mask=hdu_mask, hdu_uncertainty=hdu_uncertainty,
+                          hdu_flags=hdu_flags)
     hdu.writeto(filename, **kwd)
 
 
