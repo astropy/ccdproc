@@ -16,7 +16,7 @@ from astropy import log
 from astropy.wcs import WCS
 
 
-__all__ = ['CCDData']
+__all__ = ['CCDData', 'fits_ccddata_reader', 'fits_ccddata_writer']
 
 
 class CCDData(NDDataArray):
@@ -69,6 +69,18 @@ class CCDData(NDDataArray):
     ValueError
         If the ``uncertainty`` or ``mask`` inputs cannot be broadcast (e.g.,
         match shape) onto ``data``.
+
+    Methods
+    -------
+    read(*args, **kwargs)
+        ``Classmethod`` to create an CCDData instance based on a ``FITS`` file.
+        This method uses :func:`fits_ccddata_reader` with the provided
+        parameters.
+    write(*args, **kwargs)
+        Writes the contents of the CCDData instance into a new ``FITS`` file.
+        This method uses :func:`fits_ccddata_writer` with the provided
+        parameters.
+
 
     Notes
     -----
