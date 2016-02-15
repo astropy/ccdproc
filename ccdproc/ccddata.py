@@ -76,7 +76,7 @@ class CCDData(NDDataArray):
         ``Classmethod`` to create an CCDData instance based on a ``FITS`` file.
         This method uses :func:`fits_ccddata_reader` with the provided
         parameters.
-    writeto(*args, **kwargs)
+    write(*args, **kwargs)
         Writes the contents of the CCDData instance into a new ``FITS`` file.
         This method uses :func:`fits_ccddata_writer` with the provided
         parameters.
