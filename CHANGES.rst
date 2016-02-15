@@ -30,6 +30,10 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- Adding/Subtracting a CCDData instance with a Quantity with a different unit
+  produced wrong results. [#291]
+
+
 0.3.2 (unreleased)
 ------------------
 
