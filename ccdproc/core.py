@@ -12,6 +12,7 @@ from astropy import units as u
 from astropy.modeling import fitting
 from astropy import stats
 from astropy.nddata import StdDevUncertainty
+from astropy.wcs.utils import proj_plane_pixel_area
 
 from scipy import ndimage
 
@@ -572,7 +573,7 @@ def transform_image(ccd, transform_func, **kwargs):
 
 
 @log_to_metadata
-def wcs_project(ccd, target_wcs, target_shape=None):
+def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     """
     Given a CCDData image with WCS, project it onto a target WCS and
     return the reprojected data as a new CCDData image.
@@ -592,9 +593,19 @@ def wcs_project(ccd, target_wcs, target_shape=None):
         Shape of the output image. If omitted, defaults to the shape of the
         input image.
 
+    order : str, optional
+        Interpolation order for re-projection. Must be one of:
+        + 'nearest-neighbor'
+        + 'bilinear'
+        + 'biquadratic'
+        + 'bicubic'
+
     {log}
 
-
+    Returns
+    -------
+    ccd :  `~ccdproc.CCDData`
+        A transformed CCDData object
     """
     from reproject import reproject_interp
 
@@ -606,16 +617,26 @@ def wcs_project(ccd, target_wcs, target_shape=None):
 
     # Build up a list of reprojected images
     projected_image_raw, _ = reproject_interp((ccd.data, ccd.wcs),
-                                              target_wcs, shape_out=target_shape)
+                                              target_wcs,
+                                              shape_out=target_shape,
+                                              order=order)
 
     reprojected_mask = None
     if ccd.mask is not None:
         reprojected_mask, _ = reproject_interp((ccd.mask, ccd.wcs),
-                                               target_wcs, shape_out=target_shape)
-        # Make the mask 1 if the reprojected mask pixel value is non-zero
-        reprojected_mask = reprojected_mask > 0
+                                               target_wcs,
+                                               shape_out=target_shape,
+                                               order=order)
+        # Make the mask 1 if the reprojected mask pixel value is non-zero.
+        # A small threshold is included to allow for some rounding in
+        # reproject_interp.
+        reprojected_mask = reprojected_mask > 1e-8
 
-    nccd = CCDData(projected_image_raw, wcs=target_wcs,
+    # Need to scale counts by ratio of pixel areas
+    area_ratio = (proj_plane_pixel_area(target_wcs) /
+                  proj_plane_pixel_area(ccd.wcs))
+
+    nccd = CCDData(area_ratio * projected_image_raw, wcs=target_wcs,
                    mask=reprojected_mask,
                    header=ccd.header, unit=ccd.unit)
 
