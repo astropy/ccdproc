@@ -23,7 +23,7 @@ __all__ = ['background_deviation_box', 'background_deviation_filter',
            'cosmicray_median', 'cosmicray_lacosmic',
            'create_deviation', 'flat_correct', 'gain_correct', 'rebin',
            'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
-           'transform_image', 'trim_image', 'Keyword']
+           'transform_image', 'trim_image', 'wcs_project', 'Keyword']
 
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
@@ -569,6 +569,58 @@ def transform_image(ccd, transform_func, **kwargs):
         nccd.mask = (mask > 0)
 
     return nccd
+
+
+@log_to_metadata
+def wcs_project(ccd, target_wcs, target_shape=None):
+    """
+    Given a CCDData image with WCS, project it onto a target WCS and
+    return the reprojected data as a new CCDData image.
+
+    Any mask, flags, weight, or uncertainty are ignored in doing the
+    combination.
+
+    Parameters
+    ----------
+    ccd : `~ccdproc.CCDData`
+        Data to be flatfield corrected
+    target_wcs: `astropy.wcs.WCS` object
+
+        WCS onto which all images should be projected.
+
+    target_shape: two element list-like, optional
+        Shape of the output image. If omitted, defaults to the shape of the
+        input image.
+
+    {log}
+
+
+    """
+    from reproject import reproject_interp
+
+    if not (ccd.wcs.is_celestial and target_wcs.is_celestial):
+        raise ValueError('One or both WCS is not celestial.')
+
+    if target_shape is None:
+        target_shape = ccd.shape
+
+    # Build up a list of reprojected images
+    projected_image_raw, _ = reproject_interp((ccd.data, ccd.wcs),
+                                              target_wcs, shape_out=target_shape)
+
+    reprojected_mask = None
+    if ccd.mask is not None:
+        reprojected_mask, _ = reproject_interp((ccd.mask, ccd.wcs),
+                                               target_wcs, shape_out=target_shape)
+        # Make the mask 1 if the reprojected mask pixel value is non-zero
+        reprojected_mask = reprojected_mask > 0
+
+    nccd = CCDData(projected_image_raw, wcs=target_wcs,
+                   mask=reprojected_mask,
+                   header=ccd.header, unit=ccd.unit)
+
+    return nccd
+
 
 
 def sigma_func(arr, axis=None):

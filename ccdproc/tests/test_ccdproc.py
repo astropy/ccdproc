@@ -641,3 +641,29 @@ def test_transform_image_does_not_change_input(ccd_data):
     ccd = transform_image(ccd_data,np.sqrt)
     np.testing.assert_array_equal(original.data, ccd_data)
     assert original.unit == ccd_data.unit
+
+
+def wcs_for_testing(ccd_data):
+    # Set up a simply WCS, details are cut/pasted from astropy WCS docs,
+    # mostly. I did change the crpix location.
+
+    # Create a new WCS object.  The number of axes must be set
+    # from the start
+    w = WCS(naxis=2)
+
+    # Set up an "Airy's zenithal" projection
+    # Vector properties may be set with Python lists, or Numpy arrays
+    w.wcs.crpix = [ccd_data.shape[0] // 2, ccd_data.shape[1] // 2]
+    w.wcs.cdelt = np.array([-0.066667, 0.066667])
+    w.wcs.crval = [0, -90]
+    w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
+    w.wcs.set_pv([(2, 1, 45.0)])
+
+    return w
+
+
+def test_wcs_project(ccd_data):
+    target_wcs = wcs_for_testing(ccd_data)
+    ccd_data.wcs = wcs_for_testing(ccd_data)
+    new_ccd = wcs_project(ccd_data, target_wcs)
+    assert new_ccd.wcs.wcs.compare(target_wcs.wcs)
