@@ -410,6 +410,29 @@ def test_arithmetic_overload_ccddata_operand(ccd_data):
                                expected_uncertainty)
 
 
+def test_arithmetic_overload_differing_units():
+    a = np.array([1, 2, 3]) * u.m
+    b = np.array([1, 2, 3]) * u.cm
+    ccddata = CCDData(a)
+
+    # TODO: Could also be parametrized.
+    res = ccddata.add(b)
+    np.testing.assert_array_almost_equal(res.data, np.add(a, b).value)
+    assert res.unit == np.add(a, b).unit
+
+    res = ccddata.subtract(b)
+    np.testing.assert_array_almost_equal(res.data, np.subtract(a, b).value)
+    assert res.unit == np.subtract(a, b).unit
+
+    res = ccddata.multiply(b)
+    np.testing.assert_array_almost_equal(res.data, np.multiply(a, b).value)
+    assert res.unit == np.multiply(a, b).unit
+
+    res = ccddata.divide(b)
+    np.testing.assert_array_almost_equal(res.data, np.divide(a, b).value)
+    assert res.unit == np.divide(a, b).unit
+
+
 def test_ccddata_header_does_not_corrupt_fits(ccd_data, tmpdir):
     # This test is for the problem described in astropy/ccdproc#165
     # The issue comes up when a long FITS keyword value is in a header

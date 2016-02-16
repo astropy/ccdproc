@@ -321,7 +321,14 @@ class CCDData(NDDataArray):
         # and a Quantity is currently broken, but it works with two Quantity
         # arguments.
         if isinstance(other, u.Quantity):
-            other_value = other.value
+            if (operation.__name__ in ['add', 'subtract'] and
+                    self.unit != other.unit):
+                # For addition and subtraction we need to convert the unit
+                # to the same unit otherwise operating on the values alone will
+                # give wrong results (#291)
+                other_value = other.to(self.unit).value
+            else:
+                other_value = other.value
         elif isinstance(other, numbers.Number):
             other_value = other
         else:
