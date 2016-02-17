@@ -332,14 +332,17 @@ def test_combine_limitedmem_scale_fitsimages():
 
     np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data, decimal = 4)
 
-
-#test that an uncertainty function in average_combine
-#can be passed optionally
+#test the optional uncertainty function in average_combine
 def test_average_combine_uncertainty(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.average_combine(uncertainty_func=np.sum)
     assert np.all(ccd.uncertainty.array == np.sum(c.data_arr, 0))
     
-    
-    
+#test the optional uncertainty function in median_combine
+def test_median_combine_uncertainty(ccd_data):
+    ccd_list = [ccd_data, ccd_data, ccd_data]
+    c = Combiner(ccd_list)
+    ccd = c.median_combine(uncertainty_func=np.sum)
+    assert np.all(ccd.uncertainty.array == np.sum(c.data_arr, 0))
+ 
