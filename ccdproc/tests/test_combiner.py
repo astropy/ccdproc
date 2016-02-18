@@ -258,7 +258,7 @@ def test_combiner_scaling_fails(ccd_data):
 
 
 #test data combined with mask is created correctly
-def test_combiner_mask_media(ccd_data):
+def test_combiner_mask_median(ccd_data):
     data = np.zeros((10, 10))
     data[5, 5] = 1
     mask = (data == 0)
@@ -334,16 +334,52 @@ def test_combine_limitedmem_scale_fitsimages():
 
     np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data, decimal = 4)
 
+
 #test the optional uncertainty function in average_combine
 def test_average_combine_uncertainty(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.average_combine(uncertainty_func=np.sum)
-    np.testing.assert_array_equal(ccd.uncertainty.array, np.sum(c.data_arr, 0))
+    uncert_ref = np.sum(c.data_arr, 0) / np.sqrt(3)
+    np.testing.assert_array_equal(ccd.uncertainty.array, uncert_ref)
 
 #test the optional uncertainty function in median_combine
 def test_median_combine_uncertainty(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.median_combine(uncertainty_func=np.sum)
-    np.testing.assert_array_equal(ccd.uncertainty.array, np.sum(c.data_arr, 0))
+    uncert_ref = np.sum(c.data_arr, 0) / np.sqrt(3)
+    np.testing.assert_array_equal(ccd.uncertainty.array, uncert_ref)
+
+
+# test resulting uncertainty is corrected for the number of images
+def test_combiner_uncertainty_average(ccd_data):
+    ccd_list = [CCDData(np.ones((10, 10)), unit=u.adu),
+                CCDData(np.ones((10, 10))*2, unit=u.adu)]
+    c = Combiner(ccd_list)
+    ccd = c.average_combine()
+    # Just the standard deviation of ccd data.
+    ref_uncertainty = np.ones((10, 10)) / 2
+    # Correction because we combined two images.
+    ref_uncertainty /= np.sqrt(2)
+    np.testing.assert_array_almost_equal(ccd.uncertainty.array,
+                                         ref_uncertainty)
+
+
+# test resulting uncertainty is corrected for the number of images (with mask)
+def test_combiner_uncertainty_average_mask(ccd_data):
+    mask = np.zeros((10, 10), dtype=np.bool_)
+    mask[5, 5] = True
+    ccd_with_mask = CCDData(np.ones((10, 10)), unit=u.adu, mask=mask)
+    ccd_list = [ccd_with_mask,
+                CCDData(np.ones((10, 10))*2, unit=u.adu),
+                CCDData(np.ones((10, 10))*3, unit=u.adu)]
+    c = Combiner(ccd_list)
+    ccd = c.average_combine()
+    # Just the standard deviation of ccd data.
+    ref_uncertainty = np.ones((10, 10)) * np.std([1, 2, 3])
+    # Correction because we combined two images.
+    ref_uncertainty /= np.sqrt(3)
+    ref_uncertainty[5, 5] = np.std([2, 3]) / np.sqrt(2)
+    np.testing.assert_array_almost_equal(ccd.uncertainty.array,
+                                         ref_uncertainty)
