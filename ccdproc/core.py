@@ -571,7 +571,7 @@ def transform_image(ccd, transform_func, **kwargs):
     return nccd
 
 
-def sigma_func(arr, axis=0):
+def sigma_func(arr, axis=None):
     """
     Robust method for calculating the deviation of an array. ``sigma_func``
     uses the median absolute deviation to determine the standard deviation.
@@ -580,16 +580,20 @@ def sigma_func(arr, axis=0):
     ----------
     arr : `~ccdproc.CCDData` or `~numpy.ndarray`
         Array whose deviation is to be calculated.
-        
+
     axis : None or int or tuple of ints, optional
-        Axis or axes along which a sum is performed. The default (axis = None) is perform a sum over all the dimensions of the input array. axis may be negative, in which case it counts from the last to the first axis.
+        Axis or axes along which the function is performed.
+        If ``None`` (the default) it is performed over all the dimensions of the input array.
+        The axis argument can also be negative, in this case it counts from
+        the last to the first axis.
+
 
     Returns
     -------
     float
         standard deviation of array
     """
-    return 1.4826 * stats.median_absolute_deviation(arr, 0)
+    return 1.482602218505602 * stats.median_absolute_deviation(arr)
 
 
 def setbox(x, y, mbox, xmax, ymax):
