@@ -269,7 +269,7 @@ class Combiner(object):
                it overrides ``CCDData.scaling``. Defaults to None.
 
            uncertainty_func : function, optional
-               Function to calculate uncertainty. Defaults to ccdproc.sigma_func
+               Function to calculate uncertainty. Defaults to `ccdproc.sigma_func`
 
            Returns
            -------
@@ -332,7 +332,7 @@ class Combiner(object):
                it overrides ``CCDData.scaling``. Defaults to None.
 
            uncertainty_func: function, optional
-                Function to calculate uncertainty. Defaults to numpy.ma.std
+                Function to calculate uncertainty. Defaults to `numpy.ma.std`
 
            Returns
            -------
