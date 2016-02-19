@@ -1,4 +1,8 @@
 
+================
+ CCDPROC
+================
+
 Welcome to the ccdproc documentation!   Ccdproc is is an affiliated package for
 the AstroPy package for basic data reductions of CCD images.   The ccdproc 
 package provides many of the necessary tools for processing of ccd images built
