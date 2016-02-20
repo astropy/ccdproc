@@ -571,12 +571,6 @@ def test_header(ccd_data):
     assert ccd.meta == a
 
 
-def test_wcs(ccd_data):
-    ccd_data.wcs = 5
-    assert ccd_data.wcs == 5
-<<<<<<< HEAD
-
-
 def test_wcs_arithmetic(ccd_data):
     ccd_data.wcs = 5
     result = ccd_data.multiply(1.0)
