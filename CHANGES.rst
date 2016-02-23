@@ -26,6 +26,8 @@ Other Changes and Additions
 - CCDData arithmetic with number/Quantity now preserves any existing WCS. [#278]
 - Update astropy_helpers to 1.1.1. [#287]
 - Drop support for Python 2.6. [#300]
+- The ``add_keyword`` parameter now has a default of ``True``, to be more
+  explicit. [#310]
 
 Bug Fixes
 ^^^^^^^^^

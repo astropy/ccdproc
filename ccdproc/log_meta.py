@@ -19,7 +19,7 @@ _LOG_ARGUMENT = 'add_keyword'
 _LOG_ARG_HELP = \
     """
     {arg} : str, `~ccdproc.Keyword` or dict-like, optional
-        Item(s) to add to metadata of result. Set to None to completely
+        Item(s) to add to metadata of result. Set to False or None to completely
         disable logging. Default is to add a dictionary with a single item:
         the key is the name of this function  and the value is a string
         containing the arguments the function was called with, except the
@@ -53,7 +53,7 @@ def log_to_metadata(func):
         defaults = list(defaults)
     except TypeError:
         defaults = []
-    defaults.append(None)
+    defaults.append(True)
 
     signature_with_arg_added = inspect.formatargspec(original_args, varargs,
                                                      keywords, defaults)
@@ -64,15 +64,15 @@ def log_to_metadata(func):
     @wraps(func)
     def wrapper(*args, **kwd):
         # Grab the logging keyword, if it is present.
-        log_result = kwd.pop(_LOG_ARGUMENT, False)
+        log_result = kwd.pop(_LOG_ARGUMENT, True)
         result = func(*args, **kwd)
 
-        if log_result is None:
+        if not log_result:
             # No need to add metadata....
             meta_dict = {}
-        elif log_result:
+        elif log_result is not True:
             meta_dict = _metadata_to_dict(log_result)
-        elif log_result is not None:
+        else:
             # Logging is not turned off, but user did not provide a value
             # so construct one.
             key = func.__name__
