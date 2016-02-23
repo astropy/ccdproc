@@ -571,11 +571,6 @@ def test_header(ccd_data):
     assert ccd.meta == a
 
 
-def test_wcs(ccd_data):
-    ccd_data.wcs = 5
-    assert ccd_data.wcs == 5
-
-
 def test_wcs_arithmetic(ccd_data):
     ccd_data.wcs = 5
     result = ccd_data.multiply(1.0)
@@ -644,3 +639,7 @@ def test_write_read_multiextensionfits_custom_ext_names(ccd_data, tmpdir):
     np.testing.assert_array_equal(ccd_data.mask, ccd_after.mask)
     np.testing.assert_array_equal(ccd_data.uncertainty.array,
                                   ccd_after.uncertainty.array)
+
+def test_wcs(ccd_data):
+    ccd_data.wcs = 5
+    assert ccd_data.wcs == 5

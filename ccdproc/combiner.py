@@ -6,7 +6,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from numpy import ma
 from .ccddata import CCDData
-from .core import trim_image
+from .core import trim_image, sigma_func
 
 from astropy.stats import median_absolute_deviation
 from astropy.nddata import StdDevUncertainty
@@ -247,7 +247,7 @@ class Combiner(object):
             self.data_arr.mask[mask] = True
 
     # set up the combining algorithms
-    def median_combine(self, median_func=ma.median, scale_to=None):
+    def median_combine(self, median_func=ma.median, scale_to=None, uncertainty_func=sigma_func):
         """Median combine a set of arrays.
 
            A `~ccdproc.CCDData` object is returned
@@ -267,6 +267,9 @@ class Combiner(object):
            scale_to : float, optional
                Scaling factor used in the average combined image. If given,
                it overrides ``CCDData.scaling``. Defaults to None.
+
+           uncertainty_func : function, optional
+               Function to calculate uncertainty. Defaults to `ccdproc.sigma_func`
 
            Returns
            -------
@@ -294,8 +297,7 @@ class Combiner(object):
         mask = (mask == len(self.data_arr))
 
         # set the uncertainty
-        uncertainty = 1.4826 * median_absolute_deviation(self.data_arr.data,
-                                                         axis=0)
+        uncertainty = uncertainty_func(self.data_arr.data, axis=0)
 
         # create the combined image with a dtype matching the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
@@ -308,7 +310,7 @@ class Combiner(object):
         # return the combined image
         return combined_image
 
-    def average_combine(self, scale_func=ma.average, scale_to=None):
+    def average_combine(self, scale_func=ma.average, scale_to=None, uncertainty_func=ma.std):
         """ Average combine together a set of arrays.
 
            A `~ccdproc.CCDData` object is returned with the data property
@@ -328,6 +330,9 @@ class Combiner(object):
            scale_to : float, optional
                Scaling factor used in the average combined image. If given,
                it overrides ``CCDData.scaling``. Defaults to None.
+
+           uncertainty_func: function, optional
+                Function to calculate uncertainty. Defaults to `numpy.ma.std`
 
            Returns
            -------
@@ -352,7 +357,7 @@ class Combiner(object):
         mask = (mask == len(self.data_arr))
 
         # set up the deviation
-        uncertainty = ma.std(self.data_arr, axis=0)
+        uncertainty = uncertainty_func(self.data_arr, axis=0)
 
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),

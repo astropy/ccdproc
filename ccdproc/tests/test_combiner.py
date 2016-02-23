@@ -296,7 +296,7 @@ def test_combine_average_ccddata():
     np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data)
 
 
-#test combiner convenience function reads fits file and 
+#test combiner convenience function reads fits file and
 # and combine as expected when asked to run in limited memory
 def test_combine_limitedmem_fitsimages():
     fitsfile = get_pkg_data_filename('data/a8280271.fits')
@@ -312,7 +312,7 @@ def test_combine_limitedmem_fitsimages():
     np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data)
 
 
-#test combiner convenience function reads fits file and 
+#test combiner convenience function reads fits file and
 # and combine as expected when asked to run in limited memory with scaling
 @pytest.mark.xfail(NUMPY_LT_1_9,
                    reason="numpy < 1.9 loses precision in np.ma.average")
@@ -332,3 +332,16 @@ def test_combine_limitedmem_scale_fitsimages():
 
     np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data, decimal = 4)
 
+#test the optional uncertainty function in average_combine
+def test_average_combine_uncertainty(ccd_data):
+    ccd_list = [ccd_data, ccd_data, ccd_data]
+    c = Combiner(ccd_list)
+    ccd = c.average_combine(uncertainty_func=np.sum)
+    np.testing.assert_array_equal(ccd.uncertainty.array, np.sum(c.data_arr, 0))
+
+#test the optional uncertainty function in median_combine
+def test_median_combine_uncertainty(ccd_data):
+    ccd_list = [ccd_data, ccd_data, ccd_data]
+    c = Combiner(ccd_list)
+    ccd = c.median_combine(uncertainty_func=np.sum)
+    np.testing.assert_array_equal(ccd.uncertainty.array, np.sum(c.data_arr, 0))
