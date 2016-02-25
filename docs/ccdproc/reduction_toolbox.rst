@@ -88,7 +88,7 @@ LACosmic
 
 The lacosmic technique identifies cosmic rays by identifying pixels based on a
 variation of the Laplacian edge detection.  The algorithm is an implementation
-of the code describe in van Dokkum (2001) [1]_ as implemented 
+of the code describe in van Dokkum (2001) [1]_ as implemented
 in [astroscrappy](https://github.com/astropy/astroscrappy) [2]_.
 
 Use this technique with `~ccdproc.cosmicray_lacosmic`:
@@ -296,11 +296,20 @@ are replaced with ``min_value``):
     ...                                      min_value=0.9)
 
 
+Reprojecting onto a different image footprint
+---------------------------------------------
+
+An image with coordinate information (WCS) can be reprojected onto a different
+image footprint. The underlying functionality is proved by the `reproject
+project`_. Please see :ref:reprojection for more details.
+
+
 .. [1] van Dokkum, P; 2001, "Cosmic-Ray Rejection by Laplacian Edge
        Detection". The Publications of the Astronomical Society of the
        Pacific, Volume 113, Issue 789, pp. 1420-1427.
        doi: 10.1086/323894
 
-.. [2] McCully, C., 2014, "Astro-SCRAPPY", 
+.. [2] McCully, C., 2014, "Astro-SCRAPPY",
        https://github.com/astropy/astroscrappy
 
+.. _reproject project: http://reproject.readthedocs.org/
