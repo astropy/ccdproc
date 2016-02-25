@@ -24,7 +24,7 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=1.10
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy astroscrappy'
+        - CONDA_DEPENDENCIES='scipy astroscrappy reproject'
         - PIP_DEPENDENCIES='pytest-capturelog'
 
     matrix:
