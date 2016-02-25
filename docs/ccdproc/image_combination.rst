@@ -149,11 +149,15 @@ First, reproject each image onto the same footprint using
 information and another image (or WCS) onto which you want to project your
 images:
 
+.. doctest-skip::
+
     >>> from ccdproc import wcs_project
     >>> reprojected_image = wcs_project(input_image, target_wcs)
 
 Repeat this for each of the images you want to combine, building up a list of
 reprojected images:
+
+.. doctest-skip::
 
     >>> reprojected = []
     >>> for img in my_list_of_images:
@@ -161,6 +165,8 @@ reprojected images:
     ...     reprojected.append(new_image)
 
 Then, combine the images as described above for any set of images:
+
+.. doctest-skip::
 
     >>> combiner = Combiner(reprojected)
     >>> stacked_image = combiner.average_combine()
