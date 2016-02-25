@@ -662,10 +662,9 @@ def wcs_for_testing(shape):
 
 
 def test_wcs_project_onto_same_wcs(ccd_data):
-    # The trivial case.
+    # The trivial case, same WCS, no mask.
     target_wcs = wcs_for_testing(ccd_data.shape)
     ccd_data.wcs = wcs_for_testing(ccd_data.shape)
-    ccd_data.mask = np.random.choice([0, 1], size=ccd_data.shape)
 
     new_ccd = wcs_project(ccd_data, target_wcs)
 
@@ -675,10 +674,6 @@ def test_wcs_project_onto_same_wcs(ccd_data):
     # Make sure data matches within some reasonable tolerance.
     print((ccd_data.data-new_ccd.data).max())
     np.testing.assert_allclose(ccd_data.data, new_ccd.data, rtol=1e-5)
-
-    # Make sure data matches within some reasonable tolerance.
-    print((ccd_data.mask != new_ccd.mask).sum())
-    np.testing.assert_array_equal(ccd_data.mask, new_ccd.mask)
 
 
 def test_wcs_project_onto_shifted_wcs(ccd_data):
@@ -698,16 +693,27 @@ def test_wcs_project_onto_shifted_wcs(ccd_data):
 
     # Make sure data matches within some reasonable tolerance, keeping in mind
     # that the pixels should all be shifted.
-    np.testing.assert_allclose(ccd_data.data[:-1, :-1],
-                               new_ccd.data[1:, 1:], rtol=1e-5)
+    masked_input = np.ma.array(ccd_data.data, mask=ccd_data.mask)
+    masked_output = np.ma.array(new_ccd.data, mask=new_ccd.mask)
+    np.testing.assert_allclose(masked_input[:-1, :-1],
+                               masked_output[1:, 1:], rtol=1e-5)
 
     # The masks should all be shifted too.
     np.testing.assert_array_equal(ccd_data.mask[:-1, :-1],
                                   new_ccd.mask[1:, 1:])
 
+    # We should have more values that are masked in the output array
+    # than on input because some on output were not in the footprint
+    # of the original array.
+
+    # In the case of a shift, one row and one column should be nan, and they
+    # will share one common nan where they intersect, so we know how many nan
+    # there should be.
+    assert np.isnan(new_ccd.data).sum() == np.sum(new_ccd.shape) - 1
+
 
 # Use an odd number of pixels to make a well-defined center pixel
-@pytest.mark.data_size(3)
+@pytest.mark.data_size(31)
 def test_wcs_project_onto_scale_wcs(ccd_data):
     # Make the target WCS with half the pixel scale and number of pixels
     # and the values should drop by a factor of 4.
@@ -761,5 +767,7 @@ def test_wcs_project_onto_scale_wcs(ccd_data):
     assert np.all(new_ccd.mask[new_center[0]:new_center[0]+2,
                                new_center[1]:new_center[1]+2])
 
-    # Those are the only pixels that should be masked.
-    assert new_ccd.mask.sum() == 4
+    # Those four, and any that reproject made nan because they draw on
+    # pixels outside the footprint of the original image, are the only
+    # pixels that should be masked.
+    assert new_ccd.mask.sum() == 4 + np.isnan(new_ccd.data).sum()

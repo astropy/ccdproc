@@ -615,7 +615,6 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     if target_shape is None:
         target_shape = ccd.shape
 
-    # Build up a list of reprojected images
     projected_image_raw, _ = reproject_interp((ccd.data, ccd.wcs),
                                               target_wcs,
                                               shape_out=target_shape,
@@ -632,12 +631,23 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
         # reproject_interp.
         reprojected_mask = reprojected_mask > 1e-8
 
+    # The reprojection will contain nan for any pixels for which the source
+    # was outside the original image. Those should be masked also.
+    output_mask = np.isnan(projected_image_raw)
+
+    if reprojected_mask is not None:
+        output_mask = output_mask | reprojected_mask
+
     # Need to scale counts by ratio of pixel areas
     area_ratio = (proj_plane_pixel_area(target_wcs) /
                   proj_plane_pixel_area(ccd.wcs))
 
+    # If nothing ended up masked, don't create a mask.
+    if not output_mask.any():
+        output_mask = None
+
     nccd = CCDData(area_ratio * projected_image_raw, wcs=target_wcs,
-                   mask=reprojected_mask,
+                   mask=output_mask,
                    header=ccd.header, unit=ccd.unit)
 
     return nccd
