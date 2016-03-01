@@ -5,7 +5,7 @@ Introduction
 ------------
 
 .. note::
-    `ccdproc` works only with astropy version 0.4.0 or later.
+    `ccdproc` works only with astropy version 1.0 or later.
 
 The `ccdproc` package provides:
 
@@ -16,7 +16,7 @@ The `ccdproc` package provides:
   subtraction, flat field correction) with a flexible mechanism for logging
   reduction steps in the image metadata.
 + A function for reprojecting an image onto another WCS, useful for stacking
-  science images. The actual reprojectino is done by the
+  science images. The actual reprojection is done by the
   `reproject package <http://reproject.readthedocs.org/en/stable/>`_.
 + A class for combining and/or clipping images, `~ccdproc.Combiner`, and
   associated functions.
