@@ -139,8 +139,7 @@ This option can be combined with the previous one to also give the files a
 new name.
 
 3. Finally, if you want to live dangerously, you can overwrite the files in
-the same location with the ``overwrite`` argument (Note: This functionality 
-currently does not work on Windows); use it carefully because it
+the same location with the ``overwrite`` argument; use it carefully because it
 preserves no backup. The example below replaces each of the I band images
 with 30 second exposure with a file that has had the mean subtracted::
 
@@ -148,3 +147,6 @@ with 30 second exposure with a file that has had the mean subtracted::
     ...                     imagetyp='LiGhT', filter='I', exposure=30):
     ...    hdu.header['meansub'] = True
     ...    hdu.data = hdu.data - hdu.data.mean()
+
+.. note::
+    This functionality is not currently available on Windows.
