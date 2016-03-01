@@ -100,7 +100,7 @@ excluding any pixels mapped by clipping:
 
 Performing a median combination is also straightforward,
 
-    >>> combined_median = combiner.median_combine()  # can be slow, see below 
+    >>> combined_median = combiner.median_combine()  # can be slow, see below
 
 
 
@@ -119,7 +119,56 @@ underlying images are *not* scaled; scaling is only done as part of combining
 using `~ccdproc.Combiner.average_combine` or
 `~ccdproc.Combiner.median_combine`).
 
+
+.. _reprojection:
+
 With image transformation
 -------------------------
 
+.. note::
 
+    **Flux conservation** Whether flux is conserved in performing the
+    reprojection depends on the method you use for reprojecting and the
+    extent to which pixel area varies across the image.
+    `~ccdproc.wcs_project` rescales counts by the ratio of pixel area
+    *of the pixel indicated by the keywords* ``CRPIX`` of the input and
+    output images.
+
+    The reprojection methods available are described in detail in the
+    documentation for the `reproject project`_; consult those
+    documents for details.
+
+    You should carefully check whether flux conservation provided in CCDPROC
+    is adequate for your needs. Suggestions for improvement are welcome!
+
+Align and then combine images based on World Coordinate System (WCS)
+information in the image headers in two steps.
+
+First, reproject each image onto the same footprint using
+`~ccdproc.wcs_project`. The example below assumes you have an image with WCS
+information and another image (or WCS) onto which you want to project your
+images:
+
+.. doctest-skip::
+
+    >>> from ccdproc import wcs_project
+    >>> reprojected_image = wcs_project(input_image, target_wcs)
+
+Repeat this for each of the images you want to combine, building up a list of
+reprojected images:
+
+.. doctest-skip::
+
+    >>> reprojected = []
+    >>> for img in my_list_of_images:
+    ...     new_image = wcs_project(img, target_wcs)
+    ...     reprojected.append(new_image)
+
+Then, combine the images as described above for any set of images:
+
+.. doctest-skip::
+
+    >>> combiner = Combiner(reprojected)
+    >>> stacked_image = combiner.average_combine()
+
+.. _reproject project: http://reproject.readthedocs.org/

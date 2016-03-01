@@ -11,6 +11,8 @@ from astropy.stats import median_absolute_deviation as mad
 from astropy.tests.helper import pytest
 from astropy.utils.data import get_pkg_data_filename
 from astropy.utils.compat import NUMPY_LT_1_9
+from astropy.wcs import WCS
+
 from ..ccddata import CCDData
 from ..combiner import *
 

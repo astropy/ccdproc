@@ -9,7 +9,6 @@ from astropy.units.quantity import Quantity
 import astropy.units as u
 from astropy.wcs import WCS
 
-
 from astropy.nddata import StdDevUncertainty
 
 from numpy.testing import assert_array_equal
@@ -641,3 +640,134 @@ def test_transform_image_does_not_change_input(ccd_data):
     ccd = transform_image(ccd_data,np.sqrt)
     np.testing.assert_array_equal(original.data, ccd_data)
     assert original.unit == ccd_data.unit
+
+
+def wcs_for_testing(shape):
+    # Set up a simply WCS, details are cut/pasted from astropy WCS docs,
+    # mostly. CRPIX is set to the center of shape, rounded down.
+
+    # Create a new WCS object.  The number of axes must be set
+    # from the start
+    w = WCS(naxis=2)
+
+    # Set up an "Airy's zenithal" projection
+    # Vector properties may be set with Python lists, or Numpy arrays
+    w.wcs.crpix = [shape[0] // 2, shape[1] // 2]
+    w.wcs.cdelt = np.array([-0.066667, 0.066667])
+    w.wcs.crval = [0, -90]
+    w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
+    w.wcs.set_pv([(2, 1, 45.0)])
+
+    return w
+
+
+def test_wcs_project_onto_same_wcs(ccd_data):
+    # The trivial case, same WCS, no mask.
+    target_wcs = wcs_for_testing(ccd_data.shape)
+    ccd_data.wcs = wcs_for_testing(ccd_data.shape)
+
+    new_ccd = wcs_project(ccd_data, target_wcs)
+
+    # Make sure new image has correct WCS.
+    assert new_ccd.wcs.wcs.compare(target_wcs.wcs)
+
+    # Make sure data matches within some reasonable tolerance.
+    print((ccd_data.data-new_ccd.data).max())
+    np.testing.assert_allclose(ccd_data.data, new_ccd.data, rtol=1e-5)
+
+
+def test_wcs_project_onto_shifted_wcs(ccd_data):
+    # Just make the target WCS the same as the initial with the center
+    # pixel shifted by 1 in x and y.
+
+    ccd_data.wcs = wcs_for_testing(ccd_data.shape)
+    target_wcs = wcs_for_testing(ccd_data.shape)
+    target_wcs.wcs.crpix += [1, 1]
+
+    ccd_data.mask = np.random.choice([0, 1], size=ccd_data.shape)
+
+    new_ccd = wcs_project(ccd_data, target_wcs)
+
+    # Make sure new image has correct WCS.
+    assert new_ccd.wcs.wcs.compare(target_wcs.wcs)
+
+    # Make sure data matches within some reasonable tolerance, keeping in mind
+    # that the pixels should all be shifted.
+    masked_input = np.ma.array(ccd_data.data, mask=ccd_data.mask)
+    masked_output = np.ma.array(new_ccd.data, mask=new_ccd.mask)
+    np.testing.assert_allclose(masked_input[:-1, :-1],
+                               masked_output[1:, 1:], rtol=1e-5)
+
+    # The masks should all be shifted too.
+    np.testing.assert_array_equal(ccd_data.mask[:-1, :-1],
+                                  new_ccd.mask[1:, 1:])
+
+    # We should have more values that are masked in the output array
+    # than on input because some on output were not in the footprint
+    # of the original array.
+
+    # In the case of a shift, one row and one column should be nan, and they
+    # will share one common nan where they intersect, so we know how many nan
+    # there should be.
+    assert np.isnan(new_ccd.data).sum() == np.sum(new_ccd.shape) - 1
+
+
+# Use an odd number of pixels to make a well-defined center pixel
+@pytest.mark.data_size(31)
+def test_wcs_project_onto_scale_wcs(ccd_data):
+    # Make the target WCS with half the pixel scale and number of pixels
+    # and the values should drop by a factor of 4.
+
+    ccd_data.wcs = wcs_for_testing(ccd_data.shape)
+
+    # Make sure wcs is centered at the center of the center pixel.
+    ccd_data.wcs.wcs.crpix += 0.5
+
+    # Use uniform input data value for simplicity.
+    ccd_data.data = np.ones_like(ccd_data.data)
+
+    # Make mask zero...
+    ccd_data.mask = np.zeros_like(ccd_data.data)
+    # ...except the center pixel, which is one.
+    ccd_data.mask[ccd_data.wcs.wcs.crpix[0], ccd_data.wcs.wcs.crpix[1]] = 1
+
+    target_wcs = wcs_for_testing(ccd_data.shape)
+    target_wcs.wcs.cdelt /= 2
+
+    # Choice below ensures we are really at the center pixel of an odd range.
+    target_shape = 2 * np.array(ccd_data.shape) + 1
+    target_wcs.wcs.crpix = 2 * target_wcs.wcs.crpix + 1 + 0.5
+
+    # Explicitly set the interpolation method so we know what to
+    # expect for the mass.
+    new_ccd = wcs_project(ccd_data, target_wcs,
+                          target_shape=target_shape,
+                          order='nearest-neighbor')
+
+    # Make sure new image has correct WCS.
+    assert new_ccd.wcs.wcs.compare(target_wcs.wcs)
+
+    # Define a cutout from the new array that should match the old.
+    new_lower_bound = (np.array(new_ccd.shape) -
+                       np.array(ccd_data.shape)) / 2
+    new_upper_bound = (np.array(new_ccd.shape) +
+                       np.array(ccd_data.shape)) / 2
+    data_cutout = new_ccd.data[new_lower_bound[0]:new_upper_bound[0],
+                               new_lower_bound[1]:new_upper_bound[1]]
+
+    # Make sure data matches within some reasonable tolerance, keeping in mind
+    # that the pixels have been scaled.
+    np.testing.assert_allclose(ccd_data.data / 4,
+                               data_cutout,
+                               rtol=1e-5)
+
+    # Mask should be true for four pixels (all nearest neighbors)
+    # of the single pixel we masked initially.
+    new_center = new_ccd.wcs.wcs.crpix
+    assert np.all(new_ccd.mask[new_center[0]:new_center[0]+2,
+                               new_center[1]:new_center[1]+2])
+
+    # Those four, and any that reproject made nan because they draw on
+    # pixels outside the footprint of the original image, are the only
+    # pixels that should be masked.
+    assert new_ccd.mask.sum() == 4 + np.isnan(new_ccd.data).sum()

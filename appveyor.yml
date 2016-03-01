@@ -31,7 +31,7 @@ install:
     - "powershell ci-helpers/appveyor/install-miniconda.ps1"
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "activate test"
-    - "conda install -c astropy astroscrappy"
+    - "conda install -c astropy astroscrappy reproject"
 
 # Not a .NET project, we build astroplan in the install step instead
 build: false

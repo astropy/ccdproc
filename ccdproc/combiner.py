@@ -12,7 +12,7 @@ from astropy.stats import median_absolute_deviation
 from astropy.nddata import StdDevUncertainty
 from astropy import log
 
-__all__ = ['Combiner','combine']
+__all__ = ['Combiner', 'combine']
 
 
 class Combiner(object):

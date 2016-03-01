@@ -12,6 +12,7 @@ from astropy import units as u
 from astropy.modeling import fitting
 from astropy import stats
 from astropy.nddata import StdDevUncertainty
+from astropy.wcs.utils import proj_plane_pixel_area
 
 from scipy import ndimage
 
@@ -23,7 +24,7 @@ __all__ = ['background_deviation_box', 'background_deviation_filter',
            'cosmicray_median', 'cosmicray_lacosmic',
            'create_deviation', 'flat_correct', 'gain_correct', 'rebin',
            'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
-           'transform_image', 'trim_image', 'Keyword']
+           'transform_image', 'trim_image', 'wcs_project', 'Keyword']
 
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
@@ -39,6 +40,7 @@ _short_names = {
     'subtract_overscan': 'suboscan',
     'trim_image': 'trimim',
     'transform_image': 'tranim',
+    'wcs_project': 'wcsproj'
 }
 
 
@@ -569,6 +571,88 @@ def transform_image(ccd, transform_func, **kwargs):
         nccd.mask = (mask > 0)
 
     return nccd
+
+
+@log_to_metadata
+def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
+    """
+    Given a CCDData image with WCS, project it onto a target WCS and
+    return the reprojected data as a new CCDData image.
+
+    Any flags, weight, or uncertainty are ignored in doing the
+    reprojection.
+
+    Parameters
+    ----------
+    ccd : `~ccdproc.CCDData`
+        Data to be projected.
+
+    target_wcs : `astropy.wcs.WCS` object
+        WCS onto which all images should be projected.
+
+    target_shape : two element list-like, optional
+        Shape of the output image. If omitted, defaults to the shape of the
+        input image.
+
+    order : str, optional
+        Interpolation order for re-projection. Must be one of:
+        + 'nearest-neighbor'
+        + 'bilinear'
+        + 'biquadratic'
+        + 'bicubic'
+
+    {log}
+
+    Returns
+    -------
+    ccd : `~ccdproc.CCDData`
+        A transformed CCDData object
+    """
+    from reproject import reproject_interp
+
+    if not (ccd.wcs.is_celestial and target_wcs.is_celestial):
+        raise ValueError('One or both WCS is not celestial.')
+
+    if target_shape is None:
+        target_shape = ccd.shape
+
+    projected_image_raw, _ = reproject_interp((ccd.data, ccd.wcs),
+                                              target_wcs,
+                                              shape_out=target_shape,
+                                              order=order)
+
+    reprojected_mask = None
+    if ccd.mask is not None:
+        reprojected_mask, _ = reproject_interp((ccd.mask, ccd.wcs),
+                                               target_wcs,
+                                               shape_out=target_shape,
+                                               order=order)
+        # Make the mask 1 if the reprojected mask pixel value is non-zero.
+        # A small threshold is included to allow for some rounding in
+        # reproject_interp.
+        reprojected_mask = reprojected_mask > 1e-8
+
+    # The reprojection will contain nan for any pixels for which the source
+    # was outside the original image. Those should be masked also.
+    output_mask = np.isnan(projected_image_raw)
+
+    if reprojected_mask is not None:
+        output_mask = output_mask | reprojected_mask
+
+    # Need to scale counts by ratio of pixel areas
+    area_ratio = (proj_plane_pixel_area(target_wcs) /
+                  proj_plane_pixel_area(ccd.wcs))
+
+    # If nothing ended up masked, don't create a mask.
+    if not output_mask.any():
+        output_mask = None
+
+    nccd = CCDData(area_ratio * projected_image_raw, wcs=target_wcs,
+                   mask=output_mask,
+                   header=ccd.header, unit=ccd.unit)
+
+    return nccd
+
 
 
 def sigma_func(arr, axis=None):
