@@ -256,7 +256,7 @@ class TestImageFileCollection(object):
         collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
                                              keywords=['imagetyp'])
         for header, fname in collection.headers(return_fname=True):
-            assert (fname in collection._paths())
+            assert (fname in collection.summary['file'])
             assert (isinstance(header, fits.Header))
 
     def test_dir_with_no_fits_files(self, tmpdir):

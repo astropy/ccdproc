@@ -592,7 +592,8 @@ class ImageFileCollection(object):
 
         return_fname : bool, default is False
             If True, return the tuple (header, file_name) instead of just
-            header.
+            header. The file name returned is the name of the file only,
+            not the full path to the file.
 
         kwd : dict
             Any additional keywords are used to filter the items returned; see
@@ -606,7 +607,7 @@ class ImageFileCollection(object):
 
         ({return_type}, str)
             If ``return_fname`` is ``True``, yield a tuple of
-            ({name}, ``file path``) for next the  item in the collection.
+            ({name}, ``file name``) for the next item in the collection.
 
         """
         # store mask so we can reset at end--must COPY, otherwise
@@ -626,6 +627,8 @@ class ImageFileCollection(object):
             hdulist = fits.open(full_path,
                                 do_not_scale_image_data=no_scale)
 
+            file_name = path.basename(full_path)
+
             return_options = {'header': hdulist[0].header,
                               'hdu': hdulist[0],
                               'data': hdulist[0].data}
@@ -633,7 +636,7 @@ class ImageFileCollection(object):
             try:
                 yield (return_options[return_type]  # pragma: no branch
                        if (not return_fname) else
-                       (return_options[return_type], full_path))
+                       (return_options[return_type], file_name))
             except KeyError:
                 raise ValueError('No generator for {}'.format(return_type))
 
