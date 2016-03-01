@@ -40,6 +40,7 @@ _short_names = {
     'subtract_overscan': 'suboscan',
     'trim_image': 'trimim',
     'transform_image': 'tranim',
+    'wcs_project': 'wcsproj'
 }
 
 
@@ -578,18 +579,18 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     Given a CCDData image with WCS, project it onto a target WCS and
     return the reprojected data as a new CCDData image.
 
-    Any mask, flags, weight, or uncertainty are ignored in doing the
-    combination.
+    Any flags, weight, or uncertainty are ignored in doing the
+    reprojection.
 
     Parameters
     ----------
     ccd : `~ccdproc.CCDData`
-        Data to be flatfield corrected
-    target_wcs: `astropy.wcs.WCS` object
+        Data to be projected.
 
+    target_wcs : `astropy.wcs.WCS` object
         WCS onto which all images should be projected.
 
-    target_shape: two element list-like, optional
+    target_shape : two element list-like, optional
         Shape of the output image. If omitted, defaults to the shape of the
         input image.
 
@@ -604,7 +605,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
 
     Returns
     -------
-    ccd :  `~ccdproc.CCDData`
+    ccd : `~ccdproc.CCDData`
         A transformed CCDData object
     """
     from reproject import reproject_interp
