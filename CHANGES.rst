@@ -34,6 +34,8 @@ Bug Fixes
 
 - Adding/Subtracting a CCDData instance with a Quantity with a different unit
   produced wrong results. [#291]
+- The uncertainty resulting when combining CCDData will be divided by the
+  square root of the number of combined pixel [#309]
 
 
 0.3.2 (unreleased)

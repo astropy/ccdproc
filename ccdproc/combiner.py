@@ -12,6 +12,8 @@ from astropy.stats import median_absolute_deviation
 from astropy.nddata import StdDevUncertainty
 from astropy import log
 
+import math
+
 __all__ = ['Combiner', 'combine']
 
 
@@ -293,11 +295,16 @@ class Combiner(object):
         data = median_func(scalings * self.data_arr, axis=0)
 
         # set the mask
-        mask = self.data_arr.mask.sum(axis=0)
-        mask = (mask == len(self.data_arr))
+        masked_values = self.data_arr.mask.sum(axis=0)
+        mask = (masked_values == len(self.data_arr))
 
         # set the uncertainty
         uncertainty = uncertainty_func(self.data_arr.data, axis=0)
+        # Divide uncertainty by the number of pixel (#309)
+        # TODO: This should be np.sqrt(len(self.data_arr) - masked_values) but
+        # median_absolute_deviation ignores the mask... so it
+        # would yield inconsistent results.
+        uncertainty /= math.sqrt(len(self.data_arr))
 
         # create the combined image with a dtype matching the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
@@ -353,11 +360,13 @@ class Combiner(object):
                                returned=True)
 
         # set up the mask
-        mask = self.data_arr.mask.sum(axis=0)
-        mask = (mask == len(self.data_arr))
+        masked_values = self.data_arr.mask.sum(axis=0)
+        mask = (masked_values == len(self.data_arr))
 
         # set up the deviation
         uncertainty = uncertainty_func(self.data_arr, axis=0)
+        # Divide uncertainty by the number of pixel (#309)
+        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
 
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
