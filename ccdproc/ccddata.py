@@ -29,8 +29,8 @@ class CCDData(NDDataArray):
 
     Parameters
     -----------
-    data : `~numpy.ndarray` or :class:`~astropy.nddata.NDData`
-        The actual data contained in this `~astropy.nddata.NDData` object.
+    data : `~numpy.ndarray` or :class:`~ccdproc.CCDData`
+        The actual data contained in this `~ccdproc..CCDData` object.
         Note that this will always be copies by *reference* , so you should
         make copy the ``data`` before passing it in if that's the  desired
         behavior.
@@ -84,26 +84,23 @@ class CCDData(NDDataArray):
 
     Notes
     -----
-    `~astropy.nddata.NDData` objects can be easily converted to a regular
+    `~ccdproc.CCDData` objects can be easily converted to a regular
      Numpy array using `numpy.asarray`
 
     For example::
 
-        >>> from astropy.nddata import NDData
+        >>> from ccdproc import CCDData
         >>> import numpy as np
-        >>> x = NDData([1,2,3])
+        >>> x = CCDData([1,2,3], unit='adu')
         >>> np.asarray(x)
-        array(NDData([1, 2, 3]), dtype=object)
-
-    If the `~astropy.nddata.NDData` object has a ``mask``, `numpy.asarray` will
-    return a Numpy masked array.
+        array(CCDData([1, 2, 3]), dtype=object)
 
     This is useful, for example, when plotting a 2D image using
     matplotlib.
 
-        >>> from astropy.nddata import NDData   # doctest: +SKIP
+        >>> from ccdproc import CCDData   
         >>> from matplotlib import pyplot as plt   # doctest: +SKIP
-        >>> x = NDData([[1,2,3], [4,5,6]])   # doctest: +SKIP
+        >>> x = CCDData([[1,2,3], [4,5,6]], unit='adu') 
         >>> plt.imshow(x)   # doctest: +SKIP
 
     """
@@ -176,7 +173,7 @@ class CCDData(NDDataArray):
             if hasattr(value, 'keys'):
                 self._meta = value
             else:
-                raise TypeError('NDData meta attribute must be dict-like')
+                raise TypeError('CCDData meta attribute must be dict-like')
 
     @property
     def uncertainty(self):
