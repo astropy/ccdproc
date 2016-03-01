@@ -353,7 +353,7 @@ def test_median_combine_uncertainty(ccd_data):
 
 
 # test resulting uncertainty is corrected for the number of images
-def test_combiner_uncertainty_average(ccd_data):
+def test_combiner_uncertainty_average():
     ccd_list = [CCDData(np.ones((10, 10)), unit=u.adu),
                 CCDData(np.ones((10, 10))*2, unit=u.adu)]
     c = Combiner(ccd_list)
@@ -367,7 +367,7 @@ def test_combiner_uncertainty_average(ccd_data):
 
 
 # test resulting uncertainty is corrected for the number of images (with mask)
-def test_combiner_uncertainty_average_mask(ccd_data):
+def test_combiner_uncertainty_average_mask():
     mask = np.zeros((10, 10), dtype=np.bool_)
     mask[5, 5] = True
     ccd_with_mask = CCDData(np.ones((10, 10)), unit=u.adu, mask=mask)
