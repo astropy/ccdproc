@@ -30,7 +30,7 @@ class CCDData(NDDataArray):
     Parameters
     -----------
     data : `~numpy.ndarray` or :class:`~ccdproc.CCDData`
-        The actual data contained in this `~ccdproc..CCDData` object.
+        The actual data contained in this `~ccdproc.CCDData` object.
         Note that this will always be copies by *reference* , so you should
         make copy the ``data`` before passing it in if that's the  desired
         behavior.
