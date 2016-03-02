@@ -2,6 +2,18 @@
 0.4.0 (unreleased)
 ------------------
 
+General
+^^^^^^^
+
+- ccdproc has now the following requirements:
+
+  - Python 2.7 or 3.4 or later.
+  - astropy 1.0 or later
+  - numpy 1.9 or later
+  - scipy
+  - astroscrappy
+  - reproject
+
 New Features
 ^^^^^^^^^^^^
 
