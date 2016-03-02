@@ -147,3 +147,6 @@ with 30 second exposure with a file that has had the mean subtracted::
     ...                     imagetyp='LiGhT', filter='I', exposure=30):
     ...    hdu.header['meansub'] = True
     ...    hdu.data = hdu.data - hdu.data.mean()
+
+.. note::
+    This functionality is not currently available on Windows.

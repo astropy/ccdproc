@@ -24,7 +24,7 @@ There are basically three logging options:
 
 .. _create_deviation:
 
-Gain correct and create deviantion image
+Gain correct and create deviation image
 ----------------------------------------
 
 Uncertainty

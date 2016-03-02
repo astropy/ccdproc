@@ -7,7 +7,7 @@ Requirements
 
 Ccdproc has the following requirements:
 
-- `Astropy`_ v0.4 or later
+- `Astropy`_ v1.0 or later
 - `Numpy <http://www.numpy.org/>`_
 - `Scipy <http://www.scipy.org/>`_
 - `astroscrappy <https://github.com/astropy/astroscrappy>`_
@@ -31,6 +31,15 @@ To install ccdproc with `pip <http://www.pip-installer.org/en/latest/>`_, simply
     The ``--no-deps`` flag is optional, but highly recommended if you already
     have Numpy installed, since otherwise pip will sometimes try to "help" you
     by upgrading your Numpy installation, which may not always be desired.
+
+Using conda
+-------------
+
+To install ccdproc with `anaconda <http://continuum.io/>`_, simple run::
+
+    conda install -c astropy ccdproc
+
+
 
 Building from source
 ====================

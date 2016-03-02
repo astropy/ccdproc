@@ -201,3 +201,7 @@ is between two `~ccdproc.ccddata.CCDData` objects.
 
 
 The arithmetic operators ``*``, ``/``, ``+`` and ``-`` are *not* overridden.
+
+.. note::
+   If two images have different WCS values, the wcs on the first 
+   `~ccdproc.ccddata.CCDData` object will be used for the resultant object.
