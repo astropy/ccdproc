@@ -93,7 +93,7 @@ class CCDData(NDDataArray):
         >>> import numpy as np
         >>> x = CCDData([1,2,3], unit='adu')
         >>> np.asarray(x)
-        array(CCDData([1, 2, 3]), dtype=object)
+        array([1, 2, 3])
 
     This is useful, for example, when plotting a 2D image using
     matplotlib.
