@@ -11,7 +11,7 @@ Ccdproc has the following requirements:
 - `Numpy <http://www.numpy.org/>`_
 - `Scipy <http://www.scipy.org/>`_
 - `astroscrappy <https://github.com/astropy/astroscrappy>`_
-- `reproject <http://reproject.readthedocs.org/en/stable/>`_
+- `reproject  <https://github.com/astrofrog/reproject>`_
 
 One easy way to get these dependencies is to install a python distribution
 like `anaconda <http://continuum.io/>`_.

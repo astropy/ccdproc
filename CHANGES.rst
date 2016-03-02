@@ -2,6 +2,18 @@
 0.4.0 (unreleased)
 ------------------
 
+General
+^^^^^^^
+
+- ccdproc has now the following requirements:
+
+  - Python 2.7 or 3.4 or later.
+  - astropy 1.0 or later
+  - numpy 1.9 or later
+  - scipy
+  - astroscrappy
+  - reproject
+
 New Features
 ^^^^^^^^^^^^
 
@@ -34,6 +46,8 @@ Bug Fixes
 
 - Adding/Subtracting a CCDData instance with a Quantity with a different unit
   produced wrong results. [#291]
+- The uncertainty resulting when combining CCDData will be divided by the
+  square root of the number of combined pixel [#309]
 
 
 0.3.2 (unreleased)
