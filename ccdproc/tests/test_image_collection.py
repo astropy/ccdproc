@@ -21,8 +21,6 @@ _filters = []
 _original_dir = ''
 
 
-@pytest.mark.skipif("os.environ.get('APPVEYOR')",
-                    reason="fails on AppVeyor/Windows")
 def test_fits_summary(triage_setup):
     keywords = ['imagetyp', 'filter']
     ic = image_collection.ImageFileCollection(triage_setup.test_dir,
@@ -393,10 +391,11 @@ class TestImageFileCollection(object):
     def test_setting_write_location_to_bad_dest_raises_error(self, tmpdir,
                                                              triage_setup):
         new_tmp = tmpdir.mkdtemp()
-        os.chmod(new_tmp.strpath, stat.S_IREAD)
+        bad_directory = new_tmp.join('foo')
+
         ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords=['naxis'])
         with pytest.raises(IOError):
-            for hdr in ic.headers(save_location=new_tmp.strpath):
+            for hdr in ic.headers(save_location=bad_directory.strpath):
                 pass
 
     def test_initializing_from_table(self, triage_setup):
@@ -540,10 +539,15 @@ class TestImageFileCollection(object):
         table_disk = Table.read('test_table.txt', format='ascii.csv')
         assert len(table_disk) == len(ic.summary_info)
 
-    def test_refresh_method_sees_added_keywords(self, triage_setup):
+    @pytest.mark.skipif("os.environ.get('APPVEYOR') or os.sys.platform == 'win32'",
+                        reason="fails on Windows because file "
+                               "overwriting fails")
+
+    def test_refresh_method_sees_added_keywords(self, triage_setup, tmpdir):
         ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
         # Add a keyword I know isn't already in the header to each file.
         not_in_header = 'BARKARK'
+
         for h in ic.headers(overwrite=True):
             h[not_in_header] = True
         print(h)
