@@ -835,7 +835,7 @@ def test_ccd_process():
     # error should be (4 + 5)**0.5 / 0.5  = 3.0
 
     np.testing.assert_array_equal(2.0 * np.ones((100, 90)), occd.data)
-    np.testing.assert_approx_equal(3.0 * np.ones((100, 90)),
-                                  occd.uncertainty.array, significant=3)
+    np.testing.assert_almost_equal(3.0 * np.ones((100, 90)),
+                                  occd.uncertainty.array)
     np.testing.assert_array_equal(mask, occd.mask)
     assert(occd.unit == u.electron)
