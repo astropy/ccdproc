@@ -587,6 +587,16 @@ def test_wcs_arithmetic_ccd(ccd_data, operation):
     assert result.wcs == ccd_data.wcs
     assert ccd_data2.wcs is None
 
+@pytest.mark.parametrize('operation',
+                         ['multiply', 'divide', 'add', 'subtract'])
+def test_mask_arithmetic_ccd(ccd_data, operation):
+    ccd_data2 = ccd_data.copy()
+    ccd_data.mask = (ccd_data.data > 0)
+    method = ccd_data.__getattribute__(operation)
+    result = method(ccd_data2)
+    np.testing.assert_equal(result.mask, ccd_data.mask)
+
+
 
 def test_write_read_multiextensionfits_mask_default(ccd_data, tmpdir):
     # Test that if a mask is present the mask is saved and loaded by default.
@@ -643,3 +653,4 @@ def test_write_read_multiextensionfits_custom_ext_names(ccd_data, tmpdir):
 def test_wcs(ccd_data):
     ccd_data.wcs = 5
     assert ccd_data.wcs == 5
+

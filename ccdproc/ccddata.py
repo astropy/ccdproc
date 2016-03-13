@@ -343,9 +343,10 @@ class CCDData(NDDataArray):
         else:
             result_uncertainty = None
 
+        new_mask = copy.deepcopy(self.mask)
         new_meta = copy.deepcopy(self.meta)
         new_wcs = copy.deepcopy(self.wcs)
-        result = CCDData(result_data, unit=result_unit,
+        result = CCDData(result_data, unit=result_unit, mask=new_mask,
                          uncertainty=result_uncertainty,
                          meta=new_meta, wcs=new_wcs)
         return result
