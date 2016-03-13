@@ -303,11 +303,11 @@ All of the basic processing steps can be accomplished in a single step using
 correct, add a bad pixel mask, create an uncertainty frame, subtract the master
 bias, and flat-field the image.  These can be run together as:
 
-     >>> nccd = ccd_process(ccd, oscan='[1:10,1:100]', trim='[10:100, 1,100]',
-     ...                    error=True, gain=2.0*u.electron/u.adu, 
-     ...                    readnoise = 5*u.electron, 
-     ...                    bad_pixel_mask=bad_pixel_mask, 
-     ...                    master_bias=master_bias, master_flat=master_flat)
+     >>> ccd = ccdproc.CCDData(img, unit=u.adu)
+     >>> nccd = ccdproc.ccd_process(ccd, oscan='[1:10,1:100]', 
+     ...                            trim='[10:100, 1:100]',
+     ...                            error=True, gain=2.0*u.electron/u.adu,
+     ...                            readnoise = 5*u.electron) 
 
 
 Reprojecting onto a different image footprint

@@ -123,9 +123,10 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
     >>> import numpy as np
     >>> from astropy import units as u
-    >>> from hrsprocess import ccd_process
+    >>> from ccdproc import CCDData
+    >>> from ccdproc import ccd_process
     >>> ccd = CCDData(np.ones([100, 100]), unit=u.adu)
-    >>> nccd = ccd_process(ccd, oscan='[1:10,1:100]', trim='[10:100, 1,100]',
+    >>> nccd = ccd_process(ccd, oscan='[1:10,1:100]', trim='[10:100, 1:100]',\
                            error=False, gain=2.0*u.electron/u.adu)
 
 
@@ -177,7 +178,6 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         pass
     else:
         raise TypeError('gain is not None or astropy.Quantity')
-    print(nccd.mask)
 
     # test subtracting the master bias
     if isinstance(master_bias, CCDData) or isinstance(master_bias, np.ndarray):
