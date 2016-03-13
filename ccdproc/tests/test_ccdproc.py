@@ -771,3 +771,66 @@ def test_wcs_project_onto_scale_wcs(ccd_data):
     # pixels outside the footprint of the original image, are the only
     # pixels that should be masked.
     assert new_ccd.mask.sum() == 4 + np.isnan(new_ccd.data).sum()
+
+
+def test_ccd_process_does_not_change_input(ccd_data):
+    original = ccd_data.copy()
+    ccd = ccd_process(ccd_data, gain=5 * u.electron / u.adu, readnoise=10 * u.electron)
+    np.testing.assert_array_equal(original.data, ccd_data.data)
+    assert original.unit == ccd_data.unit
+
+def test_ccd_process_parameters_are_aprropriate(ccd_data):
+    # oscan check
+    with pytest.raises(TypeError):
+        ccd_process(ccd_data, oscan=True)
+
+    # trim secion check
+    with pytest.raises(TypeError):
+        ccd_process(ccd_data, trim=True)
+
+    # error frame check
+    # gain and readnoise must be specified
+    with pytest.raises(ValueError):
+        ccd_process(ccd_data, error=True)
+
+    # gain must be specified
+    with pytest.raises(ValueError):
+        ccd_process(ccd_data, error=True, gain=None, readnoise=5)
+
+    # mask check
+    with pytest.raises(TypeError):
+        ccd_process(ccd_data, bad_pixel_mask=3)
+
+    # master bias check
+    with pytest.raises(TypeError):
+        ccd_process(ccd_data, master_bias=3)
+
+    # master flat check
+    with pytest.raises(TypeError):
+        ccd_process(ccd_data, master_flat=3)
+
+
+def test_ccd_process():
+    
+    ccd_data = CCDData(10.0*np.ones((100,100)), unit=u.adu)
+    ccd_data.data[:,-10:] = 2
+
+    mask = np.zeros((100,90))
+
+    masterbias = CCDData(2.0 * np.ones((100,90)), unit=u.electron)
+    masterbias.uncertainty = StdDevUncertainty(np.zeros((100,90)))
+
+    masterflat = CCDData(10.0 * np.ones((100,90)), unit=u.electron)
+    masterflat.uncertainty = StdDevUncertainty(np.zeros((100,90)))
+
+    occd = ccd_process(ccd_data, oscan=ccd_data[:,-10:], trim='[1:90,1:100]',
+                error=True, master_bias=masterbias, master_flat=masterflat,
+                bad_pixel_mask=mask, gain=0.5*u.electron/u.adu, 
+                readnoise=5**0.5 *u.electron, oscan_median=True)
+    # final results should be (10 - 2)/2.0 - 2 = 2
+    # error should be (4 + 5)**0.5 / 0.5  = 3.0
+
+    np.testing.assert_array_equal(2.0 * np.ones((100,90)), occd.data)
+    np.testing.assert_array_equal(3.0 * np.ones((100,90)), occd.uncertainty.array)
+    np.testing.assert_array_equal(mask, occd.mask)
+    assert(occd.unit == u.electron)
