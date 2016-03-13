@@ -50,7 +50,7 @@ Bug Fixes
   square root of the number of combined pixel [#309]
 
 
-0.3.2 (unreleased)
+0.3.3 (2015-10-24)
 ------------------
 
 New Features
@@ -70,6 +70,11 @@ Bug Fixes
 
 - Ensure that creating a WCS from a header that contains list-like keywords
   (e.g. ``BLANK`` or ``HISTORY``) succeeds. [#229, #231]
+
+0.3.2 (never released)
+----------------------
+
+There was no 0.3.2 release because of a packaging error.
 
 0.3.1 (2015-05-12)
 ------------------
