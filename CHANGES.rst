@@ -17,29 +17,36 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- Add a WCS setter for ``CCDData``. [#256]
+- Allow user to set the function used for uncertainty calculation in
+  ``average_combine`` and ``median_combine``. [#258]
 - Add a new keyword to ImageFileCollection.files_filtered to return the full
   path to a file [#275]
 - CCDData.write now writes multi-extension-FITS files. The mask and uncertainty
   are saved as extensions if these attributes were set. The name of the
   extensions can be altered with the parameters ``hdu_mask`` (default extension
   name ``'MASK'``) and ``hdu_uncertainty`` (default ``'UNCERT'``).
-  CCDData.read can read these files and has the same optional parameters.
+  CCDData.read can read these files and has the same optional parameters. [#302]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Issue warning if there are no FITS images in an ``ImageFileCollection``. [#246]
 - The overscan_axis argument in subtract_overscan can now be set to
   None, to let subtract_overscan provide a best guess for the axis. [#263]
 - Add support for wildcard and reversed FITS style slicing. [#265]
 - When reading a FITS file with CCDData.read, if no data exists in the
   primary hdu, the resultant header object is a combination of the
   header information in the primary hdu and the first hdu with data. [#271]
-- Changed cosmicray_lacosmic to use astroscrappy for cleaning. [#272]
+- Changed cosmicray_lacosmic to use astroscrappy for cleaning cosmic rays. [#272]
 - CCDData arithmetic with number/Quantity now preserves any existing WCS. [#278]
 - Update astropy_helpers to 1.1.1. [#287]
 - Drop support for Python 2.6. [#300]
 - The ``add_keyword`` parameter now has a default of ``True``, to be more
   explicit. [#310]
+- Return name of file instead of full path in ``ImageFileCollection``
+  generators. [#315]
+
 
 Bug Fixes
 ^^^^^^^^^
@@ -48,9 +55,10 @@ Bug Fixes
   produced wrong results. [#291]
 - The uncertainty resulting when combining CCDData will be divided by the
   square root of the number of combined pixel [#309]
+- Improve documentation for read/write methods on ``CCDData`` [#320]
 
 
-0.3.2 (unreleased)
+0.3.3 (2015-10-24)
 ------------------
 
 New Features
@@ -70,6 +78,11 @@ Bug Fixes
 
 - Ensure that creating a WCS from a header that contains list-like keywords
   (e.g. ``BLANK`` or ``HISTORY``) succeeds. [#229, #231]
+
+0.3.2 (never released)
+----------------------
+
+There was no 0.3.2 release because of a packaging error.
 
 0.3.1 (2015-05-12)
 ------------------
