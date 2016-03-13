@@ -5,28 +5,36 @@ Authors and Credits
 ccdproc Project Contributors
 ============================
 
+
+Project Coordinators
+--------------------
+
 * Matt Craig (@mwcraig)
 * Steve Crawford (@crawfordsm)
-* Thomas Robitaille (@astrofrog)
-* Brigitta Sipocz (@bsipocz)
-* Joe Philip Ninan (@indiajoe)
-* Erik Tollerud (@eteq)
-* Michael Seifert (@MSeifert04)
-* Hans Moritz Günther (@hamogu)
-* Evert Rol (@evertrol)
+
+Alphabetical list of contributors
+---------------------------------
+
 * Larry Bradley (@larrybradley)
 * Christoph Deil (@cdeil)
-* Anthony Horton (@AnthonyHorton)
-* Nathan Heidt (@heidtha)
-* Stefan Nelson (@pulsestaysconstant)
-* Ole Streicher (@olebole)
-* William Schoenell (@wschoenell)
-* Punyaslok Pattnaik (@Punyaslok)
 * Carlos Gomez (@carlgogo)
-* Connor Stotts (@stottsco)
-* Sourav Singh (@souravsingh)
-* Nathan Walker (@walkerna22)
+* Hans Moritz Günther (@hamogu)
+* Nathan Heidt (@heidtha)
+* Anthony Horton (@AnthonyHorton)
 * Jennifer Karr (@JenniferKarr)
+* Stefan Nelson (@pulsestaysconstant)
+* Joe Philip Ninan (@indiajoe)
+* Punyaslok Pattnaik (@Punyaslok)
+* Thomas Robitaille (@astrofrog)
+* Evert Rol (@evertrol)
+* William Schoenell (@wschoenell)
+* Michael Seifert (@MSeifert04)
+* Sourav Singh (@souravsingh)
+* Brigitta Sipocz (@bsipocz)
+* Connor Stotts (@stottsco)
+* Ole Streicher (@olebole)
+* Erik Tollerud (@eteq)
+* Nathan Walker (@walkerna22)
 
 (If you have contributed to the Astropy project and your name is missing,
 please send an email to the coordinators, or
