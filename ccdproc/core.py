@@ -809,6 +809,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     return nccd
 
 
+
 def sigma_func(arr, axis=None):
     """
     Robust method for calculating the deviation of an array. ``sigma_func``
@@ -821,18 +822,17 @@ def sigma_func(arr, axis=None):
 
     axis : None or int or tuple of ints, optional
         Axis or axes along which the function is performed.
-        If ``None`` (the default) it is performed over all the dimensions of
-        the input array. The axis argument can also be negative, in this case
-        it counts from the last to the first axis.
+        If ``None`` (the default) it is performed over all the dimensions of the input array.
+        The axis argument can also be negative, in this case it counts from
+        the last to the first axis.
 
 
     Returns
     -------
     float
-        uncertainty of array estimated from median absolute deviation.
+        standard deviation of array
     """
-
-    return 1.482602218505602 * stats.median_absolute_deviation(arr, axis=axis)
+    return 1.482602218505602 * stats.median_absolute_deviation(arr)
 
 
 def setbox(x, y, mbox, xmax, ymax):
