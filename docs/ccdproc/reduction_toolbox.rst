@@ -295,6 +295,20 @@ are replaced with ``min_value``):
     >>> reduced_image = ccdproc.flat_correct(dark_subtracted, master_flat,
     ...                                      min_value=0.9)
 
+Basic Processing
+----------------
+
+All of the basic processing steps can be accomplished in a single step using
+`~ccdproc.ccd_process`.   This step will call overscan correct, trim, gain
+correct, add a bad pixel mask, create an uncertainty frame, subtract the master
+bias, and flat-field the image.  These can be run together as:
+
+     >>> nccd = ccd_process(ccd, oscan='[1:10,1:100]', trim='[10:100, 1,100]',
+     ...                    error=True, gain=2.0*u.electron/u.adu, 
+     ...                    readnoise = 5*u.electron, 
+     ...                    bad_pixel_mask=bad_pixel_mask, 
+     ...                    master_bias=master_bias, master_flat=master_flat)
+
 
 Reprojecting onto a different image footprint
 ---------------------------------------------
