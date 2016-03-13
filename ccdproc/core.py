@@ -45,8 +45,8 @@ _short_names = {
 }
 
 @log_to_metadata
-def ccd_process(ccd, oscan=None, trim=None, error=False, masterbias=None,
-                master_flat=None, bad_pixel_mask=None, gain=None, rdnoise=None,
+def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
+                master_flat=None, bad_pixel_mask=None, gain=None, readnoise=None,
                 oscan_median=True, oscan_model=None, min_value=None):
     """Perform basic processing on ccd data.
 
@@ -79,10 +79,10 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, masterbias=None,
     error: boolean
         If True, create an uncertainty array for ccd
 
-    masterbias: None, `~numpy.ndarray`,  or `~ccdproc.CCDData`
+    master_bias: None, `~numpy.ndarray`,  or `~ccdproc.CCDData`
         A materbias frame to be subtracted from ccd.
 
-    masterflat: None, `~numpy.ndarray`,  or `~ccdproc.CCDData`
+    master_flat: None, `~numpy.ndarray`,  or `~ccdproc.CCDData`
         A materflat frame to be divided into ccd.
 
     bad_pixel_mask: None or `~numpy.ndarray`
@@ -92,7 +92,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, masterbias=None,
     gain: None or `~astropy.Quantity`
         Gain value to multiple the image by to convert to electrons
 
-    rdnoise: None or `~astropy.Quantity`
+    readnoise: None or `~astropy.Quantity`
         Read noise for the observations.  The read noise should be in
         `~astropy.units.electron`
 
@@ -132,12 +132,12 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, masterbias=None,
     nccd = ccd.copy()
 
     # apply the overscan correction
-    if isinstance(oscan, ccdproc.CCDData):
-        nccd = ccdproc.subtract_overscan(nccd, overscan=oscan,
+    if isinstance(oscan, CCDData):
+        nccd = subtract_overscan(nccd, overscan=oscan,
                                          median=oscan_median,
                                          model=oscan_model)
     elif isinstance(oscan, six.string_types):
-        nccd = ccdproc.subtract_overscan(nccd, fits_section=oscan,
+        nccd = subtract_overscan(nccd, fits_section=oscan,
                                          median=oscan_median,
                                          model=oscan_model)
     elif oscan is None:
@@ -147,18 +147,18 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, masterbias=None,
 
     # apply the trim correction
     if isinstance(trim, six.string_types):
-        nccd = ccdproc.trim_image(nccd, fits_section=trim)
+        nccd = trim_image(nccd, fits_section=trim)
     elif trim is None:
         pass
     else:
         raise TypeError('trim is not None or a string')
 
     # create the error frame
-    if error and gain is not None and rdnoise is not None:
-        nccd = ccdproc.create_deviation(nccd, gain=gain, rdnoise=rdnoise)
-    elif error and (gain is None or rdnoise is None):
+    if error and gain is not None and readnoise is not None:
+        nccd = create_deviation(nccd, gain=gain, readnoise=readnoise)
+    elif error and (gain is None or readnoise is None):
         raise ValueError(
-            'gain and rdnoise must be specified to create error frame')
+            'gain and readnoise must be specified to create error frame')
 
     # apply the bad pixel mask
     if isinstance(bad_pixel_mask, np.ndarray):
@@ -170,33 +170,31 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, masterbias=None,
 
     # apply the gain correction
     if isinstance(gain, u.quantity.Quantity):
-        nccd = ccdproc.gain_correct(nccd, gain)
+        nccd = gain_correct(nccd, gain)
     elif gain is None:
         pass
     else:
         raise TypeError('gain is not None or astropy.Quantity')
+    print(nccd.mask)
 
     # test subtracting the master bias
-    if isinstance(masterbias, ccdproc.CCDData):
-        nccd = nccd.subtract(masterbias)
-    elif isinstance(masterbias, np.ndarray):
-        nccd.data = nccd.data - masterbias
-    elif masterbias is None:
+    if isinstance(master_bias, CCDData) or isinstance(master_bias, np.ndarray):
+        nccd = nccd.subtract(master_bias)
+    elif master_bias is None:
         pass
     else:
         raise TypeError(
-            'masterbias is not None, numpy.ndarray,  or a CCDData object')
+            'master_bias is not None, numpy.ndarray,  or a CCDData object')
 
     # test dividing the master flat 
-    if isinstance(masterflat, ccdproc.CCDData):
-        nccd = nccd.flat_correct(masterflat, min_value=min_value)
-    elif isinstance(masterbias, np.ndarray):
-        nccd.data = nccd.data / masterflat * masterflat.mean()
-    elif masterbias is None:
+    if isinstance(master_flat, CCDData) or isinstance(master_flat, np.ndarray):
+        nccd = flat_correct(nccd, master_flat, min_value=min_value)
+    elif master_flat is None:
         pass
     else:
         raise TypeError(
-            'masterflat is not None, numpy.ndarray,  or a CCDData object')
+            'master_flat is not None, numpy.ndarray,  or a CCDData object')
+
 
     return nccd
 
