@@ -637,7 +637,7 @@ def test_rebin_does_not_change_input(ccd_data):
 
 def test_transform_image_does_not_change_input(ccd_data):
     original = ccd_data.copy()
-    ccd = transform_image(ccd_data,np.sqrt)
+    ccd = transform_image(ccd_data, np.sqrt)
     np.testing.assert_array_equal(original.data, ccd_data)
     assert original.unit == ccd_data.unit
 
@@ -775,9 +775,11 @@ def test_wcs_project_onto_scale_wcs(ccd_data):
 
 def test_ccd_process_does_not_change_input(ccd_data):
     original = ccd_data.copy()
-    ccd = ccd_process(ccd_data, gain=5 * u.electron / u.adu, readnoise=10 * u.electron)
+    ccd = ccd_process(ccd_data, gain=5 * u.electron / u.adu,
+                      readnoise=10 * u.electron)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
+
 
 def test_ccd_process_parameters_are_aprropriate(ccd_data):
     # oscan check
@@ -811,26 +813,29 @@ def test_ccd_process_parameters_are_aprropriate(ccd_data):
 
 
 def test_ccd_process():
-    
-    ccd_data = CCDData(10.0*np.ones((100,100)), unit=u.adu)
-    ccd_data.data[:,-10:] = 2
+    # test the through ccd_process
+    ccd_data = CCDData(10.0 * np.ones((100, 100)), unit=u.adu)
+    ccd_data.data[:, -10:] = 2
 
-    mask = np.zeros((100,90))
+    mask = np.zeros((100, 90))
 
-    masterbias = CCDData(2.0 * np.ones((100,90)), unit=u.electron)
-    masterbias.uncertainty = StdDevUncertainty(np.zeros((100,90)))
+    masterbias = CCDData(2.0 * np.ones((100, 90)), unit=u.electron)
+    masterbias.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
 
-    masterflat = CCDData(10.0 * np.ones((100,90)), unit=u.electron)
-    masterflat.uncertainty = StdDevUncertainty(np.zeros((100,90)))
+    masterflat = CCDData(10.0 * np.ones((100, 90)), unit=u.electron)
+    masterflat.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
 
-    occd = ccd_process(ccd_data, oscan=ccd_data[:,-10:], trim='[1:90,1:100]',
-                error=True, master_bias=masterbias, master_flat=masterflat,
-                bad_pixel_mask=mask, gain=0.5*u.electron/u.adu, 
-                readnoise=5**0.5 *u.electron, oscan_median=True)
-    # final results should be (10 - 2)/2.0 - 2 = 2
+    occd = ccd_process(ccd_data, oscan=ccd_data[:, -10:], trim='[1:90,1:100]',
+                       error=True, master_bias=masterbias,
+                       master_flat=masterflat,
+                       bad_pixel_mask=mask, gain=0.5 * u.electron/u.adu,
+                       readnoise=5**0.5 * u.electron, oscan_median=True)
+
+    # final results should be (10 - 2) / 2.0 - 2 = 2
     # error should be (4 + 5)**0.5 / 0.5  = 3.0
 
-    np.testing.assert_array_equal(2.0 * np.ones((100,90)), occd.data)
-    np.testing.assert_array_equal(3.0 * np.ones((100,90)), occd.uncertainty.array)
+    np.testing.assert_array_equal(2.0 * np.ones((100, 90)), occd.data)
+    np.testing.assert_array_equal(3.0 * np.ones((100, 90)),
+                                  occd.uncertainty.array)
     np.testing.assert_array_equal(mask, occd.mask)
     assert(occd.unit == u.electron)
