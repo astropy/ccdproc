@@ -44,10 +44,12 @@ _short_names = {
     'wcs_project': 'wcsproj'
 }
 
+
 @log_to_metadata
 def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
-                master_flat=None, bad_pixel_mask=None, gain=None, readnoise=None,
-                oscan_median=True, oscan_model=None, min_value=None):
+                master_flat=None, bad_pixel_mask=None, gain=None,
+                readnoise=None, oscan_median=True, oscan_model=None,
+                min_value=None):
     """Perform basic processing on ccd data.
 
     The following steps can be included:
@@ -102,7 +104,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     oscan_model :  `~astropy.modeling.Model`, optional
         Model to fit to the data.  If None, returns the values calculated
         by the median or the mean.
- 
+
     min_value : None or float
         Minimum value for flat field.  The value can either be None and no
         minimum value is applied to the flat or specified by a float which
@@ -134,12 +136,12 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     # apply the overscan correction
     if isinstance(oscan, CCDData):
         nccd = subtract_overscan(nccd, overscan=oscan,
-                                         median=oscan_median,
-                                         model=oscan_model)
+                                 median=oscan_median,
+                                 model=oscan_model)
     elif isinstance(oscan, six.string_types):
         nccd = subtract_overscan(nccd, fits_section=oscan,
-                                         median=oscan_median,
-                                         model=oscan_model)
+                                 median=oscan_median,
+                                 model=oscan_model)
     elif oscan is None:
         pass
     else:
@@ -186,7 +188,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         raise TypeError(
             'master_bias is not None, numpy.ndarray,  or a CCDData object')
 
-    # test dividing the master flat 
+    # test dividing the master flat
     if isinstance(master_flat, CCDData) or isinstance(master_flat, np.ndarray):
         nccd = flat_correct(nccd, master_flat, min_value=min_value)
     elif master_flat is None:
@@ -194,7 +196,6 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     else:
         raise TypeError(
             'master_flat is not None, numpy.ndarray,  or a CCDData object')
-
 
     return nccd
 
@@ -809,7 +810,6 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     return nccd
 
 
-
 def sigma_func(arr, axis=None):
     """
     Robust method for calculating the deviation of an array. ``sigma_func``
@@ -822,15 +822,14 @@ def sigma_func(arr, axis=None):
 
     axis : None or int or tuple of ints, optional
         Axis or axes along which the function is performed.
-        If ``None`` (the default) it is performed over all the dimensions of the input array.
-        The axis argument can also be negative, in this case it counts from
-        the last to the first axis.
-
+        If ``None`` (the default) it is performed over all the dimensions of
+        the input array. The axis argument can also be negative, in this case
+        it counts from the last to the first axis.
 
     Returns
     -------
     float
-        standard deviation of array
+        uncertainty of array estimated from median absolute deviation.
     """
     return 1.482602218505602 * stats.median_absolute_deviation(arr)
 
