@@ -36,7 +36,7 @@ Alphabetical list of contributors
 * Erik Tollerud (@eteq)
 * Nathan Walker (@walkerna22)
 
-(If you have contributed to the Astropy project and your name is missing,
+(If you have contributed to the ccdproc project and your name is missing,
 please send an email to the coordinators, or
 `open a pull request for this page <https://github.com/astropy/ccdproc/edit/master/credits.rst>`_
 in the `ccdproc repository <https://github.com/astropy/ccdproc>`_)
