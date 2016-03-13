@@ -15,7 +15,6 @@ Project Coordinators
 Alphabetical list of contributors
 ---------------------------------
 
-* Larry Bradley (@larrybradley)
 * Christoph Deil (@cdeil)
 * Carlos Gomez (@carlgogo)
 * Hans Moritz Günther (@hamogu)
@@ -25,7 +24,6 @@ Alphabetical list of contributors
 * Stefan Nelson (@pulsestaysconstant)
 * Joe Philip Ninan (@indiajoe)
 * Punyaslok Pattnaik (@Punyaslok)
-* Thomas Robitaille (@astrofrog)
 * Evert Rol (@evertrol)
 * William Schoenell (@wschoenell)
 * Michael Seifert (@MSeifert04)
