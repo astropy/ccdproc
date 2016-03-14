@@ -64,18 +64,18 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
     Parameters
     ----------
-    ccd: `ccdproc.CCDData`
+    ccd: `~ccdproc.CCDData`
         Frame to be reduced
 
     oscan: None, str, or, `~ccdproc.ccddata.CCDData`
         For no overscan correction, set to None.   Otherwise proivde a region
-        of `ccd` from which the overscan is extracted, using the FITS
+        of ccd from which the overscan is extracted, using the FITS
         conventions for index order and index start, or a
-        slice from `ccd` that contains the overscan.
+        slice from ccd that contains the overscan.
 
     trim: None or str
         For no trim correction, set to None.   Otherwise proivde a region
-        of `ccd` from which the image should be trimmed, using the FITS
+        of ccd from which the image should be trimmed, using the FITS
         conventions for index order and index start.
 
     error: boolean
@@ -96,7 +96,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
     readnoise: None or `~astropy.Quantity`
         Read noise for the observations.  The read noise should be in
-        `~astropy.units.electron`
+        electrons.
 
     oscan_median :  bool, optional
         If true, takes the median of each line.  Otherwise, uses the mean
@@ -113,7 +113,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
     Returns
     -------
-    ccd: `ccdproc.CCDData`
+    occd: `~ccdproc.CCDData`
         Reduded ccd
 
     Examples
