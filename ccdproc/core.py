@@ -55,10 +55,11 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     The following steps can be included:
     * overscan correction
     * trimming of the image
-    * create edeviation frame
+    * create deviation frame
     * gain correction
     * add a mask to the data
     * subtraction of master bias
+    * correction of flat field
 
     The task returns a processed `ccdproc.CCDData` object.
 
@@ -82,10 +83,10 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         If True, create an uncertainty array for ccd
 
     master_bias: None, `~numpy.ndarray`,  or `~ccdproc.CCDData`
-        A materbias frame to be subtracted from ccd.
+        A master bias frame to be subtracted from ccd.
 
     master_flat: None, `~numpy.ndarray`,  or `~ccdproc.CCDData`
-        A materflat frame to be divided into ccd.
+        A master flat frame to be divided into ccd.
 
     bad_pixel_mask: None or `~numpy.ndarray`
         A bad pixel mask for the data. The bad pixel mask should be in given
@@ -831,7 +832,7 @@ def sigma_func(arr, axis=None):
     float
         uncertainty of array estimated from median absolute deviation.
     """
-    return 1.482602218505602 * stats.median_absolute_deviation(arr)
+    return stats.median_absolute_deviation(arr) * 1.482602218505602
 
 
 def setbox(x, y, mbox, xmax, ymax):
