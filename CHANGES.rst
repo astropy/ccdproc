@@ -22,6 +22,7 @@ New Features
   ``average_combine`` and ``median_combine``. [#258]
 - Add a new keyword to ImageFileCollection.files_filtered to return the full
   path to a file [#275]
+- Added ccd_process for handling multiple steps. [#211]
 - CCDData.write now writes multi-extension-FITS files. The mask and uncertainty
   are saved as extensions if these attributes were set. The name of the
   extensions can be altered with the parameters ``hdu_mask`` (default extension

@@ -21,7 +21,7 @@ from .utils.slices import slice_from_string
 from .log_meta import log_to_metadata
 
 __all__ = ['background_deviation_box', 'background_deviation_filter',
-           'cosmicray_median', 'cosmicray_lacosmic',
+           'ccd_process', 'cosmicray_median', 'cosmicray_lacosmic',
            'create_deviation', 'flat_correct', 'gain_correct', 'rebin',
            'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
            'transform_image', 'trim_image', 'wcs_project', 'Keyword']
@@ -31,6 +31,7 @@ __all__ = ['background_deviation_box', 'background_deviation_filter',
 _short_names = {
     'background_deviation_box': 'bakdevbx',
     'background_deviation_filter': 'bakdfilt',
+    'ccd_process': 'ccdproc',
     'cosmicray_median': 'crmedian',
     'create_deviation': 'creatvar',
     'flat_correct': 'flatcor',
@@ -42,6 +43,198 @@ _short_names = {
     'transform_image': 'tranim',
     'wcs_project': 'wcsproj'
 }
+
+
+@log_to_metadata
+def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
+                dark_frame=None,  master_flat=None, bad_pixel_mask=None, gain=None,
+                readnoise=None, oscan_median=True, oscan_model=None,
+                min_value=None, dark_exposure=None, data_exposure=None,
+                exposure_key=None, exposure_unit=None,
+                dark_scale=False):
+    """Perform basic processing on ccd data.
+
+    The following steps can be included:
+    * overscan correction
+    * trimming of the image
+    * create deviation frame
+    * gain correction
+    * add a mask to the data
+    * subtraction of master bias
+    * subtraction of a dark frame
+    * correction of flat field
+
+    The task returns a processed `ccdproc.CCDData` object.
+
+    Parameters
+    ----------
+    ccd: `~ccdproc.CCDData`
+        Frame to be reduced
+
+    oscan: None, str, or, `~ccdproc.ccddata.CCDData`
+        For no overscan correction, set to None.   Otherwise proivde a region
+        of ccd from which the overscan is extracted, using the FITS
+        conventions for index order and index start, or a
+        slice from ccd that contains the overscan.
+
+    trim: None or str
+        For no trim correction, set to None.   Otherwise proivde a region
+        of ccd from which the image should be trimmed, using the FITS
+        conventions for index order and index start.
+
+    error: boolean
+        If True, create an uncertainty array for ccd
+
+    master_bias: None or `~ccdproc.CCDData`
+        A master bias frame to be subtracted from ccd.
+
+    dark_frame: None or `~ccdproc.CCDData`
+        A dark frame to be subtracted from the ccd.
+
+    master_flat: None or `~ccdproc.CCDData`
+        A master flat frame to be divided into ccd.
+
+    bad_pixel_mask: None or `~numpy.ndarray`
+        A bad pixel mask for the data. The bad pixel mask should be in given
+        such that bad pixels havea value of 1 and good pixels a value of 0.
+
+    gain: None or `~astropy.Quantity`
+        Gain value to multiple the image by to convert to electrons
+
+    readnoise: None or `~astropy.Quantity`
+        Read noise for the observations.  The read noise should be in
+        electrons.
+
+    oscan_median :  bool, optional
+        If true, takes the median of each line.  Otherwise, uses the mean
+
+    oscan_model :  `~astropy.modeling.Model`, optional
+        Model to fit to the data.  If None, returns the values calculated
+        by the median or the mean.
+
+    min_value : None or float
+        Minimum value for flat field.  The value can either be None and no
+        minimum value is applied to the flat or specified by a float which
+        will replace all values in the flat by the min_value.
+
+    dark_exposure : `~astropy.units.Quantity`
+        Exposure time of the dark image; if specified, must also provided
+        ``data_exposure``.
+
+    data_exposure : `~astropy.units.Quantity`
+        Exposure time of the science image; if specified, must also provided
+        ``dark_exposure``.
+
+    exposure_key : str or `~ccdproc.Keyword`
+        Name of key in image metadata that contains exposure time.
+
+    exposure_unit : `~astropy.units.Unit`
+        Unit of the exposure time if the value in the meta data does not
+        include a unit.
+
+    dark_scale: boolean
+        If True, scale the dark frame by the exposure times
+
+    Returns
+    -------
+    occd: `~ccdproc.CCDData`
+        Reduded ccd
+
+    Examples
+    --------
+
+    1. To overscan, trim, and gain correct a data set:
+
+    >>> import numpy as np
+    >>> from astropy import units as u
+    >>> from ccdproc import CCDData
+    >>> from ccdproc import ccd_process
+    >>> ccd = CCDData(np.ones([100, 100]), unit=u.adu)
+    >>> nccd = ccd_process(ccd, oscan='[1:10,1:100]', trim='[10:100, 1:100]',\
+                           error=False, gain=2.0*u.electron/u.adu)
+
+
+    """
+    # make a copy of the object
+    nccd = ccd.copy()
+
+    # apply the overscan correction
+    if isinstance(oscan, CCDData):
+        nccd = subtract_overscan(nccd, overscan=oscan,
+                                 median=oscan_median,
+                                 model=oscan_model)
+    elif isinstance(oscan, six.string_types):
+        nccd = subtract_overscan(nccd, fits_section=oscan,
+                                 median=oscan_median,
+                                 model=oscan_model)
+    elif oscan is None:
+        pass
+    else:
+        raise TypeError('oscan is not None, a string, or CCDData object')
+
+    # apply the trim correction
+    if isinstance(trim, six.string_types):
+        nccd = trim_image(nccd, fits_section=trim)
+    elif trim is None:
+        pass
+    else:
+        raise TypeError('trim is not None or a string')
+
+    # create the error frame
+    if error and gain is not None and readnoise is not None:
+        nccd = create_deviation(nccd, gain=gain, readnoise=readnoise)
+    elif error and (gain is None or readnoise is None):
+        raise ValueError(
+            'gain and readnoise must be specified to create error frame')
+
+    # apply the bad pixel mask
+    if isinstance(bad_pixel_mask, np.ndarray):
+        nccd.mask = bad_pixel_mask
+    elif bad_pixel_mask is None:
+        pass
+    else:
+        raise TypeError('bad_pixel_mask is not None or numpy.ndarray')
+
+    # apply the gain correction
+    if isinstance(gain, u.quantity.Quantity):
+        nccd = gain_correct(nccd, gain)
+    elif gain is None:
+        pass
+    else:
+        raise TypeError('gain is not None or astropy.Quantity')
+
+    # subtracting the master bias
+    if isinstance(master_bias, CCDData):
+        nccd = nccd.subtract(master_bias)
+    elif master_bias is None:
+        pass
+    else:
+        raise TypeError(
+            'master_bias is not None, numpy.ndarray,  or a CCDData object')
+
+    # subtract the dark frame
+    if isinstance(dark_frame, CCDData):
+        nccd = subtract_dark(nccd, dark_frame, dark_exposure=dark_exposure,
+                             data_exposure=data_exposure, 
+                             exposure_time=exposure_key,
+                             exposure_unit=exposure_unit, 
+                             scale=dark_scale)
+    elif dark_frame is None:
+        pass
+    else:
+        raise TypeError(
+            'dark_frame is not None or a CCDData object')
+
+    # test dividing the master flat
+    if isinstance(master_flat, CCDData):
+        nccd = flat_correct(nccd, master_flat, min_value=min_value)
+    elif master_flat is None:
+        pass
+    else:
+        raise TypeError(
+            'master_flat is not None, numpy.ndarray,  or a CCDData object')
+
+    return nccd
 
 
 @log_to_metadata
@@ -364,6 +557,9 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
         Unit of the exposure time if the value in the meta data does not
         include a unit.
 
+    scale: boolean
+        If True, scale the dark frame by the exposure times
+
     {log}
 
     Returns
@@ -670,14 +866,12 @@ def sigma_func(arr, axis=None):
         the input array. The axis argument can also be negative, in this case
         it counts from the last to the first axis.
 
-
     Returns
     -------
     float
         uncertainty of array estimated from median absolute deviation.
     """
-
-    return 1.482602218505602 * stats.median_absolute_deviation(arr, axis=axis)
+    return stats.median_absolute_deviation(arr) * 1.482602218505602
 
 
 def setbox(x, y, mbox, xmax, ymax):

@@ -5,7 +5,6 @@ Authors and Credits
 ccdproc Project Contributors
 ============================
 
-
 Project Coordinators
 --------------------
 
