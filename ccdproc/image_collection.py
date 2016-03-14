@@ -257,7 +257,7 @@ class ImageFileCollection(object):
         filtered_files = self.summary_info['file'].compressed()
         self.summary_info['file'].mask = current_file_mask
         if include_path:
-            filtered_files = [self._location + f for f in filtered_files]
+            filtered_files = [self._location + '/' + f for f in filtered_files]
         return filtered_files
 
     def refresh(self):
