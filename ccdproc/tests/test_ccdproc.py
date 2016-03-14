@@ -822,14 +822,19 @@ def test_ccd_process():
     masterbias = CCDData(2.0 * np.ones((100, 90)), unit=u.electron)
     masterbias.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
 
+    dark_frame = CCDData(0.0 * np.ones((100, 90)), unit=u.electron)
+    dark_frame.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+
     masterflat = CCDData(10.0 * np.ones((100, 90)), unit=u.electron)
     masterflat.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
 
     occd = ccd_process(ccd_data, oscan=ccd_data[:, -10:], trim='[1:90,1:100]',
                        error=True, master_bias=masterbias,
-                       master_flat=masterflat,
+                       master_flat=masterflat, dark_frame=dark_frame,
                        bad_pixel_mask=mask, gain=0.5 * u.electron/u.adu,
-                       readnoise=5**0.5 * u.electron, oscan_median=True)
+                       readnoise=5**0.5 * u.electron, oscan_median=True,
+                       dark_scale=False, dark_exposure=1.*u.s, 
+                       data_exposure=1.*u.s)
 
     # final results should be (10 - 2) / 2.0 - 2 = 2
     # error should be (4 + 5)**0.5 / 0.5  = 3.0

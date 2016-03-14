@@ -47,9 +47,11 @@ _short_names = {
 
 @log_to_metadata
 def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
-                master_flat=None, bad_pixel_mask=None, gain=None,
+                dark_frame=None,  master_flat=None, bad_pixel_mask=None, gain=None,
                 readnoise=None, oscan_median=True, oscan_model=None,
-                min_value=None):
+                min_value=None, dark_exposure=None, data_exposure=None,
+                exposure_key=None, exposure_unit=None,
+                dark_scale=False):
     """Perform basic processing on ccd data.
 
     The following steps can be included:
@@ -59,6 +61,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     * gain correction
     * add a mask to the data
     * subtraction of master bias
+    * subtraction of a dark frame
     * correction of flat field
 
     The task returns a processed `ccdproc.CCDData` object.
@@ -84,6 +87,9 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
     master_bias: None, `~numpy.ndarray`,  or `~ccdproc.CCDData`
         A master bias frame to be subtracted from ccd.
+
+    dark_frame: None or `~ccdproc.CCDData`
+        A dark frame to be subtracted from the ccd.
 
     master_flat: None, `~numpy.ndarray`,  or `~ccdproc.CCDData`
         A master flat frame to be divided into ccd.
@@ -111,6 +117,23 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         minimum value is applied to the flat or specified by a float which
         will replace all values in the flat by the min_value.
 
+    dark_exposure : `~astropy.units.Quantity`
+        Exposure time of the dark image; if specified, must also provided
+        ``data_exposure``.
+
+    data_exposure : `~astropy.units.Quantity`
+        Exposure time of the science image; if specified, must also provided
+        ``dark_exposure``.
+
+    exposure_key : str or `~ccdproc.Keyword`
+        Name of key in image metadata that contains exposure time.
+
+    exposure_unit : `~astropy.units.Unit`
+        Unit of the exposure time if the value in the meta data does not
+        include a unit.
+
+    dark_scale: boolean
+        If True, scale the dark frame by the exposure times
 
     Returns
     -------
@@ -180,7 +203,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     else:
         raise TypeError('gain is not None or astropy.Quantity')
 
-    # test subtracting the master bias
+    # subtracting the master bias
     if isinstance(master_bias, CCDData) or isinstance(master_bias, np.ndarray):
         nccd = nccd.subtract(master_bias)
     elif master_bias is None:
@@ -188,6 +211,19 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     else:
         raise TypeError(
             'master_bias is not None, numpy.ndarray,  or a CCDData object')
+
+    # subtract the dark frame
+    if isinstance(dark_frame, CCDData):
+        nccd = subtract_dark(nccd, dark_frame, dark_exposure=dark_exposure,
+                             data_exposure=data_exposure, 
+                             exposure_time=exposure_key,
+                             exposure_unit=exposure_unit, 
+                             scale=dark_scale)
+    elif dark_frame is None:
+        pass
+    else:
+        raise TypeError(
+            'dark_frame is not None or a CCDData object')
 
     # test dividing the master flat
     if isinstance(master_flat, CCDData) or isinstance(master_flat, np.ndarray):
@@ -520,6 +556,9 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
     exposure_unit : `~astropy.units.Unit`
         Unit of the exposure time if the value in the meta data does not
         include a unit.
+
+    scale: boolean
+        If True, scale the dark frame by the exposure times
 
     {log}
 
