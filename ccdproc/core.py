@@ -85,13 +85,13 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     error: boolean
         If True, create an uncertainty array for ccd
 
-    master_bias: None, `~numpy.ndarray`,  or `~ccdproc.CCDData`
+    master_bias: None or `~ccdproc.CCDData`
         A master bias frame to be subtracted from ccd.
 
     dark_frame: None or `~ccdproc.CCDData`
         A dark frame to be subtracted from the ccd.
 
-    master_flat: None, `~numpy.ndarray`,  or `~ccdproc.CCDData`
+    master_flat: None or `~ccdproc.CCDData`
         A master flat frame to be divided into ccd.
 
     bad_pixel_mask: None or `~numpy.ndarray`
@@ -204,7 +204,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         raise TypeError('gain is not None or astropy.Quantity')
 
     # subtracting the master bias
-    if isinstance(master_bias, CCDData) or isinstance(master_bias, np.ndarray):
+    if isinstance(master_bias, CCDData):
         nccd = nccd.subtract(master_bias)
     elif master_bias is None:
         pass
@@ -226,7 +226,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
             'dark_frame is not None or a CCDData object')
 
     # test dividing the master flat
-    if isinstance(master_flat, CCDData) or isinstance(master_flat, np.ndarray):
+    if isinstance(master_flat, CCDData):
         nccd = flat_correct(nccd, master_flat, min_value=min_value)
     elif master_flat is None:
         pass
