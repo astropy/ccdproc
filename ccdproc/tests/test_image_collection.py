@@ -59,6 +59,19 @@ class TestImageFileCollection(object):
         assert ('flying monkeys' not in img_collection.keywords)
         assert len(img_collection.values('imagetyp', unique=True)) == 2
 
+    def test_filtered_files_have_proper_path(self, triage_setup):
+        ic = image_collection.ImageFileCollection(
+                location=triage_setup.test_dir, keywords='*')
+        # Get a subset of the files.
+        plain_biases = ic.files_filtered(imagetyp='bias')
+        # Force a copy...
+        plain_biases = list(plain_biases)
+        # Same subset, but with full path.
+        path_biases = ic.files_filtered(imagetyp='bias', include_path=True)
+        for path_b, plain_b in zip(path_biases, plain_biases):
+            # If the path munging has been done properly, this will succeed.
+            assert os.path.basename(path_b) == plain_b
+
     def test_summary_is_summary_info(self, triage_setup):
         img_collection = image_collection.ImageFileCollection(
             location=triage_setup.test_dir, keywords=['imagetyp', 'filter'])
