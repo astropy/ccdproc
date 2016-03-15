@@ -27,7 +27,7 @@ Documentation is at `ccdproc.readthedocs.org
 <http://ccdproc.readthedocs.org/en/latest/>`_
 
 If you have found ccdproc useful to your research, please considering adding a
-citation to `ccdproc contributors;  Craig, M. W.; Crawford, S. M.; Deil, Christoph; Gomez, Carlos;  Günther, Hans Moritz;  Heidt, Nathan; Horton,  Anthony;  Karr, Jennifer;  Nelson, Stefan; Ninan, Joe Phillip;  Pattnaik, Punyaslok; Rol, Evert; Schoenell, William;
+citation to `ccdproc contributors;  Craig, M. W.; Crawford, S. M.; Deil, Christoph; Gomez, Carlos; Gasdia, Forrest; Günther, Hans Moritz;  Heidt, Nathan; Horton,  Anthony;  Karr, Jennifer;  Nelson, Stefan; Ninan, Joe Phillip;  Pattnaik, Punyaslok; Rol, Evert; Schoenell, William;
 Seifert, Michael; Singh, Sourav; Sipocz, Brigitta; Stotts, Connor; Streicher, Ole;  Tollerud, Erik; and Walker, Nathan, 2015,  Astrophysics Source Code Library, 1510.007, DOI: 10.5281/zenodo.47652 <http://adsabs.harvard.edu/abs/2015ascl.soft10007C>`_
 
 Thanks to Kyle Barbary (`@kbarbary`_) for designing the `ccdproc` logo.
