@@ -57,6 +57,8 @@ Bug Fixes
 - The uncertainty resulting when combining CCDData will be divided by the
   square root of the number of combined pixel [#309]
 - Improve documentation for read/write methods on ``CCDData`` [#320]
+- Add correct path separator when returning full path from
+  ``ImageFileCollection.files_filtered``. [#325]
 
 
 0.3.3 (2015-10-24)
