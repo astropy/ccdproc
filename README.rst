@@ -6,6 +6,10 @@ ccdproc
 
 .. image:: https://coveralls.io/repos/astropy/ccdproc/badge.png
   :target: https://coveralls.io/r/astropy/ccdproc
+  
+.. image:: https://zenodo.org/badge/12153/astropy/ccdproc.svg
+   :target: https://zenodo.org/badge/latestdoi/12153/astropy/ccdproc
+
 
 Ccdproc is is an affiliated package for the AstroPy package for basic data
 reductions of CCD images.   The ccdproc  package provides many of the
@@ -23,7 +27,8 @@ Documentation is at `ccdproc.readthedocs.org
 <http://ccdproc.readthedocs.org/en/latest/>`_
 
 If you have found ccdproc useful to your research, please considering adding a
-citation to `Crawford, S. M.,  Craig, M. W., & ccdproc collaborators, 2015,  Astrophysics Source Code Library, 1510.007 <http://adsabs.harvard.edu/abs/2015ascl.soft10007C>`_
+citation to `ccdproc contributors;  Craig, M. W.; Crawford, S. M.; Deil, Christoph; Gomez, Carlos;  Günther, Hans Moritz;  Heidt, Nathan; Horton,  Anthony;  Karr, Jennifer;  Nelson, Stefan; Ninan, Joe Phillip;  Pattnaik, Punyaslok; Rol, Evert; Schoenell, William;
+Seifert, Michael; Singh, Sourav; Sipocz, Brigitta; Stotts, Connor; Streicher, Ole;  Tollerud, Erik; and Walker, Nathan, 2015,  Astrophysics Source Code Library, 1510.007 <http://adsabs.harvard.edu/abs/2015ascl.soft10007C>`_
 
 Thanks to Kyle Barbary (`@kbarbary`_) for designing the `ccdproc` logo.
 
