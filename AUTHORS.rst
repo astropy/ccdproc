@@ -17,6 +17,7 @@ Alphabetical list of contributors
 * Christoph Deil (@cdeil)
 * Carlos Gomez (@carlgogo)
 * Hans Moritz Günther (@hamogu)
+* Forrest Gasdia (@EP-Guy)
 * Nathan Heidt (@heidtha)
 * Anthony Horton (@AnthonyHorton)
 * Jennifer Karr (@JenniferKarr)
