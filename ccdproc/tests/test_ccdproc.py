@@ -729,7 +729,8 @@ def test_wcs_project_onto_scale_wcs(ccd_data):
     # Make mask zero...
     ccd_data.mask = np.zeros_like(ccd_data.data)
     # ...except the center pixel, which is one.
-    ccd_data.mask[ccd_data.wcs.wcs.crpix[0], ccd_data.wcs.wcs.crpix[1]] = 1
+    ccd_data.mask[int(ccd_data.wcs.wcs.crpix[0]),
+                  int(ccd_data.wcs.wcs.crpix[1])] = 1
 
     target_wcs = wcs_for_testing(ccd_data.shape)
     target_wcs.wcs.cdelt /= 2
