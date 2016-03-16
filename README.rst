@@ -24,7 +24,8 @@ in this source distribution.
 Documentation is at `ccdproc.readthedocs.org
 <http://ccdproc.readthedocs.org/en/latest/>`_
 
-## Contributing
+Contributing
+------------
 
 We have had the first stable release, but there is still plenty to do!  
 
@@ -36,7 +37,8 @@ Feedback and feature requests?   Is there something missing you would like to se
 
 Ccdproc follows the `Astropy Code of Conduct`_ and strives to provide a welcoming community to all of our users and contributors.  
 
-## Acknowledgements 
+Acknowledgements 
+----------------
 
 If you have found ccdproc useful to your research, please considering adding a
 citation to `ccdproc contributors;  Craig, M. W.; Crawford, S. M.; Deil, Christoph; Gasdia, Forrest; Gomez, Carlos;  Günther, Hans Moritz;  Heidt, Nathan; Horton,  Anthony;  Karr, Jennifer;  Nelson, Stefan; Ninan, Joe Phillip;  Pattnaik, Punyaslok; Rol, Evert; Schoenell, William; Seifert, Michael; Singh, Sourav; Sipocz, Brigitta; Stotts, Connor; Streicher, Ole;  Tollerud, Erik; and Walker, Nathan, 2015,  Astrophysics Source Code Library, 1510.007, DOI: 10.5281/zenodo.47652 <http://adsabs.harvard.edu/abs/2015ascl.soft10007C>`_
