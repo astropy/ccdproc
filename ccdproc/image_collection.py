@@ -527,7 +527,7 @@ class ImageFileCollection(object):
         ----------
         extension : list of str, optional
             List of filename extensions that are FITS files. Default is
-            ``['fit', 'fits']``
+            ``['fit', 'fits', 'fts']``
 
         compressed : bool, optional
             If ``True``, compressed files should be included in the list
@@ -538,7 +538,7 @@ class ImageFileCollection(object):
         list
             *Names* of the files (with extension), not the full pathname.
         """
-        full_extensions = extensions or ['fit', 'fits']
+        full_extensions = extensions or ['fit', 'fits', 'fts']
         if compressed:
             with_gz = [extension + '.gz' for extension in full_extensions]
             full_extensions.extend(with_gz)
