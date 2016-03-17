@@ -29,13 +29,22 @@ Contributing
 
 We have had the first stable release, but there is still plenty to do!  
 
-Please open a new issue or new pull request for bugs, feedback, or new features you would like to see.   If there is an issue you would like to work on, please leave a comment and we will be happy to assist.   New contributions and contributors are very welcome!
+Please open a new issue or new pull request for bugs, feedback, or new features
+you would like to see.   If there is an issue you would like to work on, please
+leave a comment and we will be happy to assist.   New contributions and 
+contributors are very welcome!
 
-New to github or open source projects?  If you are unsure about where to start or haven't used github before, please feel free to email `@crawfordsm`_ or `@mwcraig`_ .  We will more than happily help you make your first contribution. 
+New to github or open source projects?  If you are unsure about where to start
+or haven't used github before, please feel free to email `@crawfordsm`_ or 
+`@mwcraig`_ .  We will more than happily help you make your first contribution. 
 
-Feedback and feature requests?   Is there something missing you would like to see?  Please open an issue or send an email to  `@mwcraig`_ or `@crawfordsm`_. 
+Feedback and feature requests?   Is there something missing you would like 
+to see?  Please open an issue or send an email to  `@mwcraig`_ or 
+`@crawfordsm`_. 
 
-Ccdproc follows the `Astropy Code of Conduct`_ and strives to provide a welcoming community to all of our users and contributors.  
+Ccdproc follows the `Astropy Code of Conduct`_ and strives to provide a 
+welcoming community to all of our users and contributors.  
+
 
 Acknowledgements 
 ----------------
