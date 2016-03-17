@@ -45,6 +45,8 @@ to see?  Please open an issue or send an email to  `@mwcraig`_ or
 Ccdproc follows the `Astropy Code of Conduct`_ and strives to provide a 
 welcoming community to all of our users and contributors.  
 
+Want more information about how to make a contribution?  Take a look at 
+the astropy `contributing`_ and `developer`_ documentation.
 
 Acknowledgements 
 ----------------
@@ -63,3 +65,5 @@ Thanks to Kyle Barbary (`@kbarbary`_) for designing the `ccdproc` logo.
 .. _@crawfordsm: https://github.com/crawfordsm
 .. _@mwcraig: https://github.com/mwcraig
 .. _Astropy Code of Conduct:  http://www.astropy.org/about.html#codeofconduct
+.. _contributing: http://docs.astropy.org/en/stable/index.html#contributing
+.. _developer: http://docs.astropy.org/en/stable/index.html#developer-documentation
