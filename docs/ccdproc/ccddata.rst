@@ -189,7 +189,7 @@ is between two `~ccdproc.ccddata.CCDData` objects.
     0.2
     >>> result.unit
     Unit("adu electron")
-    >>> result.header
+    >>> result.meta
     OrderedDict()
 
 .. note::

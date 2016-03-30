@@ -50,7 +50,7 @@ def test_initialize_from_FITS(ccd_data, tmpdir):
     assert cd.size == 100
     assert np.issubdtype(cd.data.dtype, np.float)
     for k, v in hdu.header.items():
-        assert cd.meta[k] == v
+        assert cd.meta[k.lower()] == v
 
 
 def test_initialize_from_fits_with_unit_in_header(tmpdir):
@@ -91,7 +91,7 @@ def test_initialize_from_fits_with_data_in_different_extension(tmpdir):
     # ccd should pick up the unit adu from the fits header...did it?
     np.testing.assert_array_equal(ccd.data, fake_img)
     # check that the header is the combined header
-    assert hdu1.header + hdu2.header == ccd.header
+    assert set((hdu1.header + hdu2.header).items()) == set(ccd.header.items())
 
 
 def test_initialize_from_fits_with_extension(tmpdir):
@@ -171,7 +171,7 @@ def test_metafromheader(ccd_data):
     hdr['exptime'] = '3600'
 
     d1 = CCDData(np.ones((5, 5)), meta=hdr, unit=u.electron)
-    assert d1.meta['OBSERVER'] == 'Edwin Hubble'
+    assert d1.meta['observer'] == 'Edwin Hubble'
     assert d1.header['OBSERVER'] == 'Edwin Hubble'
 
 
@@ -188,7 +188,7 @@ def test_header2meta():
 
     d1 = CCDData(np.ones((5, 5)), unit=u.electron)
     d1.header = hdr
-    assert d1.meta['OBSERVER'] == 'Edwin Hubble'
+    assert d1.meta['observer'] == 'Edwin Hubble'
     assert d1.header['OBSERVER'] == 'Edwin Hubble'
 
 
@@ -459,7 +459,7 @@ def test_ccddata_header_does_not_corrupt_fits(ccd_data, tmpdir):
     # If all is well then reading the file we just wrote should result in an
     # identical header.
     ccd_reread = CCDData.read(rewritten, unit="adu")
-    assert ccd_reread.header == ccd_read.header
+    assert set(ccd_reread.header.items()) == set(ccd_read.header.items())
 
 
 def test_ccddata_with_fits_header_as_meta_works_with_autologging(ccd_data,
