@@ -20,7 +20,7 @@ __all__ = ['CCDData', 'fits_ccddata_reader', 'fits_ccddata_writer']
 
 
 class CCDData(NDDataArray):
-    """A class describing basic CCD data
+    """A class describing basic CCD data.
 
     The CCDData class is based on the NDData object and includes a data array,
     uncertainty frame, mask frame, meta data, units, and WCS information for a
@@ -80,11 +80,10 @@ class CCDData(NDDataArray):
         This method uses :func:`fits_ccddata_writer` with the provided
         parameters.
 
-
     Notes
     -----
     `~ccdproc.CCDData` objects can be easily converted to a regular
-     Numpy array using `numpy.asarray`
+     Numpy array using `numpy.asarray`.
 
     For example::
 
@@ -107,11 +106,11 @@ class CCDData(NDDataArray):
         if 'meta' not in kwd:
             kwd['meta'] = kwd.pop('header', None)
         if 'header' in kwd:
-            raise ValueError("Can't have both header and meta")
+            raise ValueError("Can't have both header and meta.")
 
         super(CCDData, self).__init__(*args, **kwd)
         if self.unit is None:
-            raise ValueError("Unit for CCDData must be specified")
+            raise ValueError("Unit for CCDData must be specified.")
 
     @property
     def data(self):
@@ -172,7 +171,7 @@ class CCDData(NDDataArray):
             if hasattr(value, 'keys'):
                 self._meta = value
             else:
-                raise TypeError('CCDData meta attribute must be dict-like')
+                raise TypeError('CCDData meta attribute must be dict-like.')
 
     @property
     def uncertainty(self):
@@ -186,7 +185,7 @@ class CCDData(NDDataArray):
             elif isinstance(value, np.ndarray):
                 if value.shape != self.shape:
                     raise ValueError("Uncertainty must have same shape as "
-                                     "data")
+                                     "data.")
                 self._uncertainty = StdDevUncertainty(value)
                 log.info("Array provided for uncertainty; assuming it is a "
                          "StdDevUncertainty.")
@@ -225,7 +224,7 @@ class CCDData(NDDataArray):
 
         Returns
         -------
-        hdulist : astropy.io.fits.HDUList object
+        hdulist : `~astropy.io.fits.HDUList` object.
         """
         if isinstance(self.header, fits.Header):
             # Copy here so that we can modify the HDU header by adding WCS
@@ -285,7 +284,7 @@ class CCDData(NDDataArray):
                     self.uncertainty.unit is not None and
                     self.uncertainty.unit != self.unit):
                 raise ValueError('Saving uncertainties with a unit differing'
-                                 'from the data unit is not supported')
+                                 'from the data unit is not supported.')
 
             hduUncert = fits.ImageHDU(self.uncertainty.array,
                                       name=hdu_uncertainty)
@@ -370,7 +369,8 @@ class CCDData(NDDataArray):
                     return super(CCDData, self).multiply(other,
                                                          compare_wcs=compare_wcs)
                 else:
-                    raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
+                    raise ImportError("wcs_compare functionality requires "
+                                      "astropy 1.2 or greater.")
 
         return self._ccddata_arithmetic(other, np.multiply,
                                         scale_uncertainty=True)
@@ -396,7 +396,8 @@ class CCDData(NDDataArray):
                     return super(CCDData, self).divide(other,
                                                        compare_wcs=compare_wcs)
                 else:
-                    raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
+                    raise ImportError("wcs_compare functionality requires "
+                                      "astropy 1.2 or greater.")
 
         return self._ccddata_arithmetic(other, np.divide,
                                         scale_uncertainty=True)
@@ -422,7 +423,8 @@ class CCDData(NDDataArray):
                     return super(CCDData, self).add(other,
                                                     compare_wcs=compare_wcs)
                 else:
-                    raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
+                    raise ImportError("wcs_compare functionality requires "
+                                      "astropy 1.2 or greater.")
 
         return self._ccddata_arithmetic(other, np.add,
                                         scale_uncertainty=False)
@@ -449,7 +451,8 @@ class CCDData(NDDataArray):
                     return super(CCDData, self).subtract(other,
                                                          compare_wcs=compare_wcs)
                 else:
-                    raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
+                    raise ImportError("wcs_compare functionality requires "
+                                      "astropy 1.2 or greater.")
 
         return self._ccddata_arithmetic(other, np.subtract,
                                         scale_uncertainty=False)
@@ -501,7 +504,6 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
 
     Parameters
     ----------
-
     filename : str
         Name of fits file.
 
@@ -563,15 +565,18 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
             mask = None
 
         if hdu_flags in hdus:
-            raise NotImplementedError('Loading flags is currently not supported.')
+            raise NotImplementedError('Loading flags is currently not '
+                                      'supported.')
 
-        # search for the first instance with data if the primary header is empty
+        # search for the first instance with data if
+        # the primary header is empty.
         if hdu == 0 and hdus[hdu].data is None:
             for i in range(len(hdus)):
                 if hdus.fileinfo(i)['datSpan'] > 0:
                     hdu = i
                     hdr = hdr + hdus[hdu].header
-                    log.info("First HDU with data is exention {0}.".format(hdu))
+                    log.info("First HDU with data is exention "
+                             "{0}.".format(hdu))
                     break
 
         if 'bunit' in hdr:
@@ -609,7 +614,7 @@ def fits_ccddata_writer(ccd_data, filename, hdu_mask='MASK',
     Parameters
     ----------
     filename : str
-        Name of file
+        Name of file.
 
     hdu_mask, hdu_uncertainty, hdu_flags : str or None, optional
         If it is a string append this attribute to the HDUList as
