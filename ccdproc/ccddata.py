@@ -20,7 +20,6 @@ __all__ = ['CCDData', 'fits_ccddata_reader', 'fits_ccddata_writer']
 
 
 class CCDData(NDDataArray):
-
     """A class describing basic CCD data
 
     The CCDData class is based on the NDData object and includes a data array,
@@ -98,9 +97,9 @@ class CCDData(NDDataArray):
     This is useful, for example, when plotting a 2D image using
     matplotlib.
 
-        >>> from ccdproc import CCDData   
+        >>> from ccdproc import CCDData
         >>> from matplotlib import pyplot as plt   # doctest: +SKIP
-        >>> x = CCDData([[1,2,3], [4,5,6]], unit='adu') 
+        >>> x = CCDData([[1,2,3], [4,5,6]], unit='adu')
         >>> plt.imshow(x)   # doctest: +SKIP
 
     """
@@ -202,32 +201,31 @@ class CCDData(NDDataArray):
                hdu_flags=None):
         """Creates an HDUList object from a CCDData object.
 
-           Parameters
-           ----------
-           hdu_mask, hdu_uncertainty, hdu_flags : str or None, optional
-              If it is a string append this attribute to the HDUList as
-              `~astropy.io.fits.ImageHDU` with the string as extension name.
-              Flags are not supported at this time. If ``None`` this attribute
-              is not appended.
-              Default is ``'MASK'`` for mask, ``'UNCERT'`` for uncertainty and
-              ``None`` for flags.
+        Parameters
+        ----------
+        hdu_mask, hdu_uncertainty, hdu_flags : str or None, optional
+            If it is a string append this attribute to the HDUList as
+            `~astropy.io.fits.ImageHDU` with the string as extension name.
+            Flags are not supported at this time. If ``None`` this attribute
+            is not appended.
+            Default is ``'MASK'`` for mask, ``'UNCERT'`` for uncertainty and
+            ``None`` for flags.
 
-           Raises
-           -------
-           ValueError
-              - If ``self.mask`` is set but not a `~numpy.ndarray`.
-              - If ``self.uncertainty`` is set but not a
-                `~astropy.nddata.StdDevUncertainty`.
-              - If ``self.uncertainty`` is set but has another unit then
-                ``self.data``.
+        Raises
+        -------
+        ValueError
+            - If ``self.mask`` is set but not a `~numpy.ndarray`.
+            - If ``self.uncertainty`` is set but not a
+              `~astropy.nddata.StdDevUncertainty`.
+            - If ``self.uncertainty`` is set but has another unit then
+              ``self.data``.
 
-           NotImplementedError
-              Saving flags is not supported.
+        NotImplementedError
+            Saving flags is not supported.
 
-           Returns
-           -------
-           hdulist : astropy.io.fits.HDUList object
-
+        Returns
+        -------
+        hdulist : astropy.io.fits.HDUList object
         """
         if isinstance(self.header, fits.Header):
             # Copy here so that we can modify the HDU header by adding WCS
@@ -309,9 +307,9 @@ class CCDData(NDDataArray):
 
     def _ccddata_arithmetic(self, other, operation, scale_uncertainty=False):
         """
-        Perform the common parts of arithmetic operations on CCDData objects
+        Perform the common parts of arithmetic operations on CCDData objects.
 
-        This should only be called when ``other`` is a Quantity or a number
+        This should only be called when ``other`` is a Quantity or a number.
         """
         # THE "1 *" IS NECESSARY to get the right result, at least in
         # astropy-0.4dev. Using the np.multiply, etc, methods with a Unit
@@ -462,7 +460,6 @@ class CCDData(NDDataArray):
 
         Parameters
         ----------
-
         key : str
             Key to be inserted in dictionary.
 
@@ -471,7 +468,6 @@ class CCDData(NDDataArray):
 
         Notes
         -----
-
         This addresses a shortcoming of the FITS standard. There are length
         restrictions on both the ``key`` (8 characters) and ``value`` (72
         characters) in the FITS standard. There is a convention for handline
@@ -539,7 +535,6 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
 
     Notes
     -----
-
     FITS files that contained scaled data (e.g. unsigned integer images) will
     be scaled and the keywords used to manage scaled data in
     :mod:`astropy.io.fits` are disabled.
@@ -613,7 +608,6 @@ def fits_ccddata_writer(ccd_data, filename, hdu_mask='MASK',
 
     Parameters
     ----------
-
     filename : str
         Name of file
 

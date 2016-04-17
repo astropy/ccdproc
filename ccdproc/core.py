@@ -47,8 +47,8 @@ _short_names = {
 
 @log_to_metadata
 def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
-                dark_frame=None,  master_flat=None, bad_pixel_mask=None, gain=None,
-                readnoise=None, oscan_median=True, oscan_model=None,
+                dark_frame=None,  master_flat=None, bad_pixel_mask=None,
+                gain=None, readnoise=None, oscan_median=True, oscan_model=None,
                 min_value=None, dark_exposure=None, data_exposure=None,
                 exposure_key=None, exposure_unit=None,
                 dark_scale=False):
@@ -68,47 +68,47 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
     Parameters
     ----------
-    ccd: `~ccdproc.CCDData`
-        Frame to be reduced
+    ccd : `~ccdproc.CCDData`
+        Frame to be reduced.
 
-    oscan: None, str, or, `~ccdproc.ccddata.CCDData`
+    oscan : None, str, or, `~ccdproc.ccddata.CCDData`
         For no overscan correction, set to None.   Otherwise proivde a region
         of ccd from which the overscan is extracted, using the FITS
         conventions for index order and index start, or a
         slice from ccd that contains the overscan.
 
-    trim: None or str
+    trim : None or str
         For no trim correction, set to None.   Otherwise proivde a region
         of ccd from which the image should be trimmed, using the FITS
         conventions for index order and index start.
 
-    error: boolean
-        If True, create an uncertainty array for ccd
+    error : boolean
+        If True, create an uncertainty array for ccd.
 
-    master_bias: None or `~ccdproc.CCDData`
+    master_bias : None or `~ccdproc.CCDData`
         A master bias frame to be subtracted from ccd.
 
-    dark_frame: None or `~ccdproc.CCDData`
+    dark_frame : None or `~ccdproc.CCDData`
         A dark frame to be subtracted from the ccd.
 
-    master_flat: None or `~ccdproc.CCDData`
+    master_flat : None or `~ccdproc.CCDData`
         A master flat frame to be divided into ccd.
 
-    bad_pixel_mask: None or `~numpy.ndarray`
+    bad_pixel_mask : None or `~numpy.ndarray`
         A bad pixel mask for the data. The bad pixel mask should be in given
         such that bad pixels havea value of 1 and good pixels a value of 0.
 
-    gain: None or `~astropy.Quantity`
-        Gain value to multiple the image by to convert to electrons
+    gain : None or `~astropy.Quantity`
+        Gain value to multiple the image by to convert to electrons.
 
-    readnoise: None or `~astropy.Quantity`
+    readnoise : None or `~astropy.Quantity`
         Read noise for the observations.  The read noise should be in
         electrons.
 
-    oscan_median :  bool, optional
-        If true, takes the median of each line.  Otherwise, uses the mean
+    oscan_median : bool, optional
+        If true, takes the median of each line.  Otherwise, uses the mean.
 
-    oscan_model :  `~astropy.modeling.Model`, optional
+    oscan_model : `~astropy.modeling.Model`, optional
         Model to fit to the data.  If None, returns the values calculated
         by the median or the mean.
 
@@ -132,17 +132,16 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         Unit of the exposure time if the value in the meta data does not
         include a unit.
 
-    dark_scale: boolean
-        If True, scale the dark frame by the exposure times
+    dark_scale : boolean
+        If True, scale the dark frame by the exposure times.
 
     Returns
     -------
-    occd: `~ccdproc.CCDData`
-        Reduded ccd
+    occd : `~ccdproc.CCDData`
+        Reduded ccd.
 
     Examples
     --------
-
     1. To overscan, trim, and gain correct a data set:
 
     >>> import numpy as np
@@ -152,8 +151,6 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     >>> ccd = CCDData(np.ones([100, 100]), unit=u.adu)
     >>> nccd = ccd_process(ccd, oscan='[1:10,1:100]', trim='[10:100, 1:100]',\
                            error=False, gain=2.0*u.electron/u.adu)
-
-
     """
     # make a copy of the object
     nccd = ccd.copy()
@@ -170,7 +167,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     elif oscan is None:
         pass
     else:
-        raise TypeError('oscan is not None, a string, or CCDData object')
+        raise TypeError('oscan is not None, a string, or CCDData object.')
 
     # apply the trim correction
     if isinstance(trim, six.string_types):
@@ -178,14 +175,14 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     elif trim is None:
         pass
     else:
-        raise TypeError('trim is not None or a string')
+        raise TypeError('trim is not None or a string.')
 
     # create the error frame
     if error and gain is not None and readnoise is not None:
         nccd = create_deviation(nccd, gain=gain, readnoise=readnoise)
     elif error and (gain is None or readnoise is None):
         raise ValueError(
-            'gain and readnoise must be specified to create error frame')
+            'gain and readnoise must be specified to create error frame.')
 
     # apply the bad pixel mask
     if isinstance(bad_pixel_mask, np.ndarray):
@@ -193,7 +190,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     elif bad_pixel_mask is None:
         pass
     else:
-        raise TypeError('bad_pixel_mask is not None or numpy.ndarray')
+        raise TypeError('bad_pixel_mask is not None or numpy.ndarray.')
 
     # apply the gain correction
     if isinstance(gain, u.quantity.Quantity):
@@ -201,7 +198,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     elif gain is None:
         pass
     else:
-        raise TypeError('gain is not None or astropy.Quantity')
+        raise TypeError('gain is not None or astropy.Quantity.')
 
     # subtracting the master bias
     if isinstance(master_bias, CCDData):
@@ -210,20 +207,20 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         pass
     else:
         raise TypeError(
-            'master_bias is not None, numpy.ndarray,  or a CCDData object')
+            'master_bias is not None, numpy.ndarray,  or a CCDData object.')
 
     # subtract the dark frame
     if isinstance(dark_frame, CCDData):
         nccd = subtract_dark(nccd, dark_frame, dark_exposure=dark_exposure,
-                             data_exposure=data_exposure, 
+                             data_exposure=data_exposure,
                              exposure_time=exposure_key,
-                             exposure_unit=exposure_unit, 
+                             exposure_unit=exposure_unit,
                              scale=dark_scale)
     elif dark_frame is None:
         pass
     else:
         raise TypeError(
-            'dark_frame is not None or a CCDData object')
+            'dark_frame is not None or a CCDData object.')
 
     # test dividing the master flat
     if isinstance(master_flat, CCDData):
@@ -232,7 +229,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         pass
     else:
         raise TypeError(
-            'master_flat is not None, numpy.ndarray,  or a CCDData object')
+            'master_flat is not None, numpy.ndarray, or a CCDData object.')
 
     return nccd
 
@@ -247,7 +244,6 @@ def create_deviation(ccd_data, gain=None, readnoise=None):
 
     Parameters
     ----------
-
     ccd_data : `~ccdproc.CCDData`
         Data whose deviation will be calculated.
 
@@ -257,7 +253,7 @@ def create_deviation(ccd_data, gain=None, readnoise=None):
         should be those that convert ``ccd_data.data`` to the same units as
         ``readnoise``.
 
-    readnoise :  `~astropy.units.Quantity`
+    readnoise : `~astropy.units.Quantity`
         Read noise per pixel.
 
     {log}
@@ -270,25 +266,25 @@ def create_deviation(ccd_data, gain=None, readnoise=None):
 
     Returns
     -------
-    ccd :  `~ccdproc.CCDData`
+    ccd : `~ccdproc.CCDData`
         CCDData object with uncertainty created; uncertainty is in the same
         units as the data in the parameter ``ccd_data``.
 
     """
     if gain is not None and not isinstance(gain, Quantity):
-        raise TypeError('gain must be a astropy.units.Quantity')
+        raise TypeError('gain must be a astropy.units.Quantity.')
 
     if readnoise is None:
         raise ValueError('Must provide a readnoise.')
 
     if not isinstance(readnoise, Quantity):
-        raise TypeError('readnoise must be a astropy.units.Quantity')
+        raise TypeError('readnoise must be a astropy.units.Quantity.')
 
     if gain is None:
         gain = 1.0 * u.dimensionless_unscaled
 
     if gain.unit * ccd_data.unit != readnoise.unit:
-        raise u.UnitsError("Units of data, gain and readnoise do not match")
+        raise u.UnitsError("Units of data, gain and readnoise do not match.")
 
     # Need to convert Quantity to plain number because NDData data is not
     # a Quantity. All unit checking should happen prior to this point.
@@ -312,7 +308,7 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
     Parameters
     ----------
     ccd : `~ccdproc.CCDData`
-        Data to have overscan frame corrected
+        Data to have overscan frame corrected.
 
     overscan : `~ccdproc.CCDData`
         Slice from ``ccd`` that contains the overscan. Must provide either
@@ -327,15 +323,15 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
         the shortest dimension of the overscan section (or 1 in case
         of a square overscan).
 
-    fits_section :  str
+    fits_section : str
         Region of ``ccd`` from which the overscan is extracted, using the FITS
         conventions for index order and index start. See Notes and Examples
         below. Must provide either this argument or ``overscan``, but not both.
 
-    median :  bool, optional
-        If true, takes the median of each line.  Otherwise, uses the mean
+    median : bool, optional
+        If true, takes the median of each line.  Otherwise, uses the mean.
 
-    model :  `~astropy.modeling.Model`, optional
+    model : `~astropy.modeling.Model`, optional
         Model to fit to the data.  If None, returns the values calculated
         by the median or the mean.
 
@@ -349,13 +345,11 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 
     Returns
     -------
-    ccd :  `~ccdproc.CCDData`
-        CCDData object with overscan subtracted
-
+    ccd : `~ccdproc.CCDData`
+        CCDData object with overscan subtracted.
 
     Notes
     -----
-
     The format of the ``fits_section`` string follow the rules for slices that
     are consistent with the FITS standard (v3) and IRAF usage of keywords like
     TRIMSEC and BIASSEC. Its indexes are one-based, instead of the
@@ -370,7 +364,6 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 
     Examples
     --------
-
     >>> import numpy as np
     >>> from astropy import units as u
     >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
@@ -390,17 +383,19 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 
     """
     if not (isinstance(ccd, CCDData) or isinstance(ccd, np.ndarray)):
-        raise TypeError('ccddata is not a CCDData or ndarray object')
+        raise TypeError('ccddata is not a CCDData or ndarray object.')
 
     if ((overscan is not None and fits_section is not None) or
             (overscan is None and fits_section is None)):
-        raise TypeError('Specify either overscan or fits_section, but not both')
+        raise TypeError('Specify either overscan or fits_section, but not '
+                        'both.')
 
     if (overscan is not None) and (not isinstance(overscan, CCDData)):
-        raise TypeError('overscan is not a CCDData object')
+        raise TypeError('overscan is not a CCDData object.')
 
-    if (fits_section is not None) and not isinstance(fits_section, six.string_types):
-        raise TypeError('overscan is not a string')
+    if (fits_section is not None and
+            not isinstance(fits_section, six.string_types)):
+        raise TypeError('overscan is not a string.')
 
     if fits_section is not None:
         overscan = ccd[slice_from_string(fits_section, fits_convention=True)]
@@ -442,7 +437,6 @@ def trim_image(ccd, fits_section=None):
 
     Parameters
     ----------
-
     ccd : `~ccdproc.CCDData`
         CCD image to be trimmed, sliced if desired.
 
@@ -454,13 +448,11 @@ def trim_image(ccd, fits_section=None):
 
     Returns
     -------
-
     trimmed_ccd : `~ccdproc.CCDData`
         Trimmed image.
 
     Examples
     --------
-
     Given an array that is 100x100,
 
     >>> import numpy as np
@@ -489,7 +481,8 @@ def trim_image(ccd, fits_section=None):
     In this case, ``not_really_trimmed`` is a view of the underlying array
     ``arr1``, not a copy.
     """
-    if fits_section is not None and not isinstance(fits_section, six.string_types):
+    if (fits_section is not None and
+            not isinstance(fits_section, six.string_types)):
         raise TypeError("fits_section must be a string.")
     trimmed = ccd.copy()
     if fits_section:
@@ -506,20 +499,18 @@ def subtract_bias(ccd, master):
 
     Parameters
     ----------
-
     ccd : `~ccdproc.CCDData`
-        Image from which bias will be subtracted
+        Image from which bias will be subtracted.
 
     master : `~ccdproc.CCDData`
-        Master image to be subtracted from ``ccd``
+        Master image to be subtracted from ``ccd``.
 
     {log}
 
     Returns
     -------
-
-    result :  `~ccdproc.CCDData`
-        CCDData object with bias subtracted
+    result : `~ccdproc.CCDData`
+        CCDData object with bias subtracted.
     """
     result = ccd.subtract(master)
     result.meta = ccd.meta.copy()
@@ -535,12 +526,11 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
 
     Parameters
     ----------
-
     ccd : `~ccdproc.CCDData`
-        Image from which dark will be subtracted
+        Image from which dark will be subtracted.
 
     master : `~ccdproc.CCDData`
-        Dark image
+        Dark image.
 
     dark_exposure : `~astropy.units.Quantity`
         Exposure time of the dark image; if specified, must also provided
@@ -558,18 +548,17 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
         include a unit.
 
     scale: boolean
-        If True, scale the dark frame by the exposure times
+        If True, scale the dark frame by the exposure times.
 
     {log}
 
     Returns
     -------
-
     result : `~ccdproc.CCDData`
-        Dark-subtracted image
+        Dark-subtracted image.
     """
     if not (isinstance(ccd, CCDData) and isinstance(master, CCDData)):
-        raise TypeError("ccd and master must both be CCDData objects")
+        raise TypeError("ccd and master must both be CCDData objects.")
 
     if (data_exposure is not None and
             dark_exposure is not None and
@@ -595,10 +584,10 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
                 data_exposure *= exposure_unit
                 dark_exposure *= exposure_unit
             except TypeError:
-                raise TypeError("Must provide unit for exposure time")
+                raise TypeError("Must provide unit for exposure time.")
         else:
             raise TypeError("exposure times must be astropy.units.Quantity "
-                            "objects")
+                            "objects.")
 
     if scale:
         master_scaled = master.copy()
@@ -620,10 +609,10 @@ def gain_correct(ccd, gain, gain_unit=None):
     Parameters
     ----------
     ccd : `~ccdproc.CCDData`
-      Data to have gain corrected
+      Data to have gain corrected.
 
-    gain :  `~astropy.units.Quantity` or `~ccdproc.Keyword`
-      gain value for the image expressed in electrons per adu
+    gain : `~astropy.units.Quantity` or `~ccdproc.Keyword`
+      gain value for the image expressed in electrons per adu.
 
     gain_unit : `~astropy.units.Unit`, optional
         Unit for the ``gain``; used only if ``gain`` itself does not provide
@@ -633,8 +622,8 @@ def gain_correct(ccd, gain, gain_unit=None):
 
     Returns
     -------
-    result :  `~ccdproc.CCDData`
-      CCDData object with gain corrected
+    result : `~ccdproc.CCDData`
+      CCDData object with gain corrected.
     """
     if isinstance(gain, Keyword):
         gain_value = gain.value_from(ccd.header)
@@ -656,10 +645,10 @@ def flat_correct(ccd, flat, min_value=None):
     Parameters
     ----------
     ccd : `~ccdproc.CCDData`
-        Data to be flatfield corrected
+        Data to be flatfield corrected.
 
     flat : `~ccdproc.CCDData`
-        Flatfield to apply to the data
+        Flatfield to apply to the data.
 
     min_value : None or float
         Minimum value for flat field.  The value can either be None and no
@@ -670,8 +659,8 @@ def flat_correct(ccd, flat, min_value=None):
 
     Returns
     -------
-    ccd :  `~ccdproc.CCDData`
-        CCDData object with flat corrected
+    ccd : `~ccdproc.CCDData`
+        CCDData object with flat corrected.
     """
     # Use the min_value to replace any values in the flat
     use_flat = flat
@@ -692,7 +681,7 @@ def flat_correct(ccd, flat, min_value=None):
 
 @log_to_metadata
 def transform_image(ccd, transform_func, **kwargs):
-    """Transform the image
+    """Transform the image.
 
     Using the function specified by transform_func, the transform will
     be applied to data, uncertainty, and mask in ccd.
@@ -700,24 +689,23 @@ def transform_image(ccd, transform_func, **kwargs):
     Parameters
     ----------
     ccd : `~ccdproc.CCDData`
-        Data to be flatfield corrected
+        Data to be flatfield corrected.
 
     transform_func : function
-        Function to be used to transform the data
+        Function to be used to transform the data.
 
-    kwargs: dict
+    kwargs : dict
         Dictionary of arguments to be used by the transform_func.
 
     {log}
 
     Returns
     -------
-    ccd :  `~ccdproc.CCDData`
-        A transformed CCDData object
+    ccd : `~ccdproc.CCDData`
+        A transformed CCDData object.
 
     Notes
     -----
-
     At this time, transform will be applied to the uncertainy data but it
     will only transform the data.  This will not properly handle uncertainties
     that arise due to correlation between the pixels.
@@ -727,28 +715,26 @@ def transform_image(ccd, transform_func, **kwargs):
 
     Examples
     --------
-
-    Given an array that is 100x100,
+    Given an array that is 100x100::
 
     >>> import numpy as np
     >>> from astropy import units as u
     >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
 
-    the syntax for transforming the array using
+    The syntax for transforming the array using
     scipy.ndimage.interpolation.shift
 
     >>> from scipy.ndimage.interpolation import shift
     >>> from ccdproc import transform_image
     >>> transformed = transform_image(arr1, shift, shift=(5.5, 8.1))
-
     """
     # check that it is a ccddata object
     if not (isinstance(ccd, CCDData)):
-        raise TypeError('ccd is not a CCDData')
+        raise TypeError('ccd is not a CCDData.')
 
     # check that transform is a callable function
     if not hasattr(transform_func, '__call__'):
-        raise TypeError('transform is not a function')
+        raise TypeError('transform is not a function.')
 
     # make a copy of the object
     nccd = ccd.copy()
@@ -802,7 +788,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     Returns
     -------
     ccd : `~ccdproc.CCDData`
-        A transformed CCDData object
+        A transformed CCDData object.
     """
     from reproject import reproject_interp
 
@@ -868,47 +854,48 @@ def sigma_func(arr, axis=None):
 
     Returns
     -------
-    float
+    uncertainty : float
         uncertainty of array estimated from median absolute deviation.
     """
     return stats.median_absolute_deviation(arr) * 1.482602218505602
 
 
 def setbox(x, y, mbox, xmax, ymax):
-    """Create a box of length mbox around a position x,y.   If the box will
-       be out of [0,len] then reset the edges of the box to be within the
-       boundaries
+    """
+    Create a box of length mbox around a position x,y.   If the box will
+    be out of [0,len] then reset the edges of the box to be within the
+    boundaries.
 
-       Parameters
-       ----------
-       x : int
-           Central x-position of box
+    Parameters
+    ----------
+    x : int
+        Central x-position of box.
 
-       y : int
-           Central y-position of box
+    y : int
+        Central y-position of box.
 
-       mbox : int
-           Width of box
+    mbox : int
+        Width of box.
 
-       xmax : int
-           Maximum x value
+    xmax : int
+        Maximum x value.
 
-       ymax : int
-           Maximum y value
+    ymax : int
+        Maximum y value.
 
-        Returns
-        -------
-        x1 :  int
-           Lower x corner of box
+    Returns
+    -------
+    x1 : int
+        Lower x corner of box.
 
-        x2 :  int
-           Upper x corner of box
+    x2 : int
+        Upper x corner of box.
 
-        y1 :  int
-           Lower y corner of box
+    y1 : int
+        Lower y corner of box.
 
-        y2 :  int
-           Upper y corner of box
+    y2 : int
+        Upper y corner of box.
     """
     mbox = max(int(0.5 * mbox), 1)
     y1 = max(0, y - mbox)
@@ -928,29 +915,26 @@ def background_deviation_box(data, bbox):
 
     Parameters
     ----------
-
     data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-        Data to measure background deviation
+        Data to measure background deviation.
 
-    bbox :  int
-        Box size for calculating background deviation
+    bbox : int
+        Box size for calculating background deviation.
 
     Raises
     ------
-
     ValueError
-        A value error is raised if bbox is less than 1
+        A value error is raised if bbox is less than 1.
 
     Returns
     -------
     background : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-        An array with the measured background deviation in each pixel
-
+        An array with the measured background deviation in each pixel.
     """
     # Check to make sure the background box is an appropriate size
     # If it is too small, then insufficient statistics are generated
     if bbox < 1:
-        raise ValueError('bbox must be greater than 1')
+        raise ValueError('bbox must be greater than 1.')
 
     # make the background image
     barr = data * 0.0 + data.std()
@@ -971,25 +955,24 @@ def background_deviation_filter(data, bbox):
     Parameters
     ----------
     data : `~numpy.ndarray`
-        Data to measure background deviation
+        Data to measure background deviation.
 
-    bbox :  int
-        Box size for calculating background deviation
+    bbox : int
+        Box size for calculating background deviation.
 
     Raises
     ------
     ValueError
-        A value error is raised if bbox is less than 1
+        A value error is raised if bbox is less than 1.
 
     Returns
     -------
     background : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-        An array with the measured background deviation in each pixel
-
+        An array with the measured background deviation in each pixel.
     """
     # Check to make sure the background box is an appropriate size
     if bbox < 1:
-        raise ValueError('bbox must be greater than 1')
+        raise ValueError('bbox must be greater than 1.')
 
     return ndimage.generic_filter(data, sigma_func, size=(bbox, bbox))
 
@@ -1001,10 +984,10 @@ def rebin(ccd, newshape):
     Parameters
     ----------
     data : `~ccdproc.CCDData` or `~numpy.ndarray`
-        Data to rebin
+        Data to rebin.
 
     newshape : tuple
-        Tuple containing the new shape for the array
+        Tuple containing the new shape for the array.
 
     Returns
     -------
@@ -1016,11 +999,11 @@ def rebin(ccd, newshape):
     ------
     TypeError
         A type error is raised if data is not an `~numpy.ndarray` or
-        `~ccdproc.CCDData`
+        `~ccdproc.CCDData`.
 
     ValueError
         A value error is raised if the dimenisions of new shape is not equal
-        to data
+        to data.
 
     Notes
     -----
@@ -1032,24 +1015,24 @@ def rebin(ccd, newshape):
 
     Examples
     --------
-    Given an array that is 100x100,
+    Given an array that is 100x100::
 
     >>> import numpy as np
     >>> from astropy import units as u
     >>> arr1 = CCDData(np.ones([10, 10]), unit=u.adu)
 
-    the syntax for rebinning an array to a shape
-    of (20,20) is
+    The syntax for rebinning an array to a shape
+    of (20,20) is::
 
     >>> rebinned = rebin(arr1, (20,20))
-
     """
     # check to see that is in a nddata type
     if isinstance(ccd, np.ndarray):
 
         # check to see that the two arrays are going to be the same length
         if len(ccd.shape) != len(newshape):
-            raise ValueError('newshape does not have the same dimensions as ccd')
+            raise ValueError('newshape does not have the same dimensions as '
+                             'ccd.')
 
         slices = [slice(0, old, old/new) for old, new in
                   zip(ccd.shape, newshape)]
@@ -1060,7 +1043,8 @@ def rebin(ccd, newshape):
     elif isinstance(ccd, CCDData):
         # check to see that the two arrays are going to be the same length
         if len(ccd.shape) != len(newshape):
-            raise ValueError('newshape does not have the same dimensions as ccd')
+            raise ValueError('newshape does not have the same dimensions as '
+                             'ccd.')
 
         nccd = ccd.copy()
         # rebin the data plane
@@ -1076,34 +1060,34 @@ def rebin(ccd, newshape):
 
         return nccd
     else:
-        raise TypeError('ccd is not an ndarray or a CCDData object')
+        raise TypeError('ccd is not an ndarray or a CCDData object.')
 
 
 def _blkavg(data, newshape):
     """
-    Block average an array such that it has the new shape
+    Block average an array such that it has the new shape.
 
     Parameters
     ----------
     data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-        Data to average
+        Data to average.
 
     newshape : tuple
-        Tuple containing the new shape for the array
+        Tuple containing the new shape for the array.
 
     Returns
     -------
     output : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-        An array with the new shape and the average of the pixels
+        An array with the new shape and the average of the pixels.
 
     Raises
     ------
     TypeError
-        A type error is raised if data is not an `numpy.ndarray`
+        A type error is raised if data is not an `numpy.ndarray`.
 
     ValueError
         A value error is raised if the dimensions of new shape is not equal
-        to data
+        to data.
 
     Notes
     -----
@@ -1112,11 +1096,11 @@ def _blkavg(data, newshape):
     """
     # check to see that is in a nddata type
     if not isinstance(data, np.ndarray):
-        raise TypeError('data is not a ndarray object')
+        raise TypeError('data is not a ndarray object.')
 
     # check to see that the two arrays are going to be the same length
     if len(data.shape) != len(newshape):
-        raise ValueError('newshape does not have the same dimensions as data')
+        raise ValueError('newshape does not have the same dimensions as data.')
 
     shape = data.shape
     lenShape = len(shape)
@@ -1139,13 +1123,13 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     Identify cosmic rays through the lacosmic technique. The lacosmic technique
     identifies cosmic rays by identifying pixels based on a variation of the
     Laplacian edge detection.  The algorithm is an implementation of the
-    code describe in van Dokkum (2001) :ref:[1]_ as implemented by McCully (2014)
+    code describe in van Dokkum (2001) [1]_ as implemented by McCully (2014)
     [2]_.  If you use this algorithm, please cite these two works.
 
     Parameters
     ----------
-    ccd: `~ccdproc.CCDData` or `~numpy.ndarray`
-        Data to have cosmic ray cleaned
+    ccd : `~ccdproc.CCDData` or `~numpy.ndarray`
+        Data to have cosmic ray cleaned.
     sigclip : float, optional
         Laplacian-to-noise limit for cosmic ray detection. Lower values will
         flag more pixels as cosmic rays. Default: 4.5.
@@ -1212,7 +1196,6 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         psfmodel=='moffat'. Default: 4.765.
     verbose : boolean, optional
         Print to the screen or not. Default: False.
-    {log}
 
     Notes
     -----
@@ -1296,7 +1279,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         return nccd
 
     else:
-        raise TypeError('ccddata is not a CCDData or ndarray object')
+        raise TypeError('ccddata is not a CCDData or ndarray object.')
 
 
 def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
@@ -1308,33 +1291,30 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
 
     Parameters
     ----------
-
     ccd : `~ccdproc.CCDData` or numpy.ndarray or numpy.MaskedArary
-        Data to have cosmic ray cleaned
+        Data to have cosmic ray cleaned.
 
-    thresh :  float
-        Threshold for detecting cosmic rays
+    thresh : float
+        Threshold for detecting cosmic rays.
 
     error_image : None, float, or `~numpy.ndarray`
         Error level.   If None, the task will use the standard
         deviation of the data. If an ndarray, it should have the same shape
         as data.
 
-    mbox :  int
-        Median box for detecting cosmic rays
+    mbox : int
+        Median box for detecting cosmic rays.
 
-    gbox :  int
+    gbox : int
         Box size to grow cosmic rays. If zero, no growing will be done.
 
-    rbox :  int
-        Median box for calculating replacement values.  If zero, no pixels will
+    rbox : int
+        Median box for calculating replacement values. If zero, no pixels will
         be replaced.
-
-    {log}
 
     Notes
     -----
-    Similar implementation to crmedian in iraf.imred.crutil.crmedian
+    Similar implementation to crmedian in iraf.imred.crutil.crmedian.
 
     Returns
     -------
@@ -1349,7 +1329,6 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
 
     Examples
     --------
-
     1) Given an numpy.ndarray object, the syntax for running
        cosmicray_median would be:
 
@@ -1371,9 +1350,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
        The newccd object will have bad pixels in its data array replace and the
        mask of the object will be created if it did not previously exist or be
        updated with the detected cosmic rays.
-
     """
-
     if isinstance(ccd, np.ndarray):
         data = ccd
 
@@ -1381,7 +1358,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
             error_image = data.std()
         else:
             if not isinstance(error_image, (float, np.ndarray)):
-                raise TypeError('error_image is not a float or ndarray')
+                raise TypeError('error_image is not a float or ndarray.')
 
         # create the median image
         marr = ndimage.median_filter(data, size=(mbox, mbox))
@@ -1414,7 +1391,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         if error_image is None and ccd.uncertainty is not None:
             error_image = ccd.uncertainty.array
         if ccd.data.shape != error_image.shape:
-            raise ValueError('error_image is not the same shape as data')
+            raise ValueError('error_image is not the same shape as data.')
 
         data, crarr = cosmicray_median(ccd.data, error_image=error_image,
                                        thresh=thresh, mbox=mbox, gbox=gbox,
@@ -1430,7 +1407,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         return nccd
 
     else:
-        raise TypeError('ccd is not an ndarray or a CCDData object')
+        raise TypeError('ccd is not an ndarray or a CCDData object.')
 
 
 class Keyword(object):
@@ -1469,20 +1446,19 @@ class Keyword(object):
         else:
             if self.unit is None:
                 raise ValueError("No unit provided. Set value with "
-                                 "an astropy.units.Quantity")
+                                 "an astropy.units.Quantity.")
             self._value = value * self.unit
 
     def value_from(self, header):
         """
-        Set value of keyword from FITS header
+        Set value of keyword from FITS header.
 
         Parameters
         ----------
 
         header : `~astropy.io.fits.Header`
-            FITS header containing a value for this keyword
+            FITS header containing a value for this keyword.
         """
-
         value_from_header = header[self.name]
         self.value = value_from_header
         return self.value
