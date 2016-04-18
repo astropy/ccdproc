@@ -780,6 +780,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
 
     order : str, optional
         Interpolation order for re-projection. Must be one of:
+
         + 'nearest-neighbor'
         + 'bilinear'
         + 'biquadratic'
