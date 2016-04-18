@@ -366,20 +366,20 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 
     Examples
     --------
-    >>> import numpy as np
-    >>> from astropy import units as u
-    >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
+        >>> import numpy as np
+        >>> from astropy import units as u
+        >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
 
     The statement below uses all rows of columns 90 through 99 as the
     overscan.
 
-    >>> no_scan = subtract_overscan(arr1, overscan=arr1[:, 90:100])
-    >>> assert (no_scan.data == 0).all()
+        >>> no_scan = subtract_overscan(arr1, overscan=arr1[:, 90:100])
+        >>> assert (no_scan.data == 0).all()
 
     This statement does the same as the above, but with a FITS-style section.
 
-    >>> no_scan = subtract_overscan(arr1, fits_section='[91:100, :]')
-    >>> assert (no_scan.data == 0).all()
+        >>> no_scan = subtract_overscan(arr1, fits_section='[91:100, :]')
+        >>> assert (no_scan.data == 0).all()
 
     Spaces are stripped out of the ``fits_section`` string.
 
@@ -457,28 +457,28 @@ def trim_image(ccd, fits_section=None):
     --------
     Given an array that is 100x100,
 
-    >>> import numpy as np
-    >>> from astropy import units as u
-    >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
+        >>> import numpy as np
+        >>> from astropy import units as u
+        >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
 
     the syntax for trimming this to keep all of the first index but only the
     first 90 rows of the second index is
 
-    >>> trimmed = trim_image(arr1[:, :90])
-    >>> trimmed.shape
-    (100, 90)
-    >>> trimmed.data[0, 0] = 2
-    >>> arr1.data[0, 0]
-    1.0
+        >>> trimmed = trim_image(arr1[:, :90])
+        >>> trimmed.shape
+        (100, 90)
+        >>> trimmed.data[0, 0] = 2
+        >>> arr1.data[0, 0]
+        1.0
 
     This both trims *and makes a copy* of the image.
 
     Indexing the image directly does *not* do the same thing, quite:
 
-    >>> not_really_trimmed = arr1[:, :90]
-    >>> not_really_trimmed.data[0, 0] = 2
-    >>> arr1.data[0, 0]
-    2.0
+        >>> not_really_trimmed = arr1[:, :90]
+        >>> not_really_trimmed.data[0, 0] = 2
+        >>> arr1.data[0, 0]
+        2.0
 
     In this case, ``not_really_trimmed`` is a view of the underlying array
     ``arr1``, not a copy.
@@ -719,16 +719,16 @@ def transform_image(ccd, transform_func, **kwargs):
     --------
     Given an array that is 100x100::
 
-    >>> import numpy as np
-    >>> from astropy import units as u
-    >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
+        >>> import numpy as np
+        >>> from astropy import units as u
+        >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
 
     The syntax for transforming the array using
     scipy.ndimage.interpolation.shift
 
-    >>> from scipy.ndimage.interpolation import shift
-    >>> from ccdproc import transform_image
-    >>> transformed = transform_image(arr1, shift, shift=(5.5, 8.1))
+        >>> from scipy.ndimage.interpolation import shift
+        >>> from ccdproc import transform_image
+        >>> transformed = transform_image(arr1, shift, shift=(5.5, 8.1))
     """
     # check that it is a ccddata object
     if not (isinstance(ccd, CCDData)):
@@ -1019,14 +1019,14 @@ def rebin(ccd, newshape):
     --------
     Given an array that is 100x100::
 
-    >>> import numpy as np
-    >>> from astropy import units as u
-    >>> arr1 = CCDData(np.ones([10, 10]), unit=u.adu)
+        >>> import numpy as np
+        >>> from astropy import units as u
+        >>> arr1 = CCDData(np.ones([10, 10]), unit=u.adu)
 
     The syntax for rebinning an array to a shape
     of (20,20) is::
 
-    >>> rebinned = rebin(arr1, (20,20))
+        >>> rebinned = rebin(arr1, (20,20))
     """
     # check to see that is in a nddata type
     if isinstance(ccd, np.ndarray):
