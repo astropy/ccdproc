@@ -98,10 +98,10 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         A bad pixel mask for the data. The bad pixel mask should be in given
         such that bad pixels havea value of 1 and good pixels a value of 0.
 
-    gain : None or `~astropy.Quantity`
+    gain : None or `~astropy.units.Quantity`
         Gain value to multiple the image by to convert to electrons.
 
-    readnoise : None or `~astropy.Quantity`
+    readnoise : None or `~astropy.units.Quantity`
         Read noise for the observations.  The read noise should be in
         electrons.
 
@@ -193,12 +193,12 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         raise TypeError('bad_pixel_mask is not None or numpy.ndarray.')
 
     # apply the gain correction
-    if isinstance(gain, u.quantity.Quantity):
+    if isinstance(gain, Quantity):
         nccd = gain_correct(nccd, gain)
     elif gain is None:
         pass
     else:
-        raise TypeError('gain is not None or astropy.Quantity.')
+        raise TypeError('gain is not None or astropy.units.Quantity.')
 
     # subtracting the master bias
     if isinstance(master_bias, CCDData):
