@@ -366,17 +366,19 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 
     Examples
     --------
+    Creating a 100x100 array containing ones just for demonstration purposes::
+
         >>> import numpy as np
         >>> from astropy import units as u
         >>> arr1 = CCDData(np.ones([100, 100]), unit=u.adu)
 
     The statement below uses all rows of columns 90 through 99 as the
-    overscan.
+    overscan::
 
         >>> no_scan = subtract_overscan(arr1, overscan=arr1[:, 90:100])
         >>> assert (no_scan.data == 0).all()
 
-    This statement does the same as the above, but with a FITS-style section.
+    This statement does the same as the above, but with a FITS-style section::
 
         >>> no_scan = subtract_overscan(arr1, fits_section='[91:100, :]')
         >>> assert (no_scan.data == 0).all()
