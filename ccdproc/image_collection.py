@@ -33,20 +33,23 @@ class ImageFileCollection(object):
 
     Parameters
     ----------
-    location : str, optional
+    location : str or None, optional
         path to directory containing FITS files.
+        Default is ``None``.
 
-    keywords : list of str or '*', optional
+    keywords : None, list of str or '*', optional
         Keywords that should be used as column headings in the summary table.
         If the value is or includes '*' then all keywords that appear in any
         of the FITS headers of the files in the collection become table
         columns. Default value is '*' unless ``info_file`` is specified.
+        Default is ``None``.
 
-    info_file : str, optional
+    info_file : str or None, optional
         Path to file that contains a table of information about FITS files.
         In this case the keywords are set to the names of the columns of the
         ``info_file`` unless ``keywords`` is explicitly set to a different
         list.
+        Default is ``None``.
 
     Raises
     ------
@@ -102,7 +105,7 @@ class ImageFileCollection(object):
     @property
     def summary(self):
         """
-        `astropy.table.Table` of values of FITS keywords for files in the
+        `~astropy.table.Table` of values of FITS keywords for files in the
         collection.
 
         Each keyword is a column heading. In addition, there is a column
@@ -127,7 +130,7 @@ class ImageFileCollection(object):
     @property
     def summary_info(self):
         """
-        Deprecated -- use `summary` instead -- `astropy.table.Table` of values
+        Deprecated -- use `summary` instead -- `~astropy.table.Table` of values
         of FITS keywords for files in the collection.
 
         Each keyword is a column heading. In addition, there is a column
@@ -214,6 +217,7 @@ class ImageFileCollection(object):
 
         unique : bool, optional
             If True, return only the unique values for the keyword.
+            Default is ``False``.
 
         Returns
         -------
@@ -278,8 +282,9 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-        keys : str or list of str
+        keys : None, str or list of str, optional
             The key(s) to order the table by.
+            Default is ``None``.
         """
         if len(self._summary_info) > 0:
             self._summary_info.sort(keys)
@@ -298,8 +303,13 @@ class ImageFileCollection(object):
         file_name : str
             Name of FITS file.
 
-        input_summary : dict
+        input_summary : dict or None, optional
             Existing dictionary to which new values should be appended.
+            Default is ``None``.
+
+        missing_marker : any type, optional
+            Fill value for missing header-keywords.
+            Default is ``None``.
 
         Returns
         -------
@@ -524,13 +534,15 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-        extension : list of str, optional
+        extension : None or list of str, optional
             List of filename extensions that are FITS files. Default is
             ``['fit', 'fits', 'fts']``.
+            Default is ``None``.
 
         compressed : bool, optional
             If ``True``, compressed files should be included in the list
             (e.g. `.fits.gz`).
+            Default is ``True``.
 
         Returns
         -------
@@ -569,31 +581,40 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-        save_with_name : str
+        save_with_name : str, optional
             string added to end of file name (before extension) if
             FITS file should be saved after iteration. Unless
             ``save_location`` is set, files will be saved to location of
             the source files ``self.location``.
+            Default is ``''``.
 
-        save_location : str
+        save_location : str, optional
             Directory in which to save FITS files; implies that FITS
             files will be saved. Note this provides an easy way to
             copy a directory of files--loop over the {name} with
             ``save_location`` set.
+            Default is ``''``.
 
-        overwrite : bool
+        overwrite : bool, optional
             If ``True``, overwrite input FITS files.
+            Default is ``False``.
 
-        do_not_scale_image_data : bool
+        clobber : bool, optional
+            Alias for ``overwrite``.
+            Default is ``False``.
+
+        do_not_scale_image_data : bool, optional
             If ``True``, prevents fits from scaling images. Default is
             ``{default_scaling}``.
+            Default is ``True``.
 
-        return_fname : bool, default is False
+        return_fname : bool, optional
             If True, return the tuple (header, file_name) instead of just
             header. The file name returned is the name of the file only,
             not the full path to the file.
+            Default is ``False``.
 
-        kwd : dict
+        kwd :
             Any additional keywords are used to filter the items returned; see
             Examples for details.
 

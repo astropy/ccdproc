@@ -47,7 +47,7 @@ _short_names = {
 
 @log_to_metadata
 def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
-                dark_frame=None,  master_flat=None, bad_pixel_mask=None,
+                dark_frame=None, master_flat=None, bad_pixel_mask=None,
                 gain=None, readnoise=None, oscan_median=True, oscan_model=None,
                 min_value=None, dark_exposure=None, data_exposure=None,
                 exposure_key=None, exposure_unit=None,
@@ -56,14 +56,14 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
     The following steps can be included:
 
-    * overscan correction
-    * trimming of the image
-    * create deviation frame
-    * gain correction
+    * overscan correction (:func:`subtract_overscan`)
+    * trimming of the image (:func:`trim_image`)
+    * create deviation frame (:func:`create_deviation`)
+    * gain correction (:func:`gain_correct`)
     * add a mask to the data
-    * subtraction of master bias
-    * subtraction of a dark frame
-    * correction of flat field
+    * subtraction of master bias (:func:`subtract_bias`)
+    * subtraction of a dark frame (:func:`subtract_dark`)
+    * correction of flat field (:func:`flat_correct`)
 
     The task returns a processed `ccdproc.CCDData` object.
 
@@ -72,69 +72,86 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     ccd : `~ccdproc.CCDData`
         Frame to be reduced.
 
-    oscan : None, str, or, `~ccdproc.ccddata.CCDData`
-        For no overscan correction, set to None.   Otherwise proivde a region
+    oscan : None, str or `~ccdproc.ccddata.CCDData`, optional
+        For no overscan correction, set to None. Otherwise proivde a region
         of ccd from which the overscan is extracted, using the FITS
         conventions for index order and index start, or a
         slice from ccd that contains the overscan.
+        Default is ``None``.
 
-    trim : None or str
-        For no trim correction, set to None.   Otherwise proivde a region
+    trim : None or str, optional
+        For no trim correction, set to None. Otherwise proivde a region
         of ccd from which the image should be trimmed, using the FITS
         conventions for index order and index start.
+        Default is ``None``.
 
-    error : boolean
+    error : bool, optional
         If True, create an uncertainty array for ccd.
+        Default is ``False``.
 
-    master_bias : None or `~ccdproc.CCDData`
+    master_bias : None or `~ccdproc.CCDData`, optional
         A master bias frame to be subtracted from ccd.
+        Default is ``None``.
 
-    dark_frame : None or `~ccdproc.CCDData`
+    dark_frame : None or `~ccdproc.CCDData`, optional
         A dark frame to be subtracted from the ccd.
+        Default is ``None``.
 
-    master_flat : None or `~ccdproc.CCDData`
+    master_flat : None or `~ccdproc.CCDData`, optional
         A master flat frame to be divided into ccd.
+        Default is ``None``.
 
-    bad_pixel_mask : None or `~numpy.ndarray`
+    bad_pixel_mask : None or `numpy.ndarray`, optional
         A bad pixel mask for the data. The bad pixel mask should be in given
         such that bad pixels havea value of 1 and good pixels a value of 0.
+        Default is ``None``.
 
-    gain : None or `~astropy.units.Quantity`
+    gain : None or `~astropy.units.Quantity`, optional
         Gain value to multiple the image by to convert to electrons.
+        Default is ``None``.
 
-    readnoise : None or `~astropy.units.Quantity`
-        Read noise for the observations.  The read noise should be in
+    readnoise : None or `~astropy.units.Quantity`, optional
+        Read noise for the observations. The read noise should be in
         electrons.
+        Default is ``None``.
 
     oscan_median : bool, optional
-        If true, takes the median of each line.  Otherwise, uses the mean.
+        If true, takes the median of each line. Otherwise, uses the mean.
+        Default is ``True``.
 
-    oscan_model : `~astropy.modeling.Model`, optional
-        Model to fit to the data.  If None, returns the values calculated
+    oscan_model : None or `~astropy.modeling.Model`, optional
+        Model to fit to the data. If None, returns the values calculated
         by the median or the mean.
+        Default is ``None``.
 
-    min_value : None or float
-        Minimum value for flat field.  The value can either be None and no
+    min_value : None or float, optional
+        Minimum value for flat field. The value can either be None and no
         minimum value is applied to the flat or specified by a float which
         will replace all values in the flat by the min_value.
+        Default is ``None``.
 
-    dark_exposure : `~astropy.units.Quantity`
+    dark_exposure : None or `~astropy.units.Quantity`, optional
         Exposure time of the dark image; if specified, must also provided
         ``data_exposure``.
+        Default is ``None``.
 
-    data_exposure : `~astropy.units.Quantity`
+    data_exposure : None or `~astropy.units.Quantity`, optional
         Exposure time of the science image; if specified, must also provided
         ``dark_exposure``.
+        Default is ``None``.
 
-    exposure_key : str or `~ccdproc.Keyword`
+    exposure_key : None, str or `~ccdproc.Keyword`, optional
         Name of key in image metadata that contains exposure time.
+        Default is ``None``.
 
-    exposure_unit : `~astropy.units.Unit`
+    exposure_unit : None or `~astropy.units.Unit`, optional
         Unit of the exposure time if the value in the meta data does not
         include a unit.
+        Default is ``None``.
 
-    dark_scale : boolean
+    dark_scale : bool, optional
         If True, scale the dark frame by the exposure times.
+        Default is ``False``.
 
     Returns
     -------
@@ -209,7 +226,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         pass
     else:
         raise TypeError(
-            'master_bias is not None, numpy.ndarray,  or a CCDData object.')
+            'master_bias is not None, numpy.ndarray, or a CCDData object.')
 
     # subtract the dark frame
     if isinstance(dark_frame, CCDData):
@@ -239,7 +256,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 @log_to_metadata
 def create_deviation(ccd_data, gain=None, readnoise=None):
     """
-    Create a uncertainty frame.  The function will update the uncertainty
+    Create a uncertainty frame. The function will update the uncertainty
     plane which gives the standard deviation for the data. Gain is used in
     this function only to scale the data in constructing the deviation; the
     data is not scaled.
@@ -249,14 +266,16 @@ def create_deviation(ccd_data, gain=None, readnoise=None):
     ccd_data : `~ccdproc.CCDData`
         Data whose deviation will be calculated.
 
-    gain : `~astropy.units.Quantity`, optional
+    gain : `~astropy.units.Quantity` or None, optional
         Gain of the CCD; necessary only if ``ccd_data`` and ``readnoise``
         are not in the same units. In that case, the units of ``gain``
         should be those that convert ``ccd_data.data`` to the same units as
         ``readnoise``.
+        Default is ``None``.
 
-    readnoise : `~astropy.units.Quantity`
+    readnoise : `~astropy.units.Quantity` or None, optional
         Read noise per pixel.
+        Default is ``None``.
 
     {log}
 
@@ -312,9 +331,10 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
     ccd : `~ccdproc.CCDData`
         Data to have overscan frame corrected.
 
-    overscan : `~ccdproc.CCDData`
+    overscan : `~ccdproc.CCDData` or None, optional
         Slice from ``ccd`` that contains the overscan. Must provide either
         this argument or ``fits_section``, but not both.
+        Default is ``None``.
 
     overscan_axis : None, 0 or 1, optional
         Axis along which overscan should combined with mean or median. Axis
@@ -324,18 +344,22 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
         If overscan_axis is explicitly set to None, the axis is set to
         the shortest dimension of the overscan section (or 1 in case
         of a square overscan).
+        Default is ``1``.
 
-    fits_section : str
+    fits_section : str or None, optional
         Region of ``ccd`` from which the overscan is extracted, using the FITS
         conventions for index order and index start. See Notes and Examples
         below. Must provide either this argument or ``overscan``, but not both.
+        Default is ``None``.
 
     median : bool, optional
-        If true, takes the median of each line.  Otherwise, uses the mean.
+        If true, takes the median of each line. Otherwise, uses the mean.
+        Default is ``False``.
 
-    model : `~astropy.modeling.Model`, optional
-        Model to fit to the data.  If None, returns the values calculated
+    model : `~astropy.modeling.Model` or None, optional
+        Model to fit to the data. If None, returns the values calculated
         by the median or the mean.
+        Default is ``None``.
 
     {log}
 
@@ -444,9 +468,10 @@ def trim_image(ccd, fits_section=None):
     ccd : `~ccdproc.CCDData`
         CCD image to be trimmed, sliced if desired.
 
-    fits_section : str
+    fits_section : str or None, optional
         Region of ``ccd`` from which the overscan is extracted; see
         `~ccdproc.subtract_overscan` for details.
+        Default is ``None``.
 
     {log}
 
@@ -536,23 +561,28 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
     master : `~ccdproc.CCDData`
         Dark image.
 
-    dark_exposure : `~astropy.units.Quantity`
+    dark_exposure : `~astropy.units.Quantity` or None, optional
         Exposure time of the dark image; if specified, must also provided
         ``data_exposure``.
+        Default is ``None``.
 
-    data_exposure : `~astropy.units.Quantity`
+    data_exposure : `~astropy.units.Quantity` or None, optional
         Exposure time of the science image; if specified, must also provided
         ``dark_exposure``.
+        Default is ``None``.
 
-    exposure_time : str or `~ccdproc.Keyword`
+    exposure_time : str or `~ccdproc.Keyword` or None, optional
         Name of key in image metadata that contains exposure time.
+        Default is ``None``.
 
-    exposure_unit : `~astropy.units.Unit`
+    exposure_unit : `~astropy.units.Unit` or None, optional
         Unit of the exposure time if the value in the meta data does not
         include a unit.
+        Default is ``None``.
 
-    scale: boolean
+    scale: bool, optional
         If True, scale the dark frame by the exposure times.
+        Default is ``False``.
 
     {log}
 
@@ -618,9 +648,10 @@ def gain_correct(ccd, gain, gain_unit=None):
     gain : `~astropy.units.Quantity` or `~ccdproc.Keyword`
       gain value for the image expressed in electrons per adu.
 
-    gain_unit : `~astropy.units.Unit`, optional
+    gain_unit : `~astropy.units.Unit` or None, optional
         Unit for the ``gain``; used only if ``gain`` itself does not provide
         units.
+        Default is ``None``.
 
     {log}
 
@@ -654,10 +685,11 @@ def flat_correct(ccd, flat, min_value=None):
     flat : `~ccdproc.CCDData`
         Flatfield to apply to the data.
 
-    min_value : None or float
-        Minimum value for flat field.  The value can either be None and no
+    min_value : None or float, optional
+        Minimum value for flat field. The value can either be None and no
         minimum value is applied to the flat or specified by a float which
         will replace all values in the flat by the min_value.
+        Default is ``None``.
 
     {log}
 
@@ -698,8 +730,8 @@ def transform_image(ccd, transform_func, **kwargs):
     transform_func : function
         Function to be used to transform the data.
 
-    kwargs : dict
-        Dictionary of arguments to be used by the transform_func.
+    kwargs :
+        Additional keyword arguments to be used by the transform_func.
 
     {log}
 
@@ -711,10 +743,10 @@ def transform_image(ccd, transform_func, **kwargs):
     Notes
     -----
     At this time, transform will be applied to the uncertainy data but it
-    will only transform the data.  This will not properly handle uncertainties
+    will only transform the data. This will not properly handle uncertainties
     that arise due to correlation between the pixels.
 
-    These should only be geometric transformations of the images.  Other
+    These should only be geometric transformations of the images. Other
     methods should be used if the units of ccd need to be changed.
 
     Examples
@@ -773,12 +805,13 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     ccd : `~ccdproc.CCDData`
         Data to be projected.
 
-    target_wcs : `astropy.wcs.WCS` object
+    target_wcs : `~astropy.wcs.WCS` object
         WCS onto which all images should be projected.
 
-    target_shape : two element list-like, optional
+    target_shape : None or two element list-like, optional
         Shape of the output image. If omitted, defaults to the shape of the
         input image.
+        Default is ``None``.
 
     order : str, optional
         Interpolation order for re-projection. Must be one of:
@@ -787,6 +820,8 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
         + 'bilinear'
         + 'biquadratic'
         + 'bicubic'
+
+        Default is ``'bilinear'``.
 
     {log}
 
@@ -848,14 +883,15 @@ def sigma_func(arr, axis=None):
 
     Parameters
     ----------
-    arr : `~ccdproc.CCDData` or `~numpy.ndarray`
+    arr : `~ccdproc.CCDData` or `numpy.ndarray`
         Array whose deviation is to be calculated.
 
     axis : None or int or tuple of ints, optional
         Axis or axes along which the function is performed.
-        If ``None`` (the default) it is performed over all the dimensions of
+        If ``None`` it is performed over all the dimensions of
         the input array. The axis argument can also be negative, in this case
         it counts from the last to the first axis.
+        Default is ``None``.
 
     Returns
     -------
@@ -867,7 +903,7 @@ def sigma_func(arr, axis=None):
 
 def setbox(x, y, mbox, xmax, ymax):
     """
-    Create a box of length mbox around a position x,y.   If the box will
+    Create a box of length mbox around a position x,y. If the box will
     be out of [0,len] then reset the edges of the box to be within the
     boundaries.
 
@@ -920,7 +956,7 @@ def background_deviation_box(data, bbox):
 
     Parameters
     ----------
-    data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+    data : `numpy.ndarray` or `numpy.ma.MaskedArray`
         Data to measure background deviation.
 
     bbox : int
@@ -933,7 +969,7 @@ def background_deviation_box(data, bbox):
 
     Returns
     -------
-    background : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+    background : `numpy.ndarray` or `numpy.ma.MaskedArray`
         An array with the measured background deviation in each pixel.
     """
     # Check to make sure the background box is an appropriate size
@@ -959,7 +995,7 @@ def background_deviation_filter(data, bbox):
 
     Parameters
     ----------
-    data : `~numpy.ndarray`
+    data : `numpy.ndarray`
         Data to measure background deviation.
 
     bbox : int
@@ -972,7 +1008,7 @@ def background_deviation_filter(data, bbox):
 
     Returns
     -------
-    background : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+    background : `numpy.ndarray` or `numpy.ma.MaskedArray`
         An array with the measured background deviation in each pixel.
     """
     # Check to make sure the background box is an appropriate size
@@ -988,7 +1024,7 @@ def rebin(ccd, newshape):
 
     Parameters
     ----------
-    data : `~ccdproc.CCDData` or `~numpy.ndarray`
+    data : `~ccdproc.CCDData` or `numpy.ndarray`
         Data to rebin.
 
     newshape : tuple
@@ -996,14 +1032,14 @@ def rebin(ccd, newshape):
 
     Returns
     -------
-    output : `~ccdproc.CCDData` or `~numpy.ndarray`
-        An array with the new shape.  It will have the same type as the input
+    output : `~ccdproc.CCDData` or `numpy.ndarray`
+        An array with the new shape. It will have the same type as the input
         object.
 
     Raises
     ------
     TypeError
-        A type error is raised if data is not an `~numpy.ndarray` or
+        A type error is raised if data is not an `numpy.ndarray` or
         `~ccdproc.CCDData`.
 
     ValueError
@@ -1074,7 +1110,7 @@ def _blkavg(data, newshape):
 
     Parameters
     ----------
-    data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+    data : `numpy.ndarray` or `numpy.ma.MaskedArray`
         Data to average.
 
     newshape : tuple
@@ -1082,7 +1118,7 @@ def _blkavg(data, newshape):
 
     Returns
     -------
-    output : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+    output : `numpy.ndarray` or `numpy.ma.MaskedArray`
         An array with the new shape and the average of the pixels.
 
     Raises
@@ -1119,21 +1155,21 @@ def _blkavg(data, newshape):
 
 
 def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
-                       objlim=5.0,  gain=1.0,  readnoise=6.5,
-                       satlevel=65536.0,  pssl=0.0, niter=4,
+                       objlim=5.0, gain=1.0, readnoise=6.5,
+                       satlevel=65536.0, pssl=0.0, niter=4,
                        sepmed=True, cleantype='meanmask', fsmode='median',
-                       psfmodel='gauss',  psffwhm=2.5, psfsize=7,
-                       psfk=None,  psfbeta=4.765, verbose=False):
+                       psfmodel='gauss', psffwhm=2.5, psfsize=7,
+                       psfk=None, psfbeta=4.765, verbose=False):
     r"""
     Identify cosmic rays through the lacosmic technique. The lacosmic technique
     identifies cosmic rays by identifying pixels based on a variation of the
-    Laplacian edge detection.  The algorithm is an implementation of the
+    Laplacian edge detection. The algorithm is an implementation of the
     code describe in van Dokkum (2001) [1]_ as implemented by McCully (2014)
-    [2]_.  If you use this algorithm, please cite these two works.
+    [2]_. If you use this algorithm, please cite these two works.
 
     Parameters
     ----------
-    ccd : `~ccdproc.CCDData` or `~numpy.ndarray`
+    ccd : `~ccdproc.CCDData` or `numpy.ndarray`
         Data to have cosmic ray cleaned.
     sigclip : float, optional
         Laplacian-to-noise limit for cosmic ray detection. Lower values will
@@ -1162,30 +1198,37 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         the mask. Default: 65536.0.
     niter : int, optional
         Number of iterations of the LA Cosmic algorithm to perform. Default: 4.
-    sepmed : boolean, optional
+    sepmed : bool, optional
         Use the separable median filter instead of the full median filter.
         The separable median is not identical to the full median filter, but
         they are approximately the same and the separable median filter is
         significantly faster and still detects cosmic rays well. Default: True
     cleantype : {'median', 'medmask', 'meanmask', 'idw'}, optional
-        Set which clean algorithm is used:\n
-        'median': An umasked 5x5 median filter\n
-        'medmask': A masked 5x5 median filter\n
-        'meanmask': A masked 5x5 mean filter\n
-        'idw': A masked 5x5 inverse distance weighted interpolation\n
+        Set which clean algorithm is used:
+
+        - 'median': An umasked 5x5 median filter
+        - 'medmask': A masked 5x5 median filter
+        - 'meanmask': A masked 5x5 mean filter
+        - 'idw': A masked 5x5 inverse distance weighted interpolation
+
         Default: "meanmask".
     fsmode : {'median', 'convolve'}, optional
-        Method to build the fine structure image:\n
-        'median': Use the median filter in the standard LA Cosmic algorithm
-        'convolve': Convolve the image with the psf kernel to calculate the
-        fine structure image.
+        Method to build the fine structure image:
+
+        - 'median': Use the median filter in the standard LA Cosmic algorithm
+        - 'convolve': Convolve the image with the psf kernel to calculate the \
+          fine structure image.
+
         Default: 'median'.
     psfmodel : {'gauss', 'gaussx', 'gaussy', 'moffat'}, optional
         Model to use to generate the psf kernel if fsmode == 'convolve' and
-        psfk is None. The current choices are Gaussian and Moffat profiles.
-        'gauss' and 'moffat' produce circular PSF kernels. The 'gaussx' and
-        'gaussy' produce Gaussian kernels in the x and y directions
-        respectively. Default: "gauss".
+        psfk is None. The current choices are Gaussian and Moffat profiles:
+
+        - 'gauss' and 'moffat' produce circular PSF kernels.
+        - The 'gaussx' and 'gaussy' produce Gaussian kernels in the x and y \
+          directions respectively.
+
+        Default: "gauss".
     psffwhm : float, optional
         Full Width Half Maximum of the PSF to use to generate the kernel.
         Default: 2.5.
@@ -1199,7 +1242,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     psfbeta : float, optional
         Moffat beta parameter. Only used if fsmode=='convolve' and
         psfmodel=='moffat'. Default: 4.765.
-    verbose : boolean, optional
+    verbose : bool, optional
         Print to the screen or not. Default: False.
 
     Notes
@@ -1209,12 +1252,12 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
     Returns
     -------
-    nccd : `~ccdproc.CCDData` or `~numpy.ndarray`
-        An object of the same type as ccd is returned.   If it is a
+    nccd : `~ccdproc.CCDData` or `numpy.ndarray`
+        An object of the same type as ccd is returned. If it is a
         `~ccdproc.CCDData`, the mask attribute will also be updated with
         areas identified with cosmic rays masked.
-    crmask : `~numpy.ndarray`
-        If an `~numpy.ndarray` is provided as ccd, a boolean ndarray with the
+    crmask : `numpy.ndarray`
+        If an `numpy.ndarray` is provided as ccd, a boolean ndarray with the
         cosmic rays identified will also be returned.
 
     References
@@ -1235,7 +1278,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
        >>> newdata, mask = cosmicray_lacosmic(data, sigclip=5)  #doctest: +SKIP
 
        where the error is an array that is the same shape as data but
-       includes the pixel error.  This would return a data array, newdata,
+       includes the pixel error. This would return a data array, newdata,
        with the bad pixels replaced by the local median from a box of 11
        pixels; and it would return a mask indicating the bad pixels.
 
@@ -1255,8 +1298,8 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         crmask, cleanarr = detect_cosmics(
                    data, inmask=None, sigclip=sigclip,
                    sigfrac=sigfrac, objlim=objlim, gain=gain,
-                   readnoise=readnoise, satlevel=satlevel,  pssl=pssl,
-                   niter=niter, sepmed=sepmed,  cleantype=cleantype,
+                   readnoise=readnoise, satlevel=satlevel, pssl=pssl,
+                   niter=niter, sepmed=sepmed, cleantype=cleantype,
                    fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
                    psfsize=psfsize, psfk=psfk, psfbeta=psfbeta,
                    verbose=verbose)
@@ -1268,8 +1311,8 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         crmask, cleanarr = detect_cosmics(
             ccd.data, inmask=ccd.mask,
             sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain,
-            readnoise=readnoise, satlevel=satlevel,  pssl=pssl,
-            niter=niter, sepmed=sepmed,  cleantype=cleantype,
+            readnoise=readnoise, satlevel=satlevel, pssl=pssl,
+            niter=niter, sepmed=sepmed, cleantype=cleantype,
             fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
             psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, verbose=verbose)
 
@@ -1290,7 +1333,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
                      rbox=0):
     """
-    Identify cosmic rays through median technique.  The median technique
+    Identify cosmic rays through median technique. The median technique
     identifies cosmic rays by identifying pixels by subtracting a median image
     from the initial data array.
 
@@ -1299,23 +1342,28 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
     ccd : `~ccdproc.CCDData` or numpy.ndarray or numpy.MaskedArary
         Data to have cosmic ray cleaned.
 
-    thresh : float
+    thresh : float, optional
         Threshold for detecting cosmic rays.
+        Default is ``5``.
 
-    error_image : None, float, or `~numpy.ndarray`
-        Error level.   If None, the task will use the standard
+    error_image : None, float, or `numpy.ndarray`, optional
+        Error level. If None, the task will use the standard
         deviation of the data. If an ndarray, it should have the same shape
         as data.
+        Default is ``None``.
 
-    mbox : int
+    mbox : int, optional
         Median box for detecting cosmic rays.
+        Default is ``11``.
 
-    gbox : int
+    gbox : int, optional
         Box size to grow cosmic rays. If zero, no growing will be done.
+        Default is ``0``.
 
-    rbox : int
+    rbox : int, optional
         Median box for calculating replacement values. If zero, no pixels will
         be replaced.
+        Default is ``0``.
 
     Notes
     -----
@@ -1323,13 +1371,13 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
 
     Returns
     -------
-    nccd : `~ccdproc.CCDData` or `~numpy.ndarray`
-        An object of the same type as ccd is returned.   If it is a
+    nccd : `~ccdproc.CCDData` or `numpy.ndarray`
+        An object of the same type as ccd is returned. If it is a
         `~ccdproc.CCDData`, the mask attribute will also be updated with
         areas identified with cosmic rays masked.
 
-    nccd : `~numpy.ndarray`
-        If an `~numpy.ndarray` is provided as ccd, a boolean ndarray with the
+    nccd : `numpy.ndarray`
+        If an `numpy.ndarray` is provided as ccd, a boolean ndarray with the
         cosmic rays identified will also be returned.
 
     Examples
@@ -1342,7 +1390,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
        ...                                  rbox=11, gbox=5)   # doctest: +SKIP
 
        where error is an array that is the same shape as data but
-       includes the pixel error.  This would return a data array, newdata,
+       includes the pixel error. This would return a data array, newdata,
        with the bad pixels replaced by the local median from a box of 11
        pixels; and it would return a mask indicating the bad pixels.
 
@@ -1460,7 +1508,6 @@ class Keyword(object):
 
         Parameters
         ----------
-
         header : `~astropy.io.fits.Header`
             FITS header containing a value for this keyword.
         """

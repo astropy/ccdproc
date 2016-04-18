@@ -28,40 +28,52 @@ class CCDData(NDDataArray):
 
     Parameters
     -----------
-    data : `~numpy.ndarray` or :class:`~ccdproc.CCDData`
+    data : `numpy.ndarray` or :class:`~ccdproc.CCDData`
         The actual data contained in this `~ccdproc.CCDData` object.
         Note that this will always be copies by *reference* , so you should
-        make copy the ``data`` before passing it in if that's the  desired
+        make copy the ``data`` before passing it in if that's the desired
         behavior.
 
-    uncertainty : `~astropy.nddata.StdDevUncertainty` or `~numpy.ndarray`,
-        optional Uncertainties on the data.
+    uncertainty : `~astropy.nddata.StdDevUncertainty` or `numpy.ndarray` or \
+            None, optional
+        Uncertainties on the data.
+        Default is ``None``.
 
-    mask : `~numpy.ndarray`, optional
+    mask : `numpy.ndarray` or None, optional
         Mask for the data, given as a boolean Numpy array with a shape
         matching that of the data. The values must be `False` where
         the data is *valid* and `True` when it is not (like Numpy
         masked arrays). If ``data`` is a numpy masked array, providing
         ``mask`` here will causes the mask from the masked array to be
         ignored.
+        Default is ``None``.
 
-    flags : `~numpy.ndarray` or `~astropy.nddata.FlagCollection`, optional
+    flags : `numpy.ndarray` or `~astropy.nddata.FlagCollection` or None, \
+            optional
         Flags giving information about each pixel. These can be specified
         either as a Numpy array of any type with a shape matching that of the
         data, or as a `~astropy.nddata.FlagCollection` instance which has a
         shape matching that of the data.
+        Default is ``None``.
 
-    wcs : `~astropy.wcs.WCS` object, optional
+    wcs : `~astropy.wcs.WCS` or None, optional
         WCS-object containing the world coordinate system for the data.
+        Default is ``None``.
 
-    meta : `dict`-like object, optional
-        Metadata for this object.  "Metadata" here means all information that
+    meta : dict-like object or None, optional
+        Metadata for this object. "Metadata" here means all information that
         is included with this object but not part of any other attribute
-        of this particular object.  e.g., creation date, unique identifier,
+        of this particular object, e.g. creation date, unique identifier,
         simulation parameters, exposure time, telescope name, etc.
 
     unit : `~astropy.units.Unit` instance or str, optional
         The units of the data.
+        Default is ``None``.
+
+        .. warning::
+
+            If the unit is ``None`` or not otherwise specified it will raise a
+            ``ValueError``
 
     Raises
     ------
@@ -213,7 +225,7 @@ class CCDData(NDDataArray):
         Raises
         -------
         ValueError
-            - If ``self.mask`` is set but not a `~numpy.ndarray`.
+            - If ``self.mask`` is set but not a `numpy.ndarray`.
             - If ``self.uncertainty`` is set but not a
               `~astropy.nddata.StdDevUncertainty`.
             - If ``self.uncertainty`` is set but has another unit then
@@ -508,14 +520,16 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
         Name of fits file.
 
     hdu : int, optional
-        FITS extension from which CCDData should be initialized.  If zero and
+        FITS extension from which CCDData should be initialized. If zero and
         and no data in the primary extention, it will search for the first
-        extension with data.  The header will be added to the primary header.
+        extension with data. The header will be added to the primary header.
+        Default is ``0``.
 
-    unit : astropy.units.Unit, optional
+    unit : `astropy.units.Unit`, optional
         Units of the image data. If this argument is provided and there is a
         unit for the image in the FITS header (the keyword ``BUNIT`` is used
         as the unit, if present), this argument is used for the unit.
+        Default is ``None``.
 
     hdu_uncertainty : str or None, optional
         FITS extension from which the uncertainty should be initialized. If the
@@ -630,7 +644,7 @@ def fits_ccddata_writer(ccd_data, filename, hdu_mask='MASK',
     Raises
     -------
     ValueError
-        - If ``self.mask`` is set but not a `~numpy.ndarray`.
+        - If ``self.mask`` is set but not a `numpy.ndarray`.
         - If ``self.uncertainty`` is set but not a
           `~astropy.nddata.StdDevUncertainty`.
         - If ``self.uncertainty`` is set but has another unit then

@@ -30,7 +30,7 @@ class Combiner(object):
     ccd_list : list
         A list of CCDData objects that will be combined together.
 
-    dtype : str or `numpy.dtype` or None
+    dtype : str or `numpy.dtype` or None, optional
         Allows user to set dtype. See `numpy.array` ``dtype`` parameter
         description.
         Default is ``None``.
@@ -122,7 +122,7 @@ class Combiner(object):
 
         Parameters
         ----------
-        weight_values : `numpy.ndarray`
+        weight_values : `numpy.ndarray` or None
             An array with the weight values. The dimensions should match the
             the dimensions of the data arrays being combined.
         """
@@ -154,7 +154,6 @@ class Combiner(object):
             them. Scaling may be either a function, which will be applied to
             each image to determine the scaling factor, or a list or array
             whose length is the number of images in the `~ccdproc.Combiner`.
-            Default is ``None``.
         """
         return self._scaling
 
@@ -204,34 +203,34 @@ class Combiner(object):
                        func=ma.mean, dev_func=ma.std):
         """
         Pixels will be rejected if they have deviations greater than those
-        set by the threshold values.   The algorithm will first calculated
+        set by the threshold values. The algorithm will first calculated
         a baseline value using the function specified in func and deviation
-        based on dev_func and the input data array.   Any pixel with a
+        based on dev_func and the input data array. Any pixel with a
         deviation from the baseline value greater than that set by
         high_thresh or lower than that set by low_thresh will be rejected.
 
         Parameters
         -----------
-        low_thresh : positive float or None
+        low_thresh : positive float or None, optional
             Threshold for rejecting pixels that deviate below the baseline
             value. If negative value, then will be convert to a positive
             value. If None, no rejection will be done based on low_thresh.
             Default is 3.
 
-        high_thresh : positive float or None
+        high_thresh : positive float or None, optional
             Threshold for rejecting pixels that deviate above the baseline
             value. If None, no rejection will be done based on high_thresh.
             Default is 3.
 
-        func : function
+        func : function, optional
             Function for calculating the baseline values (i.e. `numpy.ma.mean`
             or `numpy.ma.median`). This should be a function that can handle
             `numpy.ma.MaskedArray` objects.
             Default is `numpy.ma.mean`.
 
-        dev_func : function
+        dev_func : function, optional
             Function for calculating the deviation from the baseline value
-            (i.e. `numpy.ma.std`).  This should be a function that can handle
+            (i.e. `numpy.ma.std`). This should be a function that can handle
             `numpy.ma.MaskedArray` objects.
             Default is `numpy.ma.std`.
         """
@@ -256,7 +255,7 @@ class Combiner(object):
         Median combine a set of arrays.
 
         A `~ccdproc.CCDData` object is returned with the data property set to
-        the median of the arrays.  If the data was masked or any data have been
+        the median of the arrays. If the data was masked or any data have been
         rejected, those pixels will not be included in the median. A mask will
         be returned, and if a pixel has been rejected in all images, it will be
         masked. The uncertainty of the combined image is set by 1.4826 times
@@ -265,10 +264,10 @@ class Combiner(object):
         Parameters
         ----------
         median_func : function, optional
-            Function that calculates median of a `~numpy.ma.MaskedArray`.
+            Function that calculates median of a `numpy.ma.MaskedArray`.
             Default is `numpy.ma.median`.
 
-        scale_to : float, optional
+        scale_to : float or None, optional
             Scaling factor used in the average combined image. If given,
             it overrides ``CCDData.scaling``.
             Defaults to None.
@@ -326,10 +325,10 @@ class Combiner(object):
         Average combine together a set of arrays.
 
         A `~ccdproc.CCDData` object is returned with the data property
-        set to the average of the arrays.  If the data was masked or any
+        set to the average of the arrays. If the data was masked or any
         data have been rejected, those pixels will not be included in the
-        average.  A mask will be returned, and if a pixel has been
-        rejected in all images, it will be masked.  The uncertainty of
+        average. A mask will be returned, and if a pixel has been
+        rejected in all images, it will be masked. The uncertainty of
         the combined image is set by the standard deviation of the input
         images.
 
@@ -339,9 +338,9 @@ class Combiner(object):
             Function to calculate the average. Defaults to
             `numpy.ma.average`.
 
-        scale_to : float, optional
+        scale_to : float or None, optional
             Scaling factor used in the average combined image. If given,
-            it overrides ``CCDData.scaling``. Defaults to None.
+            it overrides ``CCDData.scaling``. Defaults to ``None``.
 
         uncertainty_func : function, optional
             Function to calculate uncertainty. Defaults to `numpy.ma.std`.
@@ -399,9 +398,10 @@ def combine(img_list, output_file=None, method='average', weights=None,
         A list of fits filenames or CCDData objects that will be combined
         together. Or a string of fits filenames seperated by comma ",".
 
-    output_file : string, optional
+    output_file : string or None, optional
         Optional output fits filename to which the final output can be directly
         written.
+        Default is ``None``.
 
     method : string
         Method to combine images:
@@ -411,10 +411,11 @@ def combine(img_list, output_file=None, method='average', weights=None,
 
         Default is ``'average'``.
 
-    weights : `~numpy.ndarray`, optional
+    weights : `numpy.ndarray` or None, optional
         Weights to be used when combining images.
         An array with the weight values. The dimensions should match the
         the dimensions of the data arrays being combined.
+        Default is ``None``.
 
     scale : function or `numpy.ndarray`-like or None, optional
         Scaling factor to be used when combining images.
@@ -423,10 +424,10 @@ def combine(img_list, output_file=None, method='average', weights=None,
         to determine the scaling factor, or a list or array whose length
         is the number of images in the `Combiner`. Default is ``None``.
 
-    mem_limit : float (default 16e9)
+    mem_limit : float, optional (default 16e9)
         Maximum memory which should be used while combining (in bytes).
 
-    minmax_clip : boolean (default False)
+    minmax_clip : bool, optional (default False)
         Set to True if you want to mask all pixels that are below
         minmax_clip_min or above minmax_clip_max before combining.
 
@@ -436,7 +437,7 @@ def combine(img_list, output_file=None, method='average', weights=None,
         - ``minmax_clip_min`` : None, float, optional
         - ``minmax_clip_max`` : None, float, optional
 
-    sigma_clip : boolean (default False)
+    sigma_clip : bool, optional (default False)
         Set to True if you want to reject pixels which have deviations greater
         than those
         set by the threshold values. The algorithm will first calculated
@@ -449,10 +450,10 @@ def combine(img_list, output_file=None, method='average', weights=None,
         Parameters below are valid only when sigma_clip is set to True. See
         :meth:`Combiner.sigma_clipping` for the parameter description.
 
-        - ``sigma_clip_low_thresh`` : positive float or None
-        - ``sigma_clip_high_thresh`` : positive float or None
-        - ``sigma_clip_func`` : function
-        - ``sigma_clip_dev_func`` : function
+        - ``sigma_clip_low_thresh`` : positive float or None, optional
+        - ``sigma_clip_high_thresh`` : positive float or None, optional
+        - ``sigma_clip_func`` : function, optional
+        - ``sigma_clip_dev_func`` : function, optional
 
     ccdkwargs : Other keyword arguments for CCD Object's fits reader.
 
