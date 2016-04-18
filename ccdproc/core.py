@@ -55,6 +55,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     """Perform basic processing on ccd data.
 
     The following steps can be included:
+
     * overscan correction
     * trimming of the image
     * create deviation frame
@@ -142,15 +143,16 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
     Examples
     --------
-    1. To overscan, trim, and gain correct a data set:
+    1. To overscan, trim and gain correct a data set::
 
-    >>> import numpy as np
-    >>> from astropy import units as u
-    >>> from ccdproc import CCDData
-    >>> from ccdproc import ccd_process
-    >>> ccd = CCDData(np.ones([100, 100]), unit=u.adu)
-    >>> nccd = ccd_process(ccd, oscan='[1:10,1:100]', trim='[10:100, 1:100]',\
-                           error=False, gain=2.0*u.electron/u.adu)
+        >>> import numpy as np
+        >>> from astropy import units as u
+        >>> from ccdproc import CCDData
+        >>> from ccdproc import ccd_process
+        >>> ccd = CCDData(np.ones([100, 100]), unit=u.adu)
+        >>> nccd = ccd_process(ccd, oscan='[1:10,1:100]',
+        ...                    trim='[10:100, 1:100]', error=False,
+        ...                    gain=2.0*u.electron/u.adu)
     """
     # make a copy of the object
     nccd = ccd.copy()
