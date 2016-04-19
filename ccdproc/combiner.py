@@ -87,7 +87,7 @@ class Combiner(object):
                 default_unit = ccd.unit
             else:
                 if not (default_unit == ccd.unit):
-                    raise TypeError("CCDdata objects are not the same unit.")
+                    raise TypeError("CCDData objects don't the same unit.")
 
         self.ccd_list = ccd_list
         self.unit = default_unit
@@ -138,7 +138,7 @@ class Combiner(object):
                     raise ValueError(
                         "dimensions of weights do not match data.")
             else:
-                raise TypeError("mask must be a numpy ndarray.")
+                raise TypeError("mask must be a numpy.ndarray.")
         else:
             self._weights = None
 
@@ -172,7 +172,7 @@ class Combiner(object):
                     len(value) == n_images
                     self._scaling = np.array(value)
                 except TypeError:
-                    raise TypeError("Scaling must be a function or an array "
+                    raise TypeError("scaling must be a function or an array "
                                     "the same length as the number of images.")
             # reshape so that broadcasting occurs properly
             self._scaling = self.scaling[:, np.newaxis, np.newaxis]
@@ -183,11 +183,11 @@ class Combiner(object):
 
          Parameters
          -----------
-         min_clip : None or float, optional
+         min_clip : float or None, optional
              If not None, all pixels with values below min_clip will be masked.
              Default is ``None``.
 
-         max_clip : None or float, optional
+         max_clip : float or None, optional
              If not None, all pixels with values above min_clip will be masked.
              Default is ``None``.
         """
@@ -269,7 +269,7 @@ class Combiner(object):
 
         scale_to : float or None, optional
             Scaling factor used in the average combined image. If given,
-            it overrides ``CCDData.scaling``.
+            it overrides `scaling`.
             Defaults to None.
 
         uncertainty_func : function, optional
@@ -340,7 +340,7 @@ class Combiner(object):
 
         scale_to : float or None, optional
             Scaling factor used in the average combined image. If given,
-            it overrides ``CCDData.scaling``. Defaults to ``None``.
+            it overrides `scaling`. Defaults to ``None``.
 
         uncertainty_func : function, optional
             Function to calculate uncertainty. Defaults to `numpy.ma.std`.
@@ -394,16 +394,17 @@ def combine(img_list, output_file=None, method='average', weights=None,
 
     Parameters
     -----------
-    img_list : list or string
-        A list of fits filenames or CCDData objects that will be combined
-        together. Or a string of fits filenames seperated by comma ",".
+    img_list : list or str
+        A list of fits filenames or `~ccdproc.CCDData` objects that will be
+        combined together. Or a string of fits filenames seperated by comma
+        ",".
 
-    output_file : string or None, optional
+    output_file : str or None, optional
         Optional output fits filename to which the final output can be directly
         written.
         Default is ``None``.
 
-    method : string
+    method : str, optional
         Method to combine images:
 
         - ``'average'`` : To combine by calculating the average.
@@ -424,12 +425,14 @@ def combine(img_list, output_file=None, method='average', weights=None,
         to determine the scaling factor, or a list or array whose length
         is the number of images in the `Combiner`. Default is ``None``.
 
-    mem_limit : float, optional (default 16e9)
+    mem_limit : float, optional
         Maximum memory which should be used while combining (in bytes).
+        Default is ``16e9``.
 
-    minmax_clip : bool, optional (default False)
+    minmax_clip : bool, optional
         Set to True if you want to mask all pixels that are below
         minmax_clip_min or above minmax_clip_max before combining.
+        Default is ``False``.
 
         Parameters below are valid only when minmax_clip is set to True, see
         :meth:`Combiner.minmax_clipping` for the parameter description:
@@ -437,7 +440,7 @@ def combine(img_list, output_file=None, method='average', weights=None,
         - ``minmax_clip_min`` : None, float, optional
         - ``minmax_clip_max`` : None, float, optional
 
-    sigma_clip : bool, optional (default False)
+    sigma_clip : bool, optional
         Set to True if you want to reject pixels which have deviations greater
         than those
         set by the threshold values. The algorithm will first calculated
@@ -446,6 +449,7 @@ def combine(img_list, output_file=None, method='average', weights=None,
         a deviation from the baseline value greater than that set by
         sigma_clip_high_thresh or lower than that set by sigma_clip_low_thresh
         will be rejected.
+        Default is ``False``.
 
         Parameters below are valid only when sigma_clip is set to True. See
         :meth:`Combiner.sigma_clipping` for the parameter description.
@@ -455,7 +459,7 @@ def combine(img_list, output_file=None, method='average', weights=None,
         - ``sigma_clip_func`` : function, optional
         - ``sigma_clip_dev_func`` : function, optional
 
-    ccdkwargs : Other keyword arguments for CCD Object's fits reader.
+    ccdkwargs : Other keyword arguments for `ccdproc.fits_ccddata_reader`.
 
     Returns
     -------
@@ -469,7 +473,7 @@ def combine(img_list, output_file=None, method='average', weights=None,
             img_list = img_list.split(',')
         else:
             raise ValueError(
-                "Unrecognised input for list of images to combine.")
+                "unrecognised input for list of images to combine.")
 
     # Select Combine function to call in Combiner
     if method == 'average':
@@ -477,7 +481,7 @@ def combine(img_list, output_file=None, method='average', weights=None,
     elif method == 'median':
         combine_function = 'median_combine'
     else:
-        raise ValueError("Unrecognised combine method : {0}.".format(method))
+        raise ValueError("unrecognised combine method : {0}.".format(method))
 
     # First we create a CCDObject from first image for storing output
     if isinstance(img_list[0], CCDData):
@@ -498,7 +502,7 @@ def combine(img_list, output_file=None, method='average', weights=None,
 
     # determine the number of chunks to split the images into
     no_chunks = int((size_of_an_img*no_of_img)/mem_limit)+1
-    log.info('Splitting each image into {0} chunks to limit memory usage to '
+    log.info('splitting each image into {0} chunks to limit memory usage to '
              '{1} bytes.'.format(no_chunks, mem_limit))
     xs, ys = ccd.data.shape
     # First we try to split only along fast x axis

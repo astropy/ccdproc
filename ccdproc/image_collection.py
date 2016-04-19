@@ -37,7 +37,7 @@ class ImageFileCollection(object):
         path to directory containing FITS files.
         Default is ``None``.
 
-    keywords : None, list of str or '*', optional
+    keywords : list of str, '*' or None, optional
         Keywords that should be used as column headings in the summary table.
         If the value is or includes '*' then all keywords that appear in any
         of the FITS headers of the files in the collection become table
@@ -63,7 +63,7 @@ class ImageFileCollection(object):
         if location:
             self._files = self._fits_files_in_directory()
         if self._files == []:
-            warnings.warn("No fits files in the collection.",
+            warnings.warn("no FITS files in the collection.",
                           AstropyUserWarning)
         self._summary_info = {}
         if keywords is None:
@@ -87,7 +87,7 @@ class ImageFileCollection(object):
                                            masked=True)
             except IOError:
                 if location:
-                    logger.warning('Unable to open table file %s, will try '
+                    logger.warning('unable to open table file %s, will try '
                                    'initializing from location instead.',
                                    info_path)
                 else:
@@ -282,7 +282,7 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-        keys : None, str or list of str, optional
+        keys : str, list of str or None, optional
             The key(s) to order the table by.
             Default is ``None``.
         """
@@ -313,7 +313,7 @@ class ImageFileCollection(object):
 
         Returns
         -------
-        file_table : `astropy.table.Table`
+        file_table : `~astropy.table.Table`
         """
         from collections import OrderedDict
 
@@ -388,7 +388,7 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-        header_keywords : list of str or '*', optional
+        header_keywords : list of str, '*' or None, optional
             Keywords whose value should be extracted from FITS headers.
             Default value is ``None``.
         """
@@ -424,7 +424,7 @@ class ImageFileCollection(object):
                     file_path, input_summary=summary_dict,
                     missing_marker=missing_marker)
             except IOError as e:
-                logger.warning('Unable to get FITS header for file %s: %s.',
+                logger.warning('unable to get FITS header for file %s: %s.',
                                file_path, e)
                 continue
 
@@ -488,10 +488,10 @@ class ImageFileCollection(object):
 
         matches = np.array([True] * len(use_info))
         for key, value in zip(keywords, values):
-            logger.debug('Key %s, value %s', key, value)
-            logger.debug('Value in table %s', use_info[key])
+            logger.debug('key %s, value %s', key, value)
+            logger.debug('value in table %s', use_info[key])
             value_missing = use_info[key].mask
-            logger.debug('Value missing: %s', value_missing)
+            logger.debug('value missing: %s', value_missing)
             value_not_missing = np.logical_not(value_missing)
             if value == '*':
                 have_this_value = value_not_missing
@@ -534,7 +534,7 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-        extension : None or list of str, optional
+        extension : list of str or None, optional
             List of filename extensions that are FITS files. Default is
             ``['fit', 'fits', 'fts']``.
             Default is ``None``.
@@ -656,7 +656,7 @@ class ImageFileCollection(object):
                        if (not return_fname) else
                        (return_options[return_type], file_name))
             except KeyError:
-                raise ValueError('No generator for {}'.format(return_type))
+                raise ValueError('no generator for {}'.format(return_type))
 
             if save_location:
                 destination_dir = save_location
@@ -677,7 +677,7 @@ class ImageFileCollection(object):
                 try:
                     hdulist.writeto(new_path, clobber=nuke_existing)
                 except IOError:
-                    logger.error('Error writing file %s', new_path)
+                    logger.error('error writing file %s', new_path)
                     raise
             hdulist.close()
 

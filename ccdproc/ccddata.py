@@ -28,13 +28,13 @@ class CCDData(NDDataArray):
 
     Parameters
     -----------
-    data : `numpy.ndarray` or :class:`~ccdproc.CCDData`
+    data : `~ccdproc.CCDData`-like or `numpy.ndarray`-like
         The actual data contained in this `~ccdproc.CCDData` object.
         Note that this will always be copies by *reference* , so you should
         make copy the ``data`` before passing it in if that's the desired
         behavior.
 
-    uncertainty : `~astropy.nddata.StdDevUncertainty` or `numpy.ndarray` or \
+    uncertainty : `~astropy.nddata.StdDevUncertainty`, `numpy.ndarray` or \
             None, optional
         Uncertainties on the data.
         Default is ``None``.
@@ -66,7 +66,7 @@ class CCDData(NDDataArray):
         of this particular object, e.g. creation date, unique identifier,
         simulation parameters, exposure time, telescope name, etc.
 
-    unit : `~astropy.units.Unit` instance or str, optional
+    unit : `~astropy.units.Unit` or str, optional
         The units of the data.
         Default is ``None``.
 
@@ -118,11 +118,11 @@ class CCDData(NDDataArray):
         if 'meta' not in kwd:
             kwd['meta'] = kwd.pop('header', None)
         if 'header' in kwd:
-            raise ValueError("Can't have both header and meta.")
+            raise ValueError("can't have both header and meta.")
 
         super(CCDData, self).__init__(*args, **kwd)
         if self.unit is None:
-            raise ValueError("Unit for CCDData must be specified.")
+            raise ValueError("a unit for CCDData must be specified.")
 
     @property
     def data(self):
@@ -183,7 +183,8 @@ class CCDData(NDDataArray):
             if hasattr(value, 'keys'):
                 self._meta = value
             else:
-                raise TypeError('CCDData meta attribute must be dict-like.')
+                raise TypeError(
+                    'the meta attribute of CCDData must be dict-like.')
 
     @property
     def uncertainty(self):
@@ -196,13 +197,13 @@ class CCDData(NDDataArray):
                 self._uncertainty = value
             elif isinstance(value, np.ndarray):
                 if value.shape != self.shape:
-                    raise ValueError("Uncertainty must have same shape as "
+                    raise ValueError("uncertainty must have same shape as "
                                      "data.")
                 self._uncertainty = StdDevUncertainty(value)
-                log.info("Array provided for uncertainty; assuming it is a "
+                log.info("array provided for uncertainty; assuming it is a "
                          "StdDevUncertainty.")
             else:
-                raise TypeError("Uncertainty must be an instance of a "
+                raise TypeError("uncertainty must be an instance of a "
                                 "NDUncertainty object or a numpy array.")
             self._uncertainty._parent_nddata = self
         else:
@@ -236,7 +237,7 @@ class CCDData(NDDataArray):
 
         Returns
         -------
-        hdulist : `~astropy.io.fits.HDUList` object.
+        hdulist : `~astropy.io.fits.HDUList`
         """
         if isinstance(self.header, fits.Header):
             # Copy here so that we can modify the HDU header by adding WCS
@@ -275,7 +276,7 @@ class CCDData(NDDataArray):
             # Always assuming that the mask is a np.ndarray (check that it has
             # a 'shape').
             if not hasattr(self.mask, 'shape'):
-                raise ValueError('Only a numpy.ndarray mask can be saved.')
+                raise ValueError('only a numpy.ndarray mask can be saved.')
 
             # Convert boolean mask to uint since io.fits cannot handle bool.
             hduMask = fits.ImageHDU(self.mask.astype(np.uint8), name=hdu_mask)
@@ -286,7 +287,7 @@ class CCDData(NDDataArray):
             # used so that loading the HDUList can infer the uncertainty type.
             # No idea how this can be done so only allow StdDevUncertainty.
             if self.uncertainty.__class__.__name__ != 'StdDevUncertainty':
-                raise ValueError('Only StdDevUncertainty can be saved.')
+                raise ValueError('only StdDevUncertainty can be saved.')
 
             # Assuming uncertainty is an StdDevUncertainty save just the array
             # this might be problematic if the Uncertainty has a unit differing
@@ -295,7 +296,7 @@ class CCDData(NDDataArray):
             if (hasattr(self.uncertainty, 'unit') and
                     self.uncertainty.unit is not None and
                     self.uncertainty.unit != self.unit):
-                raise ValueError('Saving uncertainties with a unit differing'
+                raise ValueError('saving uncertainties with a unit differing'
                                  'from the data unit is not supported.')
 
             hduUncert = fits.ImageHDU(self.uncertainty.array,
@@ -303,7 +304,7 @@ class CCDData(NDDataArray):
             hdus.append(hduUncert)
 
         if hdu_flags and self.flags:
-            raise NotImplementedError('Adding the flags to a HDU is not '
+            raise NotImplementedError('adding the flags to a HDU is not '
                                       'supported at this time.')
 
         hdulist = fits.HDUList(hdus)
@@ -338,7 +339,7 @@ class CCDData(NDDataArray):
         elif isinstance(other, numbers.Number):
             other_value = other
         else:
-            raise TypeError("Cannot do arithmetic with type '{0}' "
+            raise TypeError("cannot do arithmetic with type '{0}' "
                             "and 'CCDData'".format(type(other)))
 
         result_unit = operation(1 * self.unit, other).unit
@@ -378,8 +379,8 @@ class CCDData(NDDataArray):
                 return result
             else:
                 if hasattr(self, '_arithmetics_wcs'):
-                    return super(CCDData, self).multiply(other,
-                                                         compare_wcs=compare_wcs)
+                    return super(CCDData, self).multiply(
+                        other, compare_wcs=compare_wcs)
                 else:
                     raise ImportError("wcs_compare functionality requires "
                                       "astropy 1.2 or greater.")
@@ -405,8 +406,8 @@ class CCDData(NDDataArray):
                 return result
             else:
                 if hasattr(self, '_arithmetics_wcs'):
-                    return super(CCDData, self).divide(other,
-                                                       compare_wcs=compare_wcs)
+                    return super(CCDData, self).divide(
+                        other, compare_wcs=compare_wcs)
                 else:
                     raise ImportError("wcs_compare functionality requires "
                                       "astropy 1.2 or greater.")
@@ -432,8 +433,8 @@ class CCDData(NDDataArray):
                 return result
             else:
                 if hasattr(self, '_arithmetics_wcs'):
-                    return super(CCDData, self).add(other,
-                                                    compare_wcs=compare_wcs)
+                    return super(CCDData, self).add(
+                        other, compare_wcs=compare_wcs)
                 else:
                     raise ImportError("wcs_compare functionality requires "
                                       "astropy 1.2 or greater.")
@@ -460,8 +461,8 @@ class CCDData(NDDataArray):
 
             else:
                 if hasattr(self, '_arithmetics_wcs'):
-                    return super(CCDData, self).subtract(other,
-                                                         compare_wcs=compare_wcs)
+                    return super(CCDData, self).subtract(
+                        other, compare_wcs=compare_wcs)
                 else:
                     raise ImportError("wcs_compare functionality requires "
                                       "astropy 1.2 or greater.")
@@ -525,7 +526,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
         extension with data. The header will be added to the primary header.
         Default is ``0``.
 
-    unit : `astropy.units.Unit`, optional
+    unit : `~astropy.units.Unit`, optional
         Units of the image data. If this argument is provided and there is a
         unit for the image in the FITS header (the keyword ``BUNIT`` is used
         as the unit, if present), this argument is used for the unit.
@@ -562,7 +563,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
     }
     for key, msg in unsupport_open_keywords.items():
         if key in kwd:
-            prefix = 'Unsupported keyword: {0}.'.format(key)
+            prefix = 'unsupported keyword: {0}.'.format(key)
             raise TypeError(' '.join([prefix, msg]))
     with fits.open(filename, **kwd) as hdus:
         hdr = hdus[hdu].header
@@ -579,7 +580,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
             mask = None
 
         if hdu_flags in hdus:
-            raise NotImplementedError('Loading flags is currently not '
+            raise NotImplementedError('loading flags is currently not '
                                       'supported.')
 
         # search for the first instance with data if
@@ -589,7 +590,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
                 if hdus.fileinfo(i)['datSpan'] > 0:
                     hdu = i
                     hdr = hdr + hdus[hdu].header
-                    log.info("First HDU with data is exention "
+                    log.info("first HDU with data is exention "
                              "{0}.".format(hdu))
                     break
 
@@ -603,7 +604,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
             fits_unit_string = None
 
         if unit is not None and fits_unit_string:
-            log.info("Using the unit {0} passed to the FITS reader instead of "
+            log.info("using the unit {0} passed to the FITS reader instead of "
                      "the unit {1} in the FITS file.".format(unit,
                                                              fits_unit_string))
 
