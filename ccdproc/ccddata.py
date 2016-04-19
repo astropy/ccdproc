@@ -5,6 +5,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import copy
 import numbers
+from collections import OrderedDict
 
 import numpy as np
 
@@ -168,7 +169,7 @@ class CCDData(NDDataArray):
     @meta.setter
     def meta(self, value):
         if value is None:
-            self._meta = {}
+            self._meta = OrderedDict()
         else:
             if hasattr(value, 'keys'):
                 self._meta = value
