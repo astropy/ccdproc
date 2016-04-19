@@ -274,7 +274,7 @@ class Combiner(object):
 
         uncertainty_func : function, optional
             Function to calculate uncertainty.
-            Defaults is `ccdproc.sigma_func`.
+            Defaults is `~ccdproc.sigma_func`.
 
         Returns
         -------
@@ -437,8 +437,8 @@ def combine(img_list, output_file=None, method='average', weights=None,
         Parameters below are valid only when minmax_clip is set to True, see
         :meth:`Combiner.minmax_clipping` for the parameter description:
 
-        - ``minmax_clip_min`` : None, float, optional
-        - ``minmax_clip_max`` : None, float, optional
+        - ``minmax_clip_min`` : float or None, optional
+        - ``minmax_clip_max`` : float or None, optional
 
     sigma_clip : bool, optional
         Set to True if you want to reject pixels which have deviations greater

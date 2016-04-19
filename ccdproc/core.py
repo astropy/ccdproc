@@ -65,7 +65,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     * subtraction of a dark frame (:func:`subtract_dark`)
     * correction of flat field (:func:`flat_correct`)
 
-    The task returns a processed `ccdproc.CCDData` object.
+    The task returns a processed `~ccdproc.CCDData` object.
 
     Parameters
     ----------
