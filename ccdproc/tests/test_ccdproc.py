@@ -285,7 +285,7 @@ def test_subtract_bias(ccd_data):
     # Does the data we are left with have the correct average?
     np.testing.assert_almost_equal(no_bias.data.mean(), data_avg)
     # With logging turned off, metadata should not change
-    assert no_bias.header == ccd_data.header
+    assert set(no_bias.header.items()) == set(ccd_data.header.items())
     del no_bias.header['key']
     assert 'key' in ccd_data.header
     assert no_bias.header is not ccd_data.header
@@ -343,7 +343,7 @@ def test_subtract_dark(ccd_data, explicit_times, scale, exposure_keyword):
     np.testing.assert_array_equal(ccd_data.data - dark_scale * dark_level,
                                   dark_sub.data)
     # Headers should have the same content...do they?
-    assert dark_sub.header == ccd_data.header
+    assert set(dark_sub.header.items()) == set(ccd_data.header.items())
     # But the headers should not be the same object -- a copy was made
     assert dark_sub.header is not ccd_data.header
 
@@ -396,7 +396,7 @@ def test_flat_correct(ccd_data):
                                flat.data / flat.data.mean())
 
     # check that metadata is unchanged (since logging is turned off)
-    assert flat_data.header == ccd_data.header
+    assert set(flat_data.header.items()) == set(ccd_data.header.items())
 
 
 # test for flat correction with min_value

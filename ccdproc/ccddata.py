@@ -99,9 +99,9 @@ class CCDData(NDDataArray):
     This is useful, for example, when plotting a 2D image using
     matplotlib.
 
-        >>> from ccdproc import CCDData   
+        >>> from ccdproc import CCDData
         >>> from matplotlib import pyplot as plt   # doctest: +SKIP
-        >>> x = CCDData([[1,2,3], [4,5,6]], unit='adu') 
+        >>> x = CCDData([[1,2,3], [4,5,6]], unit='adu')
         >>> plt.imshow(x)   # doctest: +SKIP
 
     """
@@ -110,10 +110,17 @@ class CCDData(NDDataArray):
             kwd['meta'] = kwd.pop('header', None)
         if 'header' in kwd:
             raise ValueError("Can't have both header and meta")
-
+        self._header = None
+        self._dirty = None
         super(CCDData, self).__init__(*args, **kwd)
         if self.unit is None:
             raise ValueError("Unit for CCDData must be specified")
+        # CCDData's parent sets _meta directly; need to transform it
+        # in case we passed a fits.Header
+        if isinstance(self._meta, fits.Header):
+            self._header = self._meta
+            self._meta = {}
+            self._header2meta()
 
     @property
     def data(self):
@@ -156,14 +163,36 @@ class CCDData(NDDataArray):
 
     @property
     def header(self):
-        return self._meta
+        if self._dirty == 'meta':
+            self._meta2header()
+        if not isinstance(self._header, fits.Header):
+            self._meta2header()
+        self._dirty = 'header'
+        return self._header
 
     @header.setter
     def header(self, value):
-        self.meta = value
+        if value is None:
+            self._header = fits.Header()
+            self._meta = None
+        elif isinstance(value, fits.Header):
+            self._header = value
+            self._header2meta()
+        else:
+            if isinstance(value, dict):
+                self._meta = value
+                self._meta2header()
+            else:
+                raise TypeError("CCDData header attribute must be an "
+                                "`astropy.iofits.Header` or dict object")
 
     @property
     def meta(self):
+        if self._dirty == 'header':
+            self._header2meta()
+        if not isinstance(self._meta, dict):
+            self._header2meta()
+        self._dirty = 'meta'
         return self._meta
 
     @meta.setter
@@ -171,8 +200,12 @@ class CCDData(NDDataArray):
         if value is None:
             self._meta = OrderedDict()
         else:
-            if hasattr(value, 'keys'):
+            if isinstance(value, dict):
                 self._meta = value
+                self._meta2header()
+            elif isinstance(value, fits.Header):
+                self._header = value
+                self._header2meta()
             else:
                 raise TypeError('CCDData meta attribute must be dict-like')
 
@@ -198,6 +231,51 @@ class CCDData(NDDataArray):
             self._uncertainty._parent_nddata = self
         else:
             self._uncertainty = value
+
+    def _meta2header(self):
+        if self._meta is None:
+            return
+        self._header = fits.Header()
+        for key, value in self._meta.items():
+            if key in ('comment', 'comments'):
+                if isinstance(value, list):
+                    for val in value:
+                        self._header.add_comment(val)
+                else:
+                    self._header.add_comment(value)
+            elif key == 'history':
+                if isinstance(value, list):
+                    for val in value:
+                        self._header.add_history(val)
+                else:
+                    self._header.add_history(value)
+            else:
+                from .core import _short_names
+
+                if key in _short_names:
+                    # This keyword was (hopefully) added by
+                    # autologging but the combination of it and its
+                    # value not FITS-compliant in two ways: the
+                    # keyword name may be more than 8 characters and
+                    # the value may be too long. FITS cannot handle
+                    # both of those problems at once, so this fixes
+                    # one of those problems...
+                    short_name = _short_names[key]
+                    self._header[key] = (short_name,
+                                         "Shortened name for ccdproc command")
+                    self._header[short_name] = value
+                else:
+                    self._header[key] = value
+
+    def _header2meta(self):
+        if self._header is None:
+            return
+        for key, value in self._header.items():
+            lkey = key.lower()
+            if key in ('HISTORY', 'COMMENT'):
+                self._meta.setdefault(lkey, []).append(value)
+            else:
+                self._meta[lkey] = value
 
     def to_hdu(self, hdu_mask='MASK', hdu_uncertainty='UNCERT',
                hdu_flags=None):
@@ -577,7 +655,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
                 if hdus.fileinfo(i)['datSpan'] > 0:
                     hdu = i
                     hdr = hdr + hdus[hdu].header
-                    log.info("First HDU with data is exention {0}.".format(hdu))
+                    log.info("First HDU with data is extension {0}.".format(hdu))
                     break
 
         if 'bunit' in hdr:

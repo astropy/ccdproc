@@ -63,7 +63,8 @@ def test_log_bad_type_fails(ccd_data):
 def test_log_set_to_None_does_not_change_header(ccd_data):
     new = create_deviation(ccd_data, readnoise=3 * ccd_data.unit,
                           add_keyword=None)
-    assert new.meta.keys() == ccd_data.header.keys()
+    assert (sorted(new.meta.keys()) ==
+            sorted([key.lower() for key in ccd_data.header.keys()]))
 
 
 def test_implicit_logging(ccd_data):
@@ -74,8 +75,9 @@ def test_implicit_logging(ccd_data):
     bias = CCDData(np.zeros_like(ccd_data.data), unit="adu")
     result = subtract_bias(ccd_data, bias)
     assert "subtract_bias" in result.header
-    assert result.header['subtract_bias'] == "ccd=<CCDData>, master=<CCDData>"
+    assert result.header['subtract_bias'] == "subbias"
+    assert result.header['subbias'] == "ccd=<CCDData>, master=<CCDData>"
 
     result = create_deviation(ccd_data, readnoise=3 * ccd_data.unit)
     assert ("readnoise="+str(3 * ccd_data.unit) in
-            result.header['create_deviation'])
+            result.header['creatvar'])
