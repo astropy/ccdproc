@@ -30,8 +30,8 @@ class CCDData(NDDataArray):
     -----------
     data : `~ccdproc.CCDData`-like or `numpy.ndarray`-like
         The actual data contained in this `~ccdproc.CCDData` object.
-        Note that this will always be copies by *reference* , so you should
-        make copy the ``data`` before passing it in if that's the desired
+        Note that the data will always be saved by *reference*, so you should
+        make a copy of the ``data`` before passing it in if that's the desired
         behavior.
 
     uncertainty : `~astropy.nddata.StdDevUncertainty`, `numpy.ndarray` or \
