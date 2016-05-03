@@ -451,7 +451,7 @@ class TestImageFileCollection(object):
                                      info_file='iufadsdhfasdifre')
         warnings = [rec for rec in caplog.records()
                     if ((rec.levelno == logging.WARN) &
-                        ('Unable to open table file' in rec.message))]
+                        ('unable to open table file' in rec.message))]
         assert (len(warnings) == 1)
         # Do we raise an error if the table name is bad AND the location
         # is None?
@@ -466,7 +466,8 @@ class TestImageFileCollection(object):
 
     def test_no_fits_files_in_collection(self,tmpdir):
         with catch_warnings(AstropyUserWarning) as warning_lines:
-            assert("No fits files in the collection.")
+            # FIXME: What exactly does this assert?
+            assert("no fits files in the collection.")
 
     def test_initialization_with_no_keywords(self, triage_setup):
         # This test is primarily historical -- the old default for

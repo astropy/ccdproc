@@ -19,9 +19,10 @@ _LOG_ARGUMENT = 'add_keyword'
 _LOG_ARG_HELP = \
     """
     {arg} : str, `~ccdproc.Keyword` or dict-like, optional
-        Item(s) to add to metadata of result. Set to False or None to completely
-        disable logging. Default is to add a dictionary with a single item:
-        the key is the name of this function  and the value is a string
+        Item(s) to add to metadata of result. Set to False or None to
+        completely  disable logging.
+        Default is to add a dictionary with a single item:
+        The key is the name of this function  and the value is a string
         containing the arguments the function was called with, except the
         value of this argument.
     """.format(arg=_LOG_ARGUMENT)
@@ -29,7 +30,7 @@ _LOG_ARG_HELP = \
 
 def log_to_metadata(func):
     """
-    Decorator that adds logging to ccdproc functions
+    Decorator that adds logging to ccdproc functions.
 
     The decorator adds the optional argument _LOG_ARGUMENT to function
     signature and updates the function's docstring to reflect that.
@@ -77,7 +78,7 @@ def log_to_metadata(func):
             # so construct one.
             key = func.__name__
             pos_args = ["{0}={1}".format(arg_name,
-                                       _replace_array_with_placeholder(arg_value))
+                                         _replace_array_with_placeholder(arg_value))
                         for arg_name, arg_value
                         in zip(original_positional_args, args)]
             kwd_args = ["{0}={1}".format(k, _replace_array_with_placeholder(v))

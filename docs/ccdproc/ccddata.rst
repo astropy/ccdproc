@@ -159,7 +159,7 @@ You can also set the uncertainty directly, either by creating a
 or by providing a `~numpy.ndarray` with the same shape as the data:
 
     >>> ccd.uncertainty = 0.1 * ccd.data  # doctest: +ELLIPSIS
-    INFO: Array provided for uncertainty; assuming it is a StdDevUncertainty. [...]
+    INFO: array provided for uncertainty; assuming it is a StdDevUncertainty. [...]
 
 In this case the uncertainty is assumed to be
 `~astropy.nddata.StdDevUncertainty`. Using `~astropy.nddata.StdDevUncertainty`
@@ -180,7 +180,7 @@ Methods are provided to perform arithmetic operations with a
 
 Using these methods propagates errors correctly (if the errors are
 uncorrelated), take care of any necessary unit conversions, and apply masks
-appropriately. Note that the metadata of the result is *not* set if the operation 
+appropriately. Note that the metadata of the result is *not* set if the operation
 is between two `~ccdproc.ccddata.CCDData` objects.
 
     >>> result = ccd.multiply(0.2 * u.adu)
@@ -203,5 +203,5 @@ is between two `~ccdproc.ccddata.CCDData` objects.
 The arithmetic operators ``*``, ``/``, ``+`` and ``-`` are *not* overridden.
 
 .. note::
-   If two images have different WCS values, the wcs on the first 
+   If two images have different WCS values, the wcs on the first
    `~ccdproc.ccddata.CCDData` object will be used for the resultant object.
