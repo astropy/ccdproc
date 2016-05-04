@@ -11,6 +11,20 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+1.0.2 (Unreleased)
+------------------
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Bug Fixes
+^^^^^^^^^
+
+
+1.0.1 (2016-03-15)
+------------------
+
+The 1.0.1 release was a release to fix some minor packaging issues.  
 
 
 1.0.0 (2016-03-15)
