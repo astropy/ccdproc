@@ -195,6 +195,8 @@ class CCDData(NDDataArray):
     def uncertainty(self, value):
         if value is not None:
             if isinstance(value, NDUncertainty):
+                if value._parent_nddata is not None:
+                    value = value.__class__(value, copy=False)
                 self._uncertainty = value
             elif isinstance(value, np.ndarray):
                 if value.shape != self.shape:
@@ -206,7 +208,7 @@ class CCDData(NDDataArray):
             else:
                 raise TypeError("uncertainty must be an instance of a "
                                 "NDUncertainty object or a numpy array.")
-            self._uncertainty._parent_nddata = self
+            self._uncertainty.parent_nddata = self
         else:
             self._uncertainty = value
 
@@ -316,7 +318,11 @@ class CCDData(NDDataArray):
         """
         Return a copy of the CCDData object.
         """
-        return copy.deepcopy(self)
+        try:
+            return self.__class__(self, copy=True)
+        except TypeError:
+            new = copy.deepcopy(self)
+        return new
 
     def _ccddata_arithmetic(self, other, operation, scale_uncertainty=False):
         """
