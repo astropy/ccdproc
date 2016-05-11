@@ -5,17 +5,48 @@ from __future__ import (absolute_import, division, print_function,
 
 import copy
 import numbers
+import weakref
 from collections import OrderedDict
 
 import numpy as np
 
 from astropy.nddata import NDDataArray
-from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
+from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty, MissingDataAssociationException
 from astropy.io import fits, registry
 from astropy import units as u
 from astropy import log
 from astropy.wcs import WCS
 
+
+class ParentNDDataDescriptor(object):
+    def __get__(self, obj, objtype=None):
+        message = "uncertainty is not associated with an NDData object."
+        try:
+            if obj._parent_nddata is None:
+                raise MissingDataAssociationException(message)
+            else:
+                # The NDData is saved as weak reference so we must call it
+                # to get the object the reference points to.
+                if isinstance(obj._parent_nddata, weakref.ref):
+                    return obj._parent_nddata()
+                else:
+                    log.info("parent_nddata should be a weakref to an NDData "
+                             "object.")
+                    return obj._parent_nddata
+                return obj._parent_nddata
+        except AttributeError:
+            raise MissingDataAssociationException(message)
+
+    def __set__(self, obj, value):
+        if value is not None and not isinstance(value, weakref.ref):
+            # Save a weak reference on the uncertainty that points to this
+            # instance of NDData. Direct references should NOT be used:
+            # https://github.com/astropy/astropy/pull/4799#discussion_r61236832
+            value = weakref.ref(value)
+        obj._parent_nddata = value
+
+
+StdDevUncertainty.parent_nddata = ParentNDDataDescriptor()
 
 __all__ = ['CCDData', 'fits_ccddata_reader', 'fits_ccddata_writer']
 
