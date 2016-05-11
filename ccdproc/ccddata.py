@@ -352,7 +352,7 @@ class CCDData(NDDataArray):
         try:
             return self.__class__(self, copy=True)
         except TypeError:
-            new = copy.deepcopy(self)
+            new = self.__class__(copy.deepcopy(self))
         return new
 
     def _ccddata_arithmetic(self, other, operation, scale_uncertainty=False):
