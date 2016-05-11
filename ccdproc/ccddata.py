@@ -195,7 +195,7 @@ class CCDData(NDDataArray):
     def uncertainty(self, value):
         if value is not None:
             if isinstance(value, NDUncertainty):
-                if value._parent_nddata is not None:
+                if getattr(value, '_parent_nddata', None) is not None:
                     value = value.__class__(value, copy=False)
                 self._uncertainty = value
             elif isinstance(value, np.ndarray):
