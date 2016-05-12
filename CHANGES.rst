@@ -17,6 +17,8 @@ Bug Fixes
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- ``cosmicray_lacosmic`` default ``satlevel`` changed from 65536 to 65535. [#347]
+
 Bug Fixes
 ^^^^^^^^^
 

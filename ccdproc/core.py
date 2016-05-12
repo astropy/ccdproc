@@ -1156,7 +1156,7 @@ def _blkavg(data, newshape):
 
 def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                        objlim=5.0, gain=1.0, readnoise=6.5,
-                       satlevel=65536.0, pssl=0.0, niter=4,
+                       satlevel=65535.0, pssl=0.0, niter=4,
                        sepmed=True, cleantype='meanmask', fsmode='median',
                        psfmodel='gauss', psffwhm=2.5, psfsize=7,
                        psfk=None, psfbeta=4.765, verbose=False):
@@ -1200,9 +1200,9 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         of the image. Default: 6.5.
 
     satlevel : float, optional
-        Saturation of level of the image (electrons). This value is used to
+        Saturation level of the image (electrons). This value is used to
         detect saturated stars and pixels at or above this level are added to
-        the mask. Default: 65536.0.
+        the mask. Default: 65535.0.
 
     niter : int, optional
         Number of iterations of the LA Cosmic algorithm to perform. Default: 4.
