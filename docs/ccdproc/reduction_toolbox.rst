@@ -326,4 +326,4 @@ project`_. Please see :ref:reprojection for more details.
 .. [2] McCully, C., 2014, "Astro-SCRAPPY",
        https://github.com/astropy/astroscrappy
 
-.. _reproject project: http://reproject.readthedocs.org/
+.. _reproject project: http://reproject.readthedocs.io/

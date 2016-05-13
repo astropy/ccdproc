@@ -21,8 +21,8 @@ installation instructions, see the `online documentation`_ or docs/install.rst
 in this source distribution.
 
 
-Documentation is at `ccdproc.readthedocs.org
-<http://ccdproc.readthedocs.org/en/latest/>`_
+Documentation is at `ccdproc.readthedocs.io
+<http://ccdproc.readthedocs.io/en/latest/>`_
 
 Contributing
 ------------
@@ -60,7 +60,7 @@ Thanks to Kyle Barbary (`@kbarbary`_) for designing the `ccdproc` logo.
 .. _git: http://git-scm.com/
 .. _github: http://github.com
 .. _Cython: http://cython.org/
-.. _online documentation: http://ccdproc.readthedocs.org/en/latest/ccdproc/install.html
+.. _online documentation: http://ccdproc.readthedocs.io/en/latest/ccdproc/install.html
 .. _@kbarbary: https://github.com/kbarbary
 .. _@crawfordsm: https://github.com/crawfordsm
 .. _@mwcraig: https://github.com/mwcraig

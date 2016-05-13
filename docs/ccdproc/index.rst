@@ -17,7 +17,7 @@ The `ccdproc` package provides:
   reduction steps in the image metadata.
 + A function for reprojecting an image onto another WCS, useful for stacking
   science images. The actual reprojection is done by the
-  `reproject package <http://reproject.readthedocs.org/en/stable/>`_.
+  `reproject package <http://reproject.readthedocs.io/en/stable/>`_.
 + A class for combining and/or clipping images, `~ccdproc.Combiner`, and
   associated functions.
 + A class, `~ccdproc.ImageFileCollection`, for working with a directory of
