@@ -171,4 +171,4 @@ Then, combine the images as described above for any set of images:
     >>> combiner = Combiner(reprojected)
     >>> stacked_image = combiner.average_combine()
 
-.. _reproject project: http://reproject.readthedocs.org/
+.. _reproject project: http://reproject.readthedocs.io/
