@@ -383,3 +383,13 @@ def test_combiner_uncertainty_average_mask():
     ref_uncertainty[5, 5] = np.std([2, 3]) / np.sqrt(2)
     np.testing.assert_array_almost_equal(ccd.uncertainty.array,
                                          ref_uncertainty)
+
+
+@pytest.mark.parametrize('comb_func', ['average_combine', 'median_combine'])
+def test_writeable_after_combine(ccd_data, tmpdir, comb_func):
+    tmp_file = tmpdir.join('tmp.fits')
+    from ..combiner import Combiner
+    combined = Combiner([ccd_data for _ in range(3)])
+    ccd2 = getattr(combined, comb_func)()
+    # This should not fail because the resulting uncertainty has a mask
+    ccd2.write(tmp_file.strpath)
