@@ -17,36 +17,44 @@ from astropy import units as u
 from astropy import log
 from astropy.wcs import WCS
 
+# FIXME: Remove the content of the following "if" as soon as astropy 1.1 isn't
+# supported anymore. This is just a temporary workaround to fix the memory leak
+# described in https://github.com/astropy/astropy/issues/4825
+import astropy
+from distutils.version import LooseVersion
+if LooseVersion(astropy.__version__) < LooseVersion('1.2'):  # pragma: no cover
 
-class ParentNDDataDescriptor(object):
-    def __get__(self, obj, objtype=None):
-        message = "uncertainty is not associated with an NDData object."
-        try:
-            if obj._parent_nddata is None:
-                raise MissingDataAssociationException(message)
-            else:
-                # The NDData is saved as weak reference so we must call it
-                # to get the object the reference points to.
-                if isinstance(obj._parent_nddata, weakref.ref):
-                    return obj._parent_nddata()
+    class ParentNDDataDescriptor(object):
+        def __get__(self, obj, objtype=None):
+            message = "uncertainty is not associated with an NDData object."
+            try:
+                if obj._parent_nddata is None:
+                    raise MissingDataAssociationException(message)
                 else:
-                    log.info("parent_nddata should be a weakref to an NDData "
-                             "object.")
+                    # The NDData is saved as weak reference so we must call it
+                    # to get the object the reference points to.
+                    if isinstance(obj._parent_nddata, weakref.ref):
+                        return obj._parent_nddata()
+                    else:
+                        log.info("parent_nddata should be a weakref to an "
+                                 "NDData object.")
+                        return obj._parent_nddata
                     return obj._parent_nddata
-                return obj._parent_nddata
-        except AttributeError:
-            raise MissingDataAssociationException(message)
+            except AttributeError:
+                raise MissingDataAssociationException(message)
 
-    def __set__(self, obj, value):
-        if value is not None and not isinstance(value, weakref.ref):
-            # Save a weak reference on the uncertainty that points to this
-            # instance of NDData. Direct references should NOT be used:
-            # https://github.com/astropy/astropy/pull/4799#discussion_r61236832
-            value = weakref.ref(value)
-        obj._parent_nddata = value
+        def __set__(self, obj, value):
+            if value is not None and not isinstance(value, weakref.ref):
+                # Save a weak reference on the uncertainty that points to this
+                # instance of NDData. Direct references should NOT be used:
+                # https://github.com/astropy/astropy/pull/4799#discussion_r61236832
+                value = weakref.ref(value)
+            obj._parent_nddata = value
 
+    # Use the descriptor as parent_nddata property. This only affects
+    # instances created after importing this module.
+    StdDevUncertainty.parent_nddata = ParentNDDataDescriptor()
 
-StdDevUncertainty.parent_nddata = ParentNDDataDescriptor()
 
 __all__ = ['CCDData', 'fits_ccddata_reader', 'fits_ccddata_writer']
 
