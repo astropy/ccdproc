@@ -307,6 +307,12 @@ class Combiner(object):
         # median_absolute_deviation ignores the mask... so it
         # would yield inconsistent results.
         uncertainty /= math.sqrt(len(self.data_arr))
+        # Convert uncertainty to plain numpy array (#351)
+        # There is no need to care about potential masks because the
+        # uncertainty was calculated based on the data so potential masked
+        # elements are also masked in the data. No need to keep two identical
+        # masks.
+        uncertainty = np.asarray(uncertainty)
 
         # create the combined image with a dtype matching the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
@@ -370,6 +376,8 @@ class Combiner(object):
         uncertainty = uncertainty_func(self.data_arr, axis=0)
         # Divide uncertainty by the number of pixel (#309)
         uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
+        # Convert uncertainty to plain numpy array (#351)
+        uncertainty = np.asarray(uncertainty)
 
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
