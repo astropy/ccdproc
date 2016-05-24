@@ -5,16 +5,55 @@ from __future__ import (absolute_import, division, print_function,
 
 import copy
 import numbers
+import weakref
 from collections import OrderedDict
 
 import numpy as np
 
 from astropy.nddata import NDDataArray
-from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
+from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty, MissingDataAssociationException
 from astropy.io import fits, registry
 from astropy import units as u
 from astropy import log
 from astropy.wcs import WCS
+
+# FIXME: Remove the content of the following "if" as soon as astropy 1.1 isn't
+# supported anymore. This is just a temporary workaround to fix the memory leak
+# described in https://github.com/astropy/astropy/issues/4825
+import astropy
+from distutils.version import LooseVersion
+if LooseVersion(astropy.__version__) < LooseVersion('1.2'):  # pragma: no cover
+
+    class ParentNDDataDescriptor(object):
+        def __get__(self, obj, objtype=None):
+            message = "uncertainty is not associated with an NDData object."
+            try:
+                if obj._parent_nddata is None:
+                    raise MissingDataAssociationException(message)
+                else:
+                    # The NDData is saved as weak reference so we must call it
+                    # to get the object the reference points to.
+                    if isinstance(obj._parent_nddata, weakref.ref):
+                        return obj._parent_nddata()
+                    else:
+                        log.info("parent_nddata should be a weakref to an "
+                                 "NDData object.")
+                        return obj._parent_nddata
+                    return obj._parent_nddata
+            except AttributeError:
+                raise MissingDataAssociationException(message)
+
+        def __set__(self, obj, value):
+            if value is not None and not isinstance(value, weakref.ref):
+                # Save a weak reference on the uncertainty that points to this
+                # instance of NDData. Direct references should NOT be used:
+                # https://github.com/astropy/astropy/pull/4799#discussion_r61236832
+                value = weakref.ref(value)
+            obj._parent_nddata = value
+
+    # Use the descriptor as parent_nddata property. This only affects
+    # instances created after importing this module.
+    StdDevUncertainty.parent_nddata = ParentNDDataDescriptor()
 
 
 __all__ = ['CCDData', 'fits_ccddata_reader', 'fits_ccddata_writer']
@@ -195,6 +234,8 @@ class CCDData(NDDataArray):
     def uncertainty(self, value):
         if value is not None:
             if isinstance(value, NDUncertainty):
+                if getattr(value, '_parent_nddata', None) is not None:
+                    value = value.__class__(value, copy=False)
                 self._uncertainty = value
             elif isinstance(value, np.ndarray):
                 if value.shape != self.shape:
@@ -206,7 +247,7 @@ class CCDData(NDDataArray):
             else:
                 raise TypeError("uncertainty must be an instance of a "
                                 "NDUncertainty object or a numpy array.")
-            self._uncertainty._parent_nddata = self
+            self._uncertainty.parent_nddata = self
         else:
             self._uncertainty = value
 
@@ -316,7 +357,11 @@ class CCDData(NDDataArray):
         """
         Return a copy of the CCDData object.
         """
-        return copy.deepcopy(self)
+        try:
+            return self.__class__(self, copy=True)
+        except TypeError:
+            new = self.__class__(copy.deepcopy(self))
+        return new
 
     def _ccddata_arithmetic(self, other, operation, scale_uncertainty=False):
         """
