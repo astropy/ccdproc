@@ -898,7 +898,7 @@ def sigma_func(arr, axis=None):
     uncertainty : float
         uncertainty of array estimated from median absolute deviation.
     """
-    return stats.median_absolute_deviation(arr) * 1.482602218505602
+    return stats.median_absolute_deviation(arr, axis=axis) * 1.482602218505602
 
 
 def setbox(x, y, mbox, xmax, ymax):
