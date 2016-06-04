@@ -177,6 +177,37 @@ class Combiner(object):
             # reshape so that broadcasting occurs properly
             self._scaling = self.scaling[:, np.newaxis, np.newaxis]
 
+    # set up IRAF-like minmax clipping
+    def iraf_minmax_clipping(self, nlow=None, nhigh=None):
+        """Mask pixels using an IRAF-like minmax clipping algorithm.  The
+        algorithm will mask the lowest nlow values and the highest nhigh values
+        before combining the vlues to make up a single pixel in the reuslting
+        image.  For example, the image will be a combination of
+        Nimages-low-nhigh pixel values instead of the combination of Nimages.
+
+         Parameters
+         -----------
+         nlow : int or None, optional
+             If not None, the number of low values to reject from the
+             combination.
+             Default is ``None``.
+
+         nhigh : int or None, optional
+             If not None, the number of high values to reject from the
+             combination.
+             Default is ``None``.
+        """
+        self.data_arr.sort(axis=0)
+        nimages = self.data_arr.mask.shape[0]
+        newmask = np.ndarray(self.data_arr.mask.shape, dtype=bool)
+        if nlow != None:
+            for i in np.arange(0,nlow,1):
+                newmask[i,:,:] = True
+        if nhigh != None:
+            for i in np.arange(nimages-nhigh,nimages,1):
+                newmask[i,:,:] = True
+        self.data_arr.mask[newmask] = True
+
     # set up min/max clipping algorithms
     def minmax_clipping(self, min_clip=None, max_clip=None):
         """Mask all pixels that are below min_clip or above max_clip.
@@ -393,6 +424,7 @@ class Combiner(object):
 
 def combine(img_list, output_file=None, method='average', weights=None,
             scale=None, mem_limit=16e9,
+            iraf_minmax_clip=False, nlow=1, nhigh=1,
             minmax_clip=False, minmax_clip_min=None, minmax_clip_max=None,
             sigma_clip=False,
             sigma_clip_low_thresh=3, sigma_clip_high_thresh=3,
@@ -436,6 +468,21 @@ def combine(img_list, output_file=None, method='average', weights=None,
     mem_limit : float, optional
         Maximum memory which should be used while combining (in bytes).
         Default is ``16e9``.
+
+    iraf_minmax_clip : bool, optional
+        Set to True if you want to mask pixels using an IRAF-like minmax
+        clipping algorithm.  The algorithm will mask the lowest nlow values and
+        the highest nhigh values before combining the vlues to make up a single
+        pixel in the reuslting image.  For example, the image will be a
+        combination of Nimages-low-nhigh pixel values instead of the combination
+        of Nimages.
+
+        Parameters below are valid only when iraf_minmax_clip is set to True,
+        see :meth:`Combiner.iraf_minmax_clipping` for the parameter description:
+
+        - ``nlow`` : int or None, optional
+        - ``nhigh`` : int or None, optional
+
 
     minmax_clip : bool, optional
         Set to True if you want to mask all pixels that are below
@@ -545,6 +592,10 @@ def combine(img_list, output_file=None, method='average', weights=None,
             to_set_in_combiner['scaling'] = np.array(scalevalues)
         else:
             to_set_in_combiner['scaling'] = scale
+
+    if iraf_minmax_clip:
+        to_call_in_combiner['iraf_minmax_clipping'] = {'nlow': nlow,
+                                                  'nhigh': nhigh}
 
     if minmax_clip:
         to_call_in_combiner['minmax_clipping'] = {'min_clip': minmax_clip_min,
