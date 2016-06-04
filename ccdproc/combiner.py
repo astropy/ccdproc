@@ -201,17 +201,16 @@ class Combiner(object):
         nimages = self.data_arr.mask.shape[0]
         newmask = np.ndarray(self.data_arr.mask.shape, dtype=bool)
 
-        if nlow > nimages:
-            raise ValueError(
-                "Can not reject more pixels than there are images to combine")
-        if nhigh > nimages:
-            raise ValueError(
-                "Can not reject more pixels than there are images to combine")
-
         if nlow != None:
+            if nlow > nimages:
+                raise ValueError("Can not reject more pixels"\
+                                 " than there are images to combine")
             for i in np.arange(0,nlow,1):
                 newmask[i,:,:] = True
         if nhigh != None:
+            if nhigh > nimages:
+                raise ValueError("Can not reject more pixels"\
+                                 " than there are images to combine")
             for i in np.arange(nimages-nhigh,nimages,1):
                 newmask[i,:,:] = True
         self.data_arr.mask[newmask] = True
