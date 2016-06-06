@@ -185,17 +185,34 @@ class Combiner(object):
         image.  For example, the image will be a combination of
         Nimages-low-nhigh pixel values instead of the combination of Nimages.
 
-         Parameters
-         -----------
-         nlow : int or None, optional
-             If not None, the number of low values to reject from the
-             combination.
-             Default is ``None``.
+        Note that this differs slightly from the nominal IRAF behavior when
+        other masks are in use.  For example, if the nhigh>=1 and the highest
+        pixel is already masked for some other reason, then this algorithm will
+        count the masking of that pixel toward the count of nhigh masked pixels.
+        IRAF behaves slightly diifferently in this case (see IRAF help for that
+        behavior): http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?imcombine
+        
+        Here is a copy of the relevant IRAF help text:
+        
+        nlow = 1, nhigh = (minmax)
+            The number of low and high pixels to be rejected by the "minmax"
+            algorithm. These numbers are converted to fractions of the total
+            number of input images so that if no rejections have taken place
+            the specified number of pixels are rejected while if pixels have
+            been rejected by masking, thresholding, or nonoverlap, then the
+            fraction of the remaining pixels, truncated to an integer, is used.
+        
+        Parameters
+        -----------
+        nlow : int or None, optional
+            If not None, the number of low values to reject from the
+            combination.
+            Default is ``None``.
 
-         nhigh : int or None, optional
-             If not None, the number of high values to reject from the
-             combination.
-             Default is ``None``.
+        nhigh : int or None, optional
+            If not None, the number of high values to reject from the
+            combination.
+            Default is ``None``.
         """
         self.data_arr.sort(axis=0)
         nimages = self.data_arr.mask.shape[0]
