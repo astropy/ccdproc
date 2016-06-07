@@ -181,15 +181,15 @@ class Combiner(object):
     def iraf_minmax_clipping(self, nlow=None, nhigh=None):
         """Mask pixels using an IRAF-like minmax clipping algorithm.  The
         algorithm will mask the lowest nlow values and the highest nhigh values
-        before combining the vlues to make up a single pixel in the reuslting
+        before combining the values to make up a single pixel in the resulting
         image.  For example, the image will be a combination of
         Nimages-low-nhigh pixel values instead of the combination of Nimages.
 
         Note that this differs slightly from the nominal IRAF behavior when
-        other masks are in use.  For example, if the nhigh>=1 and the highest
+        other masks are in use.  For example, if the nhigh>=1 and any
         pixel is already masked for some other reason, then this algorithm will
         count the masking of that pixel toward the count of nhigh masked pixels.
-        IRAF behaves slightly diifferently in this case (see IRAF help for that
+        IRAF behaves slightly differently in this case (see IRAF help for that
         behavior): http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?imcombine
         
         Here is a copy of the relevant IRAF help text:
@@ -214,22 +214,18 @@ class Combiner(object):
             combination.
             Default is ``None``.
         """
-        self.data_arr.sort(axis=0)
+        if nlow == None: nlow=0
+        if nhigh == None: nhigh = 0
         nimages = self.data_arr.mask.shape[0]
-        newmask = np.ndarray(self.data_arr.mask.shape, dtype=bool)
+#         if nlow+nhigh >= nimages:
+#             raise ValueError("Can not reject more pixels"\
+#                              " than there are images to combine")
 
-        if nlow != None:
-            if nlow > nimages:
-                raise ValueError("Can not reject more pixels"\
-                                 " than there are images to combine")
-            for i in np.arange(0,nlow,1):
-                newmask[i,:,:] = True
-        if nhigh != None:
-            if nhigh > nimages:
-                raise ValueError("Can not reject more pixels"\
-                                 " than there are images to combine")
-            for i in np.arange(nimages-nhigh,nimages,1):
-                newmask[i,:,:] = True
+        newmask = np.zeros(self.data_arr.mask.shape, dtype=bool)
+        ind = np.argsort(self.data_arr.data, axis=0)
+
+        newmask[(ind < nlow)] = True
+        newmask[(ind >= nimages-nhigh)] = True
         self.data_arr.mask[newmask] = True
 
     # set up min/max clipping algorithms
@@ -619,7 +615,7 @@ def combine(img_list, output_file=None, method='average', weights=None,
 
     if iraf_minmax_clip:
         to_call_in_combiner['iraf_minmax_clipping'] = {'nlow': nlow,
-                                                  'nhigh': nhigh}
+                                                       'nhigh': nhigh}
 
     if minmax_clip:
         to_call_in_combiner['minmax_clipping'] = {'min_clip': minmax_clip_min,
