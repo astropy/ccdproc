@@ -393,3 +393,22 @@ def test_writeable_after_combine(ccd_data, tmpdir, comb_func):
     ccd2 = getattr(combined, comb_func)()
     # This should not fail because the resulting uncertainty has a mask
     ccd2.write(tmp_file.strpath)
+
+def test_iraf_minmax_masking():
+    ccdlist = [CCDData(np.ones((3, 3))*90., unit="adu"),\
+               CCDData(np.ones((3, 3))*20., unit="adu"),\
+               CCDData(np.ones((3, 3))*10., unit="adu"),\
+               CCDData(np.ones((3, 3))*40., unit="adu"),\
+               CCDData(np.ones((3, 3))*25., unit="adu"),\
+               CCDData(np.ones((3, 3))*35., unit="adu"),\
+              ]
+    ccdlist[0].data[0,0] = 3.1
+    ccdlist[1].data[1,1] = 100.1
+    c = Combiner(ccdlist)
+    c.iraf_minmax_clipping(nlow=1, nhigh=1)
+    result = c.average_combine()
+    expected = [[ 22.5, 30. , 30. ],\
+                [ 30. , 47.5, 30. ],\
+                [ 30. , 30. , 30. ]]
+    expected = np.array(expected)
+    assert (result == expected).all()
