@@ -214,19 +214,21 @@ class Combiner(object):
             combination.
             Default is ``None``.
         """
-        if nlow == None: nlow=0
+        if nlow == None: nlow = 0
         if nhigh == None: nhigh = 0
         nimages = self.data_arr.mask.shape[0]
-#         if nlow+nhigh >= nimages:
-#             raise ValueError("Can not reject more pixels"\
-#                              " than there are images to combine")
+        nx = self.data_arr.mask.shape[1]
+        ny = self.data_arr.mask.shape[2]
 
-        newmask = np.zeros(self.data_arr.mask.shape, dtype=bool)
-        ind = np.argsort(self.data_arr.data, axis=0)
+        self.argsorted = np.argsort(self.data_arr.data, axis=0)
 
-        newmask[(ind < nlow)] = True
-        newmask[(ind >= nimages-nhigh)] = True
-        self.data_arr.mask[newmask] = True
+        for x in range(nx):
+            for y in range(ny):
+                for i in range(nimages-nhigh,nimages):
+                    self.data_arr.mask[self.argsorted[i,x,y],x,y] = True
+                for j in range(0,nlow):
+                    self.data_arr.mask[self.argsorted[j,x,y],x,y] = True
+
 
     # set up min/max clipping algorithms
     def minmax_clipping(self, min_clip=None, max_clip=None):
