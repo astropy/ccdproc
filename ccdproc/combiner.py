@@ -220,14 +220,14 @@ class Combiner(object):
         nx = self.data_arr.mask.shape[1]
         ny = self.data_arr.mask.shape[2]
 
-        self.argsorted = np.argsort(self.data_arr.data, axis=0)
+        argsorted = np.argsort(self.data_arr.data, axis=0)
 
         for x in range(nx):
             for y in range(ny):
                 for i in range(nimages-nhigh,nimages):
-                    self.data_arr.mask[self.argsorted[i,x,y],x,y] = True
+                    self.data_arr.mask[argsorted[i,x,y],x,y] = True
                 for j in range(0,nlow):
-                    self.data_arr.mask[self.argsorted[j,x,y],x,y] = True
+                    self.data_arr.mask[argsorted[j,x,y],x,y] = True
 
 
     # set up min/max clipping algorithms
