@@ -223,15 +223,16 @@ class Combiner(object):
         ny = self.data_arr.mask.shape[2]
 
         argsorted = np.argsort(self.data_arr.data, axis=0)
+        mg = np.mgrid[0:nx,0:ny]
         for i in range(nlow):
             where = (argsorted[i,:,:].ravel(),\
-                     np.mgrid[0:nx,0:ny][0].ravel(),\
-                     np.mgrid[0:nx,0:ny][1].ravel())
+                     mg[0].ravel(),\
+                     mg[1].ravel())
             self.data_arr.mask[where] = True
         for j in range(nimages-nhigh,nimages):
             where = (argsorted[j,:,:].ravel(),\
-                     np.mgrid[0:nx,0:ny][0].ravel(),\
-                     np.mgrid[0:nx,0:ny][1].ravel())
+                     mg[0].ravel(),\
+                     mg[1].ravel())
             self.data_arr.mask[where] = True
 
 
