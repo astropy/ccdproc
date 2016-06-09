@@ -223,7 +223,6 @@ class Combiner(object):
         ny = self.data_arr.mask.shape[2]
 
         argsorted = np.argsort(self.data_arr.data, axis=0)
-        where = np.where((argsorted < nlow) | (argsorted >= nimages-nhigh))
         for i in range(nlow):
             where = (argsorted[i,:,:].ravel(),\
                      np.mgrid[0:nx,0:ny][0].ravel(),\
