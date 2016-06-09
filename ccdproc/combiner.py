@@ -214,9 +214,9 @@ class Combiner(object):
             combination.
             Default is ``None``.
         """
-        if nlow == None:
+        if nlow is None:
             nlow = 0
-        if nhigh == None:
+        if nhigh is None:
             nhigh = 0
         nimages = self.data_arr.mask.shape[0]
         nx = self.data_arr.mask.shape[1]
