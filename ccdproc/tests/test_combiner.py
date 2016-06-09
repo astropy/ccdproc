@@ -402,13 +402,15 @@ def test_iraf_minmax_masking():
                CCDData(np.ones((3, 3))*25., unit="adu"),\
                CCDData(np.ones((3, 3))*35., unit="adu"),\
               ]
-    ccdlist[0].data[0,0] = 3.1
-    ccdlist[1].data[1,1] = 100.1
+    ccdlist[0].data[0,1] = 3.1
+    ccdlist[1].data[1,2] = 100.1
     c = Combiner(ccdlist)
     c.iraf_minmax_clipping(nlow=1, nhigh=1)
     result = c.average_combine()
-    expected = [[ 22.5, 30. , 30. ],\
-                [ 30. , 47.5, 30. ],\
+    expected = [[ 30.,  22.5, 30. ],\
+                [ 30. , 30. , 47.5],\
                 [ 30. , 30. , 30. ]]
     expected = np.array(expected)
+    print(expected)
+    print(result)
     assert (result == expected).all()
