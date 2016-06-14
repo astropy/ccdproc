@@ -408,8 +408,7 @@ def test_iraf_minmax_masking():
     c = Combiner(ccdlist)
     c.iraf_minmax_clipping(nlow=1, nhigh=1)
     result = c.average_combine()
-    expected = [[ 30.,  22.5, 30. , 30., 30.],\
-                [ 30. , 30. , 47.5, 30., 30.],\
+    expected = [[ 30.,  22.5, 30. , 30., 30.],
+                [ 30. , 30. , 47.5, 30., 30.],
                 [ 47.5, 30. , 30. , 30., 30.]]
-    expected = np.array(expected)
-    assert (result == expected).all()
+    np.testing.assert_array_equal(result, expected)
