@@ -412,3 +412,27 @@ def test_iraf_minmax_masking():
                 [ 30. , 30. , 47.5, 30., 30.],
                 [ 47.5, 30. , 30. , 30., 30.]]
     np.testing.assert_array_equal(result, expected)
+
+def test_iraf_minmax_with_other_rejection():
+    ccdlist = [CCDData(np.ones((3, 5))*90., unit="adu"),\
+               CCDData(np.ones((3, 5))*20., unit="adu"),\
+               CCDData(np.ones((3, 5))*10., unit="adu"),\
+               CCDData(np.ones((3, 5))*40., unit="adu"),\
+               CCDData(np.ones((3, 5))*25., unit="adu"),\
+               CCDData(np.ones((3, 5))*35., unit="adu"),\
+              ]
+    ccdlist[0].data[0,1] = 3.1
+    ccdlist[1].data[1,2] = 100.1
+    ccdlist[1].data[2,0] = 100.1
+    c = Combiner(ccdlist)
+    ## Reject ccdlist[1].data[1,2] by other means
+    c.data_arr.mask[1,1,2] = True
+    ## Reject ccdlist[1].data[1,2] by other means
+    c.data_arr.mask[3,0,0] = True
+
+    c.iraf_minmax_clipping(nlow=1, nhigh=1)
+    result = c.average_combine()
+    expected = [[ 80./3.,  22.5, 30. , 30., 30.],
+                [ 30. , 30. , 47.5, 30., 30.],
+                [ 47.5, 30. , 30. , 30., 30.]]
+    np.testing.assert_array_equal(result, expected)
