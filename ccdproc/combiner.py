@@ -178,12 +178,12 @@ class Combiner(object):
             self._scaling = self.scaling[:, np.newaxis, np.newaxis]
 
     # set up IRAF-like minmax clipping
-    def iraf_minmax_clipping(self, nlow=None, nhigh=None):
+    def iraf_minmax_clipping(self, nlow=0, nhigh=0):
         """Mask pixels using an IRAF-like minmax clipping algorithm.  The
         algorithm will mask the lowest nlow values and the highest nhigh values
         before combining the values to make up a single pixel in the resulting
         image.  For example, the image will be a combination of
-        Nimages-low-nhigh pixel values instead of the combination of Nimages.
+        Nimages-nlow-nhigh pixel values instead of the combination of Nimages.
 
         Note that this differs slightly from the nominal IRAF behavior when
         other masks are in use.  For example, if the nhigh>=1 and any
@@ -207,12 +207,12 @@ class Combiner(object):
         nlow : int or None, optional
             If not None, the number of low values to reject from the
             combination.
-            Default is ``None``.
+            Default is 0.
 
         nhigh : int or None, optional
             If not None, the number of high values to reject from the
             combination.
-            Default is ``None``.
+            Default is 0.
         """
         if nlow is None:
             nlow = 0
