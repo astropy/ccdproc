@@ -704,7 +704,6 @@ def flat_correct(ccd, flat, min_value=None):
         flat_min = flat.copy()
         flat_min.data[flat_min.data < min_value] = min_value
         use_flat = flat_min
-        print(use_flat.data.mean())
 
     # Normalize the flat.
     flat_mean = use_flat.data.mean() * use_flat.unit
