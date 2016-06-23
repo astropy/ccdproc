@@ -400,24 +400,33 @@ def test_flat_correct(ccd_data):
 
 
 # test for flat correction with min_value
-@pytest.mark.data_scale(10)
+@pytest.mark.data_scale(1)
+@pytest.mark.data_mean(5)
 def test_flat_correct_min_value(ccd_data):
     size = ccd_data.shape[0]
+
     # create the flat
     data = 2 * np.random.normal(loc=1.0, scale=0.05, size=(size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat_orig_data = flat.data.copy()
     min_value = 2.1  # should replace some, but not all, values
-    flat_data = flat_correct(ccd_data, flat, min_value=min_value)
+    flat_corrected_data = flat_correct(ccd_data, flat, min_value=min_value)
     flat_with_min = flat.copy()
     flat_with_min.data[flat_with_min.data < min_value] = min_value
-    #check that the flat was normalized
-    np.testing.assert_almost_equal((flat_data.data * flat_with_min.data).mean(),
-                                   ccd_data.data.mean() * flat_with_min.data.mean())
-    np.testing.assert_allclose(ccd_data.data / flat_data.data,
+
+    # Check that the flat was normalized. The asserts below, which look a
+    # little odd, are correctly testing that
+    #    flat_corrected_data = ccd_data / (flat_with_min / mean(flat_with_min))
+    np.testing.assert_almost_equal(
+        (flat_corrected_data.data * flat_with_min.data).mean(),
+        (ccd_data.data * flat_with_min.data.mean()).mean()
+    )
+    np.testing.assert_allclose(ccd_data.data / flat_corrected_data.data,
                                flat_with_min.data / flat_with_min.data.mean())
+
     # Test that flat is not modified.
     assert (flat_orig_data == flat.data).all()
+    assert flat_orig_data is not flat.data
 
 
 # test for deviation and for flat correction
