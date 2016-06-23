@@ -178,7 +178,7 @@ class Combiner(object):
             self._scaling = self.scaling[:, np.newaxis, np.newaxis]
 
     # set up IRAF-like minmax clipping
-    def iraf_minmax_clipping(self, nlow=0, nhigh=0):
+    def clip_extrema(self, nlow=0, nhigh=0):
         """Mask pixels using an IRAF-like minmax clipping algorithm.  The
         algorithm will mask the lowest nlow values and the highest nhigh values
         before combining the values to make up a single pixel in the resulting
@@ -445,7 +445,7 @@ class Combiner(object):
 
 def combine(img_list, output_file=None, method='average', weights=None,
             scale=None, mem_limit=16e9,
-            iraf_minmax_clip=False, nlow=1, nhigh=1,
+            clip_extrema=False, nlow=1, nhigh=1,
             minmax_clip=False, minmax_clip_min=None, minmax_clip_max=None,
             sigma_clip=False,
             sigma_clip_low_thresh=3, sigma_clip_high_thresh=3,
@@ -490,7 +490,7 @@ def combine(img_list, output_file=None, method='average', weights=None,
         Maximum memory which should be used while combining (in bytes).
         Default is ``16e9``.
 
-    iraf_minmax_clip : bool, optional
+    clip_extrema : bool, optional
         Set to True if you want to mask pixels using an IRAF-like minmax
         clipping algorithm.  The algorithm will mask the lowest nlow values and
         the highest nhigh values before combining the vlues to make up a single
@@ -498,8 +498,8 @@ def combine(img_list, output_file=None, method='average', weights=None,
         combination of Nimages-low-nhigh pixel values instead of the combination
         of Nimages.
 
-        Parameters below are valid only when iraf_minmax_clip is set to True,
-        see :meth:`Combiner.iraf_minmax_clipping` for the parameter description:
+        Parameters below are valid only when clip_extrema is set to True,
+        see :meth:`Combiner.clip_extrema` for the parameter description:
 
         - ``nlow`` : int or None, optional
         - ``nhigh`` : int or None, optional
@@ -614,8 +614,8 @@ def combine(img_list, output_file=None, method='average', weights=None,
         else:
             to_set_in_combiner['scaling'] = scale
 
-    if iraf_minmax_clip:
-        to_call_in_combiner['iraf_minmax_clipping'] = {'nlow': nlow,
+    if clip_extrema:
+        to_call_in_combiner['clip_extrema'] = {'nlow': nlow,
                                                        'nhigh': nhigh}
 
     if minmax_clip:
