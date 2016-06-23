@@ -433,6 +433,16 @@ def test_flat_correct_deviation(ccd_data):
     flat = create_deviation(flat, readnoise=0.5 * u.electron)
     ccd_data = flat_correct(ccd_data, flat)
 
+# test the uncertainty on the data after flat correction
+def test_flat_correct_data_uncertainty():
+    # Regression test for #345
+    dat = CCDData(np.ones([100, 100]), unit='adu',
+                  uncertainty=np.ones([100, 100]))
+    # Note flat is set to 10, error, if present, is set to one.
+    flat = CCDData(10 * np.ones([100, 100]), unit='adu')
+    res = flat_correct(dat, flat)
+    assert (res.data == dat.data).all()
+    assert (res.uncertainty.array == dat.uncertainty.array).all()
 
 # tests for gain correction
 def test_gain_correct(ccd_data):
@@ -834,7 +844,7 @@ def test_ccd_process():
                        master_flat=masterflat, dark_frame=dark_frame,
                        bad_pixel_mask=mask, gain=0.5 * u.electron/u.adu,
                        readnoise=5**0.5 * u.electron, oscan_median=True,
-                       dark_scale=False, dark_exposure=1.*u.s, 
+                       dark_scale=False, dark_exposure=1.*u.s,
                        data_exposure=1.*u.s)
 
     # final results should be (10 - 2) / 2.0 - 2 = 2
