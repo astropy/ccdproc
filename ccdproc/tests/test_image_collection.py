@@ -47,6 +47,15 @@ def test_fits_summary(triage_setup):
 @pytest.mark.skipif("os.environ.get('APPVEYOR')",
                     reason="fails on AppVeyor/Windows")
 class TestImageFileCollection(object):
+    def _setup_logger(self, path, level=logging.WARN):
+        """
+        Set up file logger at the path.
+        """
+        logger = logging.getLogger()
+        logger.setLevel(level)
+        logger.addHandler(logging.FileHandler(path))
+        return logger
+
     def test_filter_files(self, triage_setup):
         img_collection = image_collection.ImageFileCollection(
             location=triage_setup.test_dir, keywords=['imagetyp', 'filter'])
@@ -282,7 +291,7 @@ class TestImageFileCollection(object):
             # this statement should not be reached if there are no FITS files
             assert 0
 
-    def test_dir_with_no_keys(self, tmpdir, caplog):
+    def test_dir_with_no_keys(self, tmpdir):
         # This test should fail if the FITS files in the directory
         # are actually read.
         bad_dir = tmpdir.mkdtemp()
@@ -291,13 +300,18 @@ class TestImageFileCollection(object):
         # make sure an error will be generated if the FITS file is read
         with pytest.raises(IOError):
             fits.getheader(not_really_fits.strpath)
-        ic = image_collection.ImageFileCollection(location=bad_dir.strpath,
-                                                  keywords=[])
+
+        log = tmpdir.join('tmp.log')
+        self._setup_logger(log.strpath)
+
+        _ = image_collection.ImageFileCollection(location=bad_dir.strpath,
+                                                 keywords=[])
+
+        with open(log.strpath) as f:
+            warnings = f.read()
+
         # ImageFileCollection will suppress the IOError but log a warning
-        # so check the log for the appropriate warning
-        warnings = [rec for rec in caplog.records()
-                    if ((rec.levelno == logging.WARN) &
-                        ('Unable to get FITS header' in rec.message))]
+        # so check that the log has no warnings in it.
         assert (len(warnings) == 0)
 
     def test_fits_summary_when_keywords_are_not_subset(self, triage_setup):
@@ -444,15 +458,23 @@ class TestImageFileCollection(object):
 
     def test_initializing_from_table_file_that_does_not_exist(self,
                                                               triage_setup,
-                                                              caplog):
+                                                              tmpdir):
+        log = tmpdir.join('tmp.log')
+
+        self._setup_logger(log.strpath)
+
         # Do we get a warning if we try reading a file that doesn't exist,
         # but where we can initialize from a directory?
-        ic = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                     info_file='iufadsdhfasdifre')
-        warnings = [rec for rec in caplog.records()
-                    if ((rec.levelno == logging.WARN) &
-                        ('unable to open table file' in rec.message))]
+        ic = image_collection.ImageFileCollection(
+            location=triage_setup.test_dir,
+            info_file='iufadsdhfasdifre')
+
+        with open(log.strpath) as f:
+            warnings = f.readlines()
+
         assert (len(warnings) == 1)
+        is_in = ['unable to open table file' in w  for w in warnings]
+        assert all(is_in)
         # Do we raise an error if the table name is bad AND the location
         # is None?
         with pytest.raises(IOError):
