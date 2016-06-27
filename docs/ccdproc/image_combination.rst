@@ -78,9 +78,9 @@ Extrema clipping
 ++++++++++++++++
 
 For each pixel position in the input arrays, the algorithm will mask the
-highest `nhigh` and lowest `nlow` pixel values.  The resulting image will be a
-combination of `Nimages-nlow-nhigh` pixel values instead of the combination of
-`Nimages` worth of pixel values.
+highest ``nhigh`` and lowest ``nlow`` pixel values.  The resulting image will be
+a combination of ``Nimages-nlow-nhigh`` pixel values instead of the combination
+of ``Nimages`` worth of pixel values.
 
 You can mask the lowest pixel value and the highest two pixel values with:
 
