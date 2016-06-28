@@ -547,7 +547,17 @@ def subtract_bias(ccd, master):
     result : `~ccdproc.CCDData`
         CCDData object with bias subtracted.
     """
-    result = ccd.subtract(master)
+
+    try:
+        result = ccd.subtract(master)
+    except ValueError as e:
+        if 'operand units' in str(e):
+            raise u.UnitsError("Unit '{}' of the uncalibrated image does not "
+                               "match unit '{}' of the calibration "
+                               "image".format(ccd.unit, master.unit))
+        else:
+            raise e
+
     result.meta = ccd.meta.copy()
     return result
 
@@ -629,14 +639,22 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
             raise TypeError("exposure times must be astropy.units.Quantity "
                             "objects.")
 
-    if scale:
-        master_scaled = master.copy()
-        # data_exposure and dark_exposure are both quantities,
-        # so we can just have subtract do the scaling
-        master_scaled = master_scaled.multiply(data_exposure / dark_exposure)
-        result = ccd.subtract(master_scaled)
-    else:
-        result = ccd.subtract(master)
+    try:
+        if scale:
+            master_scaled = master.copy()
+            # data_exposure and dark_exposure are both quantities,
+            # so we can just have subtract do the scaling
+            master_scaled = master_scaled.multiply(data_exposure /
+                                                   dark_exposure)
+            result = ccd.subtract(master_scaled)
+        else:
+            result = ccd.subtract(master)
+    except u.UnitsError:
+        # Make the error message a little more explicit than what is returned
+        # by default.
+        raise u.UnitsError("Unit '{}' of the uncalibrated image does not "
+                           "match unit '{}' of the calibration "
+                           "image".format(ccd.unit, master.unit))
 
     result.meta = ccd.meta.copy()
     return result

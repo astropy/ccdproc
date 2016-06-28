@@ -299,7 +299,7 @@ def test_subtract_bias_fails(ccd_data):
         subtract_bias(ccd_data, bias)
     # should fail because units don't match
     bias = CCDData(np.zeros_like(ccd_data), unit=u.meter)
-    with pytest.raises(ValueError):
+    with pytest.raises(u.UnitsError):
         subtract_bias(ccd_data, bias)
 
 
@@ -353,27 +353,42 @@ def test_subtract_dark_fails(ccd_data):
     # can be anything.
     ccd_data.header['exptime'] = 30.0
     master = ccd_data.copy()
+
     # Do we fail if we give one of dark_exposure, data_exposure but not both?
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master, dark_exposure=30 * u.second)
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master, data_exposure=30 * u.second)
+
     # Do we fail if we supply dark_exposure and data_exposure and exposure_time
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master, dark_exposure=10 * u.second,
                       data_exposure=10 * u.second,
                       exposure_time='exptime')
+
     # Fail if we supply none of the exposure-related arguments?
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master)
+
     # Fail if we supply exposure time but not a unit?
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master, exposure_time='exptime')
+
     # Fail if ccd_data or master are not CCDData objects?
     with pytest.raises(TypeError):
         subtract_dark(ccd_data.data, master, exposure_time='exptime')
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master.data, exposure_time='exptime')
+
+    # Fail if units do not match...
+
+    # ...when there is no scaling?
+    master = CCDData(ccd_data, unit="meter")
+
+    with pytest.raises(u.UnitsError) as e:
+        subtract_dark(ccd_data, master, exposure_time='exptime',
+                      exposure_unit=u.second)
+    assert "uncalibrated image" in str(e.value)
 
 
 # test for flat correction
