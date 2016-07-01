@@ -25,6 +25,8 @@ Bug Fixes
 - ``Combiner`` creates plain array uncertainties when using``average_combine``
   or ``median_combine``. [#351]
 
+- ``flat_correct`` does not properly scale uncertainty in the flat. [#345, #363]
+
 1.0.1 (2016-03-15)
 ------------------
 

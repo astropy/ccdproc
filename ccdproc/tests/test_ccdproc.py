@@ -400,24 +400,33 @@ def test_flat_correct(ccd_data):
 
 
 # test for flat correction with min_value
-@pytest.mark.data_scale(10)
+@pytest.mark.data_scale(1)
+@pytest.mark.data_mean(5)
 def test_flat_correct_min_value(ccd_data):
     size = ccd_data.shape[0]
+
     # create the flat
     data = 2 * np.random.normal(loc=1.0, scale=0.05, size=(size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat_orig_data = flat.data.copy()
     min_value = 2.1  # should replace some, but not all, values
-    flat_data = flat_correct(ccd_data, flat, min_value=min_value)
+    flat_corrected_data = flat_correct(ccd_data, flat, min_value=min_value)
     flat_with_min = flat.copy()
     flat_with_min.data[flat_with_min.data < min_value] = min_value
-    #check that the flat was normalized
-    np.testing.assert_almost_equal((flat_data.data * flat_with_min.data).mean(),
-                                   ccd_data.data.mean() * flat_with_min.data.mean())
-    np.testing.assert_allclose(ccd_data.data / flat_data.data,
+
+    # Check that the flat was normalized. The asserts below, which look a
+    # little odd, are correctly testing that
+    #    flat_corrected_data = ccd_data / (flat_with_min / mean(flat_with_min))
+    np.testing.assert_almost_equal(
+        (flat_corrected_data.data * flat_with_min.data).mean(),
+        (ccd_data.data * flat_with_min.data.mean()).mean()
+    )
+    np.testing.assert_allclose(ccd_data.data / flat_corrected_data.data,
                                flat_with_min.data / flat_with_min.data.mean())
+
     # Test that flat is not modified.
     assert (flat_orig_data == flat.data).all()
+    assert flat_orig_data is not flat.data
 
 
 # test for deviation and for flat correction
@@ -433,6 +442,16 @@ def test_flat_correct_deviation(ccd_data):
     flat = create_deviation(flat, readnoise=0.5 * u.electron)
     ccd_data = flat_correct(ccd_data, flat)
 
+# test the uncertainty on the data after flat correction
+def test_flat_correct_data_uncertainty():
+    # Regression test for #345
+    dat = CCDData(np.ones([100, 100]), unit='adu',
+                  uncertainty=np.ones([100, 100]))
+    # Note flat is set to 10, error, if present, is set to one.
+    flat = CCDData(10 * np.ones([100, 100]), unit='adu')
+    res = flat_correct(dat, flat)
+    assert (res.data == dat.data).all()
+    assert (res.uncertainty.array == dat.uncertainty.array).all()
 
 # tests for gain correction
 def test_gain_correct(ccd_data):
@@ -834,7 +853,7 @@ def test_ccd_process():
                        master_flat=masterflat, dark_frame=dark_frame,
                        bad_pixel_mask=mask, gain=0.5 * u.electron/u.adu,
                        readnoise=5**0.5 * u.electron, oscan_median=True,
-                       dark_scale=False, dark_exposure=1.*u.s, 
+                       dark_scale=False, dark_exposure=1.*u.s,
                        data_exposure=1.*u.s)
 
     # final results should be (10 - 2) / 2.0 - 2 = 2
