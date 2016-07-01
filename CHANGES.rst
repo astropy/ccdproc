@@ -8,6 +8,8 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Auto-identify files with extension ``fts`` as FITS files. [#355, #364]
+
 Bug Fixes
 ^^^^^^^^^
 

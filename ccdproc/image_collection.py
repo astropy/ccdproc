@@ -549,7 +549,10 @@ class ImageFileCollection(object):
         list
             *Names* of the files (with extension), not the full pathname.
         """
-        full_extensions = extensions or ['fit', 'fits', 'fts']
+        from .ccddata import _recognized_fits_file_extensions
+
+        full_extensions = extensions or list(_recognized_fits_file_extensions)
+
         if compressed:
             with_gz = [extension + '.gz' for extension in full_extensions]
             full_extensions.extend(with_gz)

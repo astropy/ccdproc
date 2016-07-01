@@ -705,9 +705,29 @@ def fits_ccddata_writer(ccd_data, filename, hdu_mask='MASK',
     hdu.writeto(filename, **kwd)
 
 
+# This should be be a tuple to ensure it isn't inadvertently changed elsewhere.
+_recognized_fits_file_extensions = ('fit', 'fits', 'fts')
+
+
+def is_fits(origin, filepath, fileobj, *args, **kwargs):
+    """
+    Wrapper around astropy.io.fits.connect.is_fits that handles the extra
+    extension.
+
+    Can be removed if fts is added to astropy.io as a recognized FITS
+    extension.
+    """
+    if ((filepath is not None) and
+            filepath.lower().endswith(('.fts', '.fts.gz'))):
+
+        return True
+
+    else:
+        return fits.connect.is_fits(origin, filepath, fileobj, *args, **kwargs)
+
 registry.register_reader('fits', CCDData, fits_ccddata_reader)
 registry.register_writer('fits', CCDData, fits_ccddata_writer)
-registry.register_identifier('fits', CCDData, fits.connect.is_fits)
+registry.register_identifier('fits', CCDData, is_fits)
 
 try:
     CCDData.read.__doc__ = fits_ccddata_reader.__doc__
