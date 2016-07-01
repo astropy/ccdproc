@@ -393,3 +393,64 @@ def test_writeable_after_combine(ccd_data, tmpdir, comb_func):
     ccd2 = getattr(combined, comb_func)()
     # This should not fail because the resulting uncertainty has a mask
     ccd2.write(tmp_file.strpath)
+
+def test_clip_extrema():
+    ccdlist = [CCDData(np.ones((3, 5))*90., unit="adu"),\
+               CCDData(np.ones((3, 5))*20., unit="adu"),\
+               CCDData(np.ones((3, 5))*10., unit="adu"),\
+               CCDData(np.ones((3, 5))*40., unit="adu"),\
+               CCDData(np.ones((3, 5))*25., unit="adu"),\
+               CCDData(np.ones((3, 5))*35., unit="adu"),\
+              ]
+    ccdlist[0].data[0,1] = 3.1
+    ccdlist[1].data[1,2] = 100.1
+    ccdlist[1].data[2,0] = 100.1
+    c = Combiner(ccdlist)
+    c.clip_extrema(nlow=1, nhigh=1)
+    result = c.average_combine()
+    expected = [[ 30.,  22.5, 30. , 30., 30.],
+                [ 30. , 30. , 47.5, 30., 30.],
+                [ 47.5, 30. , 30. , 30., 30.]]
+    np.testing.assert_array_equal(result, expected)
+
+def test_clip_extrema_via_combine():
+    ccdlist = [CCDData(np.ones((3, 5))*90., unit="adu"),\
+               CCDData(np.ones((3, 5))*20., unit="adu"),\
+               CCDData(np.ones((3, 5))*10., unit="adu"),\
+               CCDData(np.ones((3, 5))*40., unit="adu"),\
+               CCDData(np.ones((3, 5))*25., unit="adu"),\
+               CCDData(np.ones((3, 5))*35., unit="adu"),\
+              ]
+    ccdlist[0].data[0,1] = 3.1
+    ccdlist[1].data[1,2] = 100.1
+    ccdlist[1].data[2,0] = 100.1
+    result = combine(ccdlist, clip_extrema=True, nlow=1, nhigh=1,)
+    expected = [[ 30.,  22.5, 30. , 30., 30.],
+                [ 30. , 30. , 47.5, 30., 30.],
+                [ 47.5, 30. , 30. , 30., 30.]]
+    np.testing.assert_array_equal(result, expected)
+
+
+def test_clip_extrema_with_other_rejection():
+    ccdlist = [CCDData(np.ones((3, 5))*90., unit="adu"),\
+               CCDData(np.ones((3, 5))*20., unit="adu"),\
+               CCDData(np.ones((3, 5))*10., unit="adu"),\
+               CCDData(np.ones((3, 5))*40., unit="adu"),\
+               CCDData(np.ones((3, 5))*25., unit="adu"),\
+               CCDData(np.ones((3, 5))*35., unit="adu"),\
+              ]
+    ccdlist[0].data[0,1] = 3.1
+    ccdlist[1].data[1,2] = 100.1
+    ccdlist[1].data[2,0] = 100.1
+    c = Combiner(ccdlist)
+    ## Reject ccdlist[1].data[1,2] by other means
+    c.data_arr.mask[1,1,2] = True
+    ## Reject ccdlist[1].data[1,2] by other means
+    c.data_arr.mask[3,0,0] = True
+
+    c.clip_extrema(nlow=1, nhigh=1)
+    result = c.average_combine()
+    expected = [[ 80./3.,  22.5, 30. , 30., 30.],
+                [ 30. , 30. , 47.5, 30., 30.],
+                [ 47.5, 30. , 30. , 30., 30.]]
+    np.testing.assert_array_equal(result, expected)

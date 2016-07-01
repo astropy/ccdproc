@@ -177,6 +177,58 @@ class Combiner(object):
             # reshape so that broadcasting occurs properly
             self._scaling = self.scaling[:, np.newaxis, np.newaxis]
 
+    # set up IRAF-like minmax clipping
+    def clip_extrema(self, nlow=0, nhigh=0):
+        """Mask pixels using an IRAF-like minmax clipping algorithm.  The
+        algorithm will mask the lowest nlow values and the highest nhigh values
+        before combining the values to make up a single pixel in the resulting
+        image.  For example, the image will be a combination of
+        Nimages-nlow-nhigh pixel values instead of the combination of Nimages.
+
+        Note that this differs slightly from the nominal IRAF behavior when
+        other masks are in use.  For example, if the nhigh>=1 and any
+        pixel is already masked for some other reason, then this algorithm will
+        count the masking of that pixel toward the count of nhigh masked pixels.
+        IRAF behaves slightly differently in this case (see IRAF help for that
+        behavior): http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?imcombine
+        
+        Here is a copy of the relevant IRAF help text:
+        
+        nlow = 1, nhigh = (minmax)
+            The number of low and high pixels to be rejected by the "minmax"
+            algorithm. These numbers are converted to fractions of the total
+            number of input images so that if no rejections have taken place
+            the specified number of pixels are rejected while if pixels have
+            been rejected by masking, thresholding, or nonoverlap, then the
+            fraction of the remaining pixels, truncated to an integer, is used.
+        
+        Parameters
+        -----------
+        nlow : int or None, optional
+            If not None, the number of low values to reject from the
+            combination.
+            Default is 0.
+
+        nhigh : int or None, optional
+            If not None, the number of high values to reject from the
+            combination.
+            Default is 0.
+        """
+        if nlow is None:
+            nlow = 0
+        if nhigh is None:
+            nhigh = 0
+        nimages, nx, ny = self.data_arr.mask.shape
+
+        argsorted = np.argsort(self.data_arr.data, axis=0)
+        mg = np.mgrid[0:nx,0:ny]
+        for i in range(-1*nhigh, nlow):
+            where = (argsorted[i,:,:].ravel(),
+                     mg[0].ravel(),
+                     mg[1].ravel())
+            self.data_arr.mask[where] = True
+
+
     # set up min/max clipping algorithms
     def minmax_clipping(self, min_clip=None, max_clip=None):
         """Mask all pixels that are below min_clip or above max_clip.
@@ -393,6 +445,7 @@ class Combiner(object):
 
 def combine(img_list, output_file=None, method='average', weights=None,
             scale=None, mem_limit=16e9,
+            clip_extrema=False, nlow=1, nhigh=1,
             minmax_clip=False, minmax_clip_min=None, minmax_clip_max=None,
             sigma_clip=False,
             sigma_clip_low_thresh=3, sigma_clip_high_thresh=3,
@@ -436,6 +489,21 @@ def combine(img_list, output_file=None, method='average', weights=None,
     mem_limit : float, optional
         Maximum memory which should be used while combining (in bytes).
         Default is ``16e9``.
+
+    clip_extrema : bool, optional
+        Set to True if you want to mask pixels using an IRAF-like minmax
+        clipping algorithm.  The algorithm will mask the lowest nlow values and
+        the highest nhigh values before combining the vlues to make up a single
+        pixel in the reuslting image.  For example, the image will be a
+        combination of Nimages-low-nhigh pixel values instead of the combination
+        of Nimages.
+
+        Parameters below are valid only when clip_extrema is set to True,
+        see :meth:`Combiner.clip_extrema` for the parameter description:
+
+        - ``nlow`` : int or None, optional
+        - ``nhigh`` : int or None, optional
+
 
     minmax_clip : bool, optional
         Set to True if you want to mask all pixels that are below
@@ -545,6 +613,10 @@ def combine(img_list, output_file=None, method='average', weights=None,
             to_set_in_combiner['scaling'] = np.array(scalevalues)
         else:
             to_set_in_combiner['scaling'] = scale
+
+    if clip_extrema:
+        to_call_in_combiner['clip_extrema'] = {'nlow': nlow,
+                                                       'nhigh': nhigh}
 
     if minmax_clip:
         to_call_in_combiner['minmax_clipping'] = {'min_clip': minmax_clip_min,
