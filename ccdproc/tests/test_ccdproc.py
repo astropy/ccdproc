@@ -383,7 +383,8 @@ def test_subtract_dark_fails(ccd_data):
     # Fail if units do not match...
 
     # ...when there is no scaling?
-    master = CCDData(ccd_data, unit="meter")
+    master = CCDData(ccd_data)
+    master.unit = u.meter
 
     with pytest.raises(u.UnitsError) as e:
         subtract_dark(ccd_data, master, exposure_time='exptime',

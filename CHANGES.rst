@@ -10,6 +10,9 @@ Other Changes and Additions
 
 - Auto-identify files with extension ``fts`` as FITS files. [#355, #364]
 
+- Raise more explicit exception if unit of uncalibrated image and master do
+  not match in ``subtract_bias`` or ``subtract_dark``. [#361, #366]
+
 Bug Fixes
 ^^^^^^^^^
 
