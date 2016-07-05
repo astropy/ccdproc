@@ -10,6 +10,7 @@ import astropy.units as u
 from astropy.wcs import WCS
 
 from astropy.nddata import StdDevUncertainty
+import astropy
 
 from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
@@ -391,6 +392,30 @@ def test_subtract_dark_fails(ccd_data):
                       exposure_unit=u.second)
     assert "uncalibrated image" in str(e.value)
 
+
+def test_unit_mismatch_behaves_as_expected(ccd_data):
+    """
+    Test to alert us to any changes in how errors are raised in astropy when units
+    do not match.
+    """
+    bad_unit = ccd_data.copy()
+    bad_unit.unit = u.meter
+
+    if astropy.__version__.startswith('1.0'):
+        expected_error = ValueError
+        expected_message = 'operand units'
+    else:
+        expected_error = u.UnitConversionError
+        # Make this an empty string, which always matches. In this case
+        # we are really only checking by the type of error raised.
+        expected_message = ''
+
+    # Did we raise the right error?
+    with pytest.raises(expected_error) as e:
+        ccd_data.subtract(bad_unit)
+
+    # Was the error message as expected?
+    assert expected_message in str(e)
 
 # test for flat correction
 @pytest.mark.data_scale(10)
