@@ -649,7 +649,13 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
             result = ccd.subtract(master_scaled)
         else:
             result = ccd.subtract(master)
-    except u.UnitsError:
+    except (u.UnitsError, ValueError) as e:
+        # Astropy LTS (v1) returns a ValueError, not a UnitsError, so catch
+        # that if it appears to really be a UnitsError.
+        if (isinstance(e, ValueError) and
+            'operand units' not in str(e)):
+            raise e
+
         # Make the error message a little more explicit than what is returned
         # by default.
         raise u.UnitsError("Unit '{}' of the uncalibrated image does not "
