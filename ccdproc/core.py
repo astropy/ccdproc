@@ -13,6 +13,7 @@ from astropy.modeling import fitting
 from astropy import stats
 from astropy.nddata import StdDevUncertainty
 from astropy.wcs.utils import proj_plane_pixel_area
+import astropy  # To get the version.
 
 from scipy import ndimage
 
@@ -649,11 +650,12 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
             result = ccd.subtract(master_scaled)
         else:
             result = ccd.subtract(master)
-    except (u.UnitsError, ValueError) as e:
+    except (u.UnitsError, u.UnitConversionError, ValueError) as e:
         # Astropy LTS (v1) returns a ValueError, not a UnitsError, so catch
         # that if it appears to really be a UnitsError.
         if (isinstance(e, ValueError) and
-            'operand units' not in str(e)):
+                'operand units' not in str(e) and
+                astropy.__version__.startswith('1.0')):
             raise e
 
         # Make the error message a little more explicit than what is returned
