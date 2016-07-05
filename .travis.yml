@@ -20,15 +20,19 @@ python:
 env:
     global:
         # The following versions are the 'default' for tests, unless
-        # overidden underneath. They are defined here in order to save having
+        # overridden underneath. They are defined here in order to save having
         # to repeat them for all configurations.
-        - NUMPY_VERSION=1.10
+        - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
         - CONDA_DEPENDENCIES='scipy astroscrappy reproject'
         - PIP_DEPENDENCIES=''
+        - SETUP_CMD='test'
 
     matrix:
+        # Make sure that egg_info works without dependencies
         - SETUP_CMD='egg_info'
+        # Try all python versions with the latest numpy
+        - SETUP_CMD='test'
 
 matrix:
     include:
@@ -44,31 +48,24 @@ matrix:
 
         # Try Astropy development version
         - python: 2.7
-          env: ASTROPY_VERSION=development SETUP_CMD='test'
+          env: ASTROPY_VERSION=development
         - python: 3.5
-          env: ASTROPY_VERSION=development SETUP_CMD='test'
+          env: ASTROPY_VERSION=development
 
         # Check compatibility with the current astropy LTS release
         - python: 2.7
-          env: ASTROPY_VERSION=LTS SETUP_CMD='test'
-
-        # Try all python versions with the latest numpy available on that
-        # python version.
-        - python: 2.7
-          env: SETUP_CMD='test'
-        - python: 3.4
-          env: SETUP_CMD='test'
-        - python: 3.5
-          env: SETUP_CMD='test'
+          env: ASTROPY_VERSION=LTS
 
         # Try older numpy versions
         - python: 2.7
-          env: NUMPY_VERSION=1.9 SETUP_CMD='test'
+          env: NUMPY_VERSION=1.10
+        - python: 2.7
+          env: NUMPY_VERSION=1.9
 
         # Try numpy pre-release version. This runs only when a pre-release
         # is available on pypi.
         - python: 3.5
-          env: NUMPY_VERSION=prerelease SETUP_CMD='test'
+          env: NUMPY_VERSION=prerelease
 
 install:
 

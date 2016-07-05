@@ -1,5 +1,5 @@
 # Compiled files
-*.py[co]
+*.py[cod]
 *.a
 *.o
 *.so
@@ -10,15 +10,24 @@ __pycache__
 *.c
 
 # Other generated files
-ccdproc/cython_version.py
 */version.py
 */cython_version.py
 htmlcov
 .coverage
+MANIFEST
+.ipynb_checkpoints
 
 # Sphinx
-_build
 docs/api
+docs/_build
+
+# Eclipse editor project files
+.project
+.pydevproject
+.settings
+
+# Pycharm editor project files
+.idea
 
 # Packages/installer info
 *.egg
@@ -34,19 +43,12 @@ develop-eggs
 .installed.cfg
 lib
 distribute-*.tar.gz
-MANIFEST
-
-# test coverage
-.coverage
-htmlcov
 
 # Other
-.*.swp
-*~
+.cache
 .tox
-.settings
-.project
-.pydevproject
+.*.sw[op]
+*~
 
 # Mac OSX
 .DS_Store
@@ -57,9 +59,4 @@ nosetests.xml
 
 # Mr Developer
 .mr.developer.cfg
-.project
-.pydevproject
 
-#editors
-.swp
-.idea

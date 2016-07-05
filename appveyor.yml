@@ -10,18 +10,18 @@ environment:
       PYTHON_ARCH: "64" # needs to be set for CMD_IN_ENV to succeed. If a mix
                         # of 32 bit and 64 bit builds are needed, move this
                         # to the matrix section.
-      CONDA_DEPENDENCIES: "scipy"
+      CONDA_DEPENDENCIES: "scipy astroscrappy reproject"
       PIP_DEPENDENCIES: ""
 
   matrix:
 
       - PYTHON_VERSION: "2.7"
-        NUMPY_VERSION: "1.10"
         ASTROPY_VERSION: "stable"
+        NUMPY_VERSION: "stable"
 
       - PYTHON_VERSION: "3.5"
-        NUMPY_VERSION: "1.10"
         ASTROPY_VERSION: "stable"
+        NUMPY_VERSION: "stable"
 
 platform:
     -x64
@@ -31,10 +31,9 @@ install:
     - "powershell ci-helpers/appveyor/install-miniconda.ps1"
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - "activate test"
-    - "conda install -c astropy astroscrappy reproject"
 
-# Not a .NET project, we build astroplan in the install step instead
+# Not a .NET project, we build the package in the install step instead
 build: false
 
 test_script:
-  - "%CMD_IN_ENV% python setup.py test"
+    - "%CMD_IN_ENV% python setup.py test"
