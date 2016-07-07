@@ -185,7 +185,7 @@ the overscan axis ends up being the *second* axis, which is numbered 1 in
 python zero-based numbering.
 
 With the arguments in this example the overscan is averaged over the overscan
-columns (i.e. 2000 through 2031) and then subtracted row-by-row from the
+columns (i.e. 200 through 231) and then subtracted row-by-row from the
 image. The ``median`` argument can be used to median combine instead.
 
 This example is not very realistic: typically one wants to fit a low-order
@@ -205,8 +205,8 @@ Trim an image
 +++++++++++++
 
 The overscan-subtracted image constructed above still contains the overscan
-portion. We are assuming came from a FITS file in which ``NAXIS1=2032`` and
-``NAXIS2=1000``, in which the last 32 columns along ``NAXIS1`` are overscan.
+portion. We are assuming came from a FITS file in which ``NAXIS1=232`` and
+``NAXIS2=100``, in which the last 32 columns along ``NAXIS1`` are overscan.
 
 Trim it using `~ccdproc.trim_image`,shown below in both python-
 style and FITS-style indexing:
@@ -299,15 +299,25 @@ Basic Processing
 ----------------
 
 All of the basic processing steps can be accomplished in a single step using
-`~ccdproc.ccd_process`.   This step will call overscan correct, trim, gain
-correct, add a bad pixel mask, create an uncertainty frame, subtract the master
-bias, and flat-field the image.  These can be run together as:
+`~ccdproc.ccd_process`. This step will call overscan correct, trim, gain
+correct, add a bad pixel mask, create an uncertainty frame, subtract the
+master bias, and flat-field the image. The unit of the master calibration
+frames must match that of the image *after* the gain, if any, is applied. In
+the example below, ``img`` has unit ``adu``, but the master frames have unit
+``electron``. These can be run together as:
 
      >>> ccd = ccdproc.CCDData(img, unit=u.adu)
-     >>> nccd = ccdproc.ccd_process(ccd, oscan='[1:10,1:100]', 
-     ...                            trim='[10:100, 1:100]',
-     ...                            error=True, gain=2.0*u.electron/u.adu,
-     ...                            readnoise = 5*u.electron) 
+     >>> ccd.header['exposure'] = 30.0  # for dark subtraction
+     >>> nccd = ccdproc.ccd_process(ccd, oscan='[201:232,1:100]',
+     ...                            trim='[1:200, 1:100]',
+     ...                            error=True,
+     ...                            gain=2.0*u.electron/u.adu,
+     ...                            readnoise=5*u.electron,
+     ...                            dark_frame=master_dark,
+     ...                            exposure_key='exposure',
+     ...                            exposure_unit=u.second,
+     ...                            dark_scale=True,
+     ...                            master_flat=master_flat)
 
 
 Reprojecting onto a different image footprint

@@ -13,6 +13,7 @@ from astropy.modeling import fitting
 from astropy import stats
 from astropy.nddata import StdDevUncertainty
 from astropy.wcs.utils import proj_plane_pixel_area
+import astropy  # To get the version.
 
 from scipy import ndimage
 
@@ -90,15 +91,21 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         Default is ``False``.
 
     master_bias : `~ccdproc.CCDData` or None, optional
-        A master bias frame to be subtracted from ccd.
+        A master bias frame to be subtracted from ccd. The unit of the
+        master bias frame should match the unit of the image **after
+        gain correction**.
         Default is ``None``.
 
     dark_frame : `~ccdproc.CCDData` or None, optional
-        A dark frame to be subtracted from the ccd.
+        A dark frame to be subtracted from the ccd. The unit of the
+        master dark frame should match the unit of the image **after
+        gain correction**.
         Default is ``None``.
 
     master_flat : `~ccdproc.CCDData` or None, optional
-        A master flat frame to be divided into ccd.
+        A master flat frame to be divided into ccd. The unit of the
+        master flat frame should match the unit of the image **after
+        gain correction**.
         Default is ``None``.
 
     bad_pixel_mask : `numpy.ndarray` or None, optional
@@ -541,7 +548,17 @@ def subtract_bias(ccd, master):
     result : `~ccdproc.CCDData`
         CCDData object with bias subtracted.
     """
-    result = ccd.subtract(master)
+
+    try:
+        result = ccd.subtract(master)
+    except ValueError as e:
+        if 'operand units' in str(e):
+            raise u.UnitsError("Unit '{}' of the uncalibrated image does not "
+                               "match unit '{}' of the calibration "
+                               "image".format(ccd.unit, master.unit))
+        else:
+            raise e
+
     result.meta = ccd.meta.copy()
     return result
 
@@ -623,14 +640,29 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
             raise TypeError("exposure times must be astropy.units.Quantity "
                             "objects.")
 
-    if scale:
-        master_scaled = master.copy()
-        # data_exposure and dark_exposure are both quantities,
-        # so we can just have subtract do the scaling
-        master_scaled = master_scaled.multiply(data_exposure / dark_exposure)
-        result = ccd.subtract(master_scaled)
-    else:
-        result = ccd.subtract(master)
+    try:
+        if scale:
+            master_scaled = master.copy()
+            # data_exposure and dark_exposure are both quantities,
+            # so we can just have subtract do the scaling
+            master_scaled = master_scaled.multiply(data_exposure /
+                                                   dark_exposure)
+            result = ccd.subtract(master_scaled)
+        else:
+            result = ccd.subtract(master)
+    except (u.UnitsError, u.UnitConversionError, ValueError) as e:
+        # Astropy LTS (v1) returns a ValueError, not a UnitsError, so catch
+        # that if it appears to really be a UnitsError.
+        if (isinstance(e, ValueError) and
+                'operand units' not in str(e) and
+                astropy.__version__.startswith('1.0')):
+            raise e
+
+        # Make the error message a little more explicit than what is returned
+        # by default.
+        raise u.UnitsError("Unit '{}' of the uncalibrated image does not "
+                           "match unit '{}' of the calibration "
+                           "image".format(ccd.unit, master.unit))
 
     result.meta = ccd.meta.copy()
     return result
