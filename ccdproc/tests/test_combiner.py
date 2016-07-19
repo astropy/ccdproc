@@ -383,3 +383,20 @@ def test_combiner_uncertainty_average_mask():
     ref_uncertainty[5, 5] = np.std([2, 3]) / np.sqrt(2)
     np.testing.assert_array_almost_equal(ccd.uncertainty.array,
                                          ref_uncertainty)
+
+def test_combiner_3d():
+    data1 = CCDData(3 * np.ones((5,5,5)), unit=u.adu)
+    data2 = CCDData(2 * np.ones((5,5,5)), unit=u.adu)
+    data3 = CCDData(4 * np.ones((5,5,5)), unit=u.adu)
+
+    ccd_list = [data1, data2, data3]
+   
+    c = Combiner(ccd_list)
+    assert c.data_arr.shape == (3, 5, 5, 5)
+    assert c.data_arr.mask.shape == (3, 5, 5, 5)
+
+    ccd = c.average_combine()
+    assert ccd.shape == (5, 5, 5)
+    np.testing.assert_array_almost_equal(ccd.data, data1, decimal = 4)
+
+    
