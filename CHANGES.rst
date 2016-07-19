@@ -13,6 +13,9 @@ Other Changes and Additions
 - Raise more explicit exception if unit of uncalibrated image and master do
   not match in ``subtract_bias`` or ``subtract_dark``. [#361, #366]
 
+- Updated the ``Combiner`` class so that it could process images with >2 
+  dimensions.
+
 Bug Fixes
 ^^^^^^^^^
 
