@@ -94,8 +94,7 @@ class Combiner(object):
         self._dtype = dtype
 
         #set up the data array
-        ydim, xdim = default_shape
-        new_shape = (len(ccd_list), ydim, xdim)
+        new_shape = (len(ccd_list),) + default_shape
         self.data_arr = ma.masked_all(new_shape, dtype=dtype)
 
         #populate self.data_arr
@@ -104,7 +103,7 @@ class Combiner(object):
             if ccd.mask is not None:
                 self.data_arr.mask[i] = ccd.mask
             else:
-                self.data_arr.mask[i] = ma.zeros((ydim, xdim))
+                self.data_arr.mask[i] = ma.zeros(default_shape)
 
         # Must be after self.data_arr is defined because it checks the
         # length of the data array.
