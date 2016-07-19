@@ -10,6 +10,7 @@ import astropy.units as u
 from astropy.wcs import WCS
 
 from astropy.nddata import StdDevUncertainty
+import astropy
 
 from numpy.testing import assert_array_equal
 from astropy.tests.helper import pytest
@@ -299,7 +300,7 @@ def test_subtract_bias_fails(ccd_data):
         subtract_bias(ccd_data, bias)
     # should fail because units don't match
     bias = CCDData(np.zeros_like(ccd_data), unit=u.meter)
-    with pytest.raises(ValueError):
+    with pytest.raises(u.UnitsError):
         subtract_bias(ccd_data, bias)
 
 
@@ -353,28 +354,68 @@ def test_subtract_dark_fails(ccd_data):
     # can be anything.
     ccd_data.header['exptime'] = 30.0
     master = ccd_data.copy()
+
     # Do we fail if we give one of dark_exposure, data_exposure but not both?
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master, dark_exposure=30 * u.second)
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master, data_exposure=30 * u.second)
+
     # Do we fail if we supply dark_exposure and data_exposure and exposure_time
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master, dark_exposure=10 * u.second,
                       data_exposure=10 * u.second,
                       exposure_time='exptime')
+
     # Fail if we supply none of the exposure-related arguments?
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master)
+
     # Fail if we supply exposure time but not a unit?
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master, exposure_time='exptime')
+
     # Fail if ccd_data or master are not CCDData objects?
     with pytest.raises(TypeError):
         subtract_dark(ccd_data.data, master, exposure_time='exptime')
     with pytest.raises(TypeError):
         subtract_dark(ccd_data, master.data, exposure_time='exptime')
 
+    # Fail if units do not match...
+
+    # ...when there is no scaling?
+    master = CCDData(ccd_data)
+    master.unit = u.meter
+
+    with pytest.raises(u.UnitsError) as e:
+        subtract_dark(ccd_data, master, exposure_time='exptime',
+                      exposure_unit=u.second)
+    assert "uncalibrated image" in str(e.value)
+
+
+def test_unit_mismatch_behaves_as_expected(ccd_data):
+    """
+    Test to alert us to any changes in how errors are raised in astropy when units
+    do not match.
+    """
+    bad_unit = ccd_data.copy()
+    bad_unit.unit = u.meter
+
+    if astropy.__version__.startswith('1.0'):
+        expected_error = ValueError
+        expected_message = 'operand units'
+    else:
+        expected_error = u.UnitConversionError
+        # Make this an empty string, which always matches. In this case
+        # we are really only checking by the type of error raised.
+        expected_message = ''
+
+    # Did we raise the right error?
+    with pytest.raises(expected_error) as e:
+        ccd_data.subtract(bad_unit)
+
+    # Was the error message as expected?
+    assert expected_message in str(e)
 
 # test for flat correction
 @pytest.mark.data_scale(10)
@@ -400,24 +441,33 @@ def test_flat_correct(ccd_data):
 
 
 # test for flat correction with min_value
-@pytest.mark.data_scale(10)
+@pytest.mark.data_scale(1)
+@pytest.mark.data_mean(5)
 def test_flat_correct_min_value(ccd_data):
     size = ccd_data.shape[0]
+
     # create the flat
     data = 2 * np.random.normal(loc=1.0, scale=0.05, size=(size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat_orig_data = flat.data.copy()
     min_value = 2.1  # should replace some, but not all, values
-    flat_data = flat_correct(ccd_data, flat, min_value=min_value)
+    flat_corrected_data = flat_correct(ccd_data, flat, min_value=min_value)
     flat_with_min = flat.copy()
     flat_with_min.data[flat_with_min.data < min_value] = min_value
-    #check that the flat was normalized
-    np.testing.assert_almost_equal((flat_data.data * flat_with_min.data).mean(),
-                                   ccd_data.data.mean() * flat_with_min.data.mean())
-    np.testing.assert_allclose(ccd_data.data / flat_data.data,
+
+    # Check that the flat was normalized. The asserts below, which look a
+    # little odd, are correctly testing that
+    #    flat_corrected_data = ccd_data / (flat_with_min / mean(flat_with_min))
+    np.testing.assert_almost_equal(
+        (flat_corrected_data.data * flat_with_min.data).mean(),
+        (ccd_data.data * flat_with_min.data.mean()).mean()
+    )
+    np.testing.assert_allclose(ccd_data.data / flat_corrected_data.data,
                                flat_with_min.data / flat_with_min.data.mean())
+
     # Test that flat is not modified.
     assert (flat_orig_data == flat.data).all()
+    assert flat_orig_data is not flat.data
 
 
 # test for deviation and for flat correction
@@ -433,6 +483,16 @@ def test_flat_correct_deviation(ccd_data):
     flat = create_deviation(flat, readnoise=0.5 * u.electron)
     ccd_data = flat_correct(ccd_data, flat)
 
+# test the uncertainty on the data after flat correction
+def test_flat_correct_data_uncertainty():
+    # Regression test for #345
+    dat = CCDData(np.ones([100, 100]), unit='adu',
+                  uncertainty=np.ones([100, 100]))
+    # Note flat is set to 10, error, if present, is set to one.
+    flat = CCDData(10 * np.ones([100, 100]), unit='adu')
+    res = flat_correct(dat, flat)
+    assert (res.data == dat.data).all()
+    assert (res.uncertainty.array == dat.uncertainty.array).all()
 
 # tests for gain correction
 def test_gain_correct(ccd_data):
@@ -729,7 +789,8 @@ def test_wcs_project_onto_scale_wcs(ccd_data):
     # Make mask zero...
     ccd_data.mask = np.zeros_like(ccd_data.data)
     # ...except the center pixel, which is one.
-    ccd_data.mask[ccd_data.wcs.wcs.crpix[0], ccd_data.wcs.wcs.crpix[1]] = 1
+    ccd_data.mask[int(ccd_data.wcs.wcs.crpix[0]),
+                  int(ccd_data.wcs.wcs.crpix[1])] = 1
 
     target_wcs = wcs_for_testing(ccd_data.shape)
     target_wcs.wcs.cdelt /= 2
@@ -833,7 +894,7 @@ def test_ccd_process():
                        master_flat=masterflat, dark_frame=dark_frame,
                        bad_pixel_mask=mask, gain=0.5 * u.electron/u.adu,
                        readnoise=5**0.5 * u.electron, oscan_median=True,
-                       dark_scale=False, dark_exposure=1.*u.s, 
+                       dark_scale=False, dark_exposure=1.*u.s,
                        data_exposure=1.*u.s)
 
     # final results should be (10 - 2) / 2.0 - 2 = 2

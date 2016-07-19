@@ -5,23 +5,62 @@ from __future__ import (absolute_import, division, print_function,
 
 import copy
 import numbers
+import weakref
+from collections import OrderedDict
 
 import numpy as np
 
 from astropy.nddata import NDDataArray
-from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty
+from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty, MissingDataAssociationException
 from astropy.io import fits, registry
 from astropy import units as u
 from astropy import log
 from astropy.wcs import WCS
+
+# FIXME: Remove the content of the following "if" as soon as astropy 1.1 isn't
+# supported anymore. This is just a temporary workaround to fix the memory leak
+# described in https://github.com/astropy/astropy/issues/4825
+import astropy
+from distutils.version import LooseVersion
+if LooseVersion(astropy.__version__) < LooseVersion('1.2'):  # pragma: no cover
+
+    class ParentNDDataDescriptor(object):
+        def __get__(self, obj, objtype=None):
+            message = "uncertainty is not associated with an NDData object."
+            try:
+                if obj._parent_nddata is None:
+                    raise MissingDataAssociationException(message)
+                else:
+                    # The NDData is saved as weak reference so we must call it
+                    # to get the object the reference points to.
+                    if isinstance(obj._parent_nddata, weakref.ref):
+                        return obj._parent_nddata()
+                    else:
+                        log.info("parent_nddata should be a weakref to an "
+                                 "NDData object.")
+                        return obj._parent_nddata
+                    return obj._parent_nddata
+            except AttributeError:
+                raise MissingDataAssociationException(message)
+
+        def __set__(self, obj, value):
+            if value is not None and not isinstance(value, weakref.ref):
+                # Save a weak reference on the uncertainty that points to this
+                # instance of NDData. Direct references should NOT be used:
+                # https://github.com/astropy/astropy/pull/4799#discussion_r61236832
+                value = weakref.ref(value)
+            obj._parent_nddata = value
+
+    # Use the descriptor as parent_nddata property. This only affects
+    # instances created after importing this module.
+    StdDevUncertainty.parent_nddata = ParentNDDataDescriptor()
 
 
 __all__ = ['CCDData', 'fits_ccddata_reader', 'fits_ccddata_writer']
 
 
 class CCDData(NDDataArray):
-
-    """A class describing basic CCD data
+    """A class describing basic CCD data.
 
     The CCDData class is based on the NDData object and includes a data array,
     uncertainty frame, mask frame, meta data, units, and WCS information for a
@@ -29,40 +68,52 @@ class CCDData(NDDataArray):
 
     Parameters
     -----------
-    data : `~numpy.ndarray` or :class:`~ccdproc.CCDData`
+    data : `~ccdproc.CCDData`-like or `numpy.ndarray`-like
         The actual data contained in this `~ccdproc.CCDData` object.
-        Note that this will always be copies by *reference* , so you should
-        make copy the ``data`` before passing it in if that's the  desired
+        Note that the data will always be saved by *reference*, so you should
+        make a copy of the ``data`` before passing it in if that's the desired
         behavior.
 
-    uncertainty : `~astropy.nddata.StdDevUncertainty` or `~numpy.ndarray`,
-        optional Uncertainties on the data.
+    uncertainty : `~astropy.nddata.StdDevUncertainty`, `numpy.ndarray` or \
+            None, optional
+        Uncertainties on the data.
+        Default is ``None``.
 
-    mask : `~numpy.ndarray`, optional
+    mask : `numpy.ndarray` or None, optional
         Mask for the data, given as a boolean Numpy array with a shape
         matching that of the data. The values must be `False` where
         the data is *valid* and `True` when it is not (like Numpy
         masked arrays). If ``data`` is a numpy masked array, providing
         ``mask`` here will causes the mask from the masked array to be
         ignored.
+        Default is ``None``.
 
-    flags : `~numpy.ndarray` or `~astropy.nddata.FlagCollection`, optional
+    flags : `numpy.ndarray` or `~astropy.nddata.FlagCollection` or None, \
+            optional
         Flags giving information about each pixel. These can be specified
         either as a Numpy array of any type with a shape matching that of the
         data, or as a `~astropy.nddata.FlagCollection` instance which has a
         shape matching that of the data.
+        Default is ``None``.
 
-    wcs : `~astropy.wcs.WCS` object, optional
+    wcs : `~astropy.wcs.WCS` or None, optional
         WCS-object containing the world coordinate system for the data.
+        Default is ``None``.
 
-    meta : `dict`-like object, optional
-        Metadata for this object.  "Metadata" here means all information that
+    meta : dict-like object or None, optional
+        Metadata for this object. "Metadata" here means all information that
         is included with this object but not part of any other attribute
-        of this particular object.  e.g., creation date, unique identifier,
+        of this particular object, e.g. creation date, unique identifier,
         simulation parameters, exposure time, telescope name, etc.
 
-    unit : `~astropy.units.Unit` instance or str, optional
+    unit : `~astropy.units.Unit` or str, optional
         The units of the data.
+        Default is ``None``.
+
+        .. warning::
+
+            If the unit is ``None`` or not otherwise specified it will raise a
+            ``ValueError``
 
     Raises
     ------
@@ -81,11 +132,10 @@ class CCDData(NDDataArray):
         This method uses :func:`fits_ccddata_writer` with the provided
         parameters.
 
-
     Notes
     -----
     `~ccdproc.CCDData` objects can be easily converted to a regular
-     Numpy array using `numpy.asarray`
+     Numpy array using `numpy.asarray`.
 
     For example::
 
@@ -98,9 +148,9 @@ class CCDData(NDDataArray):
     This is useful, for example, when plotting a 2D image using
     matplotlib.
 
-        >>> from ccdproc import CCDData   
+        >>> from ccdproc import CCDData
         >>> from matplotlib import pyplot as plt   # doctest: +SKIP
-        >>> x = CCDData([[1,2,3], [4,5,6]], unit='adu') 
+        >>> x = CCDData([[1,2,3], [4,5,6]], unit='adu')
         >>> plt.imshow(x)   # doctest: +SKIP
 
     """
@@ -108,11 +158,11 @@ class CCDData(NDDataArray):
         if 'meta' not in kwd:
             kwd['meta'] = kwd.pop('header', None)
         if 'header' in kwd:
-            raise ValueError("Can't have both header and meta")
+            raise ValueError("can't have both header and meta.")
 
         super(CCDData, self).__init__(*args, **kwd)
         if self.unit is None:
-            raise ValueError("Unit for CCDData must be specified")
+            raise ValueError("a unit for CCDData must be specified.")
 
     @property
     def data(self):
@@ -168,12 +218,13 @@ class CCDData(NDDataArray):
     @meta.setter
     def meta(self, value):
         if value is None:
-            self._meta = {}
+            self._meta = OrderedDict()
         else:
             if hasattr(value, 'keys'):
                 self._meta = value
             else:
-                raise TypeError('CCDData meta attribute must be dict-like')
+                raise TypeError(
+                    'the meta attribute of CCDData must be dict-like.')
 
     @property
     def uncertainty(self):
@@ -183,18 +234,20 @@ class CCDData(NDDataArray):
     def uncertainty(self, value):
         if value is not None:
             if isinstance(value, NDUncertainty):
+                if getattr(value, '_parent_nddata', None) is not None:
+                    value = value.__class__(value, copy=False)
                 self._uncertainty = value
             elif isinstance(value, np.ndarray):
                 if value.shape != self.shape:
-                    raise ValueError("Uncertainty must have same shape as "
-                                     "data")
+                    raise ValueError("uncertainty must have same shape as "
+                                     "data.")
                 self._uncertainty = StdDevUncertainty(value)
-                log.info("Array provided for uncertainty; assuming it is a "
+                log.info("array provided for uncertainty; assuming it is a "
                          "StdDevUncertainty.")
             else:
-                raise TypeError("Uncertainty must be an instance of a "
+                raise TypeError("uncertainty must be an instance of a "
                                 "NDUncertainty object or a numpy array.")
-            self._uncertainty._parent_nddata = self
+            self._uncertainty.parent_nddata = self
         else:
             self._uncertainty = value
 
@@ -202,32 +255,31 @@ class CCDData(NDDataArray):
                hdu_flags=None):
         """Creates an HDUList object from a CCDData object.
 
-           Parameters
-           ----------
-           hdu_mask, hdu_uncertainty, hdu_flags : str or None, optional
-              If it is a string append this attribute to the HDUList as
-              `~astropy.io.fits.ImageHDU` with the string as extension name.
-              Flags are not supported at this time. If ``None`` this attribute
-              is not appended.
-              Default is ``'MASK'`` for mask, ``'UNCERT'`` for uncertainty and
-              ``None`` for flags.
+        Parameters
+        ----------
+        hdu_mask, hdu_uncertainty, hdu_flags : str or None, optional
+            If it is a string append this attribute to the HDUList as
+            `~astropy.io.fits.ImageHDU` with the string as extension name.
+            Flags are not supported at this time. If ``None`` this attribute
+            is not appended.
+            Default is ``'MASK'`` for mask, ``'UNCERT'`` for uncertainty and
+            ``None`` for flags.
 
-           Raises
-           -------
-           ValueError
-              - If ``self.mask`` is set but not a `~numpy.ndarray`.
-              - If ``self.uncertainty`` is set but not a
-                `~astropy.nddata.StdDevUncertainty`.
-              - If ``self.uncertainty`` is set but has another unit then
-                ``self.data``.
+        Raises
+        -------
+        ValueError
+            - If ``self.mask`` is set but not a `numpy.ndarray`.
+            - If ``self.uncertainty`` is set but not a
+              `~astropy.nddata.StdDevUncertainty`.
+            - If ``self.uncertainty`` is set but has another unit then
+              ``self.data``.
 
-           NotImplementedError
-              Saving flags is not supported.
+        NotImplementedError
+            Saving flags is not supported.
 
-           Returns
-           -------
-           hdulist : astropy.io.fits.HDUList object
-
+        Returns
+        -------
+        hdulist : `~astropy.io.fits.HDUList`
         """
         if isinstance(self.header, fits.Header):
             # Copy here so that we can modify the HDU header by adding WCS
@@ -266,7 +318,7 @@ class CCDData(NDDataArray):
             # Always assuming that the mask is a np.ndarray (check that it has
             # a 'shape').
             if not hasattr(self.mask, 'shape'):
-                raise ValueError('Only a numpy.ndarray mask can be saved.')
+                raise ValueError('only a numpy.ndarray mask can be saved.')
 
             # Convert boolean mask to uint since io.fits cannot handle bool.
             hduMask = fits.ImageHDU(self.mask.astype(np.uint8), name=hdu_mask)
@@ -277,7 +329,7 @@ class CCDData(NDDataArray):
             # used so that loading the HDUList can infer the uncertainty type.
             # No idea how this can be done so only allow StdDevUncertainty.
             if self.uncertainty.__class__.__name__ != 'StdDevUncertainty':
-                raise ValueError('Only StdDevUncertainty can be saved.')
+                raise ValueError('only StdDevUncertainty can be saved.')
 
             # Assuming uncertainty is an StdDevUncertainty save just the array
             # this might be problematic if the Uncertainty has a unit differing
@@ -286,15 +338,15 @@ class CCDData(NDDataArray):
             if (hasattr(self.uncertainty, 'unit') and
                     self.uncertainty.unit is not None and
                     self.uncertainty.unit != self.unit):
-                raise ValueError('Saving uncertainties with a unit differing'
-                                 'from the data unit is not supported')
+                raise ValueError('saving uncertainties with a unit differing'
+                                 'from the data unit is not supported.')
 
             hduUncert = fits.ImageHDU(self.uncertainty.array,
                                       name=hdu_uncertainty)
             hdus.append(hduUncert)
 
         if hdu_flags and self.flags:
-            raise NotImplementedError('Adding the flags to a HDU is not '
+            raise NotImplementedError('adding the flags to a HDU is not '
                                       'supported at this time.')
 
         hdulist = fits.HDUList(hdus)
@@ -305,13 +357,17 @@ class CCDData(NDDataArray):
         """
         Return a copy of the CCDData object.
         """
-        return copy.deepcopy(self)
+        try:
+            return self.__class__(self, copy=True)
+        except TypeError:
+            new = self.__class__(copy.deepcopy(self))
+        return new
 
     def _ccddata_arithmetic(self, other, operation, scale_uncertainty=False):
         """
-        Perform the common parts of arithmetic operations on CCDData objects
+        Perform the common parts of arithmetic operations on CCDData objects.
 
-        This should only be called when ``other`` is a Quantity or a number
+        This should only be called when ``other`` is a Quantity or a number.
         """
         # THE "1 *" IS NECESSARY to get the right result, at least in
         # astropy-0.4dev. Using the np.multiply, etc, methods with a Unit
@@ -329,7 +385,7 @@ class CCDData(NDDataArray):
         elif isinstance(other, numbers.Number):
             other_value = other
         else:
-            raise TypeError("Cannot do arithmetic with type '{0}' "
+            raise TypeError("cannot do arithmetic with type '{0}' "
                             "and 'CCDData'".format(type(other)))
 
         result_unit = operation(1 * self.unit, other).unit
@@ -369,10 +425,11 @@ class CCDData(NDDataArray):
                 return result
             else:
                 if hasattr(self, '_arithmetics_wcs'):
-                    return super(CCDData, self).multiply(other,
-                                                         compare_wcs=compare_wcs)
+                    return super(CCDData, self).multiply(
+                        other, compare_wcs=compare_wcs)
                 else:
-                    raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
+                    raise ImportError("wcs_compare functionality requires "
+                                      "astropy 1.2 or greater.")
 
         return self._ccddata_arithmetic(other, np.multiply,
                                         scale_uncertainty=True)
@@ -395,10 +452,11 @@ class CCDData(NDDataArray):
                 return result
             else:
                 if hasattr(self, '_arithmetics_wcs'):
-                    return super(CCDData, self).divide(other,
-                                                       compare_wcs=compare_wcs)
+                    return super(CCDData, self).divide(
+                        other, compare_wcs=compare_wcs)
                 else:
-                    raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
+                    raise ImportError("wcs_compare functionality requires "
+                                      "astropy 1.2 or greater.")
 
         return self._ccddata_arithmetic(other, np.divide,
                                         scale_uncertainty=True)
@@ -421,10 +479,11 @@ class CCDData(NDDataArray):
                 return result
             else:
                 if hasattr(self, '_arithmetics_wcs'):
-                    return super(CCDData, self).add(other,
-                                                    compare_wcs=compare_wcs)
+                    return super(CCDData, self).add(
+                        other, compare_wcs=compare_wcs)
                 else:
-                    raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
+                    raise ImportError("wcs_compare functionality requires "
+                                      "astropy 1.2 or greater.")
 
         return self._ccddata_arithmetic(other, np.add,
                                         scale_uncertainty=False)
@@ -448,10 +507,11 @@ class CCDData(NDDataArray):
 
             else:
                 if hasattr(self, '_arithmetics_wcs'):
-                    return super(CCDData, self).subtract(other,
-                                                         compare_wcs=compare_wcs)
+                    return super(CCDData, self).subtract(
+                        other, compare_wcs=compare_wcs)
                 else:
-                    raise ImportError("wcs_compare functionality requires astropy 1.2 or greater")
+                    raise ImportError("wcs_compare functionality requires "
+                                      "astropy 1.2 or greater.")
 
         return self._ccddata_arithmetic(other, np.subtract,
                                         scale_uncertainty=False)
@@ -462,7 +522,6 @@ class CCDData(NDDataArray):
 
         Parameters
         ----------
-
         key : str
             Key to be inserted in dictionary.
 
@@ -471,7 +530,6 @@ class CCDData(NDDataArray):
 
         Notes
         -----
-
         This addresses a shortcoming of the FITS standard. There are length
         restrictions on both the ``key`` (8 characters) and ``value`` (72
         characters) in the FITS standard. There is a convention for handline
@@ -505,19 +563,20 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
 
     Parameters
     ----------
-
     filename : str
         Name of fits file.
 
     hdu : int, optional
-        FITS extension from which CCDData should be initialized.  If zero and
+        FITS extension from which CCDData should be initialized. If zero and
         and no data in the primary extention, it will search for the first
-        extension with data.  The header will be added to the primary header.
+        extension with data. The header will be added to the primary header.
+        Default is ``0``.
 
-    unit : astropy.units.Unit, optional
+    unit : `~astropy.units.Unit`, optional
         Units of the image data. If this argument is provided and there is a
         unit for the image in the FITS header (the keyword ``BUNIT`` is used
         as the unit, if present), this argument is used for the unit.
+        Default is ``None``.
 
     hdu_uncertainty : str or None, optional
         FITS extension from which the uncertainty should be initialized. If the
@@ -539,7 +598,6 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
 
     Notes
     -----
-
     FITS files that contained scaled data (e.g. unsigned integer images) will
     be scaled and the keywords used to manage scaled data in
     :mod:`astropy.io.fits` are disabled.
@@ -551,7 +609,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
     }
     for key, msg in unsupport_open_keywords.items():
         if key in kwd:
-            prefix = 'Unsupported keyword: {0}.'.format(key)
+            prefix = 'unsupported keyword: {0}.'.format(key)
             raise TypeError(' '.join([prefix, msg]))
     with fits.open(filename, **kwd) as hdus:
         hdr = hdus[hdu].header
@@ -568,15 +626,18 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
             mask = None
 
         if hdu_flags in hdus:
-            raise NotImplementedError('Loading flags is currently not supported.')
+            raise NotImplementedError('loading flags is currently not '
+                                      'supported.')
 
-        # search for the first instance with data if the primary header is empty
+        # search for the first instance with data if
+        # the primary header is empty.
         if hdu == 0 and hdus[hdu].data is None:
             for i in range(len(hdus)):
                 if hdus.fileinfo(i)['datSpan'] > 0:
                     hdu = i
                     hdr = hdr + hdus[hdu].header
-                    log.info("First HDU with data is exention {0}.".format(hdu))
+                    log.info("first HDU with data is exention "
+                             "{0}.".format(hdu))
                     break
 
         if 'bunit' in hdr:
@@ -589,7 +650,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
             fits_unit_string = None
 
         if unit is not None and fits_unit_string:
-            log.info("Using the unit {0} passed to the FITS reader instead of "
+            log.info("using the unit {0} passed to the FITS reader instead of "
                      "the unit {1} in the FITS file.".format(unit,
                                                              fits_unit_string))
 
@@ -613,9 +674,8 @@ def fits_ccddata_writer(ccd_data, filename, hdu_mask='MASK',
 
     Parameters
     ----------
-
     filename : str
-        Name of file
+        Name of file.
 
     hdu_mask, hdu_uncertainty, hdu_flags : str or None, optional
         If it is a string append this attribute to the HDUList as
@@ -631,7 +691,7 @@ def fits_ccddata_writer(ccd_data, filename, hdu_mask='MASK',
     Raises
     -------
     ValueError
-        - If ``self.mask`` is set but not a `~numpy.ndarray`.
+        - If ``self.mask`` is set but not a `numpy.ndarray`.
         - If ``self.uncertainty`` is set but not a
           `~astropy.nddata.StdDevUncertainty`.
         - If ``self.uncertainty`` is set but has another unit then
@@ -645,9 +705,29 @@ def fits_ccddata_writer(ccd_data, filename, hdu_mask='MASK',
     hdu.writeto(filename, **kwd)
 
 
+# This should be be a tuple to ensure it isn't inadvertently changed elsewhere.
+_recognized_fits_file_extensions = ('fit', 'fits', 'fts')
+
+
+def is_fits(origin, filepath, fileobj, *args, **kwargs):
+    """
+    Wrapper around astropy.io.fits.connect.is_fits that handles the extra
+    extension.
+
+    Can be removed if fts is added to astropy.io as a recognized FITS
+    extension.
+    """
+    if ((filepath is not None) and
+            filepath.lower().endswith(('.fts', '.fts.gz'))):
+
+        return True
+
+    else:
+        return fits.connect.is_fits(origin, filepath, fileobj, *args, **kwargs)
+
 registry.register_reader('fits', CCDData, fits_ccddata_reader)
 registry.register_writer('fits', CCDData, fits_ccddata_writer)
-registry.register_identifier('fits', CCDData, fits.connect.is_fits)
+registry.register_identifier('fits', CCDData, is_fits)
 
 try:
     CCDData.read.__doc__ = fits_ccddata_reader.__doc__

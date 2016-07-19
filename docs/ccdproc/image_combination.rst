@@ -29,7 +29,7 @@ individual images via several clipping techniques and combination of images.
 Image masks/clipping
 --------------------
 
-There are currently two methods of clipping. Neither affects the data
+There are currently three methods of clipping. None affect the data
 directly; instead each constructs a mask that is applied when images are
 combined.
 
@@ -73,6 +73,19 @@ deviations below the median with
     the number of pixels.
 
     A
+
+Extrema clipping
+++++++++++++++++
+
+For each pixel position in the input arrays, the algorithm will mask the
+highest ``nhigh`` and lowest ``nlow`` pixel values.  The resulting image will be
+a combination of ``Nimages-nlow-nhigh`` pixel values instead of the combination
+of ``Nimages`` worth of pixel values.
+
+You can mask the lowest pixel value and the highest two pixel values with:
+
+    >>> combiner.clip_extrema(nlow=1, nhigh=2)
+
 
 Iterative clipping
 ++++++++++++++++++
@@ -171,4 +184,4 @@ Then, combine the images as described above for any set of images:
     >>> combiner = Combiner(reprojected)
     >>> stacked_image = combiner.average_combine()
 
-.. _reproject project: http://reproject.readthedocs.org/
+.. _reproject project: http://reproject.readthedocs.io/

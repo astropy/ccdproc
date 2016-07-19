@@ -17,7 +17,7 @@ The `ccdproc` package provides:
   reduction steps in the image metadata.
 + A function for reprojecting an image onto another WCS, useful for stacking
   science images. The actual reprojection is done by the
-  `reproject package <http://reproject.readthedocs.org/en/stable/>`_.
+  `reproject package <http://reproject.readthedocs.io/en/stable/>`_.
 + A class for combining and/or clipping images, `~ccdproc.Combiner`, and
   associated functions.
 + A class, `~ccdproc.ImageFileCollection`, for working with a directory of
@@ -94,10 +94,10 @@ correction, in which one image is divided by another:
 In addition to doing the necessary division, `~ccdproc.flat_correct` propagates
 uncertainties (if they are set).
 
-The function `~ccdproc.wcs_project` allows you to reproject an image onto a different WCS. For more details see
+The function `~ccdproc.wcs_project` allows you to reproject an image onto a different WCS.
 
 To make applying the same operations to a set of files in a directory easier,
-use an `~ccdproc.image_collection.ImageFileCollection`. It constructs, given a directory, an `~astropy.table.Table` containing the values of user-selected keywords in the directory. It also provides methods for iterating over the files. The example below was used to find an image in which the sky background was high for use in a talk:
+use an `~ccdproc.image_collection.ImageFileCollection`. It constructs, given a directory, a `~astropy.table.Table` containing the values of user-selected keywords in the directory. It also provides methods for iterating over the files. The example below was used to find an image in which the sky background was high for use in a talk:
 
     >>> from __future__ import division, print_function
     >>> from ccdproc import ImageFileCollection

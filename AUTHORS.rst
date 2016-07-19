@@ -17,6 +17,7 @@ Alphabetical list of contributors
 * Christoph Deil (@cdeil)
 * Carlos Gomez (@carlgogo)
 * Hans Moritz Günther (@hamogu)
+* Forrest Gasdia (@EP-Guy)
 * Nathan Heidt (@heidtha)
 * Anthony Horton (@AnthonyHorton)
 * Jennifer Karr (@JenniferKarr)
@@ -35,6 +36,6 @@ Alphabetical list of contributors
 
 (If you have contributed to the ccdproc project and your name is missing,
 please send an email to the coordinators, or
-`open a pull request for this page <https://github.com/astropy/ccdproc/edit/master/credits.rst>`_
+`open a pull request for this page <https://github.com/astropy/ccdproc/edit/master/AUTHORS.rst>`_
 in the `ccdproc repository <https://github.com/astropy/ccdproc>`_)
 

@@ -1,5 +1,44 @@
 
-0.4.0 (unreleased)
+1.1.0 (Unreleased)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Auto-identify files with extension ``fts`` as FITS files. [#355, #364]
+
+- Raise more explicit exception if unit of uncalibrated image and master do
+  not match in ``subtract_bias`` or ``subtract_dark``. [#361, #366]
+
+Bug Fixes
+^^^^^^^^^
+
+1.0.2 (Unreleased)
+------------------
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- ``cosmicray_lacosmic`` default ``satlevel`` changed from 65536 to 65535. [#347]
+
+Bug Fixes
+^^^^^^^^^
+
+- ``Combiner`` creates plain array uncertainties when using``average_combine``
+  or ``median_combine``. [#351]
+
+- ``flat_correct`` does not properly scale uncertainty in the flat. [#345, #363]
+
+1.0.1 (2016-03-15)
+------------------
+
+The 1.0.1 release was a release to fix some minor packaging issues.
+
+
+1.0.0 (2016-03-15)
 ------------------
 
 General
@@ -57,6 +96,8 @@ Bug Fixes
 - The uncertainty resulting when combining CCDData will be divided by the
   square root of the number of combined pixel [#309]
 - Improve documentation for read/write methods on ``CCDData`` [#320]
+- Add correct path separator when returning full path from
+  ``ImageFileCollection.files_filtered``. [#325]
 
 
 0.3.3 (2015-10-24)

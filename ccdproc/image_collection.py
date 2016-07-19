@@ -22,7 +22,6 @@ __doctest_skip__ = ['*']
 
 
 class ImageFileCollection(object):
-
     """
     Representation of a collection of image files.
 
@@ -34,34 +33,38 @@ class ImageFileCollection(object):
 
     Parameters
     ----------
-    location : str, optional
-        path to directory containing FITS files
-    keywords : list of str or '*', optional
+    location : str or None, optional
+        path to directory containing FITS files.
+        Default is ``None``.
+
+    keywords : list of str, '*' or None, optional
         Keywords that should be used as column headings in the summary table.
         If the value is or includes '*' then all keywords that appear in any
         of the FITS headers of the files in the collection become table
         columns. Default value is '*' unless ``info_file`` is specified.
-    info_file : str, optional
+        Default is ``None``.
+
+    info_file : str or None, optional
         Path to file that contains a table of information about FITS files.
         In this case the keywords are set to the names of the columns of the
         ``info_file`` unless ``keywords`` is explicitly set to a different
         list.
+        Default is ``None``.
 
     Raises
     ------
-
     ValueError
         Raised if keywords are set to a combination of '*' and any other
         value.
     """
-
     def __init__(self, location=None, keywords=None, info_file=None):
         self._location = location
         self._files = []
         if location:
             self._files = self._fits_files_in_directory()
-        if self._files==[]:
-            warnings.warn("No fits files in the collection.", AstropyUserWarning)
+        if self._files == []:
+            warnings.warn("no FITS files in the collection.",
+                          AstropyUserWarning)
         self._summary_info = {}
         if keywords is None:
             if info_file is not None:
@@ -84,8 +87,8 @@ class ImageFileCollection(object):
                                            masked=True)
             except IOError:
                 if location:
-                    logger.warning('Unable to open table file %s, will try '
-                                   'initializing from location instead',
+                    logger.warning('unable to open table file %s, will try '
+                                   'initializing from location instead.',
                                    info_path)
                 else:
                     raise
@@ -102,7 +105,7 @@ class ImageFileCollection(object):
     @property
     def summary(self):
         """
-        astropy.table.Table of values of FITS keywords for files in the
+        `~astropy.table.Table` of values of FITS keywords for files in the
         collection.
 
         Each keyword is a column heading. In addition, there is a column
@@ -121,14 +124,14 @@ class ImageFileCollection(object):
         If an explicit list of keywords was supplied in setting up the
         collection then the order of the columns is the order of the
         keywords.
-        """,
+        """
         return self._summary_info
 
     @property
     def summary_info(self):
         """
-        Deprecated -- use summary instead -- astropy.table.Table of values of
-        FITS keywords for files in the collection.
+        Deprecated -- use `summary` instead -- `~astropy.table.Table` of values
+        of FITS keywords for files in the collection.
 
         Each keyword is a column heading. In addition, there is a column
         called 'file' that contains the name of the FITS file. The directory
@@ -139,7 +142,7 @@ class ImageFileCollection(object):
     @property
     def location(self):
         """
-        str, Path name to directory containing FITS files
+        str, Path name to directory containing FITS files.
         """
         return self._location
 
@@ -169,26 +172,26 @@ class ImageFileCollection(object):
         else:
             self._all_keywords = False
 
-        logging.debug('keywords in setter before pruning: %s', keywords)
+        logging.debug('keywords in setter before pruning: %s.', keywords)
 
         # remove duplicates and force a copy
         new_keys = list(set(keywords))
 
-        logging.debug('keywords after pruning %s', new_keys)
+        logging.debug('keywords after pruning %s.', new_keys)
 
         full_new_keys = list(set(new_keys))
         full_new_keys.append('file')
         full_new_set = set(full_new_keys)
         current_set = set(self.keywords)
         if full_new_set.issubset(current_set):
-            logging.debug('table columns before trimming: %s',
+            logging.debug('table columns before trimming: %s.',
                           ' '.join(current_set))
             cut_keys = current_set.difference(full_new_set)
-            logging.debug('will try removing columns: %s',
+            logging.debug('will try removing columns: %s.',
                           ' '.join(cut_keys))
             for key in cut_keys:
                 self._summary_info.remove_column(key)
-            logging.debug('after removal column names are: %s',
+            logging.debug('after removal column names are: %s.',
                           ' '.join(self.keywords))
         else:
             logging.debug('should be building new table...')
@@ -214,6 +217,7 @@ class ImageFileCollection(object):
 
         unique : bool, optional
             If True, return only the unique values for the keyword.
+            Default is ``False``.
 
         Returns
         -------
@@ -238,13 +242,14 @@ class ImageFileCollection(object):
         contains not just the filename, but the full path to each file.
 
         The value '*' represents any value.
-         A missing keyword is indicated by value ''
+        A missing keyword is indicated by value ''.
 
-        Example:
-        >>> keys = ['imagetyp','filter']
-        >>> collection = ImageFileCollection('test/data', keywords=keys)
-        >>> collection.files_filtered(imagetyp='LIGHT', filter='R')
-        >>> collection.files_filtered(imagetyp='*', filter='')
+        Example::
+
+            >>> keys = ['imagetyp','filter']
+            >>> collection = ImageFileCollection('test/data', keywords=keys)
+            >>> collection.files_filtered(imagetyp='LIGHT', filter='R')
+            >>> collection.files_filtered(imagetyp='*', filter='')
 
         NOTE: Value comparison is case *insensitive* for strings.
         """
@@ -257,7 +262,7 @@ class ImageFileCollection(object):
         filtered_files = self.summary_info['file'].compressed()
         self.summary_info['file'].mask = current_file_mask
         if include_path:
-            filtered_files = [self._location + f for f in filtered_files]
+            filtered_files = [path.join(self._location, f) for f in filtered_files]
         return filtered_files
 
     def refresh(self):
@@ -277,8 +282,9 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-        keys : str or list of str
+        keys : str, list of str or None, optional
             The key(s) to order the table by.
+            Default is ``None``.
         """
         if len(self._summary_info) > 0:
             self._summary_info.sort(keys)
@@ -294,17 +300,20 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-
         file_name : str
             Name of FITS file.
 
-        input_summary : dict
+        input_summary : dict or None, optional
             Existing dictionary to which new values should be appended.
+            Default is ``None``.
+
+        missing_marker : any type, optional
+            Fill value for missing header-keywords.
+            Default is ``None``.
 
         Returns
         -------
-
-        file_table : astropy.table.Table
+        file_table : `~astropy.table.Table`
         """
         from collections import OrderedDict
 
@@ -379,8 +388,7 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-
-        header_keywords : list of str or '*', optional
+        header_keywords : list of str, '*' or None, optional
             Keywords whose value should be extracted from FITS headers.
             Default value is ``None``.
         """
@@ -416,7 +424,7 @@ class ImageFileCollection(object):
                     file_path, input_summary=summary_dict,
                     missing_marker=missing_marker)
             except IOError as e:
-                logger.warning('Unable to get FITS header for file %s: %s',
+                logger.warning('unable to get FITS header for file %s: %s.',
                                file_path, e)
                 continue
 
@@ -457,13 +465,14 @@ class ImageFileCollection(object):
         `**kwd` is list of keywords and values the files must have.
 
         The value '*' represents any value.
-         A missing keyword is indicated by value ''
+        A missing keyword is indicated by value ''
 
-        Example:
-        >>> keys = ['imagetyp','filter']
-        >>> collection = ImageFileCollection('test/data', keywords=keys)
-        >>> collection.files_filtered(imagetyp='LIGHT', filter='R')
-        >>> collection.files_filtered(imagetyp='*', filter='')
+        Example::
+
+            >>> keys = ['imagetyp','filter']
+            >>> collection = ImageFileCollection('test/data', keywords=keys)
+            >>> collection.files_filtered(imagetyp='LIGHT', filter='R')
+            >>> collection.files_filtered(imagetyp='*', filter='')
 
         NOTE: Value comparison is case *insensitive* for strings.
         """
@@ -479,10 +488,10 @@ class ImageFileCollection(object):
 
         matches = np.array([True] * len(use_info))
         for key, value in zip(keywords, values):
-            logger.debug('Key %s, value %s', key, value)
-            logger.debug('Value in table %s', use_info[key])
+            logger.debug('key %s, value %s', key, value)
+            logger.debug('value in table %s', use_info[key])
             value_missing = use_info[key].mask
-            logger.debug('Value missing: %s', value_missing)
+            logger.debug('value missing: %s', value_missing)
             value_not_missing = np.logical_not(value_missing)
             if value == '*':
                 have_this_value = value_not_missing
@@ -525,20 +534,25 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-        extension : list of str, optional
+        extension : list of str or None, optional
             List of filename extensions that are FITS files. Default is
-            ``['fit', 'fits']``
+            ``['fit', 'fits', 'fts']``.
+            Default is ``None``.
 
         compressed : bool, optional
             If ``True``, compressed files should be included in the list
-            (e.g. `.fits.gz`)
+            (e.g. `.fits.gz`).
+            Default is ``True``.
 
         Returns
         -------
         list
             *Names* of the files (with extension), not the full pathname.
         """
-        full_extensions = extensions or ['fit', 'fits']
+        from .ccddata import _recognized_fits_file_extensions
+
+        full_extensions = extensions or list(_recognized_fits_file_extensions)
+
         if compressed:
             with_gz = [extension + '.gz' for extension in full_extensions]
             full_extensions.extend(with_gz)
@@ -568,34 +582,42 @@ class ImageFileCollection(object):
         length, and/or ``overwrite`` is ``True``, a copy of each FITS file will
         be made.
 
-
         Parameters
         ----------
-        save_with_name : str
+        save_with_name : str, optional
             string added to end of file name (before extension) if
             FITS file should be saved after iteration. Unless
             ``save_location`` is set, files will be saved to location of
-            the source files ``self.location``
+            the source files ``self.location``.
+            Default is ``''``.
 
-        save_location : str
+        save_location : str, optional
             Directory in which to save FITS files; implies that FITS
             files will be saved. Note this provides an easy way to
             copy a directory of files--loop over the {name} with
             ``save_location`` set.
+            Default is ``''``.
 
-        overwrite : bool
+        overwrite : bool, optional
             If ``True``, overwrite input FITS files.
+            Default is ``False``.
 
-        do_not_scale_image_data : bool
+        clobber : bool, optional
+            Alias for ``overwrite``.
+            Default is ``False``.
+
+        do_not_scale_image_data : bool, optional
             If ``True``, prevents fits from scaling images. Default is
             ``{default_scaling}``.
+            Default is ``True``.
 
-        return_fname : bool, default is False
+        return_fname : bool, optional
             If True, return the tuple (header, file_name) instead of just
             header. The file name returned is the name of the file only,
             not the full path to the file.
+            Default is ``False``.
 
-        kwd : dict
+        kwd :
             Any additional keywords are used to filter the items returned; see
             Examples for details.
 
@@ -603,12 +625,11 @@ class ImageFileCollection(object):
         -------
         {return_type}
             If ``return_fname`` is ``False``, yield the next {name} in the
-            collection
+            collection.
 
         ({return_type}, str)
             If ``return_fname`` is ``True``, yield a tuple of
             ({name}, ``file name``) for the next item in the collection.
-
         """
         # store mask so we can reset at end--must COPY, otherwise
         # current_mask just points to the mask of summary_info
@@ -638,7 +659,7 @@ class ImageFileCollection(object):
                        if (not return_fname) else
                        (return_options[return_type], file_name))
             except KeyError:
-                raise ValueError('No generator for {}'.format(return_type))
+                raise ValueError('no generator for {}'.format(return_type))
 
             if save_location:
                 destination_dir = save_location
@@ -659,7 +680,7 @@ class ImageFileCollection(object):
                 try:
                     hdulist.writeto(new_path, clobber=nuke_existing)
                 except IOError:
-                    logger.error('Error writing file %s', new_path)
+                    logger.error('error writing file %s', new_path)
                     raise
             hdulist.close()
 
