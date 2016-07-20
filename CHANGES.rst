@@ -14,7 +14,7 @@ Other Changes and Additions
   not match in ``subtract_bias`` or ``subtract_dark``. [#361, #366]
 
 - Updated the ``Combiner`` class so that it could process images with >2 
-  dimensions.
+  dimensions. [#340, #375]
 
 Bug Fixes
 ^^^^^^^^^
