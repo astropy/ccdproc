@@ -214,21 +214,17 @@ class Combiner(object):
             combination.
             Default is 0.
         """
-        if len(self.data_arr.shape) > 3:
-            raise  NotImplementedError('Clip extrema is not implement for >2d arrays')
 
         if nlow is None:
             nlow = 0
         if nhigh is None:
             nhigh = 0
-        nimages, nx, ny = self.data_arr.mask.shape
 
         argsorted = np.argsort(self.data_arr.data, axis=0)
-        mg = np.mgrid[0:nx,0:ny]
+        mg = np.mgrid[[slice(ndim) for i, ndim in enumerate(self.data_arr.shape) if i > 0]]
         for i in range(-1*nhigh, nlow):
-            where = (argsorted[i,:,:].ravel(),
-                     mg[0].ravel(),
-                     mg[1].ravel())
+            # create a tuple with the indices
+            where = tuple([argsorted[i,:,:].ravel()] + [i.ravel() for i in mg])
             self.data_arr.mask[where] = True
 
 

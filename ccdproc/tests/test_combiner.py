@@ -437,11 +437,10 @@ def test_clip_extrema_3d():
                CCDData(np.ones((3, 3, 3))*35., unit="adu"),\
               ]
     c = Combiner(ccdlist)
-    with pytest.raises(NotImplementedError):
-        c.clip_extrema(nlow=1, nhigh=1)
-    #result = c.average_combine()
-    #expected = CCDData(np.ones((3, 3, 3)) * 30, unit="adu")
-    #np.testing.assert_array_equal(result, expected)
+    c.clip_extrema(nlow=1, nhigh=1)
+    result = c.average_combine()
+    expected = CCDData(np.ones((3, 3, 3)) * 30, unit="adu")
+    np.testing.assert_array_equal(result, expected)
 
     
 @pytest.mark.parametrize('comb_func', ['average_combine', 'median_combine'])
