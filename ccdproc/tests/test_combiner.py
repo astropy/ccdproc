@@ -428,6 +428,21 @@ def test_3d_combiner_with_scaling(ccd_data):
     assert avg_ccd.shape == ccd_data.shape
 
 
+def test_clip_extrema_3d():
+    ccdlist = [CCDData(np.ones((3, 3, 3))*90., unit="adu"),\
+               CCDData(np.ones((3, 3, 3))*20., unit="adu"),\
+               CCDData(np.ones((3, 3, 3))*10., unit="adu"),\
+               CCDData(np.ones((3, 3, 3))*40., unit="adu"),\
+               CCDData(np.ones((3, 3, 3))*25., unit="adu"),\
+               CCDData(np.ones((3, 3, 3))*35., unit="adu"),\
+              ]
+    c = Combiner(ccdlist)
+    with pytest.raises(NotImplementedError):
+        c.clip_extrema(nlow=1, nhigh=1)
+    #result = c.average_combine()
+    #expected = CCDData(np.ones((3, 3, 3)) * 30, unit="adu")
+    #np.testing.assert_array_equal(result, expected)
+
     
 @pytest.mark.parametrize('comb_func', ['average_combine', 'median_combine'])
 def test_writeable_after_combine(ccd_data, tmpdir, comb_func):

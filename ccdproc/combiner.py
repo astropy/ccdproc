@@ -214,6 +214,9 @@ class Combiner(object):
             combination.
             Default is 0.
         """
+        if len(self.data_arr.shape) > 3:
+            raise  NotImplementedError('Clip extrema is not implement for >2d arrays')
+
         if nlow is None:
             nlow = 0
         if nhigh is None:
