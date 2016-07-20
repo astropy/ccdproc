@@ -399,6 +399,35 @@ def test_combiner_3d():
     assert ccd.shape == (5, 5, 5)
     np.testing.assert_array_almost_equal(ccd.data, data1, decimal = 4)
 
+def test_3d_combiner_with_scaling(ccd_data):
+    # The factors below are not particularly important; just avoid anything
+    # whose average is 1.
+    ccd_data = CCDData(np.ones((5,5,5)), unit=u.adu)
+    ccd_data_lower = CCDData(3 * np.ones((5,5,5)), unit=u.adu)
+    ccd_data_higher = CCDData(0.9 * np.ones((5,5,5)), unit=u.adu)
+    combiner = Combiner([ccd_data, ccd_data_higher, ccd_data_lower])
+    # scale each array to the mean of the first image
+    scale_by_mean = lambda x: ccd_data.data.mean()/np.ma.average(x)
+    combiner.scaling = scale_by_mean
+    avg_ccd = combiner.average_combine()
+    # Does the mean of the scaled arrays match the value to which it was
+    # scaled?
+    np.testing.assert_almost_equal(avg_ccd.data.mean(),
+                                   ccd_data.data.mean())
+    assert avg_ccd.shape == ccd_data.shape
+    median_ccd = combiner.median_combine()
+    # Does median also scale to the correct value?
+    np.testing.assert_almost_equal(np.median(median_ccd),
+                                   np.median(ccd_data.data))
+
+    # Set the scaling manually...
+    combiner.scaling = [scale_by_mean(combiner.data_arr[i]) for i in range(3)]
+    avg_ccd = combiner.average_combine()
+    np.testing.assert_almost_equal(avg_ccd.data.mean(),
+                                   ccd_data.data.mean())
+    assert avg_ccd.shape == ccd_data.shape
+
+
     
 @pytest.mark.parametrize('comb_func', ['average_combine', 'median_combine'])
 def test_writeable_after_combine(ccd_data, tmpdir, comb_func):
