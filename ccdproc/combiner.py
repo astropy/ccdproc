@@ -174,7 +174,8 @@ class Combiner(object):
                     raise TypeError("scaling must be a function or an array "
                                     "the same length as the number of images.")
             # reshape so that broadcasting occurs properly
-            self._scaling = self.scaling[:, np.newaxis, np.newaxis]
+            for i in range(len(self.data_arr.data.shape)-1):
+                self._scaling = self.scaling[:,np.newaxis]
 
     # set up IRAF-like minmax clipping
     def clip_extrema(self, nlow=0, nhigh=0):
