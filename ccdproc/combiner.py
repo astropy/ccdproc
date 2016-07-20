@@ -138,7 +138,7 @@ class Combiner(object):
                     raise ValueError(
                         "dimensions of weights do not match data.")
             else:
-                raise TypeError("mask must be a numpy.ndarray.")
+                raise TypeError("weights must be a numpy.ndarray.")
         else:
             self._weights = None
 
@@ -191,9 +191,9 @@ class Combiner(object):
         count the masking of that pixel toward the count of nhigh masked pixels.
         IRAF behaves slightly differently in this case (see IRAF help for that
         behavior): http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?imcombine
-        
+
         Here is a copy of the relevant IRAF help text:
-        
+
         nlow = 1, nhigh = (minmax)
             The number of low and high pixels to be rejected by the "minmax"
             algorithm. These numbers are converted to fractions of the total
@@ -201,7 +201,7 @@ class Combiner(object):
             the specified number of pixels are rejected while if pixels have
             been rejected by masking, thresholding, or nonoverlap, then the
             fraction of the remaining pixels, truncated to an integer, is used.
-        
+
         Parameters
         -----------
         nlow : int or None, optional
