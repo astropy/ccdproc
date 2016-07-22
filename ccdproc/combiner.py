@@ -94,9 +94,8 @@ class Combiner(object):
         self.weights = None
         self._dtype = dtype
 
-        # set up the data array
-        ydim, xdim = default_shape
-        new_shape = (len(ccd_list), ydim, xdim)
+        #set up the data array
+        new_shape = (len(ccd_list),) + default_shape
         self.data_arr = ma.masked_all(new_shape, dtype=dtype)
 
         # populate self.data_arr
@@ -105,7 +104,7 @@ class Combiner(object):
             if ccd.mask is not None:
                 self.data_arr.mask[i] = ccd.mask
             else:
-                self.data_arr.mask[i] = ma.zeros((ydim, xdim))
+                self.data_arr.mask[i] = ma.zeros(default_shape)
 
         # Must be after self.data_arr is defined because it checks the
         # length of the data array.
@@ -175,7 +174,8 @@ class Combiner(object):
                     raise TypeError("scaling must be a function or an array "
                                     "the same length as the number of images.")
             # reshape so that broadcasting occurs properly
-            self._scaling = self.scaling[:, np.newaxis, np.newaxis]
+            for i in range(len(self.data_arr.data.shape)-1):
+                self._scaling = self.scaling[:,np.newaxis]
 
     # set up IRAF-like minmax clipping
     def clip_extrema(self, nlow=0, nhigh=0):
@@ -214,18 +214,17 @@ class Combiner(object):
             combination.
             Default is 0.
         """
+
         if nlow is None:
             nlow = 0
         if nhigh is None:
             nhigh = 0
-        nimages, nx, ny = self.data_arr.mask.shape
 
         argsorted = np.argsort(self.data_arr.data, axis=0)
-        mg = np.mgrid[0:nx,0:ny]
+        mg = np.mgrid[[slice(ndim) for i, ndim in enumerate(self.data_arr.shape) if i > 0]]
         for i in range(-1*nhigh, nlow):
-            where = (argsorted[i,:,:].ravel(),
-                     mg[0].ravel(),
-                     mg[1].ravel())
+            # create a tuple with the indices
+            where = tuple([argsorted[i,:,:].ravel()] + [i.ravel() for i in mg])
             self.data_arr.mask[where] = True
 
 
