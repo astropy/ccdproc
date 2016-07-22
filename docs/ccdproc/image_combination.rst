@@ -72,7 +72,6 @@ deviations below the median with
     (in the case the number of frames in the combiner) is much smaller than
     the number of pixels.
 
-    A
 
 Extrema clipping
 ++++++++++++++++
