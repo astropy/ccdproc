@@ -189,8 +189,6 @@ is between two `~ccdproc.ccddata.CCDData` objects.
     0.2
     >>> result.unit
     Unit("adu electron")
-    >>> len(result.header)
-    0
 
 .. note::
     In most cases you should use the functions described in
