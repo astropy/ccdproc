@@ -24,37 +24,16 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy astroscrappy reproject'
-        - PIP_DEPENDENCIES=''
+        - CONDA_DEPENDENCIES='scipy astroscrappy'
+        - PIP_DEPENDENCIES='reproject'
         - SETUP_CMD='test'
 
     matrix:
         # Make sure that egg_info works without dependencies
         - SETUP_CMD='egg_info'
-        # Try all python versions with the latest numpy
-        - SETUP_CMD='test'
 
 matrix:
     include:
-
-        # Do a coverage test in Python 2.
-        - python: 2.7
-          env: SETUP_CMD='test --coverage'
-
-        # Check for sphinx doc build warnings - we do this first because it
-        # may run for a long time
-        - python: 2.7
-          env: SETUP_CMD='build_sphinx -w'
-
-        # Try Astropy development version
-        - python: 2.7
-          env: ASTROPY_VERSION=development
-        - python: 3.5
-          env: ASTROPY_VERSION=development
-
-        # Check compatibility with the current astropy LTS release
-        - python: 2.7
-          env: ASTROPY_VERSION=LTS
 
         # Try older numpy versions
         - python: 2.7
