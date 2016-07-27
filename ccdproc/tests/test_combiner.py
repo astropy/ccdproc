@@ -144,7 +144,7 @@ def test_combiner_sigmaclip_high():
                 CCDData(np.zeros((10, 10)) + 1000, unit=u.adu)]
 
     c = Combiner(ccd_list)
-    #using mad for more rubust statistics vs. std
+    #using mad for more robust statistics vs. std
     c.sigma_clipping(high_thresh=3, low_thresh=None, func=np.median,
                      dev_func=mad)
     assert c.data_arr[5].mask.all()
@@ -179,7 +179,7 @@ def test_combiner_sigmaclip_low():
                 CCDData(np.zeros((10, 10)) - 1000, unit=u.adu)]
 
     c = Combiner(ccd_list)
-    #using mad for more rubust statistics vs. std
+    #using mad for more robust statistics vs. std
     c.sigma_clipping(high_thresh=None, low_thresh=3, func=np.median,
                      dev_func=mad)
     assert c.data_arr[5].mask.all()
@@ -390,7 +390,7 @@ def test_combiner_3d():
     data3 = CCDData(4 * np.ones((5,5,5)), unit=u.adu)
 
     ccd_list = [data1, data2, data3]
-   
+
     c = Combiner(ccd_list)
     assert c.data_arr.shape == (3, 5, 5, 5)
     assert c.data_arr.mask.shape == (3, 5, 5, 5)
@@ -442,7 +442,7 @@ def test_clip_extrema_3d():
     expected = CCDData(np.ones((3, 3, 3)) * 30, unit="adu")
     np.testing.assert_array_equal(result, expected)
 
-    
+
 @pytest.mark.parametrize('comb_func', ['average_combine', 'median_combine'])
 def test_writeable_after_combine(ccd_data, tmpdir, comb_func):
     tmp_file = tmpdir.join('tmp.fits')

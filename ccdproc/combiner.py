@@ -70,7 +70,7 @@ class Combiner(object):
         default_shape = None
         default_unit = None
         for ccd in ccd_list:
-            # raise an error if the objects aren't CCDDAata objects
+            # raise an error if the objects aren't CCDData objects
             if not isinstance(ccd, CCDData):
                 raise TypeError(
                     "ccd_list should only contain CCDData objects.")
@@ -456,11 +456,11 @@ def combine(img_list, output_file=None, method='average', weights=None,
     -----------
     img_list : list or str
         A list of fits filenames or `~ccdproc.CCDData` objects that will be
-        combined together. Or a string of fits filenames seperated by comma
+        combined together. Or a string of fits filenames separated by comma
         ",".
 
     output_file : str or None, optional
-        Optional output fits filename to which the final output can be directly
+        Optional output fits file-name to which the final output can be directly
         written.
         Default is ``None``.
 
@@ -492,8 +492,8 @@ def combine(img_list, output_file=None, method='average', weights=None,
     clip_extrema : bool, optional
         Set to True if you want to mask pixels using an IRAF-like minmax
         clipping algorithm.  The algorithm will mask the lowest nlow values and
-        the highest nhigh values before combining the vlues to make up a single
-        pixel in the reuslting image.  For example, the image will be a
+        the highest nhigh values before combining the values to make up a single
+        pixel in the resulting image.  For example, the image will be a
         combination of Nimages-low-nhigh pixel values instead of the combination
         of Nimages.
 
@@ -542,7 +542,7 @@ def combine(img_list, output_file=None, method='average', weights=None,
         CCDData object based on the combined input of CCDData objects.
     """
     if not isinstance(img_list, list):
-        # If not a list, check wheter it is a string of filenames seperated
+        # If not a list, check whether it is a string of filenames separated
         # by comma
         if isinstance(img_list, str) and (',' in img_list):
             img_list = img_list.split(',')

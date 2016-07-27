@@ -568,7 +568,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
 
     hdu : int, optional
         FITS extension from which CCDData should be initialized. If zero and
-        and no data in the primary extention, it will search for the first
+        and no data in the primary extension, it will search for the first
         extension with data. The header will be added to the primary header.
         Default is ``0``.
 
@@ -636,7 +636,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
                 if hdus.fileinfo(i)['datSpan'] > 0:
                     hdu = i
                     hdr = hdr + hdus[hdu].header
-                    log.info("first HDU with data is exention "
+                    log.info("first HDU with data is extension "
                              "{0}.".format(hdu))
                     break
 

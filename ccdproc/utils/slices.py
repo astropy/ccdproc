@@ -17,7 +17,7 @@ def slice_from_string(string, fits_convention=False):
 
     fits_convention : bool, optional
         If True, assume the input string follows the FITS convention for
-        indexing: the indeing is one-based (not zero-based) and the first
+        indexing: the indexing is one-based (not zero-based) and the first
         axis is that which changes most rapidly as the index increases.
 
     Returns

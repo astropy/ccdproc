@@ -22,7 +22,7 @@ from ..core import _blkavg
 
 # test creating deviation
 # success expected if u_image * u_gain = u_readnoise
-@pytest.mark.parametrize('u_image,u_gain,u_readnoise,expect_succes', [
+@pytest.mark.parametrize('u_image,u_gain,u_readnoise,expect_success', [
                          (u.electron, None, u.electron, True),
                          (u.electron, u.electron, u.electron, False),
                          (u.adu, u.electron / u.adu, u.electron, True),
@@ -33,14 +33,14 @@ from ..core import _blkavg
                          ])
 @pytest.mark.data_size(10)
 def test_create_deviation(ccd_data, u_image, u_gain, u_readnoise,
-                          expect_succes):
+                          expect_success):
     ccd_data.unit = u_image
     if u_gain:
         gain = 2.0 * u_gain
     else:
         gain = None
     readnoise = 5 * u_readnoise
-    if expect_succes:
+    if expect_success:
         ccd_var = create_deviation(ccd_data, gain=gain, readnoise=readnoise)
         assert ccd_var.uncertainty.array.shape == (10, 10)
         assert ccd_var.uncertainty.array.size == 100
@@ -198,7 +198,7 @@ def test_subtract_overscan_model(ccd_data, transpose):
                                  median=False, model=models.Polynomial1D(2))
     np.testing.assert_almost_equal(ccd_data.data[science_region].mean(),
                                    original_mean)
-    # Set the overscan_axis exlicitly to None, and let the routine
+    # Set the overscan_axis explicitly to None, and let the routine
     # figure it out.
     ccd_data = subtract_overscan(ccd_data, overscan=ccd_data[oscan_region],
                                  overscan_axis=None,
@@ -842,12 +842,12 @@ def test_ccd_process_does_not_change_input(ccd_data):
     assert original.unit == ccd_data.unit
 
 
-def test_ccd_process_parameters_are_aprropriate(ccd_data):
+def test_ccd_process_parameters_are_appropriate(ccd_data):
     # oscan check
     with pytest.raises(TypeError):
         ccd_process(ccd_data, oscan=True)
 
-    # trim secion check
+    # trim section check
     with pytest.raises(TypeError):
         ccd_process(ccd_data, trim=True)
 
