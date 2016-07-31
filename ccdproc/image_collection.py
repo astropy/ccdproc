@@ -317,12 +317,13 @@ class ImageFileCollection(object):
         """
         from collections import OrderedDict
 
-        def _add_val_to_dict(key, value, tbl_dict, n_prev):
+        def _add_val_to_dict(key, value, tbl_dict, n_previous, missing_marker):
+            key = key.lower()
             try:
-                tbl_dict[key.lower()].append(value)
+                tbl_dict[key].append(value)
             except KeyError:
-                tbl_dict[key.lower()] = [missing_marker] * n_previous
-                tbl_dict[key.lower()].append(value)
+                tbl_dict[key] = [missing_marker] * n_previous
+                tbl_dict[key].append(value)
 
         if input_summary is None:
             summary = OrderedDict()
@@ -359,12 +360,13 @@ class ImageFileCollection(object):
             else:
                 val = v
 
-            _add_val_to_dict(k, val, summary, n_previous)
+            _add_val_to_dict(k, val, summary, n_previous, missing_marker)
 
         for k, v in six.iteritems(multi_entry_keys):
             if v:
                 joined = ','.join(v)
-                _add_val_to_dict(k, joined, summary, n_previous)
+                _add_val_to_dict(k, joined, summary, n_previous,
+                                 missing_marker)
 
         for missing in missing_in_this_file:
             summary[missing].append(missing_marker)
