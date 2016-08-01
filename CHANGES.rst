@@ -18,7 +18,7 @@ Bug Fixes
 New Features
 ^^^^^^^^^^^^
 
-- Add an additional combination method, `clip_extrema`, that drops the highest
+- Add an additional combination method, ``clip_extrema``, that drops the highest
   and/or lowest pixels in an image stack. [#356, #358]
 
 Other Changes and Additions
