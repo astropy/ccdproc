@@ -74,14 +74,14 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         Frame to be reduced.
 
     oscan : `~ccdproc.ccddata.CCDData`, str or None, optional
-        For no overscan correction, set to None. Otherwise proivde a region
+        For no overscan correction, set to None. Otherwise provide a region
         of ccd from which the overscan is extracted, using the FITS
         conventions for index order and index start, or a
         slice from ccd that contains the overscan.
         Default is ``None``.
 
     trim : str or None, optional
-        For no trim correction, set to None. Otherwise proivde a region
+        For no trim correction, set to None. Otherwise provide a region
         of ccd from which the image should be trimmed, using the FITS
         conventions for index order and index start.
         Default is ``None``.
@@ -110,7 +110,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
     bad_pixel_mask : `numpy.ndarray` or None, optional
         A bad pixel mask for the data. The bad pixel mask should be in given
-        such that bad pixels havea value of 1 and good pixels a value of 0.
+        such that bad pixels have a value of 1 and good pixels a value of 0.
         Default is ``None``.
 
     gain : `~astropy.units.Quantity` or None, optional
@@ -775,7 +775,7 @@ def transform_image(ccd, transform_func, **kwargs):
 
     Notes
     -----
-    At this time, transform will be applied to the uncertainy data but it
+    At this time, transform will be applied to the uncertainty data but it
     will only transform the data. This will not properly handle uncertainties
     that arise due to correlation between the pixels.
 
@@ -1076,8 +1076,8 @@ def rebin(ccd, newshape):
         `~ccdproc.CCDData`.
 
     ValueError
-        A value error is raised if the dimenisions of new shape is not equal
-        to data.
+        A value error is raised if the dimension of the new shape is not equal
+        to the data's.
 
     Notes
     -----
@@ -1211,7 +1211,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
     sigfrac : float, optional
         Fractional detection limit for neighboring pixels. For cosmic ray
-        neighbor pixels, a lapacian-to-noise detection limit of
+        neighbor pixels, a Laplacian-to-noise detection limit of
         sigfrac * sigclip will be used. Default: 0.3.
 
     objlim : float, optional
@@ -1249,7 +1249,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     cleantype : str, optional
         Set which clean algorithm is used:
 
-        - ``"median"``: An umasked 5x5 median filter.
+        - ``"median"``: An unmasked 5x5 median filter.
         - ``"medmask"``: A masked 5x5 median filter.
         - ``"meanmask"``: A masked 5x5 mean filter.
         - ``"idw"``: A masked 5x5 inverse distance weighted interpolation.

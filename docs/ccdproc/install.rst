@@ -35,7 +35,7 @@ To install ccdproc with `pip <http://www.pip-installer.org/en/latest/>`_, simply
 Using conda
 -------------
 
-To install ccdproc with `anaconda <http://continuum.io/>`_, simple run::
+To install ccdproc with `anaconda <http://continuum.io/>`_, simply run::
 
     conda install -c astropy ccdproc
 

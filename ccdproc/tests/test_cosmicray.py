@@ -39,7 +39,7 @@ def test_cosmicray_lacosmic(ccd_data):
 
     # check the number of cosmic rays detected
     # currently commented out while checking on issues
-    # in astroscappy
+    # in astroscrappy
     # assert crarr.sum() == NCRAYS
 
 
@@ -53,7 +53,7 @@ def test_cosmicray_lacosmic_ccddata(ccd_data):
 
     # check the number of cosmic rays detected
     # currently commented out while checking on issues
-    # in astroscappy
+    # in astroscrappy
     # assert nccd_data.mask.sum() == NCRAYS
 
 

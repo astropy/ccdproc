@@ -193,7 +193,7 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
-- Allow the unit string "adu" to be upper or lower case in a FIS header [#182]
+- Allow the unit string "adu" to be upper or lower case in a FITS header [#182]
 
 0.2.1 (2014-09-09)
 ------------------

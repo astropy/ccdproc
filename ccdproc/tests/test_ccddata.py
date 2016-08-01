@@ -117,7 +117,7 @@ def test_write_unit_to_hdu(ccd_data, tmpdir):
 
 
 def test_initialize_from_FITS_bad_keyword_raises_error(ccd_data, tmpdir):
-    # There are two fits.open keywords that are not permitted in ccdpro:
+    # There are two fits.open keywords that are not permitted in ccdproc:
     #     do_not_scale_image_data and scale_back
     filename = tmpdir.join('test.fits').strpath
     ccd_data.write(filename)
