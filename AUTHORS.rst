@@ -14,13 +14,16 @@ Project Coordinators
 Alphabetical list of contributors
 ---------------------------------
 
+* Javier Blasco (@javierblasco)
 * Christoph Deil (@cdeil)
 * Carlos Gomez (@carlgogo)
 * Hans Moritz Günther (@hamogu)
 * Forrest Gasdia (@EP-Guy)
 * Nathan Heidt (@heidtha)
+* Elias Holte (@Sondanaa)
 * Anthony Horton (@AnthonyHorton)
 * Jennifer Karr (@JenniferKarr)
+* James McCormac (@jmccormac01)
 * Stefan Nelson (@pulsestaysconstant)
 * Joe Philip Ninan (@indiajoe)
 * Punyaslok Pattnaik (@Punyaslok)
@@ -32,6 +35,7 @@ Alphabetical list of contributors
 * Connor Stotts (@stottsco)
 * Ole Streicher (@olebole)
 * Erik Tollerud (@eteq)
+* Josh Walawender (@joshwalawender)
 * Nathan Walker (@walkerna22)
 
 (If you have contributed to the ccdproc project and your name is missing,
