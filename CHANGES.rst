@@ -1,5 +1,5 @@
 
-1.1.0 (Unreleased)
+1.2.0 (Unreleased)
 ------------------
 
 New Features
@@ -8,24 +8,31 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- Auto-identify files with extension ``fts`` as FITS files. [#355, #364]
-
-- Raise more explicit exception if unit of uncalibrated image and master do
-  not match in ``subtract_bias`` or ``subtract_dark``. [#361, #366]
-
-- Updated the ``Combiner`` class so that it could process images with >2 
-  dimensions. [#340, #375]
-
 Bug Fixes
 ^^^^^^^^^
 
-1.0.2 (Unreleased)
+
+1.1.0 (Unreleased)
 ------------------
+
+New Features
+^^^^^^^^^^^^
+
+- Add an additional combination method, ``clip_extrema``, that drops the highest
+  and/or lowest pixels in an image stack. [#356, #358]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - ``cosmicray_lacosmic`` default ``satlevel`` changed from 65536 to 65535. [#347]
+
+- Auto-identify files with extension ``fts`` as FITS files. [#355, #364]
+
+- Raise more explicit exception if unit of uncalibrated image and master do
+  not match in ``subtract_bias`` or ``subtract_dark``. [#361, #366]
+
+- Updated the ``Combiner`` class so that it could process images with >2
+  dimensions. [#340, #375]
 
 Bug Fixes
 ^^^^^^^^^
@@ -34,6 +41,9 @@ Bug Fixes
   or ``median_combine``. [#351]
 
 - ``flat_correct`` does not properly scale uncertainty in the flat. [#345, #363]
+
+- Error message in weights setter fixed. [#376]
+
 
 1.0.1 (2016-03-15)
 ------------------
