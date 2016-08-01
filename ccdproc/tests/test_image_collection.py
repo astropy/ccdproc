@@ -10,9 +10,8 @@ import stat
 
 import astropy.io.fits as fits
 import numpy as np
-import pytest
 
-from astropy.tests.helper import catch_warnings
+from astropy.tests.helper import pytest, catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .. import image_collection
