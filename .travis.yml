@@ -27,6 +27,7 @@ env:
         - CONDA_DEPENDENCIES='scipy astroscrappy reproject'
         - PIP_DEPENDENCIES=''
         - SETUP_CMD='test'
+        - CONDA_CHANNELS='astropy-ci-extras astropy'
 
     matrix:
         # Make sure that egg_info works without dependencies
