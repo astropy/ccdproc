@@ -298,7 +298,7 @@ def test_combiner_result_dtype():
     np.testing.assert_array_almost_equal(res.data, ref)
 
     res = combine([ccd, ccd.multiply(2), ccd.multiply(3)], dtype=int)
-    # The default dtype of Combiner is float64
+    # The result dtype should be integer:
     assert res.data.dtype == np.int_
     ref = np.ones((3, 3)) * 2
     np.testing.assert_array_almost_equal(res.data, ref)
