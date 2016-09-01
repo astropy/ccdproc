@@ -285,6 +285,25 @@ def test_combine_average_fitsimages():
     np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data)
 
 
+def test_combiner_result_dtype():
+    """Regression test: #391
+
+    The result should have the appropriate dtype not the dtype of the first
+    input."""
+    ccd = CCDData(np.ones((3, 3), dtype=np.uint16), unit='adu')
+    res = combine([ccd, ccd.multiply(2)])
+    # The default dtype of Combiner is float64
+    assert res.data.dtype == np.float64
+    ref = np.ones((3, 3)) * 1.5
+    np.testing.assert_array_almost_equal(res.data, ref)
+
+    res = combine([ccd, ccd.multiply(2), ccd.multiply(3)], dtype=int)
+    # The result dtype should be integer:
+    assert res.data.dtype == np.int_
+    ref = np.ones((3, 3)) * 2
+    np.testing.assert_array_almost_equal(res.data, ref)
+
+
 #test combiner convenience function works with list of ccddata objects
 def test_combine_average_ccddata():
     fitsfile = get_pkg_data_filename('data/a8280271.fits')

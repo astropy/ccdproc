@@ -12,6 +12,26 @@ Bug Fixes
 ^^^^^^^^^
 
 
+1.1.1 (Unreleased)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- ``combine`` now accepts a ``dtype`` argument which is passed to
+  ``Combiner.__init__``. [#391, #392]
+
+Bug Fixes
+^^^^^^^^^
+
+- The default dtype of the ``combine``-result doesn't depend on the dtype
+  of the first CCDData anymore. This also corrects the memory consumption
+  calculation. [#391, #392]
+
+
 1.1.0 (2016-08-01)
 ------------------
 

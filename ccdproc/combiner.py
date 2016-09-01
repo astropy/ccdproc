@@ -32,7 +32,7 @@ class Combiner(object):
 
     dtype : str or `numpy.dtype` or None, optional
         Allows user to set dtype. See `numpy.array` ``dtype`` parameter
-        description.
+        description. If ``None`` it uses ``np.float64``.
         Default is ``None``.
 
     Raises
@@ -442,13 +442,14 @@ class Combiner(object):
         return combined_image
 
 
-def combine(img_list, output_file=None, method='average', weights=None,
-            scale=None, mem_limit=16e9,
+def combine(img_list, output_file=None,
+            method='average', weights=None, scale=None, mem_limit=16e9,
             clip_extrema=False, nlow=1, nhigh=1,
             minmax_clip=False, minmax_clip_min=None, minmax_clip_max=None,
             sigma_clip=False,
             sigma_clip_low_thresh=3, sigma_clip_high_thresh=3,
-            sigma_clip_func=ma.mean, sigma_clip_dev_func=ma.std, **ccdkwargs):
+            sigma_clip_func=ma.mean, sigma_clip_dev_func=ma.std,
+            dtype=None, **ccdkwargs):
     """
     Convenience function for combining multiple images.
 
@@ -460,8 +461,8 @@ def combine(img_list, output_file=None, method='average', weights=None,
         ",".
 
     output_file : str or None, optional
-        Optional output fits file-name to which the final output can be directly
-        written.
+        Optional output fits file-name to which the final output can be
+        directly written.
         Default is ``None``.
 
     method : str, optional
@@ -492,10 +493,10 @@ def combine(img_list, output_file=None, method='average', weights=None,
     clip_extrema : bool, optional
         Set to True if you want to mask pixels using an IRAF-like minmax
         clipping algorithm.  The algorithm will mask the lowest nlow values and
-        the highest nhigh values before combining the values to make up a single
-        pixel in the resulting image.  For example, the image will be a
-        combination of Nimages-low-nhigh pixel values instead of the combination
-        of Nimages.
+        the highest nhigh values before combining the values to make up a
+        single pixel in the resulting image.  For example, the image will be a
+        combination of Nimages-low-nhigh pixel values instead of the
+        combination of Nimages.
 
         Parameters below are valid only when clip_extrema is set to True,
         see :meth:`Combiner.clip_extrema` for the parameter description:
@@ -534,6 +535,11 @@ def combine(img_list, output_file=None, method='average', weights=None,
         - ``sigma_clip_func`` : function, optional
         - ``sigma_clip_dev_func`` : function, optional
 
+    dtype : str or `numpy.dtype` or None, optional
+        The intermediate and resulting ``dtype`` for the combined CCDs. See
+        `ccdproc.Combiner`. If ``None`` this is set to ``float64``.
+        Default is ``None``.
+
     ccdkwargs : Other keyword arguments for `ccdproc.fits_ccddata_reader`.
 
     Returns
@@ -565,6 +571,15 @@ def combine(img_list, output_file=None, method='average', weights=None,
         # User has provided fits filenames to read from
         ccd = CCDData.read(img_list[0], **ccdkwargs)
 
+    if dtype is None:
+        dtype = np.float64
+
+    # Convert the master image to the appropriate dtype so when overwriting it
+    # later the data is not downcast and the memory consumption calculation
+    # uses the internally used dtype instead of the original dtype. #391
+    if ccd.data.dtype != dtype:
+        ccd.data = ccd.data.astype(dtype)
+
     size_of_an_img = ccd.data.nbytes
     if ccd.uncertainty is not None:
         size_of_an_img += ccd.uncertainty.nbytes
@@ -576,9 +591,10 @@ def combine(img_list, output_file=None, method='average', weights=None,
     no_of_img = len(img_list)
 
     # determine the number of chunks to split the images into
-    no_chunks = int((size_of_an_img*no_of_img)/mem_limit)+1
-    log.info('splitting each image into {0} chunks to limit memory usage to '
-             '{1} bytes.'.format(no_chunks, mem_limit))
+    no_chunks = int((size_of_an_img * no_of_img) / mem_limit) + 1
+    if no_chunks > 1:
+        log.info('splitting each image into {0} chunks to limit memory usage '
+                 'to {1} bytes.'.format(no_chunks, mem_limit))
     xs, ys = ccd.data.shape
     # First we try to split only along fast x axis
     xstep = max(1, int(xs/no_chunks))
@@ -615,7 +631,7 @@ def combine(img_list, output_file=None, method='average', weights=None,
 
     if clip_extrema:
         to_call_in_combiner['clip_extrema'] = {'nlow': nlow,
-                                                       'nhigh': nhigh}
+                                               'nhigh': nhigh}
 
     if minmax_clip:
         to_call_in_combiner['minmax_clipping'] = {'min_clip': minmax_clip_min,
@@ -644,7 +660,7 @@ def combine(img_list, output_file=None, method='average', weights=None,
                 ccd_list.append(trim_image(imgccd[x:xend, y:yend]))
 
             # Create Combiner for tile
-            tile_combiner = Combiner(ccd_list)
+            tile_combiner = Combiner(ccd_list, dtype=dtype)
             # Set all properties and call all methods
             for to_set in to_set_in_combiner:
                 setattr(tile_combiner, to_set, to_set_in_combiner[to_set])
