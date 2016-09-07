@@ -657,7 +657,7 @@ def combine(img_list, output_file=None,
                     imgccd = CCDData.read(image, **ccdkwargs)
 
                 # Trim image
-                ccd_list.append(trim_image(imgccd[x:xend, y:yend]))
+                ccd_list.append(imgccd[x:xend, y:yend])
 
             # Create Combiner for tile
             tile_combiner = Combiner(ccd_list, dtype=dtype)
