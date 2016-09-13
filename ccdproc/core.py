@@ -712,7 +712,7 @@ def flat_correct(ccd, flat, min_value=None):
     Parameters
     ----------
     ccd : `~ccdproc.CCDData`
-        Data to be flatfield corrected.
+        Data to be transformed.
 
     flat : `~ccdproc.CCDData`
         Flatfield to apply to the data.
@@ -760,8 +760,8 @@ def transform_image(ccd, transform_func, **kwargs):
     ccd : `~ccdproc.CCDData`
         Data to be flatfield corrected.
 
-    transform_func : function
-        Function to be used to transform the data.
+    transform_func : callable
+        Function to be used to transform the data, mask and uncertainty.
 
     kwargs :
         Additional keyword arguments to be used by the transform_func.
@@ -798,18 +798,19 @@ def transform_image(ccd, transform_func, **kwargs):
         >>> transformed = transform_image(arr1, shift, shift=(5.5, 8.1))
     """
     # check that it is a ccddata object
-    if not (isinstance(ccd, CCDData)):
+    if not isinstance(ccd, CCDData):
         raise TypeError('ccd is not a CCDData.')
-
-    # check that transform is a callable function
-    if not hasattr(transform_func, '__call__'):
-        raise TypeError('transform is not a function.')
 
     # make a copy of the object
     nccd = ccd.copy()
 
     # transform the image plane
-    nccd.data = transform_func(nccd.data, **kwargs)
+    try:
+        nccd.data = transform_func(nccd.data, **kwargs)
+    except TypeError as exc:
+        if 'is not callable' in str(exc):
+            raise TypeError('transform_func is not a callable.')
+        raise
 
     # transform the uncertainty plane if it exists
     if nccd.uncertainty is not None:
@@ -819,7 +820,7 @@ def transform_image(ccd, transform_func, **kwargs):
     # transform the mask plane
     if nccd.mask is not None:
         mask = transform_func(nccd.mask, **kwargs)
-        nccd.mask = (mask > 0)
+        nccd.mask = mask > 0
 
     return nccd
 
