@@ -14,6 +14,7 @@ from astropy.utils.compat import NUMPY_LT_1_9
 from astropy.wcs import WCS
 
 from ..astrometry import *
+from ..astrometry import _calc_ratio, _get_index
 
 
 #test that the Combiner raises error if empty
@@ -37,3 +38,30 @@ def test_remove_duplicates_tol():
     np.testing.assert_array_equal(y, np.array([7.5, 2.0, 47.1, 2.7, 5.1, 8.2]))
 
     
+def test_distance():
+    assert 5==distance(1,1,4,5)
+
+
+def test__calc_ratio():
+    x = np.array([1, 4, 6])
+    y = np.array([1, 5, 13])
+
+    assert 5.0/13.0 ==  _calc_ratio(x,y, 0, 1, 2)
+
+
+def test__get_index():
+    assert _get_index(3, 3) == (1, 2, 0)
+
+
+def test_distance_ratio():
+    x = np.array([1, 4, 6])
+    y = np.array([1, 5, 13])
+    
+    r = distance_ratios(x, y)
+ 
+    assert len(r) == 6
+    np.testing.assert_almost_equal(r, np.array([ 0.38461538,  2.6,
+        0.60633906,  1.64924225,  1.57648156, 0.63432394]))
+    
+
+
