@@ -19,6 +19,12 @@ from ..ccddata import CCDData
 from ..core import *
 from ..core import _blkavg
 
+try:
+    import skimage
+    HAS_SKIMAGE = True
+except ImportError:
+    HAS_SKIMAGE = False
+
 
 # test creating deviation
 # success expected if u_image * u_gain = u_readnoise
@@ -613,6 +619,7 @@ def test_rebin_ccddata(ccd_data, mask_data, uncertainty):
 
 
 # test block_reduce and block_replicate wrapper
+@pytest.mark.skipif(not HAS_SKIMAGE, reason="skimage package")
 def test_block_reduce():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),
@@ -631,6 +638,7 @@ def test_block_reduce():
     assert ccd_summed.uncertainty is None
 
 
+@pytest.mark.skipif(not HAS_SKIMAGE, reason="skimage package")
 def test_block_average():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),
@@ -650,6 +658,7 @@ def test_block_average():
     assert ccd_avgd.uncertainty is None
 
 
+@pytest.mark.skipif(not HAS_SKIMAGE, reason="skimage package")
 def test_block_replicate():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),

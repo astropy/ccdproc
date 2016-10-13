@@ -1,6 +1,11 @@
 
 1.2.0 (Unreleased)
-------------------
+-------------------
+
+ccdproc has now the following additional dependency:
+
+  - scikit-image.
+
 
 New Features
 ^^^^^^^^^^^^
@@ -19,7 +24,7 @@ Bug Fixes
 ------------------
 
 New Features
-^^^^^^^^^^^^z
+^^^^^^^^^^^^
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
