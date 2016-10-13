@@ -620,6 +620,7 @@ def test_rebin_ccddata(ccd_data, mask_data, uncertainty):
 
 # test block_reduce and block_replicate wrapper
 @pytest.mark.skipif(not HAS_SKIMAGE, reason="skimage package")
+@pytest.mark.skipif(raises=NameError)  # if block_reduce is not defined
 def test_block_reduce():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),
@@ -639,6 +640,7 @@ def test_block_reduce():
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason="skimage package")
+@pytest.mark.skipif(raises=NameError)  # if block_average is not defined
 def test_block_average():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),
@@ -659,6 +661,7 @@ def test_block_average():
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason="skimage package")
+@pytest.mark.skipif(raises=NameError)  # if block_replicate is not defined
 def test_block_replicate():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),

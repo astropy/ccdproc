@@ -11,7 +11,7 @@ from astropy.units.quantity import Quantity
 from astropy import units as u
 from astropy.modeling import fitting
 from astropy import stats
-from astropy import nddata
+from astropy.nddata import utils as nddata_utils
 from astropy.nddata import StdDevUncertainty
 from astropy.wcs.utils import proj_plane_pixel_area
 from astropy.utils import deprecated
@@ -24,7 +24,6 @@ from .utils.slices import slice_from_string
 from .log_meta import log_to_metadata
 
 __all__ = ['background_deviation_box', 'background_deviation_filter',
-           'block_average', 'block_reduce', 'block_replicate',
            'ccd_process', 'cosmicray_median', 'cosmicray_lacosmic',
            'create_deviation', 'flat_correct', 'gain_correct', 'rebin',
            'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
@@ -1144,7 +1143,7 @@ def rebin(ccd, newshape):
 
 def block_reduce(ccd, block_size, func=np.sum):
     """Thin wrapper around `astropy.nddata.block_reduce`."""
-    data = nddata.block_reduce(ccd, block_size, func)
+    data = nddata_utils.block_reduce(ccd, block_size, func)
     if isinstance(ccd, CCDData):
         # unit and meta "should" be unaffected by the change of shape and can
         # be copied. However wcs, mask, uncertainty should not be copied!
@@ -1155,7 +1154,7 @@ def block_reduce(ccd, block_size, func=np.sum):
 def block_average(ccd, block_size):
     """Like `block_reduce` but with predefined ``func=np.mean``.
     """
-    data = nddata.block_reduce(ccd, block_size, np.mean)
+    data = nddata_utils.block_reduce(ccd, block_size, np.mean)
     # Like in block_reduce:
     if isinstance(ccd, CCDData):
         data = CCDData(data, unit=ccd.unit, meta=ccd.meta)
@@ -1164,16 +1163,21 @@ def block_average(ccd, block_size):
 
 def block_replicate(ccd, block_size, conserve_sum=True):
     """Thin wrapper around `astropy.nddata.block_replicate`."""
-    data = nddata.block_replicate(ccd, block_size, conserve_sum)
+    data = nddata_utils.block_replicate(ccd, block_size, conserve_sum)
     # Like in block_reduce:
     if isinstance(ccd, CCDData):
         data = CCDData(data, unit=ccd.unit, meta=ccd.meta)
     return data
 
 
-# Append original docstring to docstrings of these functions
-block_reduce.__doc__ += nddata.block_reduce.__doc__
-block_replicate.__doc__ += nddata.block_replicate.__doc__
+try:
+    # Append original docstring to docstrings of these functions
+    block_reduce.__doc__ += nddata_utils.block_reduce.__doc__
+    block_replicate.__doc__ += nddata_utils.block_replicate.__doc__
+    __all__ += ['block_average', 'block_reduce', 'block_replicate']
+except AttributeError:
+    # Astropy 1.0 has no block_reduce, block_average
+    del block_reduce, block_average, block_replicate
 
 
 def _blkavg(data, newshape):
