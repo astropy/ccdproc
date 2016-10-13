@@ -5,6 +5,9 @@
 New Features
 ^^^^^^^^^^^^
 
+- Added ``block_replicate``, ``block_reduce`` and ``block_average`` functions.
+
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -16,7 +19,7 @@ Bug Fixes
 ------------------
 
 New Features
-^^^^^^^^^^^^
+^^^^^^^^^^^^z
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

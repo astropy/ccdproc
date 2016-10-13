@@ -612,6 +612,62 @@ def test_rebin_ccddata(ccd_data, mask_data, uncertainty):
         assert b.uncertainty.array.shape == (20, 20)
 
 
+# test block_reduce and block_replicate wrapper
+def test_block_reduce():
+    ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
+                  mask=np.zeros((4, 4), dtype=bool),
+                  uncertainty=StdDevUncertainty(np.ones((4, 4))),
+                  wcs=np.zeros((4, 4)))
+    ccd_summed = block_reduce(ccd, (2, 2))
+    assert isinstance(ccd_summed, CCDData)
+    assert np.all(ccd_summed.data == 4)
+    assert ccd_summed.data.shape == (2, 2)
+    assert ccd_summed.unit == u.adu
+    # Other attributes are set to None. In case the function is modified to
+    # work on these attributes correctly those tests need to be updated!
+    assert ccd_summed.meta == {'testkw': 1}
+    assert ccd_summed.mask is None
+    assert ccd_summed.wcs is None
+    assert ccd_summed.uncertainty is None
+
+
+def test_block_average():
+    ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
+                  mask=np.zeros((4, 4), dtype=bool),
+                  uncertainty=StdDevUncertainty(np.ones((4, 4))),
+                  wcs=np.zeros((4, 4)))
+    ccd.data[::2, ::2] = 2
+    ccd_avgd = block_average(ccd, (2, 2))
+    assert isinstance(ccd_avgd, CCDData)
+    assert np.all(ccd_avgd.data == 1.25)
+    assert ccd_avgd.data.shape == (2, 2)
+    assert ccd_avgd.unit == u.adu
+    # Other attributes are set to None. In case the function is modified to
+    # work on these attributes correctly those tests need to be updated!
+    assert ccd_avgd.meta == {'testkw': 1}
+    assert ccd_avgd.mask is None
+    assert ccd_avgd.wcs is None
+    assert ccd_avgd.uncertainty is None
+
+
+def test_block_replicate():
+    ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
+                  mask=np.zeros((4, 4), dtype=bool),
+                  uncertainty=StdDevUncertainty(np.ones((4, 4))),
+                  wcs=np.zeros((4, 4)))
+    ccd_repl = block_replicate(ccd, (2, 2))
+    assert isinstance(ccd_repl, CCDData)
+    assert np.all(ccd_repl.data == 0.25)
+    assert ccd_repl.data.shape == (8, 8)
+    assert ccd_repl.unit == u.adu
+    # Other attributes are set to None. In case the function is modified to
+    # work on these attributes correctly those tests need to be updated!
+    assert ccd_repl.meta == {'testkw': 1}
+    assert ccd_repl.mask is None
+    assert ccd_repl.wcs is None
+    assert ccd_repl.uncertainty is None
+
+
 #test blockaveraging ndarray
 def test__blkavg_ndarray(ccd_data):
     with pytest.raises(TypeError):
