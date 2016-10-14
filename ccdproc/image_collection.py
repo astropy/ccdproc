@@ -309,7 +309,7 @@ class ImageFileCollection(object):
         """
         files = []
         if self._filenames:
-            if isinstance(self._filenames, str):
+            if isinstance(self._filenames, six.string_types):
                 files.append(self._filenames)
             else:
                 files = self._filenames
