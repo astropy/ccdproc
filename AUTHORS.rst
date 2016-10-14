@@ -10,6 +10,8 @@ Project Coordinators
 
 * Matt Craig (@mwcraig)
 * Steve Crawford (@crawfordsm)
+* Michael Seifert (@MSeifert04)
+
 
 Alphabetical list of contributors
 ---------------------------------
@@ -29,7 +31,6 @@ Alphabetical list of contributors
 * Punyaslok Pattnaik (@Punyaslok)
 * Evert Rol (@evertrol)
 * William Schoenell (@wschoenell)
-* Michael Seifert (@MSeifert04)
 * Sourav Singh (@souravsingh)
 * Brigitta Sipocz (@bsipocz)
 * Connor Stotts (@stottsco)
