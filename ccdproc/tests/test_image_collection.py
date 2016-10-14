@@ -91,6 +91,9 @@ class TestImageFileCollection(object):
             location=triage_setup.test_dir, filenames=fn, keywords=['filter'])
         assert img_collection.files is fn
 
+        img_collection.refresh()
+        assert img_collection.files is fn
+
     def test_files_with_compressed(self, triage_setup):
         collection = image_collection.ImageFileCollection(
             location=triage_setup.test_dir)
