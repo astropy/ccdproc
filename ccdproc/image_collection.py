@@ -34,7 +34,12 @@ class ImageFileCollection(object):
     Parameters
     ----------
     location : str or None, optional
-        path to directory containing FITS files.
+        Path to directory containing FITS files.
+        Default is ``None``.
+
+    filenames: str, list of str, or None, optional
+        List of the names of FITS files which will be added to the collection.
+        The filenames are assumed to be in ``location``.
         Default is ``None``.
 
     keywords : list of str, '*' or None, optional
@@ -57,11 +62,15 @@ class ImageFileCollection(object):
         Raised if keywords are set to a combination of '*' and any other
         value.
     """
-    def __init__(self, location=None, keywords=None, info_file=None):
+    def __init__(self, location=None, filenames=None, keywords=None,
+                 info_file=None):
         self._location = location
         self._files = []
         if location:
-            self._files = self._fits_files_in_directory()
+            if filenames:
+                self._files = filenames
+            else:
+                self._files = self._fits_files_in_directory()
         if self._files == []:
             warnings.warn("no FITS files in the collection.",
                           AstropyUserWarning)
