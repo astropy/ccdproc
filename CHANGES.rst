@@ -5,6 +5,9 @@
 New Features
 ^^^^^^^^^^^^
 
+- Add an optional attribute named ``filenames`` to ``ImageFileCollection``,
+  so that users can pass a list of FITS files to the collection. [#374]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

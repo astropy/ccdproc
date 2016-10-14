@@ -65,10 +65,11 @@ class ImageFileCollection(object):
     def __init__(self, location=None, keywords=None, info_file=None,
                  filenames=None):
         self._location = location
+        self._filenames = filenames
         self._files = []
         if location:
-            if filenames:
-                self._files = filenames
+            if self._filenames:
+                self._files =  self._filenames
             else:
                 self._files = self._fits_files_in_directory()
         if self._files == []:
@@ -280,7 +281,10 @@ class ImageFileCollection(object):
         """
         keywords = '*' if self._all_keywords else self.keywords
         # Re-load list of files
-        self._files = self._fits_files_in_directory()
+        if self._filenames:
+            self._files = self._filenames
+        else:
+            self._files = self._fits_files_in_directory()
         self._summary_info = self._fits_summary(header_keywords=keywords)
 
     def sort(self, keys=None):
