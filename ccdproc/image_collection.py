@@ -37,11 +37,6 @@ class ImageFileCollection(object):
         Path to directory containing FITS files.
         Default is ``None``.
 
-    filenames: str, list of str, or None, optional
-        List of the names of FITS files which will be added to the collection.
-        The filenames are assumed to be in ``location``.
-        Default is ``None``.
-
     keywords : list of str, '*' or None, optional
         Keywords that should be used as column headings in the summary table.
         If the value is or includes '*' then all keywords that appear in any
@@ -56,14 +51,19 @@ class ImageFileCollection(object):
         list.
         Default is ``None``.
 
+    filenames: str, list of str, or None, optional
+        List of the names of FITS files which will be added to the collection.
+        The filenames are assumed to be in ``location``.
+        Default is ``None``.
+
     Raises
     ------
     ValueError
         Raised if keywords are set to a combination of '*' and any other
         value.
     """
-    def __init__(self, location=None, filenames=None, keywords=None,
-                 info_file=None):
+    def __init__(self, location=None, keywords=None, info_file=None,
+                 filenames=None):
         self._location = location
         self._files = []
         if location:
