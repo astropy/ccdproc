@@ -228,7 +228,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
     # subtracting the master bias
     if isinstance(master_bias, CCDData):
-        nccd = nccd.subtract(master_bias)
+        nccd = subtract_bias(nccd, master_bias)
     elif master_bias is None:
         pass
     else:
