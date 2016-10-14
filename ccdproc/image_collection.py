@@ -69,7 +69,7 @@ class ImageFileCollection(object):
         self._files = []
         if location:
             if self._filenames:
-                if type(self._filenames) is str:
+                if isinstance(self._filenames, str):
                     self._files.append(self._filenames)
                 else:
                     self._files = self._filenames
@@ -285,7 +285,7 @@ class ImageFileCollection(object):
         keywords = '*' if self._all_keywords else self.keywords
         # Re-load list of files
         if self._filenames:
-            if type(self._filenames) is str:
+            if isinstance(self._filenames, str):
                 self._files.append(self._filenames)
             else:
                 self._files = self._filenames
