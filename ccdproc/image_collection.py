@@ -15,6 +15,8 @@ from astropy.extern import six
 import warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
+from .ccddata import fits_ccddata_reader
+
 logger = logging.getLogger(__name__)
 
 __all__ = ['ImageFileCollection']
@@ -680,10 +682,16 @@ class ImageFileCollection(object):
 
             file_name = path.basename(full_path)
 
+            if 'BUNIT' in hdulist[0].header:
+                ccddata_unit = hdulist[0].header['BUNIT']
+            else:
+                ccddata_unit = 'adu'
+
             return_options = {'header': hdulist[0].header,
                               'hdu': hdulist[0],
-                              'data': hdulist[0].data}
-
+                              'data': hdulist[0].data,
+                              'ccddata': fits_ccddata_reader(full_path,
+                                                             unit=ccddata_unit)}
             try:
                 yield (return_options[return_type]  # pragma: no branch
                        if (not return_fname) else
@@ -748,3 +756,9 @@ class ImageFileCollection(object):
     data.__doc__ = _generator.__doc__.format(name='image',
                                              default_scaling='False',
                                              return_type='numpy.ndarray')
+
+    def ccddata(self, **kwd):
+        return self._generator('ccddata', **kwd)
+    ccddata.__doc__ = _generator.__doc__.format(name='CCDData',
+                                                default_scaling='True',
+                                                return_type='ccdproc.CCDData')

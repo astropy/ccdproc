@@ -231,6 +231,13 @@ class TestImageFileCollection(object):
         for img in collection.data():
             assert isinstance(img, np.ndarray)
 
+    def test_generator_ccddata(self, triage_setup):
+        from ccdproc import CCDData
+        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
+                                             keywords=['imagetyp'])
+        for img in collection.ccddata():
+            assert isinstance(img, CCDData)
+
     def test_consecutive_fiilters(self, triage_setup):
         collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
                                              keywords=['imagetyp',
