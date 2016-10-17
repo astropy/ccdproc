@@ -11,6 +11,9 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- ``ccd_process`` now copies the meta of the input when subtracting the
+  master bias. [#404]
+
 
 1.1.1 (Unreleased)
 ------------------
