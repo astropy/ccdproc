@@ -877,6 +877,7 @@ def test_ccd_process():
     # test the through ccd_process
     ccd_data = CCDData(10.0 * np.ones((100, 100)), unit=u.adu)
     ccd_data.data[:, -10:] = 2
+    ccd_data.meta['testkw'] = 100
 
     mask = np.zeros((100, 90))
 
@@ -905,3 +906,5 @@ def test_ccd_process():
                                   occd.uncertainty.array)
     np.testing.assert_array_equal(mask, occd.mask)
     assert(occd.unit == u.electron)
+    # Make sure the original keyword is still present. Regression test for #401
+    assert occd.meta['testkw'] == 100
