@@ -146,3 +146,54 @@ def distance_ratios(x, y):
     
     return np.array(ratio)
 
+
+def match_by_triangle(x, y, r, d, n_groups=2, limit=0.02):
+    """Use triangles with in the set of objects to find the matched coordinates
+
+    Parameters
+    ----------
+    x: ~numpy.ndarray
+        x-position of objects
+
+    y: ~numpy.ndarray
+        y-position of objects
+
+    r: ~numpy.ndarray
+        RA position of objects
+
+    d: ~numpy.ndarray
+        DEC position of objects
+
+    n_groups: ~numpy.ndarray
+        Number of triangles to use for the matching
+
+    limit: float
+        Tolerance for matching ratio of distances
+
+    Returns
+    -------
+    match_list: ~numpy.ndarray
+        flat array of all the permutations of the ratio between the distances 
+
+    """
+
+    # first step is to find possible matches based on 
+    # triangles that have the same ratio between their 
+    # legs.  Due to the possibiity of centroiding errors
+    # or missing data sets, we follow a two step process
+    # 
+    w_ratio =  distance_ratios(r, d)
+    for i in range(n_groups):
+        p = calc_ratio(x, y, 0, 1, i+2)
+        r = abs(w_ratio - p)
+        guess=[]
+        for m in np.where(r<limit)[0]:
+            n=get_index(m, len(ras))
+            guess.append([n[0], n[1], n[2]])
+            
+        if guess_all is None: 
+            guess_all = guess.copy() 
+        else:
+            for g in guess_all:
+                if not ((g[0], g[1]) in [(z[0], z[1]) for z in guess]):
+                    guess_all.remove(g)
