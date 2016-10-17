@@ -2,8 +2,17 @@
 1.2.0 (Unreleased)
 ------------------
 
+ccdproc has now the following additional dependency:
+
+  - scikit-image.
+
+
 New Features
 ^^^^^^^^^^^^
+
+- Added ``block_replicate``, ``block_reduce`` and ``block_average`` functions.
+  [#402]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
