@@ -650,8 +650,10 @@ class ImageFileCollection(object):
             Default is ``False``.
 
         kwd :
-            Any additional keywords are used to filter the items returned; see
-            Examples for details.
+            Any additional keywords are used to filter the items returned;
+            For instance, the key ``'unit'`` can be used to specify the unit
+            for `~ccdproc.ImageFileCollection.ccddata`. see Examples for
+            details.
 
         Returns
         -------
@@ -684,6 +686,8 @@ class ImageFileCollection(object):
 
             if 'BUNIT' in hdulist[0].header:
                 ccddata_unit = hdulist[0].header['BUNIT']
+            elif 'unit' in kwd:
+                cdddata_unit = kwd['unit']
             else:
                 ccddata_unit = 'adu'
 
