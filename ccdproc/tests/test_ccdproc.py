@@ -20,10 +20,11 @@ from ..core import *
 from ..core import _blkavg
 
 try:
-    import skimage
-    HAS_SKIMAGE = True
-except ImportError:
-    HAS_SKIMAGE = False
+    from ..core import block_reduce
+    HAS_BLOCK_X_FUNCS = True
+except:
+    HAS_BLOCK_X_FUNCS = False
+
 
 
 # test creating deviation
@@ -619,8 +620,7 @@ def test_rebin_ccddata(ccd_data, mask_data, uncertainty):
 
 
 # test block_reduce and block_replicate wrapper
-@pytest.mark.skipif(not HAS_SKIMAGE, reason="skimage package")
-@pytest.mark.skipif(raises=NameError)  # if block_reduce is not defined
+@pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
 def test_block_reduce():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),
@@ -639,8 +639,7 @@ def test_block_reduce():
     assert ccd_summed.uncertainty is None
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason="skimage package")
-@pytest.mark.skipif(raises=NameError)  # if block_average is not defined
+@pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
 def test_block_average():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),
@@ -660,8 +659,7 @@ def test_block_average():
     assert ccd_avgd.uncertainty is None
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason="skimage package")
-@pytest.mark.skipif(raises=NameError)  # if block_replicate is not defined
+@pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
 def test_block_replicate():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),
