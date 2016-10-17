@@ -85,6 +85,20 @@ class TestImageFileCollection(object):
             location=triage_setup.test_dir, keywords=['imagetyp', 'filter'])
         assert img_collection.summary is img_collection.summary_info
 
+    def test_filenames_are_set_properly(self, triage_setup):
+        fn = ['filter_no_object_bias.fit', 'filter_object_light_foo.fit']
+        img_collection = image_collection.ImageFileCollection(
+            location=triage_setup.test_dir, filenames=fn, keywords=['filter'])
+        assert img_collection.files == fn
+
+        img_collection.refresh()
+        assert img_collection.files == fn
+
+        fn = 'filter_no_object_bias.fit'
+        img_collection = image_collection.ImageFileCollection(
+            location=triage_setup.test_dir, filenames=fn, keywords=['filter'])
+        assert img_collection.files == [fn]
+
     def test_files_with_compressed(self, triage_setup):
         collection = image_collection.ImageFileCollection(
             location=triage_setup.test_dir)

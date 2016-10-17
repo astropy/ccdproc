@@ -34,7 +34,7 @@ class ImageFileCollection(object):
     Parameters
     ----------
     location : str or None, optional
-        path to directory containing FITS files.
+        Path to directory containing FITS files.
         Default is ``None``.
 
     keywords : list of str, '*' or None, optional
@@ -51,17 +51,25 @@ class ImageFileCollection(object):
         list.
         Default is ``None``.
 
+    filenames: str, list of str, or None, optional
+        List of the names of FITS files which will be added to the collection.
+        The filenames are assumed to be in ``location``.
+        Default is ``None``.
+
     Raises
     ------
     ValueError
         Raised if keywords are set to a combination of '*' and any other
         value.
     """
-    def __init__(self, location=None, keywords=None, info_file=None):
+    def __init__(self, location=None, keywords=None, info_file=None,
+                 filenames=None):
         self._location = location
+        self._filenames = filenames
         self._files = []
         if location:
-            self._files = self._fits_files_in_directory()
+            self._files = self._get_files()
+
         if self._files == []:
             warnings.warn("no FITS files in the collection.",
                           AstropyUserWarning)
@@ -271,7 +279,7 @@ class ImageFileCollection(object):
         """
         keywords = '*' if self._all_keywords else self.keywords
         # Re-load list of files
-        self._files = self._fits_files_in_directory()
+        self._files = self._get_files()
         self._summary_info = self._fits_summary(header_keywords=keywords)
 
     def sort(self, keys=None):
@@ -289,6 +297,26 @@ class ImageFileCollection(object):
         if len(self._summary_info) > 0:
             self._summary_info.sort(keys)
             self._files = list(self.summary_info['file'])
+
+    def _get_files(self):
+        """ Helper method which checks whether ``files`` should be set
+        to a subset of file names or to all file names in a directory.
+
+        Returns
+        -------
+        files : list or str
+            List of file names which will be added to the collection.
+        """
+        files = []
+        if self._filenames:
+            if isinstance(self._filenames, six.string_types):
+                files.append(self._filenames)
+            else:
+                files = self._filenames
+        else:
+            files = self._fits_files_in_directory()
+
+        return files
 
     def _dict_from_fits_header(self, file_name, input_summary=None,
                                missing_marker=None):
