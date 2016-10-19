@@ -14,6 +14,8 @@ import numpy as np
 from astropy.tests.helper import pytest, catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
+from ccdproc import CCDData
+
 from .. import image_collection
 
 _filters = []
@@ -232,15 +234,14 @@ class TestImageFileCollection(object):
             assert isinstance(img, np.ndarray)
 
     def test_generator_ccddata(self, triage_setup):
-        from ccdproc import CCDData
         collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
                                              keywords=['imagetyp'])
-        for img in collection.ccddata():
-            assert isinstance(img, CCDData)
+        for ccd in collection.ccds():
+            assert isinstance(ccd, CCDData)
 
         ccd_kwargs = {'unit': 'adu'}
-        for img in collection.ccddata(ccd_kwargs=ccd_kwargs):
-            assert isinstance(img, CCDData)
+        for ccd in collection.ccds(ccd_kwargs=ccd_kwargs):
+            assert isinstance(ccd, CCDData)
 
     def test_consecutive_fiilters(self, triage_setup):
         collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
