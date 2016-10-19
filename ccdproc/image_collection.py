@@ -603,6 +603,7 @@ class ImageFileCollection(object):
                    overwrite=False,
                    do_not_scale_image_data=True,
                    return_fname=False,
+                   ccd_kwargs={},
                    **kwd):
         """
         Generator that yields each {name} in the collection.
@@ -649,11 +650,17 @@ class ImageFileCollection(object):
             not the full path to the file.
             Default is ``False``.
 
-        kwd :
-            Any additional keywords are used to filter the items returned;
+        ccd_kwargs : dict, optional
+            Dict with parameters for `~ccdproc.ImageFileCollection.ccddata`.
             For instance, the key ``'unit'`` can be used to specify the unit
-            for `~ccdproc.ImageFileCollection.ccddata`. see Examples for
-            details.
+            of the data. If ``'unit'`` is not given and if it cannot be
+            taken in the header, then ``'adu'`` is used as the default unit.
+            See `~ccdproc.fits_ccddata_reader` for a complete list of
+            parameters that can be passed through ``ccd_kwargs``.
+
+        kwd :
+            Any additional keywords are used to filter the items returned; see
+            Examples for details.
 
         Returns
         -------
@@ -684,18 +691,17 @@ class ImageFileCollection(object):
 
             file_name = path.basename(full_path)
 
-            if 'BUNIT' in hdulist[0].header:
-                ccddata_unit = hdulist[0].header['BUNIT']
-            elif 'unit' in kwd:
-                cdddata_unit = kwd['unit']
-            else:
-                ccddata_unit = 'adu'
+            if 'unit' not in ccd_kwargs:
+                if 'BUNIT' in hdulist[0].header:
+                    ccd_kwargs['unit'] = hdulist[0].header['BUNIT']
+                else:
+                    ccd_kwargs['unit'] = 'adu'
 
             return_options = {'header': hdulist[0].header,
                               'hdu': hdulist[0],
                               'data': hdulist[0].data,
                               'ccddata': fits_ccddata_reader(full_path,
-                                                             unit=ccddata_unit)}
+                                                             **ccd_kwargs)}
             try:
                 yield (return_options[return_type]  # pragma: no branch
                        if (not return_fname) else
@@ -761,8 +767,8 @@ class ImageFileCollection(object):
                                              default_scaling='False',
                                              return_type='numpy.ndarray')
 
-    def ccddata(self, **kwd):
-        return self._generator('ccddata', **kwd)
+    def ccddata(self, ccd_kwargs={}, **kwd):
+        return self._generator('ccddata', ccd_kwargs=ccd_kwargs, **kwd)
     ccddata.__doc__ = _generator.__doc__.format(name='CCDData',
                                                 default_scaling='True',
                                                 return_type='ccdproc.CCDData')

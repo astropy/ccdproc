@@ -238,6 +238,10 @@ class TestImageFileCollection(object):
         for img in collection.ccddata():
             assert isinstance(img, CCDData)
 
+        ccd_kwargs = {'unit': 'adu'}
+        for img in collection.ccddata(ccd_kwargs=ccd_kwargs):
+            assert isinstance(img, CCDData)
+
     def test_consecutive_fiilters(self, triage_setup):
         collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
                                              keywords=['imagetyp',
