@@ -15,6 +15,8 @@ from astropy.extern import six
 import warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
+from .ccddata import fits_ccddata_reader
+
 logger = logging.getLogger(__name__)
 
 __all__ = ['ImageFileCollection']
@@ -601,6 +603,7 @@ class ImageFileCollection(object):
                    overwrite=False,
                    do_not_scale_image_data=True,
                    return_fname=False,
+                   ccd_kwargs=None,
                    **kwd):
         """
         Generator that yields each {name} in the collection.
@@ -647,6 +650,14 @@ class ImageFileCollection(object):
             not the full path to the file.
             Default is ``False``.
 
+        ccd_kwargs : dict, optional
+            Dict with parameters for `~ccdproc.fits_ccddata_reader`.
+            For instance, the key ``'unit'`` can be used to specify the unit
+            of the data. If ``'unit'`` is not given then ``'adu'`` is used as
+            the default unit.
+            See `~ccdproc.fits_ccddata_reader` for a complete list of
+            parameters that can be passed through ``ccd_kwargs``.
+
         kwd :
             Any additional keywords are used to filter the items returned; see
             Examples for details.
@@ -673,6 +684,8 @@ class ImageFileCollection(object):
         if kwd:
             self._find_keywords_by_values(**kwd)
 
+        ccd_kwargs = ccd_kwargs or {}
+
         for full_path in self._paths():
             no_scale = do_not_scale_image_data
             hdulist = fits.open(full_path,
@@ -680,14 +693,16 @@ class ImageFileCollection(object):
 
             file_name = path.basename(full_path)
 
-            return_options = {'header': hdulist[0].header,
-                              'hdu': hdulist[0],
-                              'data': hdulist[0].data}
-
+            return_options = {
+                    'header': lambda: hdulist[0].header,
+                    'hdu': lambda: hdulist[0],
+                    'data': lambda: hdulist[0].data,
+                    'ccd': lambda: fits_ccddata_reader(file_name, **ccd_kwargs)
+                    }
             try:
-                yield (return_options[return_type]  # pragma: no branch
+                yield (return_options[return_type]()  # pragma: no branch
                        if (not return_fname) else
-                       (return_options[return_type], file_name))
+                       (return_options[return_type](), file_name))
             except KeyError:
                 raise ValueError('no generator for {}'.format(return_type))
 
@@ -748,3 +763,9 @@ class ImageFileCollection(object):
     data.__doc__ = _generator.__doc__.format(name='image',
                                              default_scaling='False',
                                              return_type='numpy.ndarray')
+
+    def ccds(self, ccd_kwargs=None, **kwd):
+        return self._generator('ccd', ccd_kwargs=ccd_kwargs, **kwd)
+    ccds.__doc__ = _generator.__doc__.format(name='CCDData',
+                                             default_scaling='True',
+                                             return_type='ccdproc.CCDData')

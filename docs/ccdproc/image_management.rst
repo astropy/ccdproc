@@ -72,10 +72,10 @@ the ``sort`` method using the fits header keys in the same way you would sort a
 
     >>> ic1.sort(['object', 'filter'])
 
-Iterating over hdus, headers or data
-------------------------------------
+Iterating over hdus, headers, data, or ccds
+-------------------------------------------
 
-Three methods are provided for iterating over the images in the collection,
+Four methods are provided for iterating over the images in the collection,
 optionally filtered by keyword values.
 
 For example, to iterate over all of the I band images with exposure of
@@ -90,7 +90,7 @@ Note that the names of the arguments to ``hdus`` here are the names of FITS
 keywords in the collection and the values are the values of those keywords you
 want to select. Note also that string comparisons are not case sensitive.
 
-The other iterators are ``headers`` and ``data``.
+The other iterators are ``headers``, ``data``, and ``ccds``.
 
 All of them have the option to also provide the file name in addition to the
 hdu (or header or data)::
