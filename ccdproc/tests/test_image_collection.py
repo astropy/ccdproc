@@ -233,9 +233,9 @@ class TestImageFileCollection(object):
         for img in collection.data():
             assert isinstance(img, np.ndarray)
 
-    def test_generator_ccddata(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+    def test_generator_ccds(self, triage_setup):
+        collection = image_collection.ImageFileCollection(
+                location=triage_setup.test_dir, keywords=['imagetyp'])
         for ccd in collection.ccds():
             assert isinstance(ccd, CCDData)
 
