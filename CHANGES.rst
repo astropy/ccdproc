@@ -180,6 +180,8 @@ There was no 0.3.2 release because of a packaging error.
 New Features
 ^^^^^^^^^^^^
 
+- Add CCDData generator for ImageCollection [#405]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
