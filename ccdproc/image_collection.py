@@ -603,7 +603,7 @@ class ImageFileCollection(object):
                    overwrite=False,
                    do_not_scale_image_data=True,
                    return_fname=False,
-                   ccd_kwargs={},
+                   ccd_kwargs=None,
                    **kwd):
         """
         Generator that yields each {name} in the collection.
@@ -684,6 +684,8 @@ class ImageFileCollection(object):
         if kwd:
             self._find_keywords_by_values(**kwd)
 
+        ccd_kwargs = ccd_kwargs or {}
+
         for full_path in self._paths():
             no_scale = do_not_scale_image_data
             hdulist = fits.open(full_path,
@@ -762,7 +764,7 @@ class ImageFileCollection(object):
                                              default_scaling='False',
                                              return_type='numpy.ndarray')
 
-    def ccds(self, ccd_kwargs={}, **kwd):
+    def ccds(self, ccd_kwargs=None, **kwd):
         return self._generator('ccd', ccd_kwargs=ccd_kwargs, **kwd)
     ccds.__doc__ = _generator.__doc__.format(name='CCDData',
                                              default_scaling='True',
