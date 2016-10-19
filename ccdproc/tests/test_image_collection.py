@@ -233,12 +233,16 @@ class TestImageFileCollection(object):
         for img in collection.data():
             assert isinstance(img, np.ndarray)
 
+    def test_generator_ccds_without_unit(self, triage_setup):
+        collection = image_collection.ImageFileCollection(
+                location=triage_setup.test_dir, keywords=['imagetyp'])
+
+        with pytest.raises(ValueError):
+            ccd = collection.ccds()[0]
+
     def test_generator_ccds(self, triage_setup):
         collection = image_collection.ImageFileCollection(
                 location=triage_setup.test_dir, keywords=['imagetyp'])
-        for ccd in collection.ccds():
-            assert isinstance(ccd, CCDData)
-
         ccd_kwargs = {'unit': 'adu'}
         for ccd in collection.ccds(ccd_kwargs=ccd_kwargs):
             assert isinstance(ccd, CCDData)

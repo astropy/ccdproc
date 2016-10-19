@@ -691,14 +691,11 @@ class ImageFileCollection(object):
 
             file_name = path.basename(full_path)
 
-            if 'unit' not in ccd_kwargs:
-                ccd_kwargs['unit'] = 'adu'
-
-            return_options = {'header': hdulist[0].header,
-                              'hdu': hdulist[0],
-                              'data': hdulist[0].data,
-                              'ccd': fits_ccddata_reader(file_name,
-                                                         **ccd_kwargs)}
+            return_options = {'header': lambda: hdulist[0].header,
+                              'hdu': lambda: hdulist[0],
+                              'data': lambda: hdulist[0].data,
+                              'ccd': lambda: fits_ccddata_reader(file_name,
+                                      **ccd_kwargs)}
             try:
                 yield (return_options[return_type]  # pragma: no branch
                        if (not return_fname) else
