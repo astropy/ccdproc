@@ -697,7 +697,7 @@ class ImageFileCollection(object):
             return_options = {'header': hdulist[0].header,
                               'hdu': hdulist[0],
                               'data': hdulist[0].data,
-                              'ccd': fits_ccddata_reader(full_path,
+                              'ccd': fits_ccddata_reader(file_name,
                                                          **ccd_kwargs)}
             try:
                 yield (return_options[return_type]  # pragma: no branch
