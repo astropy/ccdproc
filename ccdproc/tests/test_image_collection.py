@@ -238,7 +238,7 @@ class TestImageFileCollection(object):
                 location=triage_setup.test_dir, keywords=['imagetyp'])
 
         with pytest.raises(ValueError):
-            ccd = collection.ccds()[0]
+            ccd = next(collection.ccds())
 
     def test_generator_ccds(self, triage_setup):
         collection = image_collection.ImageFileCollection(
