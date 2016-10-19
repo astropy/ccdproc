@@ -1,4 +1,5 @@
 numpy>=1.9
 scipy
+scikit-image
 numpydoc
 astropy>=1.0
