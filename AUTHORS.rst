@@ -36,6 +36,7 @@ Alphabetical list of contributors
 * Connor Stotts (@stottsco)
 * Ole Streicher (@olebole)
 * Erik Tollerud (@eteq)
+* Zè Vinícius (@mirca)
 * Josh Walawender (@joshwalawender)
 * Nathan Walker (@walkerna22)
 
