@@ -24,3 +24,4 @@ The documentation for this package is here:
 
   authors_for_sphinx
   changelog
+  license
