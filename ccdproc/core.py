@@ -1575,7 +1575,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         raise TypeError('ccd is not an numpy.ndarray or a CCDData object.')
 
 
-def ccdmask(ratio, ncmed=7, nlmed=7, ncsig=15, nlsig=15, lsigma=6, hsigma=6,
+def ccdmask(ratio, ncmed=7, nlmed=7, ncsig=15, nlsig=15, lsigma=9, hsigma=9,
             ngood=5):
     '''
     Uses method based on the IRAF ccdmask task to generate a mask based on the
@@ -1643,33 +1643,46 @@ def ccdmask(ratio, ncmed=7, nlmed=7, ncsig=15, nlsig=15, lsigma=6, hsigma=6,
     than that given by the ngood parameter all the pixels in the segment are
     also marked as bad.
     '''
+    mask = ~np.isfinite(ratio.data)
     medsub = ratio.data - ndimage.filters.median_filter(ratio.data,
                                                         size=(nlsig, ncsig))
 
-    nbl = int(np.floor(ratio.data.shape[0] / nlsig))
-    nbc = int(np.floor(ratio.data.shape[1] / ncsig))
-    mask = np.zeros(ratio.data.shape, dtype=np.bool)
+    nbc = int(np.ceil(ratio.data.shape[0] / ncsig))
+    nbl = int(np.ceil(ratio.data.shape[1] / nlsig))
     for i in range(nbl):
         for j in range(nbc):
-            block = medsub[i*nlsig:(i+1)*nlsig,j*ncsig:(j+1)*ncsig]
+            c1 = j*ncsig
+            c2 = (j+1)*ncsig
+            if c2 > ratio.data.shape[0]:
+                c2 = ratio.data.shape[0]
+            l1 = i*nlsig
+            l2 = (i+1)*nlsig
+            if l2 > ratio.data.shape[1]:
+                l2 = ratio.data.shape[1]
+            block = medsub[c1:c2,l1:l2]
             high = np.percentile(block.ravel(), 69.1)
             low = np.percentile(block.ravel(), 30.9)
             block_sigma = (high-low)/2.0
             block_mask = ( (block > hsigma*block_sigma) |
                            (block < -lsigma*block_sigma) )
             mblock = np.ma.MaskedArray(block, mask=block_mask)
-            csum = np.ma.sum(mblock, axis=0)
+            csum = np.ma.sum(mblock, axis=1)
             csum_sigma = np.array([np.sqrt(ncsig-x)*block_sigma
-                                   for x in np.ma.sum(mblock.mask, axis=0)])
+                                   for x in np.ma.sum(mblock.mask, axis=1)])
             colmask = ( (csum > hsigma*csum_sigma) |
                         (csum < -lsigma*csum_sigma) )
             colmask = colmask.filled(True)
-            for c,masked in enumerate(colmask):
-                block_mask[:,c] = block_mask[:,c] | np.array([masked]*nlsig)
-                for r in range(ngood, len(block_mask[:,c])):
-                    if block_mask[r-ngood,c] and block_mask[r,c]:
-                        block_mask[r-ngood:r,c] = True
-            mask[i*nlsig:(i+1)*nlsig,j*ncsig:(j+1)*ncsig] = block_mask
+            for c in range(c2-c1):
+                block_mask[c,:] = block_mask[c,:] | np.array([colmask[c]]*(l2-l1))
+                for l in range(ngood,l2-l1):
+                    if block_mask[c,l-ngood] is True and\
+                       block_mask[c,l] is True:
+                        block_mask[c,l-ngood:l] = True
+
+#                 for r in range(ngood, len(block_mask[c,:])):
+#                     if block_mask[c,r-ngood] and block_mask[c,r]:
+#                         block_mask[c,r-ngood:r] = True
+            mask[c1:c2,l1:l2] = block_mask
     return mask
 
 
