@@ -13,6 +13,8 @@ New Features
 - Added ``block_replicate``, ``block_reduce`` and ``block_average`` functions.
   [#402]
 
+- Added ``ccdmask`` function.
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
