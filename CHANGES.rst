@@ -17,6 +17,9 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- ccdprocs core functions now explicitly add HIERARCH cards. [#359, #399, #413]
+
+
 Bug Fixes
 ^^^^^^^^^
 
