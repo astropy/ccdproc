@@ -142,7 +142,7 @@ def test_ccdmask_pixels():
         19971, 20063, 19936, 19941, 19928, 19937, 19970, 19931, 20036,
         19965, 19855, 19949, 19965, 19821]]), unit='adu')
 
-    target_mask = np.zeros(flat1.shape, dtype=np.bool)
+        target_mask = np.zeros(flat1.shape, dtype=np.bool)
 
     # No bad pixels in this scenario
     ratio = flat1.divide(flat2)
@@ -169,6 +169,24 @@ def test_ccdmask_pixels():
     flat2.data[:,7] = 1
     ratio = flat1.divide(flat2)
     mask = ccdmask(ratio, ncsig=11, nlsig=15)
-    target_mask[:,7] = [True]*16
+    target_mask[:,7] = True
     assert_array_equal(mask, target_mask)
-    
+
+    mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=True)
+    assert_array_equal(mask, target_mask)
+
+    # Add bad column with gaps
+    flat1.data[0:8,2] = 65535
+    flat1.data[11:,2] = 65535
+    flat2.data[0:8,2] = 1
+    flat2.data[11:,2] = 1
+    ratio = flat1.divide(flat2)
+    mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=False)
+    target_mask[0:8,2] = True
+    target_mask[11:,2] = True
+    assert_array_equal(mask, target_mask)
+
+
+    mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=True)
+    target_mask[:,2] = True
+    assert_array_equal(mask, target_mask)
