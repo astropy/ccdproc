@@ -550,7 +550,8 @@ class CCDData(NDDataArray):
             # problems...
             # Shorten, sort of...
             short_name = _short_names[key]
-            self.meta[key] = (short_name, "Shortened name for ccdproc command")
+            self.meta['HIERARCH {0}'.format(key.upper())] = (
+                short_name, "Shortened name for ccdproc command")
             self.meta[short_name] = value
         else:
             self.meta[key] = value
