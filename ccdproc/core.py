@@ -1588,31 +1588,34 @@ def ccdmask(ratio, findbadcolumns=False, ncmed=7, nlmed=7, ncsig=15, nlsig=15,
         Data to used to form mask.  Typically this is a ratio of two flat field
         images.
 
-    ncmed, nlmed: int, optional
+    ncmed, nlmed: `int`, optional
         The column and line size of a moving median rectangle used to estimate
         the uncontaminated local signal. The column median size should be at
         least 3 pixels to span single bad columns.
 
-    ncsig, nlsig: int, optional
+    ncsig, nlsig: `int`, optional
         The column and line size of regions used to estimate the uncontaminated
         local sigma using a percentile. The size of the box should contain of
         order 100 pixels or more.
 
-    lsigma, hsigma: float, optional
+    lsigma, hsigma: `float`, optional
         Positive sigma factors to use for selecting pixels below and above the
         median level based on the local percentile sigma.
     
-    findbadcolumns: bool, optional
+    findbadcolumns: `bool`, optional
         If set to True, the code will search for bad column sections.  Note that
         this treats columns as special and breaks symmetry between lines and
         columns and so is likely only appropriate for detectors which have
         readout directions.
     
-    ngood: int, optional
+    ngood: `int`, optional
         Gaps of undetected pixels along the column direction of length less than
         this amount are also flagged as bad pixels.
 
 
+    Notes
+    -----
+    Similar implementation to IRAF's ccdmask task.
     The Following documentation is copied directly from:
     http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?ccdmask
 
@@ -1649,6 +1652,12 @@ def ccdmask(ratio, findbadcolumns=False, ncmed=7, nlmed=7, ncsig=15, nlsig=15,
     of unflagged pixels between bad pixels. If the length of a segment is less
     than that given by the ngood parameter all the pixels in the segment are
     also marked as bad.
+
+
+    Returns
+    -------
+    mask : `numpy.ndarray`
+        A boolean ndarray with the bad pixel positions identified.
     '''
     mask = ~np.isfinite(ratio.data)
     medsub = ratio.data - ndimage.filters.median_filter(ratio.data,
