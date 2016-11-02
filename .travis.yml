@@ -30,35 +30,34 @@ env:
         - CONDA_CHANNELS='astropy-ci-extras astropy'
 
     matrix:
-        # Make sure that egg_info works without dependencies
+
         - SETUP_CMD='egg_info'
-        # Try all python versions with the latest numpy
-        - SETUP_CMD='test'
 
 matrix:
     include:
 
-        # Do a coverage test in Python 2.
+        # Try Astropy/NumPy development versions. This requires them to be
+        # compiled during setup which takes some time.
+        - python: 3.5
+          env: ASTROPY_VERSION=development NUMPY_VERSION=dev
+
+        # Do coverage tests for both latest Python versions
+        - python: 3.5
+          env: SETUP_CMD='test --coverage'
+
         - python: 2.7
           env: SETUP_CMD='test --coverage'
 
-        # Check for sphinx doc build warnings - we do this first because it
-        # may run for a long time
+        # Check for sphinx doc build warnings
         - python: 2.7
           env: SETUP_CMD='build_sphinx -w'
-
-        # Try Astropy development version
-        - python: 2.7
-          env: ASTROPY_VERSION=development
-        - python: 3.5
-          env: ASTROPY_VERSION=development
 
         # Check compatibility with the current astropy LTS release
         - python: 2.7
           env: ASTROPY_VERSION=LTS
 
-        # Try older numpy versions
-        - python: 2.7
+        # Try older numpy, python versions
+        - python: 3.4
           env: NUMPY_VERSION=1.10
 
         # Try numpy pre-release version. This runs only when a pre-release
