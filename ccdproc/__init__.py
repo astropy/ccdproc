@@ -13,6 +13,7 @@ from ._astropy_init import *
 
 # set up namespace, unless we are in setup...
 if not _ASTROPY_SETUP_:
+    from .support_nddata_patched import *
     from .core import *
     from .ccddata import *
     from .combiner import *
