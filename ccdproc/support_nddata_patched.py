@@ -68,6 +68,11 @@ def support_nddata(_func=None, accepts=NDData,
         .. note::
            Must be ``None`` if ``repack=False``.
 
+        .. warning::
+           If the decorated function should work with `CCDData`, you *probably*
+           need to specify ``keeps=['unit']``, unless the function returns a
+           `~astropy.units.Quantity` or CCDData-like object with unit.
+
     attribute_argument_mapping :
         Keyword parameters that optionally indicate which function argument
         should be interpreted as which attribute on the input. By default
@@ -87,20 +92,19 @@ def support_nddata(_func=None, accepts=NDData,
     for more hints checkout their documentation or have a look at the
     ``ccdproc.core.py`` code.
     """
-    if (returns is not None or keeps is not None or
-            attribute_argument_mapping) and not repack:
-        raise ValueError('returns or keep should only be set if repack=True')
+    if (returns is not None or keeps is not None) and not repack:
+        raise ValueError('returns or keep should only be set if repack=True.')
+    elif returns is None and repack:
+        raise ValueError('returns should be set if repack=True.')
     else:
         returns = [] if returns is None else returns
         keeps = [] if keeps is None else keeps
-    if returns is None and repack:
-        raise ValueError('returns should be set if repack=True')
 
     # Short version to avoid the long variable name later.
     attr_arg_map = attribute_argument_mapping
     if any(keep in returns for keep in keeps):
-        raise TypeError("cannot specify the same attribute in `returns` and "
-                        "`keeps`.")
+        raise ValueError("cannot specify the same attribute in `returns` and "
+                         "`keeps`.")
     all_returns = returns + keeps
 
     def support_nddata_decorator(func):
@@ -109,16 +113,16 @@ def support_nddata(_func=None, accepts=NDData,
         func_kwargs = []
         for param_name, param in six.iteritems(signature(func).parameters):
             if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
-                raise ValueError("func may not have *args or **kwargs")
+                raise ValueError("func may not have *args or **kwargs.")
             elif param.default == param.empty:
-                func_args.append(param.name)
+                func_args.append(param_name)
             else:
-                func_kwargs.append(param.name)
+                func_kwargs.append(param_name)
 
         # First argument should be data
         if (not func_args or func_args[0] != attr_arg_map.get('data', 'data')):
             raise ValueError("Can only wrap functions whose first positional "
-                             "argument is `{0}`"
+                             "argument is `{0}`."
                              "".format(attr_arg_map.get('data', 'data')))
 
         # Get all supported properties that match a parameter in the signature.
@@ -158,7 +162,7 @@ def support_nddata(_func=None, accepts=NDData,
             input_data = data
             if not unpack and isinstance(data, NDData):
                 raise TypeError("Only NDData sub-classes that inherit from {0}"
-                                " can be used by this function"
+                                " can be used by this function."
                                 "".format(accepts.__name__))
 
             # If data is an NDData instance, we can try and find properties
@@ -168,21 +172,23 @@ def support_nddata(_func=None, accepts=NDData,
                 for prop in supported_properties:
                     # We only need to do something if the property exists on
                     # the NDData object
-                    if not hasattr(data, prop):
+                    try:
+                        value = getattr(data, prop)
+                    except AttributeError:
                         continue
-                    value = getattr(data, prop)
                     # Skip if the property exists but is None or empty.
-                    if prop == 'meta' and len(value) == 0:
+                    if prop == 'meta' and not value:
                         continue
                     if prop != 'meta' and value is None:
                         continue
                     # Warn if the property is set and explicitly given
                     propmatch = attr_arg_map.get(prop, prop)
-                    if prop in kwargs and kwargs[prop] is not None:
+                    if propmatch in kwargs and kwargs[propmatch] is not None:
                         warnings.warn(
                             "Property {0} has been passed explicitly and as an"
-                            " NDData property, using explicitly specified "
-                            "value".format(prop), AstropyUserWarning)
+                            " NDData property {1}, using explicitly specified "
+                            "value.".format(propmatch, prop),
+                            AstropyUserWarning)
                         continue
                     # Otherwise use the property as input for the function.
                     kwargs[propmatch] = value
@@ -192,9 +198,15 @@ def support_nddata(_func=None, accepts=NDData,
             result = func(data, *args, **kwargs)
 
             if unpack and repack:
-                if len(returns) > 1 and len(returns) != len(result):
-                    raise ValueError("Function did not return the expected "
-                                     "number of arguments")
+                # If there are multiple required returned arguments make sure
+                # the result is a tuple (because we don't want to unpack
+                # numpy arrays or compare to their length, never!) and has the
+                # same length.
+                if len(returns) > 1:
+                    if (not isinstance(result, tuple) or
+                            len(returns) != len(result)):
+                        raise ValueError("Function did not return the "
+                                         "expected number of arguments.")
                 elif len(returns) == 1:
                     result = [result]
                 if keeps is not None:
