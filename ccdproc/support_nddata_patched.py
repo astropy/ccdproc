@@ -7,6 +7,8 @@ from copy import deepcopy
 from itertools import islice
 import warnings
 
+import numpy as np
+
 from astropy.utils import wraps
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.compat.funcsigs import signature
@@ -97,8 +99,12 @@ def support_nddata(_func=None, accepts=NDData,
     elif returns is None and repack:
         raise ValueError('returns should be set if repack=True.')
     else:
-        returns = [] if returns is None else returns
-        keeps = [] if keeps is None else keeps
+        # Use empty lists for returns and keeps so we don't need to check
+        # if any of those is None later on.
+        if returns is None:
+            returns = []
+        if keeps is None:
+            keeps = []
 
     # Short version to avoid the long variable name later.
     attr_arg_map = attribute_argument_mapping
@@ -109,9 +115,9 @@ def support_nddata(_func=None, accepts=NDData,
 
     def support_nddata_decorator(func):
         # Find out args and kwargs
-        func_args = []
-        func_kwargs = []
-        for param_name, param in six.iteritems(signature(func).parameters):
+        func_args, func_kwargs = [], []
+        sig = signature(func).parameters
+        for param_name, param in six.iteritems(sig):
             if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
                 raise ValueError("func may not have *args or **kwargs.")
             elif param.default == param.empty:
@@ -120,7 +126,7 @@ def support_nddata(_func=None, accepts=NDData,
                 func_kwargs.append(param_name)
 
         # First argument should be data
-        if (not func_args or func_args[0] != attr_arg_map.get('data', 'data')):
+        if not func_args or func_args[0] != attr_arg_map.get('data', 'data'):
             raise ValueError("Can only wrap functions whose first positional "
                              "argument is `{0}`."
                              "".format(attr_arg_map.get('data', 'data')))
@@ -179,17 +185,32 @@ def support_nddata(_func=None, accepts=NDData,
                     # Skip if the property exists but is None or empty.
                     if prop == 'meta' and not value:
                         continue
-                    if prop != 'meta' and value is None:
+                    elif value is None:
                         continue
                     # Warn if the property is set and explicitly given
                     propmatch = attr_arg_map.get(prop, prop)
-                    if propmatch in kwargs and kwargs[propmatch] is not None:
-                        warnings.warn(
-                            "Property {0} has been passed explicitly and as an"
-                            " NDData property {1}, using explicitly specified "
-                            "value.".format(propmatch, prop),
-                            AstropyUserWarning)
-                        continue
+                    # Check if the property was explicitly given and issue a
+                    # Warning if it is.
+                    if propmatch in kwargs:
+                        # If it's in the func_args it's trivial but if it was
+                        # in the func_kwargs we need to compare it to the
+                        # default.
+                        # FIXME: This obviously fails if the explicitly given
+                        # value is identical to the default. No idea how that
+                        # could be achieved without replacing the signature or
+                        # parts of it. That would have other drawbacks like
+                        # making double-decorating nearly impossible and
+                        # violating the sphinx-documentation for that function.
+                        if (propmatch in func_args or
+                                (propmatch in func_kwargs and
+                                 not np.array_equal(kwargs[propmatch],
+                                                    sig[propmatch].default))):
+                            warnings.warn(
+                                "Property {0} has been passed explicitly and "
+                                "as an NDData property {1}, using explicitly "
+                                "specified value.".format(propmatch, prop),
+                                AstropyUserWarning)
+                            continue
                     # Otherwise use the property as input for the function.
                     kwargs[propmatch] = value
                 # Finally, replace data by the data itself

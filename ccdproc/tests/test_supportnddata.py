@@ -118,6 +118,16 @@ def test_accepting_property_normal():
     assert test(ndd, mask=10) == 10
 
 
+def test_accepting_property_notexist():
+    # Accepts flags attribute but NDData doesn't have one
+    @support_nddata
+    def test(data, flags=10):
+        return flags
+
+    ndd = NDData(np.ones((3, 3)))
+    test(ndd)
+
+
 def test_accepting_property_translated():
     # Accepts a error attribute and we want to pass in uncertainty!
     @support_nddata(mask='masked')
