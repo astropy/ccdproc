@@ -4,11 +4,13 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 from copy import deepcopy
+from itertools import islice
 import warnings
 
 from astropy.utils import wraps
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.utils.compat.funcsigs import signature
+from astropy.extern import six
 from astropy.extern.six.moves import zip
 
 from astropy.nddata import NDData
@@ -17,7 +19,8 @@ __all__ = ['support_nddata']
 
 
 # All supported properties except "data" which is mandatory!
-SUPPORTED_PROPERTIES = ['uncertainty', 'mask', 'meta', 'unit', 'wcs']
+SUPPORTED_PROPERTIES = ['data', 'uncertainty', 'mask', 'meta', 'unit', 'wcs',
+                        'flags']
 
 
 def support_nddata(_func=None, accepts=NDData,
@@ -87,25 +90,24 @@ def support_nddata(_func=None, accepts=NDData,
     if (returns is not None or keeps is not None or
             attribute_argument_mapping) and not repack:
         raise ValueError('returns or keep should only be set if repack=True')
+    else:
+        returns = [] if returns is None else returns
+        keeps = [] if keeps is None else keeps
     if returns is None and repack:
         raise ValueError('returns should be set if repack=True')
 
-    # Short version so the
+    # Short version to avoid the long variable name later.
     attr_arg_map = attribute_argument_mapping
-    if keeps is not None:
-        all_returns = returns + keeps
-        if any(keep in returns for keep in keeps):
-            raise TypeError("cannot specify the same attribute in `returns` "
-                            "and `keeps`.")
-    else:
-        keeps = []
+    if any(keep in returns for keep in keeps):
+        raise TypeError("cannot specify the same attribute in `returns` and "
+                        "`keeps`.")
+    all_returns = returns + keeps
 
     def support_nddata_decorator(func):
         # Find out args and kwargs
-        sig = signature(func)
         func_args = []
         func_kwargs = []
-        for param in sig.parameters.values():
+        for param_name, param in six.iteritems(signature(func).parameters):
             if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
                 raise ValueError("func may not have *args or **kwargs")
             elif param.default == param.empty:
@@ -114,11 +116,41 @@ def support_nddata(_func=None, accepts=NDData,
                 func_kwargs.append(param.name)
 
         # First argument should be data
-        if (len(func_args) == 0 or
-                func_args[0] != attr_arg_map.get('data', 'data')):
+        if (not func_args or func_args[0] != attr_arg_map.get('data', 'data')):
             raise ValueError("Can only wrap functions whose first positional "
                              "argument is `{0}`"
                              "".format(attr_arg_map.get('data', 'data')))
+
+        # Get all supported properties that match a parameter in the signature.
+        supported_properties = [prop for prop in islice(SUPPORTED_PROPERTIES, 1, None)
+                                if attr_arg_map.get(prop, prop) in func_kwargs]
+
+        """
+        # Create a Table to store the information about the wrapped function.
+        # Can be used to create a Table that can be inserted in the docstring.
+        # Note: Creating and writing an astropy Table takes very long so
+        #       creating the docstring at import time may be a severe time
+        #       consumer...
+        #       Maybe worth investigating if some templating engine might
+        #       generate them faster.
+        from astropy.io.ascii import RST
+        from astropy.table import Table
+
+        _names = SUPPORTED_PROPERTIES
+        _used, _calc, _copy = [], [], []
+        for prop in _names:
+            _used.append('X' if prop in supported_properties else '--')
+            _calc.append('X' if prop in returns else '--')
+            _copy.append('X' if prop in keeps else '--')
+        # Data is always used!
+        _used[0] = 'X'
+        _tbl = Table([_names, _used, _calc, _copy],
+                     names=('attribute', 'used', 'calculated', 'copied'))
+        _tbl = ascii.RST().write(_tbl)
+        _doc = '\n'.join(_tbl)
+        print(_doc)  # print to get the nice output.
+        # # End of Table creation.
+        """
 
         @wraps(func)
         def wrapper(data, *args, **kwargs):
@@ -133,23 +165,27 @@ def support_nddata(_func=None, accepts=NDData,
             # that can be passed as kwargs.
             if unpack:
                 # We loop over a list of pre-defined properties
-                for prop in SUPPORTED_PROPERTIES:
+                for prop in supported_properties:
                     # We only need to do something if the property exists on
                     # the NDData object
-                    if hasattr(data, prop):
-                        value = getattr(data, prop)
-                        if ((prop == 'meta' and len(value) > 0) or
-                                (prop != 'meta' and value is not None)):
-                            propmatch = attr_arg_map.get(prop, prop)
-                            if propmatch in func_kwargs:
-                                if prop in kwargs and kwargs[prop] is not None:
-                                    warnings.warn(
-                                        "Property {0} has been passed "
-                                        "explicitly and as an NDData property "
-                                        ", using explicitly specified value"
-                                        "".format(prop), AstropyUserWarning)
-                                else:
-                                    kwargs[propmatch] = value
+                    if not hasattr(data, prop):
+                        continue
+                    value = getattr(data, prop)
+                    # Skip if the property exists but is None or empty.
+                    if prop == 'meta' and len(value) == 0:
+                        continue
+                    if prop != 'meta' and value is None:
+                        continue
+                    # Warn if the property is set and explicitly given
+                    propmatch = attr_arg_map.get(prop, prop)
+                    if prop in kwargs and kwargs[prop] is not None:
+                        warnings.warn(
+                            "Property {0} has been passed explicitly and as an"
+                            " NDData property, using explicitly specified "
+                            "value".format(prop), AstropyUserWarning)
+                        continue
+                    # Otherwise use the property as input for the function.
+                    kwargs[propmatch] = value
                 # Finally, replace data by the data itself
                 data = data.data
 
@@ -171,7 +207,6 @@ def support_nddata(_func=None, accepts=NDData,
                 return input_data.__class__(resultdata, **resultkwargs)
             else:
                 return result
-
         return wrapper
 
     # If _func is set, this means that the decorator was used without
