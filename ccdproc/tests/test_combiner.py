@@ -362,6 +362,11 @@ def test_average_combine_uncertainty(ccd_data):
     uncert_ref = np.sum(c.data_arr, 0) / np.sqrt(3)
     np.testing.assert_array_equal(ccd.uncertainty.array, uncert_ref)
 
+    # Compare this also to the "combine" call
+    ccd2 = combine(ccd_list, method='average', combine_uncertainty_function=np.sum)
+    np.testing.assert_array_equal(ccd.data, ccd2.data)
+    np.testing.assert_array_equal(ccd.uncertainty.array, ccd2.uncertainty.array)
+
 #test the optional uncertainty function in median_combine
 def test_median_combine_uncertainty(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
@@ -369,6 +374,11 @@ def test_median_combine_uncertainty(ccd_data):
     ccd = c.median_combine(uncertainty_func=np.sum)
     uncert_ref = np.sum(c.data_arr, 0) / np.sqrt(3)
     np.testing.assert_array_equal(ccd.uncertainty.array, uncert_ref)
+
+    # Compare this also to the "combine" call
+    ccd2 = combine(ccd_list, method='median', combine_uncertainty_function=np.sum)
+    np.testing.assert_array_equal(ccd.data, ccd2.data)
+    np.testing.assert_array_equal(ccd.uncertainty.array, ccd2.uncertainty.array)
 
 
 # test resulting uncertainty is corrected for the number of images
