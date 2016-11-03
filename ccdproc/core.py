@@ -1585,11 +1585,11 @@ def ccdmask(ratio, findbadcolumns=False, ncmed=7, nlmed=7, ncsig=15, nlsig=15,
     Parameters
     ----------
     ratio : `~ccdproc.CCDData`
-        Data to used to form mask.  Typically this is a ratio of two flat field
-        images.
+        Data to used to form mask.  Typically this is the ratio of two flat
+        field images.
 
     ncmed, nlmed: `int`, optional
-        The column and line size of a moving median rectangle used to estimate
+        The column and line size of the moving median rectangle used to estimate
         the uncontaminated local signal. The column median size should be at
         least 3 pixels to span single bad columns.
 
@@ -1659,23 +1659,20 @@ def ccdmask(ratio, findbadcolumns=False, ncmed=7, nlmed=7, ncsig=15, nlsig=15,
     mask : `numpy.ndarray`
         A boolean ndarray with the bad pixel positions identified.
     '''
+    if ratio.data.ndim !=2:
+        return None
     mask = ~np.isfinite(ratio.data)
     medsub = ratio.data - ndimage.filters.median_filter(ratio.data,
                                                         size=(nlsig, ncsig))
-
     nl, nc = ratio.data.shape
     nbl = int(np.ceil(ratio.data.shape[0] / nlsig))
     nbc = int(np.ceil(ratio.data.shape[1] / ncsig))
     for i in range(nbl):
         for j in range(nbc):
             l1 = i*nlsig
-            l2 = (i+1)*nlsig
-            if l2 > nl:
-                l2 = nl
+            l2 = min((i+1)*nlsig, nl)
             c1 = j*ncsig
-            c2 = (j+1)*ncsig
-            if c2 > nc:
-                c2 = nc
+            c2 = min((j+1)*ncsig, nc)
             block = medsub[l1:l2,c1:c2]
             high = np.percentile(block.ravel(), 69.1)
             low = np.percentile(block.ravel(), 30.9)
@@ -1690,7 +1687,7 @@ def ccdmask(ratio, findbadcolumns=False, ncmed=7, nlmed=7, ncsig=15, nlsig=15,
                                    if c2-c1-x > 0 else 0
                                    for x in np.ma.sum(mblock.mask, axis=0)])
                 colmask = ( (csum.filled(1) > hsigma*csum_sigma) |
-                            (csum.filled(1)< -lsigma*csum_sigma) )
+                            (csum.filled(1) < -lsigma*csum_sigma) )
                 for c in range(c2-c1):
                     block_mask[:,c] = block_mask[:,c] | np.array([colmask[c]]*(l2-l1))
 
