@@ -18,6 +18,8 @@ New Features
 
 - Added ``median_filter`` function. [#420]
 
+- Added ``ccdmask`` function. [#414]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
