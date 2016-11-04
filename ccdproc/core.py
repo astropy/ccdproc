@@ -1575,8 +1575,8 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         raise TypeError('ccd is not an numpy.ndarray or a CCDData object.')
 
 
-def ccdmask(ratio, findbadcolumns=False, ncmed=7, nlmed=7, ncsig=15, nlsig=15,
-            lsigma=9, hsigma=9, ngood=5):
+def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
+            ncsig=15, nlsig=15, lsigma=9, hsigma=9, ngood=5):
     '''
     Uses method based on the IRAF ccdmask task to generate a mask based on the
     given input.
@@ -1663,34 +1663,40 @@ def ccdmask(ratio, findbadcolumns=False, ncmed=7, nlmed=7, ncsig=15, nlsig=15,
     mask = ~np.isfinite(ratio.data)
     medsub = ratio.data - ndimage.filters.median_filter(ratio.data,
                                                         size=(nlsig, ncsig))
-    nl, nc = ratio.data.shape
-    nbl = int(np.ceil(ratio.data.shape[0] / nlsig))
-    nbc = int(np.ceil(ratio.data.shape[1] / ncsig))
-    for i in range(nbl):
-        for j in range(nbc):
-            l1 = i*nlsig
-            l2 = min((i+1)*nlsig, nl)
-            c1 = j*ncsig
-            c2 = min((j+1)*ncsig, nc)
-            block = medsub[l1:l2,c1:c2]
-            high = np.percentile(block.ravel(), 69.1)
-            low = np.percentile(block.ravel(), 30.9)
-            block_sigma = (high-low)/2.0
-            block_mask = ( (block > hsigma*block_sigma) |
-                           (block < -lsigma*block_sigma) )
-            mblock = np.ma.MaskedArray(block, mask=block_mask)
 
-            if findbadcolumns:
-                csum = np.ma.sum(mblock, axis=0)
-                csum_sigma = np.ma.MaskedArray([np.sqrt(c2-c1-x)*block_sigma
-                                   if c2-c1-x > 0 else 0
-                                   for x in np.ma.sum(mblock.mask, axis=0)])
-                colmask = ( (csum.filled(1) > hsigma*csum_sigma) |
-                            (csum.filled(1) < -lsigma*csum_sigma) )
-                for c in range(c2-c1):
-                    block_mask[:,c] = block_mask[:,c] | np.array([colmask[c]]*(l2-l1))
+    if byblocks is True:
+        nl, nc = ratio.data.shape
+        nbl = int(np.ceil(ratio.data.shape[0] / nlsig))
+        nbc = int(np.ceil(ratio.data.shape[1] / ncsig))
+        for i in range(nbl):
+            for j in range(nbc):
+                l1 = i*nlsig
+                l2 = min((i+1)*nlsig, nl)
+                c1 = j*ncsig
+                c2 = min((j+1)*ncsig, nc)
+                block = medsub[l1:l2,c1:c2]
+                high = np.percentile(block.ravel(), 69.1)
+                low = np.percentile(block.ravel(), 30.9)
+                block_sigma = (high-low)/2.0
+                block_mask = ( (block > hsigma*block_sigma) |
+                               (block < -lsigma*block_sigma) )
+                mblock = np.ma.MaskedArray(block, mask=block_mask)
 
-            mask[l1:l2,c1:c2] = block_mask
+                if findbadcolumns:
+                    csum = np.ma.sum(mblock, axis=0)
+                    csum[csum<=0] = 0
+                    csum_sigma = MaskedArray(np.sqrt(c2-c1-csum))
+                    colmask = ( (csum.filled(1) > hsigma*csum_sigma) |
+                                (csum.filled(1) < -lsigma*csum_sigma) )
+                    for c in range(c2-c1):
+                        block_mask[:,c] = block_mask[:,c] | np.array([colmask[c]]*(l2-l1))
+
+                mask[l1:l2,c1:c2] = block_mask
+    else:
+        high = ndimage.percentile_filter(medsub, 69.1, size=(nlsig, ncsig))
+        low = ndimage.percentile_filter(medsub, 30.9, size=(nlsig, ncsig))
+        sigmas = (high-low)/2.0
+        mask = ( (medsub > hsigma*sigmas) | (medsub < -lsigma*sigmas) )
 
     if findbadcolumns:
         for c in range(0,nc):
