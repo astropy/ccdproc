@@ -1647,16 +1647,16 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
     medsub = ratio.data - ndimage.filters.median_filter(ratio.data,
                                                         size=(nlsig, ncsig))
 
+    nlines, ncols = ratio.data.shape
     if byblocks is True:
-        nl, nc = ratio.data.shape
-        nbl = int(np.ceil(ratio.data.shape[0] / nlsig))
-        nbc = int(np.ceil(ratio.data.shape[1] / ncsig))
-        for i in range(nbl):
-            for j in range(nbc):
+        nlinesblock = int(np.ceil(nlines / nlsig))
+        ncolsblock = int(np.ceil(ncols / ncsig))
+        for i in range(nlinesblock):
+            for j in range(ncolsblock):
                 l1 = i*nlsig
-                l2 = min((i+1)*nlsig, nl)
+                l2 = min((i+1)*nlsig, nlines)
                 c1 = j*ncsig
-                c2 = min((j+1)*ncsig, nc)
+                c2 = min((j+1)*ncsig, ncols)
                 block = medsub[l1:l2,c1:c2]
                 high = np.percentile(block.ravel(), 69.1)
                 low = np.percentile(block.ravel(), 30.9)
@@ -1685,13 +1685,13 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         # Loop through columns and look for short segments (<ngood pixels long)
         # which are unmasked, but are surrounded by masked pixels and mask them
         # under the assumption that the column region is bad.
-        for c in range(0,nc):
-            for l in range(0,nl-ngood-1):
-                if mask[l,c] == True:
+        for col in range(0,ncols):
+            for line in range(0,nlines-ngood-1):
+                if mask[line,col] == True:
                     for i in range(2,ngood+2):
-                        lend = l+i
-                        if (mask[lend,c] == True) and not np.all(mask[l:lend+1,c]):
-                            mask[l:lend,c] = True
+                        lend = line+i
+                        if (mask[lend,col] == True) and not np.all(mask[line:lend+1,col]):
+                            mask[line:lend,col] = True
     nmasked = np.sum(np.array(mask.ravel(), dtype=np.int))
     return mask
 
