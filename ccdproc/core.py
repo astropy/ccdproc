@@ -1668,7 +1668,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                 if findbadcolumns:
                     csum = np.ma.sum(mblock, axis=0)
                     csum[csum<=0] = 0
-                    csum_sigma = MaskedArray(np.sqrt(c2-c1-csum))
+                    csum_sigma = np.ma.MaskedArray(np.sqrt(c2-c1-csum))
                     colmask = ( (csum.filled(1) > hsigma*csum_sigma) |
                                 (csum.filled(1) < -lsigma*csum_sigma) )
                     for c in range(c2-c1):
