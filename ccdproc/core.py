@@ -1704,8 +1704,9 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
             for l in range(0,nl-ngood-1):
                 if mask[l,c] == True:
                     for i in range(2,ngood+2):
-                        if (mask[l+i,c] == True) and not np.all(mask[l:l+i+1,c]):
-                            mask[l:l+i,c] = True
+                        lend = l+i
+                        if (mask[lend,c] == True) and not np.all(mask[l:lend+1,c]):
+                            mask[l:lend,c] = True
     nmasked = np.sum(np.array(mask.ravel(), dtype=np.int))
     return mask
 
