@@ -1682,6 +1682,9 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         mask = ( (medsub > hsigma*sigmas) | (medsub < -lsigma*sigmas) )
 
     if findbadcolumns:
+        # Loop through columns and look for short segments (<ngood pixels long)
+        # which are unmasked, but are surrounded by masked pixels and mask them
+        # under the assumption that the column region is bad.
         for c in range(0,nc):
             for l in range(0,nl-ngood-1):
                 if mask[l,c] == True:
