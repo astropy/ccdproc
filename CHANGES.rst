@@ -10,6 +10,9 @@ ccdproc has now the following additional dependency:
 New Features
 ^^^^^^^^^^^^
 
+- Add an optional attribute named ``filenames`` to ``ImageFileCollection``,
+  so that users can pass a list of FITS files to the collection. [#374]
+
 - Added ``block_replicate``, ``block_reduce`` and ``block_average`` functions.
   [#402]
 
@@ -19,28 +22,9 @@ Other Changes and Additions
 
 - ccdprocs core functions now explicitly add HIERARCH cards. [#359, #399, #413]
 
-
-Bug Fixes
-^^^^^^^^^
-
-- ``ccd_process`` now copies the meta of the input when subtracting the
-  master bias. [#404]
-
-
-1.1.1 (Unreleased)
-------------------
-
-New Features
-^^^^^^^^^^^^
-
-- Add an optional attribute named ``filenames`` to ``ImageFileCollection``,
-  so that users can pass a list of FITS files to the collection. [#374]
-
-Other Changes and Additions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 - ``combine`` now accepts a ``dtype`` argument which is passed to
   ``Combiner.__init__``. [#391, #392]
+
 
 Bug Fixes
 ^^^^^^^^^
@@ -48,6 +32,9 @@ Bug Fixes
 - The default dtype of the ``combine``-result doesn't depend on the dtype
   of the first CCDData anymore. This also corrects the memory consumption
   calculation. [#391, #392]
+
+- ``ccd_process`` now copies the meta of the input when subtracting the
+  master bias. [#404]
 
 
 1.1.0 (2016-08-01)
