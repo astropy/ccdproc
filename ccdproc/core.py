@@ -1666,11 +1666,11 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                                                         size=(nlsig, ncsig))
 
     nlines, ncols = ratio.data.shape
-    if byblocks is True:
+    if byblocks:
         nlinesblock = int(np.ceil(nlines / nlsig))
         ncolsblock = int(np.ceil(ncols / ncsig))
-        for i in range(nlinesblock):
-            for j in range(ncolsblock):
+        for i in six.moves.range(nlinesblock):
+            for j in six.moves.range(ncolsblock):
                 l1 = i*nlsig
                 l2 = min((i+1)*nlsig, nlines)
                 c1 = j*ncsig
@@ -1689,7 +1689,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                     csum_sigma = np.ma.MaskedArray(np.sqrt(c2-c1-csum))
                     colmask = ( (csum.filled(1) > hsigma*csum_sigma) |
                                 (csum.filled(1) < -lsigma*csum_sigma) )
-                    for c in range(c2-c1):
+                    for c in six.moves.range(c2-c1):
                         block_mask[:,c] = block_mask[:,c] | np.array([colmask[c]]*(l2-l1))
 
                 mask[l1:l2,c1:c2] = block_mask
@@ -1703,10 +1703,10 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         # Loop through columns and look for short segments (<ngood pixels long)
         # which are unmasked, but are surrounded by masked pixels and mask them
         # under the assumption that the column region is bad.
-        for col in range(0,ncols):
-            for line in range(0,nlines-ngood-1):
+        for col in six.moves.range(0,ncols):
+            for line in six.moves.range(0,nlines-ngood-1):
                 if mask[line,col] == True:
-                    for i in range(2,ngood+2):
+                    for i in six.moves.range(2,ngood+2):
                         lend = line+i
                         if (mask[lend,col] == True) and not np.all(mask[line:lend+1,col]):
                             mask[line:lend,col] = True
