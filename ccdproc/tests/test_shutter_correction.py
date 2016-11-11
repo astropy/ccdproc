@@ -12,7 +12,7 @@ from ..core import *
 from ..shutter_correction import *
 
 
-def model_image(exptime=1.0, bias=0.0, shape=(16,32), gradient=0.050):
+def model_image(exptime=1.0, bias=0.0, shape=(16,32), gradient=0.005):
     '''
     Generate simple model image data given an exposure time.
     '''
@@ -30,6 +30,28 @@ def model_image(exptime=1.0, bias=0.0, shape=(16,32), gradient=0.050):
     im = CCDData(data, unit='adu',
                  meta={'EXPTIME': exptime, 'GAIN': 1.0})
     return im, correct_im
+
+
+def test_GaladiEnriqez1995():
+    input_data = [model_image(exptime=e) for e in moves.range(2,11,2)]
+    flats = [x[0] for x in input_data]
+    correct = [x[1] for x in input_data]
+    shutter_map = GaladiEnriqez1995(flats)
+    for i in range(len(flats)):
+        repaired = apply_shutter_map(flats[i], shutter_map, exptimekey='EXPTIME')
+        assert_allclose(repaired.data, correct[i].data, rtol=1e-3)
+
+
+def test_GaladiEnriqez1995_with_bias():
+    shutter_bias = 0.125
+    input_data = [model_image(exptime=e, bias=shutter_bias)
+                  for e in moves.range(2,11,2)]
+    flats = [x[0] for x in input_data]
+    correct = [x[1] for x in input_data]
+    shutter_map = GaladiEnriqez1995(flats)
+    for i in range(len(flats)):
+        repaired = apply_shutter_map(flats[i], shutter_map, exptimekey='EXPTIME')
+        assert_allclose(repaired.data, correct[i].data, rtol=1e-3)
 
 
 def test_fit_shutter_bias():
@@ -51,17 +73,17 @@ def test_fit_shutter_bias_with_normalizer():
     assert_almost_equal(measured_bias, shutter_bias, decimal=2)
 
 
-def test_Surma1993_algorithm():
+def test_Surma1993():
     input_data = [model_image(exptime=e) for e in moves.range(2,11,2)]
     flats = [x[0] for x in input_data]
     correct = [x[1] for x in input_data]
-    shutter_map = Surma1993_algorithm(flats)
+    shutter_map = Surma1993(flats)
     for i in range(len(flats)):
         repaired = apply_shutter_map(flats[i], shutter_map, exptimekey='EXPTIME')
         assert_allclose(repaired.data, correct[i].data, rtol=1e-3)
 
 
-def test_Surma1993_algorithm_with_bias():
+def test_Surma1993_with_bias():
     shutter_bias = 0.125
     input_data = [model_image(exptime=e, bias=shutter_bias)
                   for e in moves.range(2,11,2)]
@@ -69,8 +91,7 @@ def test_Surma1993_algorithm_with_bias():
     correct = [x[1] for x in input_data]
     measured_bias = fit_shutter_bias(flats)
     assert_almost_equal(measured_bias, shutter_bias, decimal=5)
-    shutter_map = Surma1993_algorithm(flats, shutter_bias=measured_bias)
+    shutter_map = Surma1993(flats, shutter_bias=measured_bias)
     for i in range(len(flats)):
-        repaired = apply_shutter_map(flats[i], shutter_map,
-                         shutter_bias=measured_bias, exptimekey='EXPTIME')
+        repaired = apply_shutter_map(flats[i], shutter_map, exptimekey='EXPTIME')
         assert_allclose(repaired.data, correct[i].data, rtol=1e-3)
