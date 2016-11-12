@@ -1656,8 +1656,8 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
     Returns
     -------
     mask : `numpy.ndarray`
-        A boolean ndarray where the bad pixels hve a value of 1 (True) and valid
-        pixels 0 (False), following the numpy.ma conventions.
+        A boolean ndarray where the bad pixels have a value of 1 (True) and
+        valid pixels 0 (False), following the numpy.ma conventions.
     '''
     if ratio.data.ndim !=2:
         return None
