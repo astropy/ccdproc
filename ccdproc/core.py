@@ -6,6 +6,7 @@ from __future__ import (absolute_import, division, print_function,
 import numbers
 
 import numpy as np
+import math
 from astropy.extern import six
 from astropy.units.quantity import Quantity
 from astropy import units as u
@@ -1611,7 +1612,6 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         Gaps of undetected pixels along the column direction of length less than
         this amount are also flagged as bad pixels.
 
-
     Notes
     -----
     Similar implementation to IRAF's ccdmask task.
@@ -1652,11 +1652,11 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
     than that given by the ngood parameter all the pixels in the segment are
     also marked as bad.
 
-
     Returns
     -------
     mask : `numpy.ndarray`
-        A boolean ndarray with the bad pixel positions identified.
+        A boolean ndarray where the bad pixels hve a value of 1 (True) and valid
+        pixels 0 (False), following the numpy.ma conventions.
     '''
     if ratio.data.ndim !=2:
         return None
@@ -1666,8 +1666,8 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
 
     nlines, ncols = ratio.data.shape
     if byblocks:
-        nlinesblock = int(np.ceil(nlines / nlsig))
-        ncolsblock = int(np.ceil(ncols / ncsig))
+        nlinesblock = int(math.ceil(nlines / nlsig))
+        ncolsblock = int(math.ceil(ncols / ncsig))
         for i in six.moves.range(nlinesblock):
             for j in six.moves.range(ncolsblock):
                 l1 = i*nlsig
@@ -1680,7 +1680,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                 block_sigma = (high-low)/2.0
                 block_mask = ( (block > hsigma*block_sigma) |
                                (block < -lsigma*block_sigma) )
-                mblock = np.ma.MaskedArray(block, mask=block_mask)
+                mblock = np.ma.MaskedArray(block, mask=block_mask, copy=False)
 
                 if findbadcolumns:
                     csum = np.ma.sum(mblock, axis=0)
@@ -1709,7 +1709,6 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                         lend = line+i
                         if (mask[lend,col] == True) and not np.all(mask[line:lend+1,col]):
                             mask[line:lend,col] = True
-    nmasked = np.sum(np.array(mask.ravel(), dtype=np.int))
     return mask
 
 
