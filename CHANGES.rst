@@ -18,6 +18,7 @@ New Features
 
 - Added ``median_filter`` function. [#420]
 
+- Added ``shutter_correction`` functions.
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
