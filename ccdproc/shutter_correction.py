@@ -17,8 +17,8 @@ from .image_collection import ImageFileCollection
 
 def GaladiEnriqez1995(combined_flats, exptimekey='EXPTIME', output=None):
     '''
-    Determine the shutter correction map given a set of input bias subtracted
-    flats.
+    Determine the shutter correction map given a set of bias subtracted flats
+    taken under constant illumination.
     
     Parameters
     ----------
@@ -26,7 +26,7 @@ def GaladiEnriqez1995(combined_flats, exptimekey='EXPTIME', output=None):
         Set of bias subtracted flats of different exposure times taken under
         constant illumination.
     
-    exptimekey : `string`, defaults to 'EXPTIME'
+    exptimekey : `string`, optional, defaults to 'EXPTIME'
         The header keyword which contains the exposure time of the image in
         seconds.
 
@@ -63,19 +63,41 @@ def GaladiEnriqez1995(combined_flats, exptimekey='EXPTIME', output=None):
 
 
 def apply_shutter_map(image, shutter_map, exptimekey='EXPTIME'):
+    '''
+    Correct an input image using the given shutter map.
+    
+    Parameters
+    ----------
+    image : `~ccdproc.CCDData`
+        The image to be corrected.
+
+    shutter_map : `~ccdproc.CCDData`
+        The shutter map to use to correct the image.
+
+    exptimekey : `string`, optional, defaults to 'EXPTIME'
+        The header keyword which contains the exposure time of the image in
+        seconds.
+
+    Returns
+    -------
+    corrected_image : `~ccdproc.CCDData`
+        The image scaled to a 1 second exposure.  The units will be the input
+        units per second.  For eample, if the input image is in units of adu, 
+        then the output will be in units of adu / s.
+    '''
     exptime_map = shutter_map.add(image.header[exptimekey]*u.second)
-    result = image.divide(exptime_map)
-    return result
+    corrected_image = image.divide(exptime_map)
+    return corrected_image
 
 
-def get_shutter_map(files, biases=None, normalizer=lambda flat: flat.data.max(),
-                    exptimekey='EXPTIME', min_files_to_sigma_clip=5,
+def get_shutter_map(files, exptimekey='EXPTIME', min_files_to_sigma_clip=5,
                     sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
                     Surma1993=False,
                     keywordguide = {'keyword': 'IMAGETYP',
                                     'flatvalue': 'Flat Field',
                                     'biasvalue': 'Bias Frame'},
-                    verbose=False, output=None):
+                    normalizer=lambda flat: flat.data.max(),
+                    output=None):
     '''
     Determine the shutter correction map given input files.  The input files are
     assumed to contain flat fields taken under constant illumination (no
@@ -94,14 +116,10 @@ def get_shutter_map(files, biases=None, normalizer=lambda flat: flat.data.max(),
 
     Parameters
     ----------
-    files : `ccdproc.ImageFilecollection` or `list` or `str`
-        If input is a `ccdproc.ImageFilecollection` object, then this is used to
-        select flat and bias files.  
-        
-        If input is a list ...
-        
-        If input is a string ...
-    
+    files : `ccdproc.ImageFilecollection`
+        A `ccdproc.ImageFilecollection` object which is used to select flat and
+        bias files using the `keywordguide` dictionary.
+
     exptimekey : `string`, defaults to 'EXPTIME'
         The header keyword which contains the exposure time of the image in
         seconds.
@@ -111,21 +129,33 @@ def get_shutter_map(files, biases=None, normalizer=lambda flat: flat.data.max(),
         file with two extensions.  The first contains the shutter map values
         (in seconds) and the second contains the uncertainty in those values.
 
+    Surma1993 : `bool`, optional, defaults to False
+        Use the `Surma1993` algorithm to determine the shutter map instead of
+        the `GaladiEnriqez1995`.
+
+    min_files_to_sigma_clip : `int`, optional
+        The `min_files_to_sigma_clip` parameter sets the minimum
+        number of files at each exposure time that must exist before a sigma
+        clipping algorithm is used in the combination.  Otherwise the combine is
+        simply an average combine.
+
+    sigma_clip_low_thresh : `int`, optional
+    sigma_clip_high_thresh : `int`, optional
+        These are the sigma clipping thresholds which are used in the combining
+        of files (if the `min_files_to_sigma_clip` threshold is exceeded).  They
+        are passed directly to the `ccdproc.combine` task.
+
+    normalizer : `function`, optional defaults to `lambda flat: flat.data.max()`
+        This is the normalizer function used by the `Surma1993` algorithm.
+        This is ignored if the `GaladiEnriqez1995` default algorithm is used.
+
+
     Returns
     -------
     shutter_map : `~ccdproc.CCDData`
         The shutter correction map in units of seconds.
 
     '''
-    if type(files) is str:
-        sys.exit(1)
-    elif type(files) is list:
-        sys.exit(1)
-    elif type(files) is ImageFileCollection:
-        pass
-    else:
-        sys.exit(1)
-
     bytype = files.summary.group_by(keywordguide['keyword'])
     flats = bytype.groups[bytype.groups.keys[keywordguide['keyword']]\
                           == keywordguide['flatvalue']]
@@ -175,7 +205,7 @@ def get_shutter_map(files, biases=None, normalizer=lambda flat: flat.data.max(),
 def Surma1993(combined_flats, exptimekey='EXPTIME',
               shutter_bias=0,
               normalizer=lambda flat: flat.data.max(),
-              verbose=False, output=None):
+              output=None):
     '''
     Determine the shutter correction map given a set of input bias subtracted
     flats.  This algorithm assumes that the header exposure time values are
@@ -265,16 +295,6 @@ def Surma1993(combined_flats, exptimekey='EXPTIME',
                           meta={'SNR': (SNR, 'Mean signal to noise per pixel')})
     shutter_map = shutter_map.add(shutter_bias*u.second)
 
-    if verbose:
-        print('Shutter Map (min, mean, median, max, stddev) = '\
-              '{:.3f} {:.3f} {:.3f} {:.3f} {:.3f}'.format(
-              shutter_map.data.min(), shutter_map.data.mean(),
-              np.median(shutter_map.data), shutter_map.data.max(),
-              np.std(shutter_map.data) ))
-        print('Fraction of Shutter Map Pixels > 0: {:d}/{:d} = {:.3f}'.format(
-              np.sum(shutter_map.data > 0),
-              shutter_map.data.size,
-              np.sum(shutter_map.data > 0) / shutter_map.data.size))
     if output:
         if os.path.exists(output):
             os.remove(output)
@@ -284,8 +304,7 @@ def Surma1993(combined_flats, exptimekey='EXPTIME',
 
 
 def fit_shutter_bias(combined_flats, exptimekey='EXPTIME',
-                     normalizer=lambda flat: flat.data.max(),
-                     verbose=False):
+                     normalizer=lambda flat: flat.data.max()):
     '''
     Determine the shutter correction given a set of input bias subtracted flats.
     This algorithm assumes that the input light level for all files is constant,
@@ -320,8 +339,6 @@ def fit_shutter_bias(combined_flats, exptimekey='EXPTIME',
     fitter = fitting.LinearLSQFitter()
     line = fitter(line0, time, flux)
     bias = line.intercept.value/line.slope.value
-    if verbose:
-        print('Shutter Bias = {:.3f}'.format(bias))
     return bias
 
 

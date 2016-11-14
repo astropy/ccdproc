@@ -68,7 +68,7 @@ def test_fit_shutter_bias_with_normalizer():
     input_data = [model_image(exptime=e, bias=shutter_bias, shape=(64,64), gradient=0.001)
                   for e in moves.range(2,11,2)]
     flats = [x[0] for x in input_data]
-    measured_bias = fit_shutter_bias(flats, verbose=True,
+    measured_bias = fit_shutter_bias(flats,
         normalizer=lambda f: median_filter(f.data, size=(3,3)).max())
     assert_almost_equal(measured_bias, shutter_bias, decimal=2)
 
