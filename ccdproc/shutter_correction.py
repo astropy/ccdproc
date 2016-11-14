@@ -162,7 +162,6 @@ def get_shutter_map(files, exptimekey='EXPTIME', min_files_to_sigma_clip=5,
         This is the normalizer function used by the `Surma1993` algorithm.
         This is ignored if the `GaladiEnriqez1995` default algorithm is used.
 
-
     Returns
     -------
     shutter_map : `~ccdproc.CCDData`
@@ -353,70 +352,4 @@ def fit_shutter_bias(combined_flats, exptimekey='EXPTIME',
     line = fitter(line0, time, flux)
     bias = line.intercept.value/line.slope.value
     return bias
-
-
-def check_shutter_bias(shutter_map, plot_histogram=False):
-    '''
-    Estimate a correction to the shutter bias value from the shutter map itself.
-    
-    If the shutter bias value is correct, then in the absence of noise, the
-    largest value in the shutter map should be zero.  With some noise, however,
-    we expect some pixels in the shutter map to be larger than 0.  To estimate
-    the shutter bias value, we postulate that the time value where the second
-    derivative of the histogram of shutter map values is maximum and the first
-    derivative is negative represents the transition from a noise dominated
-    regime to a signal dominated regime.  Thus, this time value is the
-    correction we should apply to the shutter bias value.
-
-    The binsize for the shutter_map histogram is the mean value of the
-    uncertainty divided by 2.  The signal to noise ratio for the estimate of the
-    correction to the shutter bias is simply the correction value divided by the
-    binsize.
-
-    Parameters
-    ----------
-    shutter_map : `~ccdproc.CCDData`
-        The shutter correction map to be evaluated.
-
-    Returns
-    -------
-    result : `tuple`
-        The first element of the tuple is the value in seconds of the estimated
-        shutter correction.  The second element is a boolean value indicating
-        whether the correction is considered "significant".  If this value is
-        True, then the shutter map can be considered to have passed this test,
-        if not, updating the shutter bias value and re-running the shutter map
-        algorithm is something for the user to consider.
-
-    '''
-    binsize = np.mean(shutter_map.uncertainty.array) / 2.
-    bins = np.arange(shutter_map.data.min(), shutter_map.data.max(), binsize)
-    hist, bin_edges = np.histogram(shutter_map.data, bins=bins)
-    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.
-
-    derivative = np.gradient(hist)
-    second_derivative = np.gradient(derivative)
-    w_neg_der = np.where(derivative < 0)[0]
-    w = w_neg_der[second_derivative[w_neg_der].argmax()]
-    correction = bin_centers[w]
-
-    if plot_histogram:
-        if type(plot_histogram) == str:
-            filename = plot_histogram
-        else:
-            filename = 'histogram.png'
-        import matplotlib as mpl
-        mpl.use('Agg')
-        from matplotlib import pyplot as plt
-        if os.path.exists(filename): os.remove(filename)
-        plt.plot(bin_centers, hist, 'k-')
-        plt.plot(bin_centers, derivative, 'g-')
-        plt.plot(bin_centers, second_derivative, 'r-')
-        plt.plot([bin_centers[w], bin_centers[w]], [0, max(hist)], 'b-', alpha=0.6)
-        plt.xlim(-0.3, -0.2)
-        plt.savefig(filename)
-
-    SNR = abs(correction)/(binsize*2.)
-
-    return correction, binsize*2., SNR < 1
 
