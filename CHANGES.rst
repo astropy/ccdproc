@@ -12,7 +12,7 @@ New Features
 
 - Added ``block_replicate``, ``block_reduce`` and ``block_average`` functions.
   [#402]
-
+- Added ``shutter_correction`` functions.
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
