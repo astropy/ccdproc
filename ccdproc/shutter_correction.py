@@ -93,9 +93,9 @@ def apply_shutter_map(image, shutter_map, exptimekey='EXPTIME'):
 def get_shutter_map(files, exptimekey='EXPTIME', min_files_to_sigma_clip=5,
                     sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
                     Surma1993=False,
-                    keywordguide = {'keyword': 'IMAGETYP',
-                                    'flatvalue': 'Flat Field',
-                                    'biasvalue': 'Bias Frame'},
+                    image_type_keyword = 'IMAGETYP',
+                    flat_keyword_value = 'Flat Field',
+                    bias_keyword_value = 'Bias Frame',
                     normalizer=lambda flat: flat.data.max(),
                     output=None):
     '''
@@ -107,7 +107,7 @@ def get_shutter_map(files, exptimekey='EXPTIME', min_files_to_sigma_clip=5,
     from each flat frame.
     
     Any flat frames with the same exposure time are averaged (possibly with
-    sigma clipping, see min_files_to_sigma_clip) to make a master flat at each
+    sigma clipping, see `min_files_to_sigma_clip`) to make a master flat at each
     exposure time.
     
     The resulting list of bias subtracted master flats at various exposure times
@@ -124,6 +124,19 @@ def get_shutter_map(files, exptimekey='EXPTIME', min_files_to_sigma_clip=5,
         The header keyword which contains the exposure time of the image in
         seconds.
 
+    image_type_keyword : `str`, optional, defaults to 'IMAGETYP'
+        To sort the files in to biases and flats, this function will examine the
+        input `ccdproc.ImageFilecollection` object and look for this keyword
+        value.  Flat field images are identified as those images with this
+        keyword equal to `flat_keyword_value` and bias images are those with
+        this keyword equal to `bias_keyword_value`.
+
+    flat_keyword_value : `str`, optional, defaults to 'Flat Field'
+        Keyword value which indicates that the file is a flat field image.
+
+    bias_keyword_value : `str`, optional, defaults to 'Bias Frame'
+        Keyword value which indicates that the file is a bias image.
+
     output : `str`, optional
         The filename to write the output shutter map to.  This will be a FITS
         file with two extensions.  The first contains the shutter map values
@@ -133,14 +146,14 @@ def get_shutter_map(files, exptimekey='EXPTIME', min_files_to_sigma_clip=5,
         Use the `Surma1993` algorithm to determine the shutter map instead of
         the `GaladiEnriqez1995`.
 
-    min_files_to_sigma_clip : `int`, optional
+    min_files_to_sigma_clip : `int`, optional, defaults to 5
         The `min_files_to_sigma_clip` parameter sets the minimum
         number of files at each exposure time that must exist before a sigma
         clipping algorithm is used in the combination.  Otherwise the combine is
         simply an average combine.
 
-    sigma_clip_low_thresh : `int`, optional
-    sigma_clip_high_thresh : `int`, optional
+    sigma_clip_low_thresh : `int`, optional, defaults to 5
+    sigma_clip_high_thresh : `int`, optional, defaults to 5
         These are the sigma clipping thresholds which are used in the combining
         of files (if the `min_files_to_sigma_clip` threshold is exceeded).  They
         are passed directly to the `ccdproc.combine` task.
@@ -156,11 +169,11 @@ def get_shutter_map(files, exptimekey='EXPTIME', min_files_to_sigma_clip=5,
         The shutter correction map in units of seconds.
 
     '''
-    bytype = files.summary.group_by(keywordguide['keyword'])
-    flats = bytype.groups[bytype.groups.keys[keywordguide['keyword']]\
-                          == keywordguide['flatvalue']]
-    biases = bytype.groups[bytype.groups.keys[keywordguide['keyword']]\
-                           == keywordguide['biasvalue']]
+    bytype = files.summary.group_by(image_type_keyword)
+    flats = bytype.groups[bytype.groups.keys[image_type_keyword]\
+                          == flat_keyword_value]
+    biases = bytype.groups[bytype.groups.keys[image_type_keyword]\
+                           == bias_keyword_value]
 
     bias_images = [fits_ccddata_reader(os.path.join(files.location, f))
                    for f in biases['file']]
