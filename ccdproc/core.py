@@ -235,7 +235,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         pass
     else:
         raise TypeError(
-            'master_bias is not None, numpy.ndarray, or a CCDData object.')
+            'master_bias is not None or a CCDData object.')
 
     # subtract the dark frame
     if isinstance(dark_frame, CCDData):
@@ -257,7 +257,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         pass
     else:
         raise TypeError(
-            'master_flat is not None, numpy.ndarray, or a CCDData object.')
+            'master_flat is not None or a CCDData object.')
 
     return nccd
 
