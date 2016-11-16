@@ -16,6 +16,8 @@ New Features
 - Added ``block_replicate``, ``block_reduce`` and ``block_average`` functions.
   [#402]
 
+- Added ``median_filter`` function. [#420]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
