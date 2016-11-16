@@ -27,7 +27,8 @@ __all__ = ['background_deviation_box', 'background_deviation_filter',
            'ccd_process', 'cosmicray_median', 'cosmicray_lacosmic',
            'create_deviation', 'flat_correct', 'gain_correct', 'rebin',
            'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
-           'transform_image', 'trim_image', 'wcs_project', 'Keyword']
+           'transform_image', 'trim_image', 'wcs_project', 'Keyword',
+           'median_filter']
 
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
@@ -1228,6 +1229,22 @@ def _blkavg(data, newshape):
         [')'] + ['.mean(%d)' % (i + 1) for i in range(lenShape)]
 
     return eval(''.join(evList))
+
+
+def median_filter(data, *args, **kwargs):
+    """See `scipy.ndimage.median_filter` for arguments.
+
+    If the ``data`` is a `~ccdproc.CCDData` object the result will be another
+    `~ccdproc.CCDData` object with the median filtered data as ``data`` and
+    copied ``unit`` and ``meta``.
+    """
+    if isinstance(data, CCDData):
+        out_kwargs = {'meta': data.meta.copy(),
+                      'unit': data.unit}
+        result = ndimage.median_filter(data.data, *args, **kwargs)
+        return CCDData(result, **out_kwargs)
+    else:
+        return ndimage.median_filter(data, *args, **kwargs)
 
 
 def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
