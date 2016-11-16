@@ -875,10 +875,8 @@ def test_wcs_project_onto_scale_wcs(ccd_data):
     assert new_ccd.wcs.wcs.compare(target_wcs.wcs)
 
     # Define a cutout from the new array that should match the old.
-    new_lower_bound = (np.array(new_ccd.shape) -
-                       np.array(ccd_data.shape)) / 2
-    new_upper_bound = (np.array(new_ccd.shape) +
-                       np.array(ccd_data.shape)) / 2
+    new_lower_bound = (np.array(new_ccd.shape) - np.array(ccd_data.shape)) // 2
+    new_upper_bound = (np.array(new_ccd.shape) + np.array(ccd_data.shape)) // 2
     data_cutout = new_ccd.data[new_lower_bound[0]:new_upper_bound[0],
                                new_lower_bound[1]:new_upper_bound[1]]
 
@@ -890,7 +888,7 @@ def test_wcs_project_onto_scale_wcs(ccd_data):
 
     # Mask should be true for four pixels (all nearest neighbors)
     # of the single pixel we masked initially.
-    new_center = new_ccd.wcs.wcs.crpix
+    new_center = np.array(new_ccd.wcs.wcs.crpix, dtype=int, copy=False)
     assert np.all(new_ccd.mask[new_center[0]:new_center[0]+2,
                                new_center[1]:new_center[1]+2])
 
