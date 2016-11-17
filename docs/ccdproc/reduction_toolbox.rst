@@ -331,16 +331,16 @@ project`_. Please see :ref:reprojection for more details.
 Filter and Convolution
 ----------------------
 
-There are several functions for `numpy.ndarray` across the scientific python
-packages:
+There are several convolution and filter functions for `numpy.ndarray` across
+the scientific python packages:
 
-- ``scipy.ndimage``, offers a variety of filters.
+- ``scipy.ndimage.filters``, offers a variety of filters.
 - ``astropy.convolution``, offers some filters which also handle ``NaN`` values.
 - ``scikit-image.filters``, offers several filters which can also handle masks
-  but are limited to special data types (mostly unsigned integers).
+  but are mostly limited to special data types (mostly unsigned integers).
 
 For convenience one of these is also accessible through the ``ccdproc``
-package namespace which accept `~ccdproc.CCDData` objects and then also
+package namespace which accepts `~ccdproc.CCDData` objects and then also
 returns one:
 
 - `~ccdproc.median_filter`
