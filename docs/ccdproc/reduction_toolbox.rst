@@ -328,6 +328,69 @@ image footprint. The underlying functionality is proved by the `reproject
 project`_. Please see :ref:reprojection for more details.
 
 
+Filter and Convolution
+----------------------
+
+There are several functions for `numpy.ndarray` across the scientific python
+packages:
+
+- ``scipy.ndimage``, offers a variety of filters.
+- ``astropy.convolution``, offers some filters which also handle ``NaN`` values.
+- ``scikit-image.filters``, offers several filters which can also handle masks
+  but are limited to special data types (mostly unsigned integers).
+
+For convenience one of these is also accessible through the ``ccdproc``
+package namespace which accept `~ccdproc.CCDData` objects and then also
+returns one:
+
+- `~ccdproc.median_filter`
+
+Median Filter
++++++++++++++
+
+The median filter is especially useful if the data contains sharp noise peaks
+which should be removed rather than propagated:
+
+.. plot::
+    :include-source:
+
+    import ccdproc
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from astropy.modeling.functional_models import Gaussian2D
+    from astropy.utils.misc import NumpyRNGContext
+    from scipy.ndimage import uniform_filter
+
+    # Create some source signal
+    source = Gaussian2D(60, 70, 70, 20, 25)
+    data = source(*np.mgrid[0:250, 0:250])
+
+    # and another one
+    source = Gaussian2D(70, 150, 180, 15, 15)
+    data += source(*np.mgrid[0:250, 0:250])
+
+    # create some random signals
+    with NumpyRNGContext(1234):
+        noise = np.random.exponential(40, (250, 250))
+        # remove low signal
+        noise[noise < 100] = 0
+        data += noise
+
+    # create a CCD object based on the data
+    ccd = ccdproc.CCDData(data, unit='adu')
+
+    # Create some plots
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+    ax1.set_title('Unprocessed')
+    ax1.imshow(ccd, origin='lower', interpolation='none', cmap=plt.cm.gray)
+    ax2.set_title('Mean filtered')
+    ax2.imshow(uniform_filter(ccd.data, 5), origin='lower', interpolation='none', cmap=plt.cm.gray)
+    ax3.set_title('Median filtered')
+    ax3.imshow(ccdproc.median_filter(ccd, 5), origin='lower', interpolation='none', cmap=plt.cm.gray)
+    plt.tight_layout()
+    plt.show()
+
+
 .. [1] van Dokkum, P; 2001, "Cosmic-Ray Rejection by Laplacian Edge
        Detection". The Publications of the Astronomical Society of the
        Pacific, Volume 113, Issue 789, pp. 1420-1427.
