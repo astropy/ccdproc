@@ -31,7 +31,6 @@ Other Changes and Additions
 - ``combine`` now accepts a ``dtype`` argument which is passed to
   ``Combiner.__init__``. [#391, #392]
 
-
 Bug Fixes
 ^^^^^^^^^
 
@@ -45,6 +44,8 @@ Bug Fixes
 - Fixed ``combine`` with ``CCDData`` objects using ``StdDevUncertainty`` as
   uncertainty. [#416, #424]
 
+- ``ccd`` generator from ``ImageFileCollection`` now uses the full path to the
+  file when calling ``fits_ccddata_reader``. [#421 #422]
 
 1.1.0 (2016-08-01)
 ------------------
