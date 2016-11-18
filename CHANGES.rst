@@ -18,7 +18,10 @@ New Features
 
 - Added ``median_filter`` function. [#420]
 
-- Added ``shutter_correction`` functions. [#419]
+- ``combine`` now takes an additional ``combine_uncertainty_function`` argument
+  which is passed as ``uncertainty_func`` parameter to
+  ``Combiner.median_combine`` or ``Combiner.average_combine``. [#416]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,6 +41,9 @@ Bug Fixes
 
 - ``ccd_process`` now copies the meta of the input when subtracting the
   master bias. [#404]
+
+- Fixed ``combine`` with ``CCDData`` objects using ``StdDevUncertainty`` as
+  uncertainty. [#416, #424]
 
 
 1.1.0 (2016-08-01)
