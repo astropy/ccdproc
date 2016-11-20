@@ -257,7 +257,7 @@ def Surma1993(combined_flats, exptimekey='EXPTIME',
     -----
     This code follows the implementation described in Surma, P. (1993) 
     "Shutter-free flatfielding for CCD detectors" Astronomy and Astrophysics
-    (ISSN 0004-6361), 278, 654–658.
+    (ISSN 0004-6361), 278, 654-658.
 
     Returns
     -------
