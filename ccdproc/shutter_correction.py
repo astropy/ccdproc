@@ -246,7 +246,8 @@ def Surma1993(combined_flats, exptimekey='EXPTIME',
         which represent the maximum exposure level.  Without noise, this would
         simply be the maximum pixel level, so this defaults to the maximum
         pixel value in the input image.  The user may specify a different
-        function here (see Examples below).
+        function here.  For example: 
+        `normalizer=lambda f: median_filter(f.data, size=(10,10)).max())`
 
     output : `str`, optional
         The filename to write the output shutter map to.  This will be a FITS
@@ -263,14 +264,6 @@ def Surma1993(combined_flats, exptimekey='EXPTIME',
     -------
     shutter_map : `~ccdproc.CCDData`
         The shutter correction map in units of seconds.
-
-    Examples
-    --------
-    Calling `Surma1993` with normalizer that uses the maximum value
-    in an image that has been median filtered by a 10x10 box:
-    
-    >>> result = Surma1993(combined_flats,
-                 normalizer=lambda f: median_filter(f.data, size=(10,10)).max())
     '''
     assert 'GAIN' in combined_flats[0].header.keys()
     gain = combined_flats[0].header['GAIN']
