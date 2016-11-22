@@ -638,6 +638,10 @@ def test_block_reduce():
     assert ccd_summed.wcs is None
     assert ccd_summed.uncertainty is None
 
+    # Make sure meta is copied
+    ccd_summed.meta['testkw2'] = 10
+    assert 'testkw2' not in ccd.meta
+
 
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
 def test_block_average():
@@ -658,6 +662,10 @@ def test_block_average():
     assert ccd_avgd.wcs is None
     assert ccd_avgd.uncertainty is None
 
+    # Make sure meta is copied
+    ccd_avgd.meta['testkw2'] = 10
+    assert 'testkw2' not in ccd.meta
+
 
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
 def test_block_replicate():
@@ -676,6 +684,10 @@ def test_block_replicate():
     assert ccd_repl.mask is None
     assert ccd_repl.wcs is None
     assert ccd_repl.uncertainty is None
+
+    # Make sure meta is copied
+    ccd_repl.meta['testkw2'] = 10
+    assert 'testkw2' not in ccd.meta
 
 
 #test blockaveraging ndarray

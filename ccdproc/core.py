@@ -1148,7 +1148,7 @@ def block_reduce(ccd, block_size, func=np.sum):
     if isinstance(ccd, CCDData):
         # unit and meta "should" be unaffected by the change of shape and can
         # be copied. However wcs, mask, uncertainty should not be copied!
-        data = CCDData(data, unit=ccd.unit, meta=ccd.meta)
+        data = CCDData(data, unit=ccd.unit, meta=ccd.meta.copy())
     return data
 
 
@@ -1158,7 +1158,7 @@ def block_average(ccd, block_size):
     data = nddata_utils.block_reduce(ccd, block_size, np.mean)
     # Like in block_reduce:
     if isinstance(ccd, CCDData):
-        data = CCDData(data, unit=ccd.unit, meta=ccd.meta)
+        data = CCDData(data, unit=ccd.unit, meta=ccd.meta.copy())
     return data
 
 
@@ -1167,7 +1167,7 @@ def block_replicate(ccd, block_size, conserve_sum=True):
     data = nddata_utils.block_replicate(ccd, block_size, conserve_sum)
     # Like in block_reduce:
     if isinstance(ccd, CCDData):
-        data = CCDData(data, unit=ccd.unit, meta=ccd.meta)
+        data = CCDData(data, unit=ccd.unit, meta=ccd.meta.copy())
     return data
 
 
