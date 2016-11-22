@@ -1588,18 +1588,6 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         Data to used to form mask.  Typically this is the ratio of two flat
         field images.
 
-    findbadcolumns: `bool`, optional, defaults to False
-        If set to True, the code will search for bad column sections.  Note that
-        this treats columns as special and breaks symmetry between lines and
-        columns and so is likely only appropriate for detectors which have
-        readout directions.
-
-    byblocks : `bool`, optional, defaults to False
-        If set to True, the code will divide the image in to blocks of size
-        ncsig by nlsig as described in the original IRAF help (see Notes section
-        below).  If set to False, the code will use the `percentile_filter`
-        method which performs the filtering by a moving box percentile filter.
-
     ncmed, nlmed: `int`, optional
         The column and line size of the moving median rectangle used to estimate
         the uncontaminated local signal. The column median size should be at
@@ -1614,16 +1602,15 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         Positive sigma factors to use for selecting pixels below and above the
         median level based on the local percentile sigma.
     
+    findbadcolumns: `bool`, optional
+        If set to True, the code will search for bad column sections.  Note that
+        this treats columns as special and breaks symmetry between lines and
+        columns and so is likely only appropriate for detectors which have
+        readout directions.
     
     ngood: `int`, optional
         Gaps of undetected pixels along the column direction of length less than
         this amount are also flagged as bad pixels.
-
-    Returns
-    -------
-    mask : `numpy.ndarray`
-        A boolean ndarray where the bad pixels have a value of 1 (True) and
-        valid pixels 0 (False), following the numpy.ma conventions.
 
     Notes
     -----
@@ -1664,6 +1651,12 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
     of unflagged pixels between bad pixels. If the length of a segment is less
     than that given by the ngood parameter all the pixels in the segment are
     also marked as bad.
+
+    Returns
+    -------
+    mask : `numpy.ndarray`
+        A boolean ndarray where the bad pixels have a value of 1 (True) and
+        valid pixels 0 (False), following the numpy.ma conventions.
     '''
     if ratio.data.ndim !=2:
         return None
