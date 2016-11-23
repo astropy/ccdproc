@@ -22,7 +22,10 @@ from astropy.wcs import WCS
 # described in https://github.com/astropy/astropy/issues/4825
 import astropy
 from distutils.version import LooseVersion
-if LooseVersion(astropy.__version__) < LooseVersion('1.2'):  # pragma: no cover
+
+_ASTROPY_LT_1_2 = LooseVersion(astropy.__version__) < LooseVersion('1.2')
+
+if _ASTROPY_LT_1_2:  # pragma: no cover
 
     class ParentNDDataDescriptor(object):
         def __get__(self, obj, objtype=None):
@@ -161,8 +164,6 @@ class CCDData(NDDataArray):
             raise ValueError("can't have both header and meta.")
 
         super(CCDData, self).__init__(*args, **kwd)
-        if self.unit is None:
-            raise ValueError("a unit for CCDData must be specified.")
 
     @property
     def data(self):
@@ -515,6 +516,10 @@ class CCDData(NDDataArray):
 
         return self._ccddata_arithmetic(other, np.subtract,
                                         scale_uncertainty=False)
+
+    # Use NDDataArithmetic methods if astropy version is 1.2 or greater
+    if not _ASTROPY_LT_1_2:
+        del add, subtract, divide, multiply, _ccddata_arithmetic
 
     def _insert_in_metadata_fits_safe(self, key, value):
         """
