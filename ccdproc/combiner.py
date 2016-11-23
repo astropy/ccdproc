@@ -603,8 +603,8 @@ def combine(img_list, output_file=None,
         size_of_an_img += ccd.mask.nbytes
     # flags is not necessarily a numpy array so do not fail with an
     # AttributeError in case something was set!
-    # TODO: Since flags is not supported for combine and read this could
-    #       also be dropped?
+    # TODO: Flags are not taken into account in Combiner. This number is added
+    #       nevertheless for future compatibility.
     try:
         size_of_an_img += ccd.flags.nbytes
     except AttributeError:
