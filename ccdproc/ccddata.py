@@ -25,7 +25,7 @@ from distutils.version import LooseVersion
 
 _ASTROPY_LT_1_2 = LooseVersion(astropy.__version__) < LooseVersion('1.2')
 
-if _ASTROPY_LT_1_2:  # pragma: no cover
+if _ASTROPY_LT_1_2:
 
     class ParentNDDataDescriptor(object):
         def __get__(self, obj, objtype=None):
