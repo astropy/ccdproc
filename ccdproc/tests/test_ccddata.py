@@ -22,11 +22,6 @@ def test_ccddata_empty():
         CCDData()  # empty initializer should fail
 
 
-def test_ccddata_must_have_unit():
-    with pytest.raises(ValueError):
-        CCDData(np.zeros([100, 100]))
-
-
 @pytest.mark.data_size(10)
 def test_ccddata_simple(ccd_data):
     assert ccd_data.shape == (10, 10)
