@@ -25,6 +25,9 @@ from distutils.version import LooseVersion
 
 _ASTROPY_LT_1_2 = LooseVersion(astropy.__version__) < LooseVersion('1.2')
 
+if not _ASTROPY_LT_1_2:
+    from astropy.utils.decorators import sharedmethod
+
 if _ASTROPY_LT_1_2:
 
     class ParentNDDataDescriptor(object):
@@ -60,6 +63,12 @@ if _ASTROPY_LT_1_2:
 
 
 __all__ = ['CCDData', 'fits_ccddata_reader', 'fits_ccddata_writer']
+
+
+# Global value which can turn on/off the unit requirements when creating a
+# CCDData. Should be used with care because several functions actually break
+# if the unit is None!
+_config_ccd_requires_unit = True
 
 
 class CCDData(NDDataArray):
@@ -164,6 +173,11 @@ class CCDData(NDDataArray):
             raise ValueError("can't have both header and meta.")
 
         super(CCDData, self).__init__(*args, **kwd)
+
+        # Check if a unit is set. This can be temporarly disabled by the
+        # _CCDDataUnit contextmanager.
+        if _config_ccd_requires_unit and self.unit is None:
+            raise ValueError("a unit for CCDData must be specified.")
 
     @property
     def data(self):
@@ -520,6 +534,45 @@ class CCDData(NDDataArray):
     # Use NDDataArithmetic methods if astropy version is 1.2 or greater
     if not _ASTROPY_LT_1_2:
         del add, subtract, divide, multiply, _ccddata_arithmetic
+
+        @sharedmethod
+        def add(self, operand, operand2=None, **kwargs):
+            # Temporarly disable the requirement for a unit so the operands
+            # can be cast to CCDData objects.
+            global _config_ccd_requires_unit
+            _config_ccd_requires_unit = False
+            result = self._prepare_then_do_arithmetic(
+                np.add, operand, operand2, **kwargs)
+            # Wrap it again as CCDData so the unit-requirement fires up again.
+            _config_ccd_requires_unit = True
+            return result.__class__(result)
+
+        @sharedmethod
+        def subtract(self, operand, operand2=None, **kwargs):
+            global _config_ccd_requires_unit
+            _config_ccd_requires_unit = False
+            result = self._prepare_then_do_arithmetic(
+                np.subtract, operand, operand2, **kwargs)
+            _config_ccd_requires_unit = True
+            return result.__class__(result)
+
+        @sharedmethod
+        def multiply(self, operand, operand2=None, **kwargs):
+            global _config_ccd_requires_unit
+            _config_ccd_requires_unit = False
+            result = self._prepare_then_do_arithmetic(
+                np.multiply, operand, operand2, **kwargs)
+            _config_ccd_requires_unit = True
+            return result.__class__(result)
+
+        @sharedmethod
+        def divide(self, operand, operand2=None, **kwargs):
+            global _config_ccd_requires_unit
+            _config_ccd_requires_unit = False
+            result = self._prepare_then_do_arithmetic(
+                np.true_divide, operand, operand2, **kwargs)
+            _config_ccd_requires_unit = True
+            return result.__class__(result)
 
     def _insert_in_metadata_fits_safe(self, key, value):
         """
