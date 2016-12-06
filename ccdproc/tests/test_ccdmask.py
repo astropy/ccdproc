@@ -168,12 +168,20 @@ def test_ccdmask_pixels():
     flat1.data[:,7] = 65535
     flat2.data[:,7] = 1
     ratio = flat1.divide(flat2)
-    mask = ccdmask(ratio, ncsig=11, nlsig=15)
     target_mask[:,7] = True
+
+    mask = ccdmask(ratio, ncsig=11, nlsig=15)
+    assert_array_equal(mask, target_mask)
+
+    mask = ccdmask(ratio, ncsig=11, nlsig=15, byblocks=True)
     assert_array_equal(mask, target_mask)
 
     mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=True)
     assert_array_equal(mask, target_mask)
+
+    mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=True, byblocks=True)
+    assert_array_equal(mask, target_mask)
+
 
     # Add bad column with gaps
     flat1.data[0:8,2] = 65535
