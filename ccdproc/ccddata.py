@@ -10,8 +10,8 @@ from collections import OrderedDict
 
 import numpy as np
 
-from astropy.nddata import NDDataArray
-from astropy.nddata.nduncertainty import StdDevUncertainty, NDUncertainty, MissingDataAssociationException
+from astropy.nddata import (NDDataArray, StdDevUncertainty, NDUncertainty,
+                            MissingDataAssociationException)
 from astropy.io import fits, registry
 from astropy import units as u
 from astropy import log
