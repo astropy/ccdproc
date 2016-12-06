@@ -449,7 +449,7 @@ def combine(img_list, output_file=None,
             sigma_clip=False,
             sigma_clip_low_thresh=3, sigma_clip_high_thresh=3,
             sigma_clip_func=ma.mean, sigma_clip_dev_func=ma.std,
-            dtype=None, **ccdkwargs):
+            dtype=None, combine_uncertainty_function=None, **ccdkwargs):
     """
     Convenience function for combining multiple images.
 
@@ -540,6 +540,11 @@ def combine(img_list, output_file=None,
         `ccdproc.Combiner`. If ``None`` this is set to ``float64``.
         Default is ``None``.
 
+    combine_uncertainty_function : callable, None, optional
+        If ``None`` use the default uncertainty func when using average or
+        median combine, otherwise use the function provided.
+        Default is ``None``.
+
     ccdkwargs : Other keyword arguments for `ccdproc.fits_ccddata_reader`.
 
     Returns
@@ -571,6 +576,12 @@ def combine(img_list, output_file=None,
         # User has provided fits filenames to read from
         ccd = CCDData.read(img_list[0], **ccdkwargs)
 
+    # If uncertainty_func is given for combine this will create an uncertainty
+    # even if the originals did not have one. In that case we need to create
+    # an empty placeholder.
+    if ccd.uncertainty is None and combine_uncertainty_function is not None:
+        ccd.uncertainty = StdDevUncertainty(np.zeros(ccd.data.shape))
+
     if dtype is None:
         dtype = np.float64
 
@@ -581,12 +592,23 @@ def combine(img_list, output_file=None,
         ccd.data = ccd.data.astype(dtype)
 
     size_of_an_img = ccd.data.nbytes
-    if ccd.uncertainty is not None:
-        size_of_an_img += ccd.uncertainty.nbytes
+    try:
+        size_of_an_img += ccd.uncertainty.array.nbytes
+    # In case uncertainty is None it has no "array" and in case the "array" is
+    # not a numpy array:
+    except AttributeError:
+        pass
+    # Mask is enforced to be a numpy.array across astropy versions
     if ccd.mask is not None:
         size_of_an_img += ccd.mask.nbytes
-    if ccd.flags is not None:
+    # flags is not necessarily a numpy array so do not fail with an
+    # AttributeError in case something was set!
+    # TODO: Flags are not taken into account in Combiner. This number is added
+    #       nevertheless for future compatibility.
+    try:
         size_of_an_img += ccd.flags.nbytes
+    except AttributeError:
+        pass
 
     no_of_img = len(img_list)
 
@@ -668,7 +690,11 @@ def combine(img_list, output_file=None,
                 getattr(tile_combiner, to_call)(**to_call_in_combiner[to_call])
 
             # Finally call the combine algorithm
-            comb_tile = getattr(tile_combiner, combine_function)()
+            combine_kwds = {}
+            if combine_uncertainty_function is not None:
+                combine_kwds['uncertainty_func'] = combine_uncertainty_function
+
+            comb_tile = getattr(tile_combiner, combine_function)(**combine_kwds)
 
             # add it back into the master image
             ccd.data[x:xend, y:yend] = comb_tile.data
