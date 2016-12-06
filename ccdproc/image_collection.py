@@ -272,7 +272,8 @@ class ImageFileCollection(object):
         filtered_files = self.summary_info['file'].compressed()
         self.summary_info['file'].mask = current_file_mask
         if include_path:
-            filtered_files = [path.join(self._location, f) for f in filtered_files]
+            filtered_files = [path.join(self._location, f)
+                              for f in filtered_files]
         return filtered_files
 
     def refresh(self):
@@ -744,28 +745,25 @@ class ImageFileCollection(object):
         return self._generator('header',
                                do_not_scale_image_data=do_not_scale_image_data,
                                **kwd)
-    headers.__doc__ = _generator.__doc__.format(name='header',
-                                                default_scaling='True',
-                                                return_type='astropy.io.fits.Header')
+    headers.__doc__ = _generator.__doc__.format(
+        name='header', default_scaling='True',
+        return_type='astropy.io.fits.Header')
 
     def hdus(self, do_not_scale_image_data=False, **kwd):
         return self._generator('hdu',
                                do_not_scale_image_data=do_not_scale_image_data,
                                **kwd)
-    hdus.__doc__ = _generator.__doc__.format(name='HDU',
-                                             default_scaling='False',
-                                             return_type='astropy.io.fits.HDU')
+    hdus.__doc__ = _generator.__doc__.format(
+        name='HDU', default_scaling='False', return_type='astropy.io.fits.HDU')
 
     def data(self, do_not_scale_image_data=False, **kwd):
         return self._generator('data',
                                do_not_scale_image_data=do_not_scale_image_data,
                                **kwd)
-    data.__doc__ = _generator.__doc__.format(name='image',
-                                             default_scaling='False',
-                                             return_type='numpy.ndarray')
+    data.__doc__ = _generator.__doc__.format(
+        name='image', default_scaling='False', return_type='numpy.ndarray')
 
     def ccds(self, ccd_kwargs=None, **kwd):
         return self._generator('ccd', ccd_kwargs=ccd_kwargs, **kwd)
-    ccds.__doc__ = _generator.__doc__.format(name='CCDData',
-                                             default_scaling='True',
-                                             return_type='ccdproc.CCDData')
+    ccds.__doc__ = _generator.__doc__.format(
+        name='CCDData', default_scaling='True', return_type='ccdproc.CCDData')

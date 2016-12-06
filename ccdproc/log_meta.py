@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 
 from functools import wraps
 import inspect
+from itertools import chain
 
 import numpy as np
 
@@ -77,14 +78,12 @@ def log_to_metadata(func):
             # Logging is not turned off, but user did not provide a value
             # so construct one.
             key = func.__name__
-            pos_args = ["{0}={1}".format(arg_name,
-                                         _replace_array_with_placeholder(arg_value))
-                        for arg_name, arg_value
-                        in zip(original_positional_args, args)]
-            kwd_args = ["{0}={1}".format(k, _replace_array_with_placeholder(v))
-                        for k, v in six.iteritems(kwd)]
-            pos_args.extend(kwd_args)
-            log_val = ", ".join(pos_args)
+            all_args = chain(zip(original_positional_args, args),
+                             six.iteritems(kwd))
+            all_args = ["{0}={1}".format(name,
+                                         _replace_array_with_placeholder(val))
+                        for name, val in all_args]
+            log_val = ", ".join(all_args)
             log_val = log_val.replace("\n", "")
             meta_dict = {key: log_val}
 

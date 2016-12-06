@@ -6,9 +6,8 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 from numpy import ma
 from .ccddata import CCDData
-from .core import trim_image, sigma_func
+from .core import sigma_func
 
-from astropy.stats import median_absolute_deviation
 from astropy.nddata import StdDevUncertainty
 from astropy import log
 
@@ -41,8 +40,8 @@ class Combiner(object):
         If the ``ccd_list`` are not `~ccdproc.CCDData` objects, have different
         units, or are different shapes.
 
-    Notes
-    -----
+    Examples
+    --------
     The following is an example of combining together different
     `~ccdproc.CCDData` objects::
 
@@ -94,7 +93,7 @@ class Combiner(object):
         self.weights = None
         self._dtype = dtype
 
-        #set up the data array
+        # set up the data array
         new_shape = (len(ccd_list),) + default_shape
         self.data_arr = ma.masked_all(new_shape, dtype=dtype)
 
@@ -175,7 +174,7 @@ class Combiner(object):
                                     "the same length as the number of images.")
             # reshape so that broadcasting occurs properly
             for i in range(len(self.data_arr.data.shape)-1):
-                self._scaling = self.scaling[:,np.newaxis]
+                self._scaling = self.scaling[:, np.newaxis]
 
     # set up IRAF-like minmax clipping
     def clip_extrema(self, nlow=0, nhigh=0):
@@ -184,23 +183,6 @@ class Combiner(object):
         before combining the values to make up a single pixel in the resulting
         image.  For example, the image will be a combination of
         Nimages-nlow-nhigh pixel values instead of the combination of Nimages.
-
-        Note that this differs slightly from the nominal IRAF behavior when
-        other masks are in use.  For example, if the nhigh>=1 and any
-        pixel is already masked for some other reason, then this algorithm will
-        count the masking of that pixel toward the count of nhigh masked pixels.
-        IRAF behaves slightly differently in this case (see IRAF help for that
-        behavior): http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?imcombine
-
-        Here is a copy of the relevant IRAF help text:
-
-        nlow = 1, nhigh = (minmax)
-            The number of low and high pixels to be rejected by the "minmax"
-            algorithm. These numbers are converted to fractions of the total
-            number of input images so that if no rejections have taken place
-            the specified number of pixels are rejected while if pixels have
-            been rejected by masking, thresholding, or nonoverlap, then the
-            fraction of the remaining pixels, truncated to an integer, is used.
 
         Parameters
         -----------
@@ -213,6 +195,29 @@ class Combiner(object):
             If not None, the number of high values to reject from the
             combination.
             Default is 0.
+
+        Notes
+        -----
+        Note that this differs slightly from the nominal IRAF imcombine
+        behavior when other masks are in use.  For example, if ``nhigh>=1`` and
+        any pixel is already masked for some other reason, then this algorithm
+        will count the masking of that pixel toward the count of nhigh masked
+        pixels.
+
+        Here is a copy of the relevant IRAF help text [0]_:
+
+        nlow = 1, nhigh = (minmax)
+            The number of low and high pixels to be rejected by the "minmax"
+            algorithm. These numbers are converted to fractions of the total
+            number of input images so that if no rejections have taken place
+            the specified number of pixels are rejected while if pixels have
+            been rejected by masking, thresholding, or nonoverlap, then the
+            fraction of the remaining pixels, truncated to an integer, is used.
+
+        References
+        ----------
+        .. [0] image.imcombine help text.
+           http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?imcombine
         """
 
         if nlow is None:
@@ -221,12 +226,13 @@ class Combiner(object):
             nhigh = 0
 
         argsorted = np.argsort(self.data_arr.data, axis=0)
-        mg = np.mgrid[[slice(ndim) for i, ndim in enumerate(self.data_arr.shape) if i > 0]]
+        mg = np.mgrid[[slice(ndim)
+                       for i, ndim in enumerate(self.data_arr.shape) if i > 0]]
         for i in range(-1*nhigh, nlow):
             # create a tuple with the indices
-            where = tuple([argsorted[i,:,:].ravel()] + [i.ravel() for i in mg])
+            where = tuple([argsorted[i, :, :].ravel()] +
+                          [i.ravel() for i in mg])
             self.data_arr.mask[where] = True
-
 
     # set up min/max clipping algorithms
     def minmax_clipping(self, min_clip=None, max_clip=None):
