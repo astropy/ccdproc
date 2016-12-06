@@ -1598,8 +1598,8 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         If set to true, the code will divide the image up in to blocks of size
         nlsig by ncsig and determine the standard deviation estimate in each
         block (as described in the original IRAF task, see Notes below).  If
-        set to False, then the code will use `percentile_filter` in
-        `scipy.ndimage` to generate a running box version of the standard
+        set to False, then the code will use `scipy.ndimage.percentile_filter`
+        to generate a running box version of the standard
         deviation estimate and use that value for the standard deviation at each
         pixel.
 

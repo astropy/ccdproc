@@ -22,7 +22,7 @@ New Features
   which is passed as ``uncertainty_func`` parameter to
   ``Combiner.median_combine`` or ``Combiner.average_combine``. [#416]
 
-- Added ``ccdmask`` function. [#414]
+- Added ``ccdmask`` function. [#414, #432]
 
 
 Other Changes and Additions
