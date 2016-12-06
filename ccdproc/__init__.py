@@ -17,3 +17,4 @@ if not _ASTROPY_SETUP_:
     from .ccddata import *
     from .combiner import *
     from .image_collection import *
+    from .shutter_correction import *
