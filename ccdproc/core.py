@@ -6,6 +6,7 @@ from __future__ import (absolute_import, division, print_function,
 import numbers
 
 import numpy as np
+import math
 from astropy.extern import six
 from astropy.units.quantity import Quantity
 from astropy import units as u
@@ -28,7 +29,7 @@ __all__ = ['background_deviation_box', 'background_deviation_filter',
            'create_deviation', 'flat_correct', 'gain_correct', 'rebin',
            'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
            'transform_image', 'trim_image', 'wcs_project', 'Keyword',
-           'median_filter']
+           'median_filter', 'ccdmask']
 
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
@@ -1573,6 +1574,151 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
 
     else:
         raise TypeError('ccd is not an numpy.ndarray or a CCDData object.')
+
+
+def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
+            ncsig=15, nlsig=15, lsigma=9, hsigma=9, ngood=5):
+    '''
+    Uses method based on the IRAF ccdmask task to generate a mask based on the
+    given input.
+
+    Parameters
+    ----------
+    ratio : `~ccdproc.CCDData`
+        Data to used to form mask.  Typically this is the ratio of two flat
+        field images.
+
+    findbadcolumns: `bool`, optional
+        If set to True, the code will search for bad column sections.  Note that
+        this treats columns as special and breaks symmetry between lines and
+        columns and so is likely only appropriate for detectors which have
+        readout directions.
+
+    byblocks : `bool`, optional
+        If set to true, the code will divide the image up in to blocks of size
+        nlsig by ncsig and determine the standard deviation estimate in each
+        block (as described in the original IRAF task, see Notes below).  If
+        set to False, then the code will use `percentile_filter` in 
+        `scipy.ndimage` to generate a running box version of the standard
+        deviation estimate and use that value for the standard deviation at each
+        pixel.
+
+    ncmed, nlmed: `int`, optional
+        The column and line size of the moving median rectangle used to estimate
+        the uncontaminated local signal. The column median size should be at
+        least 3 pixels to span single bad columns.
+
+    ncsig, nlsig: `int`, optional
+        The column and line size of regions used to estimate the uncontaminated
+        local sigma using a percentile. The size of the box should contain of
+        order 100 pixels or more.
+
+    lsigma, hsigma: `float`, optional
+        Positive sigma factors to use for selecting pixels below and above the
+        median level based on the local percentile sigma.
+    
+    ngood: `int`, optional
+        Gaps of undetected pixels along the column direction of length less than
+        this amount are also flagged as bad pixels.
+
+    Notes
+    -----
+    Similar implementation to IRAF's ccdmask task.
+    The Following documentation is copied directly from:
+    http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?ccdmask
+
+    The input image is first subtracted by a moving box median. The median is
+    unaffected by bad pixels provided the median size is larger that twice the
+    size of a bad region. Thus, if 3 pixel wide bad columns are present then the
+    column median box size should be at least 7 pixels. The median box can be a
+    single pixel wide along one dimension if needed. This may be appropriate for
+    spectroscopic long slit data.
+
+    The median subtracted image is then divided into blocks of size nclsig by
+    nlsig. In each block the pixel values are sorted and the pixels nearest the
+    30.9 and 69.1 percentile points are found; this would be the one sigma
+    points in a Gaussian noise distribution. The difference between the two
+    count levels divided by two is then the local sigma estimate. This algorithm
+    is used to avoid contamination by the bad pixel values. The block size must
+    be at least 10 pixels in each dimension to provide sufficient pixels for a
+    good estimate of the percentile sigma. The sigma uncertainty estimate of
+    each pixel in the image is then the sigma from the nearest block.
+
+    The deviant pixels are found by comparing the median subtracted residual to
+    a specified sigma threshold factor times the local sigma above and below
+    zero (the lsigma and hsigma parameters). This is done for individual pixels
+    and then for column sums of pixels (excluding previously flagged bad pixels)
+    from two to the number of lines in the image. The sigma of the sums is
+    scaled by the square root of the number of pixels summed so that
+    statistically low or high column regions may be detected even though
+    individual pixels may not be statistically deviant. For the purpose of this
+    task one would normally select large sigma threshold factors such as six or
+    greater to detect only true bad pixels and not the extremes of the noise
+    distribution.
+
+    As a final step each column is examined to see if there are small segments
+    of unflagged pixels between bad pixels. If the length of a segment is less
+    than that given by the ngood parameter all the pixels in the segment are
+    also marked as bad.
+
+    Returns
+    -------
+    mask : `numpy.ndarray`
+        A boolean ndarray where the bad pixels have a value of 1 (True) and
+        valid pixels 0 (False), following the numpy.ma conventions.
+    '''
+    if ratio.data.ndim !=2:
+        return None
+    mask = ~np.isfinite(ratio.data)
+    medsub = ratio.data - ndimage.filters.median_filter(ratio.data,
+                                                        size=(nlsig, ncsig))
+
+    nlines, ncols = ratio.data.shape
+    if byblocks:
+        nlinesblock = int(math.ceil(nlines / nlsig))
+        ncolsblock = int(math.ceil(ncols / ncsig))
+        for i in six.moves.range(nlinesblock):
+            for j in six.moves.range(ncolsblock):
+                l1 = i*nlsig
+                l2 = min((i+1)*nlsig, nlines)
+                c1 = j*ncsig
+                c2 = min((j+1)*ncsig, ncols)
+                block = medsub[l1:l2,c1:c2]
+                high = np.percentile(block.ravel(), 69.1)
+                low = np.percentile(block.ravel(), 30.9)
+                block_sigma = (high-low)/2.0
+                block_mask = ( (block > hsigma*block_sigma) |
+                               (block < -lsigma*block_sigma) )
+                mblock = np.ma.MaskedArray(block, mask=block_mask, copy=False)
+
+                if findbadcolumns:
+                    csum = np.ma.sum(mblock, axis=0)
+                    csum[csum<=0] = 0
+                    csum_sigma = np.ma.MaskedArray(np.sqrt(c2-c1-csum))
+                    colmask = ( (csum.filled(1) > hsigma*csum_sigma) |
+                                (csum.filled(1) < -lsigma*csum_sigma) )
+                    for c in six.moves.range(c2-c1):
+                        block_mask[:,c] = block_mask[:,c] | np.array([colmask[c]]*(l2-l1))
+
+                mask[l1:l2,c1:c2] = block_mask
+    else:
+        high = ndimage.percentile_filter(medsub, 69.1, size=(nlsig, ncsig))
+        low = ndimage.percentile_filter(medsub, 30.9, size=(nlsig, ncsig))
+        sigmas = (high-low)/2.0
+        mask = ( (medsub > hsigma*sigmas) | (medsub < -lsigma*sigmas) )
+
+    if findbadcolumns:
+        # Loop through columns and look for short segments (<ngood pixels long)
+        # which are unmasked, but are surrounded by masked pixels and mask them
+        # under the assumption that the column region is bad.
+        for col in six.moves.range(0,ncols):
+            for line in six.moves.range(0,nlines-ngood-1):
+                if mask[line,col] == True:
+                    for i in six.moves.range(2,ngood+2):
+                        lend = line+i
+                        if (mask[lend,col] == True) and not np.all(mask[line:lend+1,col]):
+                            mask[line:lend,col] = True
+    return mask
 
 
 class Keyword(object):
