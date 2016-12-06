@@ -19,6 +19,24 @@ New Features
 - Added ``median_filter`` function. [#420]
 
 
+Bug Fixes
+^^^^^^^^^
+
+- ``ccd_process`` now copies the meta of the input when subtracting the
+  master bias. [#404]
+
+- ``ccd`` generator from ``ImageFileCollection`` now uses the full path to the
+  file when calling ``fits_ccddata_reader``. [#421 #422]
+
+1.1.1 (Unreleased)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+- Add an optional attribute named ``filenames`` to ``ImageFileCollection``,
+  so that users can pass a list of FITS files to the collection. [#374]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -26,7 +44,6 @@ Other Changes and Additions
 
 - ``combine`` now accepts a ``dtype`` argument which is passed to
   ``Combiner.__init__``. [#391, #392]
-
 
 Bug Fixes
 ^^^^^^^^^
@@ -37,7 +54,6 @@ Bug Fixes
 
 - ``ccd_process`` now copies the meta of the input when subtracting the
   master bias. [#404]
-
 
 1.1.0 (2016-08-01)
 ------------------

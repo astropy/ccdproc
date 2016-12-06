@@ -697,7 +697,7 @@ class ImageFileCollection(object):
                     'header': lambda: hdulist[0].header,
                     'hdu': lambda: hdulist[0],
                     'data': lambda: hdulist[0].data,
-                    'ccd': lambda: fits_ccddata_reader(file_name, **ccd_kwargs)
+                    'ccd': lambda: fits_ccddata_reader(full_path, **ccd_kwargs)
                     }
             try:
                 yield (return_options[return_type]()  # pragma: no branch
