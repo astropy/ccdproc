@@ -1671,6 +1671,12 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
     if ratio.data.ndim != 2:
         raise ValueError('"ccdmask" can only handle two-dimensional data.')
 
+    def _sigma_mask(values, one_sigma_value, lower_sigma, upper_sigma):
+        """Mask values outside of the specified sigma range.
+        """
+        return ((values < -lower_sigma * one_sigma_value) |
+                (values > upper_sigma * one_sigma_value))
+
     mask = ~np.isfinite(ratio.data)
     medsub = ratio.data - ndimage.median_filter(ratio.data,
                                                 size=(nlmed, ncmed))
@@ -1689,16 +1695,15 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                 high = np.percentile(block.ravel(), 69.1)
                 low = np.percentile(block.ravel(), 30.9)
                 block_sigma = (high - low) / 2.0
-                block_mask = ((block > hsigma * block_sigma) |
-                              (block < -lsigma * block_sigma))
+                block_mask = _sigma_mask(block, block_sigma, lsigma, hsigma)
                 mblock = np.ma.MaskedArray(block, mask=block_mask, copy=False)
 
                 if findbadcolumns:
                     csum = np.ma.sum(mblock, axis=0)
                     csum[csum <= 0] = 0
                     csum_sigma = np.ma.MaskedArray(np.sqrt(c2 - c1 - csum))
-                    colmask = ((csum.filled(1) > hsigma * csum_sigma) |
-                               (csum.filled(1) < -lsigma * csum_sigma))
+                    colmask = _sigma_mask(csum.filled(1), csum_sigma,
+                                          lsigma, hsigma)
                     for c in six.moves.range(c2 - c1):
                         block_mask[:, c] |= np.array([colmask[c]] * (l2 - l1))
 
@@ -1707,7 +1712,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         high = ndimage.percentile_filter(medsub, 69.1, size=(nlsig, ncsig))
         low = ndimage.percentile_filter(medsub, 30.9, size=(nlsig, ncsig))
         sigmas = (high - low) / 2.0
-        mask = ((medsub > hsigma * sigmas) | (medsub < -lsigma * sigmas))
+        mask = _sigma_mask(medsub, sigmas, lsigma, hsigma)
 
     if findbadcolumns:
         # Loop through columns and look for short segments (<ngood pixels long)
