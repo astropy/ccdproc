@@ -31,6 +31,7 @@ Other Changes and Additions
 - ``combine`` now accepts a ``dtype`` argument which is passed to
   ``Combiner.__init__``. [#391, #392]
 
+
 Bug Fixes
 ^^^^^^^^^
 
