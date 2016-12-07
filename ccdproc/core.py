@@ -1670,10 +1670,11 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         valid pixels 0 (False), following the numpy.ma conventions.
     """
     if ratio.data.ndim != 2:
-        return None
+        raise ValueError('"ccdmask" can only handle two-dimensional data.')
+
     mask = ~np.isfinite(ratio.data)
-    medsub = ratio.data - ndimage.filters.median_filter(ratio.data,
-                                                        size=(nlsig, ncsig))
+    medsub = ratio.data - ndimage.median_filter(ratio.data,
+                                                size=(nlmed, ncmed))
 
     nlines, ncols = ratio.data.shape
     if byblocks:
