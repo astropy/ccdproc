@@ -10,6 +10,7 @@ import numpy as np
 from ..core import ccdmask
 from ..ccddata import CCDData
 
+
 def test_ccdmask_pixels():
     flat1 = CCDData(np.array([[
         20044, 19829, 19936, 20162, 19948, 19965, 19919, 20004, 19951,
@@ -179,7 +180,8 @@ def test_ccdmask_pixels():
     mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=True)
     assert_array_equal(mask, target_mask)
 
-    mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=True, byblocks=True)
+    mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=True,
+                   byblocks=True)
     assert_array_equal(mask, target_mask)
 
 

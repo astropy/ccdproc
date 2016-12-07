@@ -1579,7 +1579,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
 
 def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
             ncsig=15, nlsig=15, lsigma=9, hsigma=9, ngood=5):
-    '''
+    """
     Uses method based on the IRAF ccdmask task to generate a mask based on the
     given input.
 
@@ -1590,9 +1590,9 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         field images.
 
     findbadcolumns: `bool`, optional
-        If set to True, the code will search for bad column sections.  Note that
-        this treats columns as special and breaks symmetry between lines and
-        columns and so is likely only appropriate for detectors which have
+        If set to True, the code will search for bad column sections.  Note
+        that this treats columns as special and breaks symmetry between lines
+        and columns and so is likely only appropriate for detectors which have
         readout directions.
 
     byblocks : `bool`, optional
@@ -1601,13 +1601,13 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         block (as described in the original IRAF task, see Notes below).  If
         set to False, then the code will use `scipy.ndimage.percentile_filter`
         to generate a running box version of the standard
-        deviation estimate and use that value for the standard deviation at each
-        pixel.
+        deviation estimate and use that value for the standard deviation at
+        each pixel.
 
     ncmed, nlmed: `int`, optional
-        The column and line size of the moving median rectangle used to estimate
-        the uncontaminated local signal. The column median size should be at
-        least 3 pixels to span single bad columns.
+        The column and line size of the moving median rectangle used to
+        estimate the uncontaminated local signal. The column median size should
+        be at least 3 pixels to span single bad columns.
 
     ncsig, nlsig: `int`, optional
         The column and line size of regions used to estimate the uncontaminated
@@ -1619,8 +1619,8 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         median level based on the local percentile sigma.
 
     ngood: `int`, optional
-        Gaps of undetected pixels along the column direction of length less than
-        this amount are also flagged as bad pixels.
+        Gaps of undetected pixels along the column direction of length less
+        than this amount are also flagged as bad pixels.
 
     Notes
     -----
@@ -1630,27 +1630,28 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
 
     The input image is first subtracted by a moving box median. The median is
     unaffected by bad pixels provided the median size is larger that twice the
-    size of a bad region. Thus, if 3 pixel wide bad columns are present then the
-    column median box size should be at least 7 pixels. The median box can be a
-    single pixel wide along one dimension if needed. This may be appropriate for
-    spectroscopic long slit data.
+    size of a bad region. Thus, if 3 pixel wide bad columns are present then
+    the column median box size should be at least 7 pixels. The median box can
+    be a single pixel wide along one dimension if needed. This may be
+    appropriate for spectroscopic long slit data.
 
     The median subtracted image is then divided into blocks of size nclsig by
     nlsig. In each block the pixel values are sorted and the pixels nearest the
     30.9 and 69.1 percentile points are found; this would be the one sigma
     points in a Gaussian noise distribution. The difference between the two
-    count levels divided by two is then the local sigma estimate. This algorithm
-    is used to avoid contamination by the bad pixel values. The block size must
-    be at least 10 pixels in each dimension to provide sufficient pixels for a
-    good estimate of the percentile sigma. The sigma uncertainty estimate of
-    each pixel in the image is then the sigma from the nearest block.
+    count levels divided by two is then the local sigma estimate. This
+    algorithm is used to avoid contamination by the bad pixel values. The block
+    size must be at least 10 pixels in each dimension to provide sufficient
+    pixels for a good estimate of the percentile sigma. The sigma uncertainty
+    estimate of each pixel in the image is then the sigma from the nearest
+    block.
 
     The deviant pixels are found by comparing the median subtracted residual to
     a specified sigma threshold factor times the local sigma above and below
     zero (the lsigma and hsigma parameters). This is done for individual pixels
-    and then for column sums of pixels (excluding previously flagged bad pixels)
-    from two to the number of lines in the image. The sigma of the sums is
-    scaled by the square root of the number of pixels summed so that
+    and then for column sums of pixels (excluding previously flagged bad
+    pixels) from two to the number of lines in the image. The sigma of the sums
+    is scaled by the square root of the number of pixels summed so that
     statistically low or high column regions may be detected even though
     individual pixels may not be statistically deviant. For the purpose of this
     task one would normally select large sigma threshold factors such as six or
@@ -1667,7 +1668,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
     mask : `numpy.ndarray`
         A boolean ndarray where the bad pixels have a value of 1 (True) and
         valid pixels 0 (False), following the numpy.ma conventions.
-    '''
+    """
     if ratio.data.ndim !=2:
         return None
     mask = ~np.isfinite(ratio.data)
@@ -1699,7 +1700,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                     colmask = ( (csum.filled(1) > hsigma*csum_sigma) |
                                 (csum.filled(1) < -lsigma*csum_sigma) )
                     for c in six.moves.range(c2-c1):
-                        block_mask[:,c] = block_mask[:,c] | np.array([colmask[c]]*(l2-l1))
+                        block_mask[:,c] |= np.array([colmask[c]]*(l2-l1))
 
                 mask[l1:l2,c1:c2] = block_mask
     else:
@@ -1717,7 +1718,8 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                 if mask[line,col] == True:
                     for i in six.moves.range(2,ngood+2):
                         lend = line+i
-                        if (mask[lend,col] == True) and not np.all(mask[line:lend+1,col]):
+                        if (mask[lend,col] == True and
+                                not np.all(mask[line:lend+1,col])):
                             mask[line:lend,col] = True
     return mask
 
