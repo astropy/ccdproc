@@ -657,3 +657,23 @@ class TestImageFileCollection(object):
             assert((str(hdu.header), fname) in all_elements)
         for i in range(len(collection.summary)):
             assert(collection.summary['file'][i] == collection.files[i])
+
+    def test_ccds_generator_in_different_directory(self, triage_setup, tmpdir):
+        """
+        Regression test for https://github.com/astropy/ccdproc/issues/421 in
+        which the ccds generator fails if the current working directory is
+        not the location of the ImageFileCollection.
+        """
+
+        coll = image_collection.ImageFileCollection(triage_setup.test_dir)
+
+        # The temporary directory below should be different that the collection
+        # location.
+        os.chdir(tmpdir.strpath)
+
+        # Let's make sure it is.
+        assert not os.path.samefile(os.getcwd(), coll.location)
+
+        # This generated an IOError before the issue was fixed.
+        for _ in coll.ccds(ccd_kwargs={'unit': 'adu'}):
+            pass
