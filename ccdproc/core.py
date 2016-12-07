@@ -1685,7 +1685,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                 l2 = min((i+1)*nlsig, nlines)
                 c1 = j*ncsig
                 c2 = min((j+1)*ncsig, ncols)
-                block = medsub[l1:l2,c1:c2]
+                block = medsub[l1:l2, c1:c2]
                 high = np.percentile(block.ravel(), 69.1)
                 low = np.percentile(block.ravel(), 30.9)
                 block_sigma = (high-low)/2.0
@@ -1700,9 +1700,9 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                     colmask = ( (csum.filled(1) > hsigma*csum_sigma) |
                                 (csum.filled(1) < -lsigma*csum_sigma) )
                     for c in six.moves.range(c2-c1):
-                        block_mask[:,c] |= np.array([colmask[c]]*(l2-l1))
+                        block_mask[:, c] |= np.array([colmask[c]]*(l2-l1))
 
-                mask[l1:l2,c1:c2] = block_mask
+                mask[l1:l2, c1:c2] = block_mask
     else:
         high = ndimage.percentile_filter(medsub, 69.1, size=(nlsig, ncsig))
         low = ndimage.percentile_filter(medsub, 30.9, size=(nlsig, ncsig))
@@ -1713,14 +1713,14 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         # Loop through columns and look for short segments (<ngood pixels long)
         # which are unmasked, but are surrounded by masked pixels and mask them
         # under the assumption that the column region is bad.
-        for col in six.moves.range(0,ncols):
-            for line in six.moves.range(0,nlines-ngood-1):
-                if mask[line,col] == True:
-                    for i in six.moves.range(2,ngood+2):
+        for col in six.moves.range(0, ncols):
+            for line in six.moves.range(0, nlines-ngood-1):
+                if mask[line, col] == True:
+                    for i in six.moves.range(2, ngood+2):
                         lend = line+i
-                        if (mask[lend,col] == True and
-                                not np.all(mask[line:lend+1,col])):
-                            mask[line:lend,col] = True
+                        if (mask[lend, col] == True and
+                                not np.all(mask[line:lend+1, col])):
+                            mask[line:lend, col] = True
     return mask
 
 

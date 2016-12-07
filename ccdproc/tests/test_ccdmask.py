@@ -166,10 +166,10 @@ def test_ccdmask_pixels():
     assert_array_equal(mask, target_mask)
 
     # Add single bad column
-    flat1.data[:,7] = 65535
-    flat2.data[:,7] = 1
+    flat1.data[:, 7] = 65535
+    flat2.data[:, 7] = 1
     ratio = flat1.divide(flat2)
-    target_mask[:,7] = True
+    target_mask[:, 7] = True
 
     mask = ccdmask(ratio, ncsig=11, nlsig=15)
     assert_array_equal(mask, target_mask)
@@ -184,19 +184,17 @@ def test_ccdmask_pixels():
                    byblocks=True)
     assert_array_equal(mask, target_mask)
 
-
     # Add bad column with gaps
-    flat1.data[0:8,2] = 65535
-    flat1.data[11:,2] = 65535
-    flat2.data[0:8,2] = 1
-    flat2.data[11:,2] = 1
+    flat1.data[0:8, 2] = 65535
+    flat1.data[11:, 2] = 65535
+    flat2.data[0:8, 2] = 1
+    flat2.data[11:, 2] = 1
     ratio = flat1.divide(flat2)
     mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=False)
-    target_mask[0:8,2] = True
-    target_mask[11:,2] = True
+    target_mask[0:8, 2] = True
+    target_mask[11:, 2] = True
     assert_array_equal(mask, target_mask)
 
-
     mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=True)
-    target_mask[:,2] = True
+    target_mask[:, 2] = True
     assert_array_equal(mask, target_mask)
