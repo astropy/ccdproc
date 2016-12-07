@@ -45,6 +45,8 @@ Bug Fixes
 - Fixed ``combine`` with ``CCDData`` objects using ``StdDevUncertainty`` as
   uncertainty. [#416, #424]
 
+- ``ccd`` generator from ``ImageFileCollection`` now uses the full path to the
+  file when calling ``fits_ccddata_reader``. [#421 #422]
 
 1.1.0 (2016-08-01)
 ------------------
