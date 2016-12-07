@@ -1710,8 +1710,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                     csum_sigma = np.ma.MaskedArray(np.sqrt(c2 - c1 - csum))
                     colmask = _sigma_mask(csum.filled(1), csum_sigma,
                                           lsigma, hsigma)
-                    for c in six.moves.range(c2 - c1):
-                        block_mask[:, c] |= np.array([colmask[c]] * (l2 - l1))
+                    block_mask[:, :] |= colmask[None, :]
 
                 mask[l1:l2, c1:c2] = block_mask
     else:
