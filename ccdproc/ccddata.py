@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import copy
+from functools import wraps
 import numbers
 import weakref
 from collections import OrderedDict
@@ -69,6 +70,38 @@ __all__ = ['CCDData', 'fits_ccddata_reader', 'fits_ccddata_writer']
 # CCDData. Should be used with care because several functions actually break
 # if the unit is None!
 _config_ccd_requires_unit = True
+
+
+def _arithmetic(op):
+    """Decorator factory which temporarly disables the need for a unit when
+    creating a new CCDData instance. The final result must have a unit.
+
+    Parameters
+    ----------
+    op : function
+        The function to apply. Supported are:
+
+        - ``np.add``
+        - ``np.subtract``
+        - ``np.multiply``
+        - ``np.true_divide``
+
+    Notes
+    -----
+    Should only be used on CCDData to define the astropy >= 1.2 operations.
+    """
+    def decorator(func):
+        @wraps(func)
+        def inner(self, operand, operand2=None, **kwargs):
+            global _config_ccd_requires_unit
+            _config_ccd_requires_unit = False
+            result = self._prepare_then_do_arithmetic(op, operand, operand2,
+                                                      **kwargs)
+            # Wrap it again as CCDData so the unit-requirement fires up again.
+            _config_ccd_requires_unit = True
+            return result.__class__(result)
+        return sharedmethod(inner)
+    return decorator
 
 
 class CCDData(NDDataArray):
@@ -535,44 +568,10 @@ class CCDData(NDDataArray):
     if not _ASTROPY_LT_1_2:
         del add, subtract, divide, multiply, _ccddata_arithmetic
 
-        @sharedmethod
-        def add(self, operand, operand2=None, **kwargs):
-            # Temporarly disable the requirement for a unit so the operands
-            # can be cast to CCDData objects.
-            global _config_ccd_requires_unit
-            _config_ccd_requires_unit = False
-            result = self._prepare_then_do_arithmetic(
-                np.add, operand, operand2, **kwargs)
-            # Wrap it again as CCDData so the unit-requirement fires up again.
-            _config_ccd_requires_unit = True
-            return result.__class__(result)
-
-        @sharedmethod
-        def subtract(self, operand, operand2=None, **kwargs):
-            global _config_ccd_requires_unit
-            _config_ccd_requires_unit = False
-            result = self._prepare_then_do_arithmetic(
-                np.subtract, operand, operand2, **kwargs)
-            _config_ccd_requires_unit = True
-            return result.__class__(result)
-
-        @sharedmethod
-        def multiply(self, operand, operand2=None, **kwargs):
-            global _config_ccd_requires_unit
-            _config_ccd_requires_unit = False
-            result = self._prepare_then_do_arithmetic(
-                np.multiply, operand, operand2, **kwargs)
-            _config_ccd_requires_unit = True
-            return result.__class__(result)
-
-        @sharedmethod
-        def divide(self, operand, operand2=None, **kwargs):
-            global _config_ccd_requires_unit
-            _config_ccd_requires_unit = False
-            result = self._prepare_then_do_arithmetic(
-                np.true_divide, operand, operand2, **kwargs)
-            _config_ccd_requires_unit = True
-            return result.__class__(result)
+        add = _arithmetic(np.add)(NDDataArray.add)
+        subtract = _arithmetic(np.subtract)(NDDataArray.subtract)
+        multiply = _arithmetic(np.multiply)(NDDataArray.multiply)
+        divide = _arithmetic(np.true_divide)(NDDataArray.divide)
 
     def _insert_in_metadata_fits_safe(self, key, value):
         """
