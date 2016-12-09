@@ -1583,6 +1583,11 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
     Uses method based on the IRAF ccdmask task to generate a mask based on the
     given input.
 
+    .. note::
+        This function uses ``lines`` as synonym for the first axis and
+        ``columns`` the second axis. Only two-dimensional ``ratio`` is
+        currently supported.
+
     Parameters
     ----------
     ratio : `~ccdproc.CCDData`
@@ -1620,7 +1625,14 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
 
     ngood: `int`, optional
         Gaps of undetected pixels along the column direction of length less
-        than this amount are also flagged as bad pixels.
+        than this amount are also flagged as bad pixels, if they are between
+        pixels masked in that column.
+
+    Returns
+    -------
+    mask : `numpy.ndarray`
+        A boolean ndarray where the bad pixels have a value of 1 (True) and
+        valid pixels 0 (False), following the numpy.ma conventions.
 
     Notes
     -----
@@ -1662,12 +1674,6 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
     of unflagged pixels between bad pixels. If the length of a segment is less
     than that given by the ngood parameter all the pixels in the segment are
     also marked as bad.
-
-    Returns
-    -------
-    mask : `numpy.ndarray`
-        A boolean ndarray where the bad pixels have a value of 1 (True) and
-        valid pixels 0 (False), following the numpy.ma conventions.
     """
     try:
         nlines, ncols = ratio.data.shape
@@ -1710,7 +1716,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                     csum_sigma = np.ma.MaskedArray(np.sqrt(c2 - c1 - csum))
                     colmask = _sigma_mask(csum.filled(1), csum_sigma,
                                           lsigma, hsigma)
-                    block_mask[:, :] |= colmask[None, :]
+                    block_mask[:, :] |= colmask[np.newaxis, :]
 
                 mask[l1:l2, c1:c2] = block_mask
     else:
@@ -1727,7 +1733,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
             for line in six.moves.range(0, nlines - ngood - 1):
                 if mask[line, col]:
                     for i in six.moves.range(2, ngood + 2):
-                        lend = line+i
+                        lend = line + i
                         if (mask[lend, col] and
                                 not np.all(mask[line:lend + 1, col])):
                             mask[line:lend, col] = True
