@@ -7,8 +7,30 @@ from numpy.testing import assert_array_equal
 
 import numpy as np
 
+from astropy.tests.helper import pytest
+
 from ..core import ccdmask
 from ..ccddata import CCDData
+
+
+def test_ccdmask_no_ccddata():
+    # Fails when a simple list is given.
+    with pytest.raises(ValueError):
+        ccdmask([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
+
+
+def test_ccdmask_not_2d():
+    # Fails when a CCDData has less than 2 dimensions
+    with pytest.raises(ValueError):
+        ccdmask(CCDData(np.ones(3), unit='adu'))
+
+    # Fails when scalar
+    with pytest.raises(ValueError):
+        ccdmask(CCDData(np.array(10), unit='adu'))
+
+    # Fails when more than 2d
+    with pytest.raises(ValueError):
+        ccdmask(CCDData(np.ones((3, 3, 3)), unit='adu'))
 
 
 def test_ccdmask_pixels():
