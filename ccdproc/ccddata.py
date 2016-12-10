@@ -673,12 +673,12 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
     with fits.open(filename, **kwd) as hdus:
         hdr = hdus[hdu].header
 
-        if hdu_uncertainty in hdus:
+        if hdu_uncertainty is not None and hdu_uncertainty in hdus:
             uncertainty = StdDevUncertainty(hdus[hdu_uncertainty].data)
         else:
             uncertainty = None
 
-        if hdu_mask in hdus:
+        if hdu_mask is not None and hdu_mask in hdus:
             # Mask is saved as uint but we want it to be boolean.
             mask = hdus[hdu_mask].data.astype(np.bool_)
         else:
