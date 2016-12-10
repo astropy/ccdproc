@@ -4,7 +4,6 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import copy
-from functools import wraps
 import numbers
 import weakref
 from collections import OrderedDict
@@ -25,9 +24,6 @@ import astropy
 from distutils.version import LooseVersion
 
 _ASTROPY_LT_1_2 = LooseVersion(astropy.__version__) < LooseVersion('1.2')
-
-if not _ASTROPY_LT_1_2:
-    from astropy.utils.decorators import sharedmethod
 
 if _ASTROPY_LT_1_2:
 
@@ -71,37 +67,42 @@ __all__ = ['CCDData', 'fits_ccddata_reader', 'fits_ccddata_writer']
 # if the unit is None!
 _config_ccd_requires_unit = True
 
+if not _ASTROPY_LT_1_2:
+    from astropy.utils.decorators import sharedmethod
 
-def _arithmetic(op):
-    """Decorator factory which temporarly disables the need for a unit when
-    creating a new CCDData instance. The final result must have a unit.
+    def _arithmetic(op):
+        """Decorator factory which temporarly disables the need for a unit when
+        creating a new CCDData instance. The final result must have a unit.
 
-    Parameters
-    ----------
-    op : function
-        The function to apply. Supported are:
+        Parameters
+        ----------
+        op : function
+            The function to apply. Supported are:
 
-        - ``np.add``
-        - ``np.subtract``
-        - ``np.multiply``
-        - ``np.true_divide``
+            - ``np.add``
+            - ``np.subtract``
+            - ``np.multiply``
+            - ``np.true_divide``
 
-    Notes
-    -----
-    Should only be used on CCDData to define the astropy >= 1.2 operations.
-    """
-    def decorator(func):
-        @wraps(func)
-        def inner(self, operand, operand2=None, **kwargs):
-            global _config_ccd_requires_unit
-            _config_ccd_requires_unit = False
-            result = self._prepare_then_do_arithmetic(op, operand, operand2,
-                                                      **kwargs)
-            # Wrap it again as CCDData so the unit-requirement fires up again.
-            _config_ccd_requires_unit = True
-            return result.__class__(result)
-        return sharedmethod(inner)
-    return decorator
+        Notes
+        -----
+        Should only be used on CCDData ``add``, ``subtract``, ``divide`` or
+        ``multiply`` because only these methods from NDArithmeticMixin are
+        overwritten.
+        """
+        def decorator(func):
+            def inner(self, operand, operand2=None, **kwargs):
+                global _config_ccd_requires_unit
+                _config_ccd_requires_unit = False
+                result = self._prepare_then_do_arithmetic(op, operand,
+                                                          operand2, **kwargs)
+                # Wrap it again as CCDData so it checks the final unit.
+                _config_ccd_requires_unit = True
+                return result.__class__(result)
+            inner.__doc__ = ("See `astropy.nddata.NDArithmeticMixin.{}`."
+                             "".format(func.__name__))
+            return sharedmethod(inner)
+        return decorator
 
 
 class CCDData(NDDataArray):
