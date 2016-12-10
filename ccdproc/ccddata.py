@@ -684,7 +684,7 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
         else:
             mask = None
 
-        if hdu_flags in hdus:
+        if hdu_flags is not None and hdu_flags in hdus:
             raise NotImplementedError('loading flags is currently not '
                                       'supported.')
 
