@@ -15,16 +15,14 @@ from astropy.nddata import (NDDataArray, StdDevUncertainty, NDUncertainty,
 from astropy.io import fits, registry
 from astropy import units as u
 from astropy import log
+from astropy.utils import minversion
 from astropy.wcs import WCS
+
+_ASTROPY_LT_1_2 = not minversion("astropy", "1.2")
 
 # FIXME: Remove the content of the following "if" as soon as astropy 1.1 isn't
 # supported anymore. This is just a temporary workaround to fix the memory leak
 # described in https://github.com/astropy/astropy/issues/4825
-import astropy
-from distutils.version import LooseVersion
-
-_ASTROPY_LT_1_2 = LooseVersion(astropy.__version__) < LooseVersion('1.2')
-
 if _ASTROPY_LT_1_2:
 
     class ParentNDDataDescriptor(object):
