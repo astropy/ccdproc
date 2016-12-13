@@ -22,7 +22,10 @@ from astropy.wcs import WCS
 # described in https://github.com/astropy/astropy/issues/4825
 import astropy
 from distutils.version import LooseVersion
-if LooseVersion(astropy.__version__) < LooseVersion('1.2'):  # pragma: no cover
+
+_ASTROPY_LT_1_2 = LooseVersion(astropy.__version__) < LooseVersion('1.2')
+
+if _ASTROPY_LT_1_2:
 
     class ParentNDDataDescriptor(object):
         def __get__(self, obj, objtype=None):
@@ -57,6 +60,49 @@ if LooseVersion(astropy.__version__) < LooseVersion('1.2'):  # pragma: no cover
 
 
 __all__ = ['CCDData', 'fits_ccddata_reader', 'fits_ccddata_writer']
+
+
+# Global value which can turn on/off the unit requirements when creating a
+# CCDData. Should be used with care because several functions actually break
+# if the unit is None!
+_config_ccd_requires_unit = True
+
+if not _ASTROPY_LT_1_2:
+    from astropy.utils.decorators import sharedmethod
+
+    def _arithmetic(op):
+        """Decorator factory which temporarly disables the need for a unit when
+        creating a new CCDData instance. The final result must have a unit.
+
+        Parameters
+        ----------
+        op : function
+            The function to apply. Supported are:
+
+            - ``np.add``
+            - ``np.subtract``
+            - ``np.multiply``
+            - ``np.true_divide``
+
+        Notes
+        -----
+        Should only be used on CCDData ``add``, ``subtract``, ``divide`` or
+        ``multiply`` because only these methods from NDArithmeticMixin are
+        overwritten.
+        """
+        def decorator(func):
+            def inner(self, operand, operand2=None, **kwargs):
+                global _config_ccd_requires_unit
+                _config_ccd_requires_unit = False
+                result = self._prepare_then_do_arithmetic(op, operand,
+                                                          operand2, **kwargs)
+                # Wrap it again as CCDData so it checks the final unit.
+                _config_ccd_requires_unit = True
+                return result.__class__(result)
+            inner.__doc__ = ("See `astropy.nddata.NDArithmeticMixin.{}`."
+                             "".format(func.__name__))
+            return sharedmethod(inner)
+        return decorator
 
 
 class CCDData(NDDataArray):
@@ -161,7 +207,10 @@ class CCDData(NDDataArray):
             raise ValueError("can't have both header and meta.")
 
         super(CCDData, self).__init__(*args, **kwd)
-        if self.unit is None:
+
+        # Check if a unit is set. This can be temporarly disabled by the
+        # _CCDDataUnit contextmanager.
+        if _config_ccd_requires_unit and self.unit is None:
             raise ValueError("a unit for CCDData must be specified.")
 
     @property
@@ -515,6 +564,15 @@ class CCDData(NDDataArray):
 
         return self._ccddata_arithmetic(other, np.subtract,
                                         scale_uncertainty=False)
+
+    # Use NDDataArithmetic methods if astropy version is 1.2 or greater
+    if not _ASTROPY_LT_1_2:
+        del add, subtract, divide, multiply, _ccddata_arithmetic
+
+        add = _arithmetic(np.add)(NDDataArray.add)
+        subtract = _arithmetic(np.subtract)(NDDataArray.subtract)
+        multiply = _arithmetic(np.multiply)(NDDataArray.multiply)
+        divide = _arithmetic(np.true_divide)(NDDataArray.divide)
 
     def _insert_in_metadata_fits_safe(self, key, value):
         """

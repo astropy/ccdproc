@@ -704,6 +704,7 @@ def gain_correct(ccd, gain, gain_unit=None):
         gain_value = gain
 
     result = ccd.multiply(gain_value)
+    result.meta = ccd.meta.copy()
     return result
 
 
