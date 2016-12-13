@@ -16,6 +16,7 @@ Project Coordinators
 Alphabetical list of contributors
 ---------------------------------
 
+* Kyle Barbary (@kbarbary)
 * Javier Blasco (@javierblasco)
 * Christoph Deil (@cdeil)
 * Carlos Gomez (@carlgogo)
@@ -26,7 +27,7 @@ Alphabetical list of contributors
 * Anthony Horton (@AnthonyHorton)
 * Jennifer Karr (@JenniferKarr)
 * James McCormac (@jmccormac01)
-* Stefan Nelson (@pulsestaysconstant)
+* Stefan Nelson (@stefannelson)
 * Joe Philip Ninan (@indiajoe)
 * Punyaslok Pattnaik (@Punyaslok)
 * Evert Rol (@evertrol)
