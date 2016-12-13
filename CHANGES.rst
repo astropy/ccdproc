@@ -11,7 +11,7 @@ New Features
 ^^^^^^^^^^^^
 
 - Add an optional attribute named ``filenames`` to ``ImageFileCollection``,
-  so that users can pass a list of FITS files to the collection. [#374]
+  so that users can pass a list of FITS files to the collection. [#374, #403]
 
 - Added ``block_replicate``, ``block_reduce`` and ``block_average`` functions.
   [#402]
@@ -33,6 +33,9 @@ Other Changes and Additions
 - ``combine`` now accepts a ``dtype`` argument which is passed to
   ``Combiner.__init__``. [#391, #392]
 
+- Removed ``CaseInsensitiveOrderedDict`` because it is not used in the current
+  code base. [#428]
+
 
 Bug Fixes
 ^^^^^^^^^
@@ -47,7 +50,7 @@ Bug Fixes
 - Fixed ``combine`` with ``CCDData`` objects using ``StdDevUncertainty`` as
   uncertainty. [#416, #424]
 
-- ``ccd`` generator from ``ImageFileCollection`` now uses the full path to the
+- ``ccds`` generator from ``ImageFileCollection`` now uses the full path to the
   file when calling ``fits_ccddata_reader``. [#421 #422]
 
 1.1.0 (2016-08-01)
