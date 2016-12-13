@@ -1,5 +1,5 @@
 
-1.2.0 (Unreleased)
+1.2.0 (2016-12-13)
 ------------------
 
 ccdproc has now the following additional dependency:
