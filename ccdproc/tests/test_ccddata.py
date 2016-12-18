@@ -12,9 +12,13 @@ from astropy import units as u
 from astropy.extern import six
 from astropy import log
 from astropy.wcs import WCS
+from astropy.utils import minversion
 
 from ..ccddata import CCDData
 from .. import subtract_dark
+
+
+ASTROPY_GT_1_2 = minversion("astropy", "1.2")
 
 
 def test_ccddata_empty():
@@ -431,6 +435,44 @@ def test_arithmetic_overload_differing_units():
     res = ccddata.divide(b)
     np.testing.assert_array_almost_equal(res.data, np.divide(a, b).value)
     assert res.unit == np.divide(a, b).unit
+
+
+@pytest.mark.skipif('not ASTROPY_GT_1_2')
+def test_arithmetic_add_with_array():
+    ccd = CCDData(np.ones((3, 3)), unit='')
+    res = ccd.add(np.arange(3))
+    np.testing.assert_array_equal(res.data, [[1, 2, 3]] * 3)
+
+    ccd = CCDData(np.ones((3, 3)), unit='adu')
+    with pytest.raises(ValueError):
+        ccd.add(np.arange(3))
+
+
+@pytest.mark.skipif('not ASTROPY_GT_1_2')
+def test_arithmetic_subtract_with_array():
+    ccd = CCDData(np.ones((3, 3)), unit='')
+    res = ccd.subtract(np.arange(3))
+    np.testing.assert_array_equal(res.data, [[1, 0, -1]] * 3)
+
+    ccd = CCDData(np.ones((3, 3)), unit='adu')
+    with pytest.raises(ValueError):
+        ccd.subtract(np.arange(3))
+
+
+@pytest.mark.skipif('not ASTROPY_GT_1_2')
+def test_arithmetic_multiply_with_array():
+    ccd = CCDData(np.ones((3, 3)) * 3, unit=u.m)
+    res = ccd.multiply(np.ones((3, 3)) * 2)
+    np.testing.assert_array_equal(res.data, [[6, 6, 6]] * 3)
+    assert res.unit == ccd.unit
+
+
+@pytest.mark.skipif('not ASTROPY_GT_1_2')
+def test_arithmetic_divide_with_array():
+    ccd = CCDData(np.ones((3, 3)), unit=u.m)
+    res = ccd.divide(np.ones((3, 3)) * 2)
+    np.testing.assert_array_equal(res.data, [[0.5, 0.5, 0.5]] * 3)
+    assert res.unit == ccd.unit
 
 
 def test_ccddata_header_does_not_corrupt_fits(ccd_data, tmpdir):
