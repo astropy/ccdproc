@@ -40,6 +40,7 @@ matrix:
         # compiled during setup which takes some time.
         - python: 3.5
           env: ASTROPY_VERSION=development NUMPY_VERSION=dev
+               SETUP_CMD='test --coverage'
 
         # Do coverage tests for both latest Python versions
         - python: 3.5
