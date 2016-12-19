@@ -29,7 +29,7 @@ def slice_from_string(string, fits_convention=False):
     Notes
     -----
 
-    The `string` argument can be anything that would work as a valid way to
+    The ``string`` argument can be anything that would work as a valid way to
     slice an array in Numpy. It must be enclosed in matching brackets; all
     spaces are stripped from the string before processing.
 
