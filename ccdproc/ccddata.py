@@ -38,10 +38,8 @@ if _ASTROPY_LT_1_2:
                     # to get the object the reference points to.
                     if isinstance(obj._parent_nddata, weakref.ref):
                         return obj._parent_nddata()
-                    else:
-                        log.info("parent_nddata should be a weakref to an "
-                                 "NDData object.")
-                        return obj._parent_nddata
+                    log.info("parent_nddata should be a weakref to an "
+                             "NDData object.")
                     return obj._parent_nddata
             except AttributeError:
                 raise MissingDataAssociationException(message)

@@ -7,7 +7,7 @@ import numpy as np
 from astropy.io import fits
 
 from astropy.tests.helper import pytest
-from astropy.nddata import StdDevUncertainty
+from astropy.nddata import StdDevUncertainty, MissingDataAssociationException
 from astropy import units as u
 from astropy.extern import six
 from astropy import log
@@ -719,3 +719,19 @@ def test_recognized_fits_formats_for_read_write(ccd_data, tmpdir):
         ccd_data.write(path.strpath)
         from_disk = CCDData.read(path.strpath)
         assert (ccd_data.data == from_disk.data).all()
+
+
+def test_stddevuncertainty_compat_descriptor_no_parent():
+    with pytest.raises(MissingDataAssociationException):
+        StdDevUncertainty(np.ones((10, 10))).parent_nddata
+
+
+def test_stddevuncertainty_compat_descriptor_no_weakref():
+    # TODO: Remove this test if astropy 1.0 isn't supported anymore
+    # This test might create a Memoryleak on purpose, so the last lines after
+    # the assert are IMPORTANT cleanup.
+    ccd = CCDData(np.ones((10, 10)), unit='')
+    uncert = StdDevUncertainty(np.ones((10, 10)))
+    uncert._parent_nddata = ccd
+    assert uncert.parent_nddata is ccd
+    uncert._parent_nddata = None
