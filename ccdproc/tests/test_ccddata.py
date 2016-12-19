@@ -384,6 +384,61 @@ def test_arithmetic_overload_fails(ccd_data):
         ccd_data.subtract("five")
 
 
+def test_arithmetic_no_wcs_compare():
+    ccd = CCDData(np.ones((10, 10)), unit='')
+    assert ccd.add(ccd, compare_wcs=None).wcs is None
+    assert ccd.subtract(ccd, compare_wcs=None).wcs is None
+    assert ccd.multiply(ccd, compare_wcs=None).wcs is None
+    assert ccd.divide(ccd, compare_wcs=None).wcs is None
+
+
+@pytest.mark.skipif('not ASTROPY_GT_1_2')
+def test_arithmetic_with_wcs_compare():
+    def return_diff_smaller_3(first, second):
+        return abs(first - second) <= 3
+
+    ccd1 = CCDData(np.ones((10, 10)), unit='', wcs=2)
+    ccd2 = CCDData(np.ones((10, 10)), unit='', wcs=5)
+    assert ccd1.add(ccd2, compare_wcs=return_diff_smaller_3).wcs == 2
+    assert ccd1.subtract(ccd2, compare_wcs=return_diff_smaller_3).wcs == 2
+    assert ccd1.multiply(ccd2, compare_wcs=return_diff_smaller_3).wcs == 2
+    assert ccd1.divide(ccd2, compare_wcs=return_diff_smaller_3).wcs == 2
+
+
+@pytest.mark.skipif('not ASTROPY_GT_1_2')
+def test_arithmetic_with_wcs_compare_fail():
+    def return_diff_smaller_1(first, second):
+        return abs(first - second) <= 1
+
+    ccd1 = CCDData(np.ones((10, 10)), unit='', wcs=2)
+    ccd2 = CCDData(np.ones((10, 10)), unit='', wcs=5)
+    with pytest.raises(ValueError):
+        ccd1.add(ccd2, compare_wcs=return_diff_smaller_1).wcs
+    with pytest.raises(ValueError):
+        ccd1.subtract(ccd2, compare_wcs=return_diff_smaller_1).wcs
+    with pytest.raises(ValueError):
+        ccd1.multiply(ccd2, compare_wcs=return_diff_smaller_1).wcs
+    with pytest.raises(ValueError):
+        ccd1.divide(ccd2, compare_wcs=return_diff_smaller_1).wcs
+
+
+@pytest.mark.skipif('ASTROPY_GT_1_2')
+def test_arithmetic_with_wcs_compare_fail_astropy_version():
+    def return_diff_smaller_1(first, second):
+        return abs(first - second) <= 1
+
+    ccd1 = CCDData(np.ones((10, 10)), unit='', wcs=2)
+    ccd2 = CCDData(np.ones((10, 10)), unit='', wcs=5)
+    with pytest.raises(ImportError):
+        ccd1.add(ccd2, compare_wcs=return_diff_smaller_1).wcs
+    with pytest.raises(ImportError):
+        ccd1.subtract(ccd2, compare_wcs=return_diff_smaller_1).wcs
+    with pytest.raises(ImportError):
+        ccd1.multiply(ccd2, compare_wcs=return_diff_smaller_1).wcs
+    with pytest.raises(ImportError):
+        ccd1.divide(ccd2, compare_wcs=return_diff_smaller_1).wcs
+
+
 def test_arithmetic_overload_ccddata_operand(ccd_data):
     ccd_data.uncertainty = StdDevUncertainty(np.ones_like(ccd_data))
     operand = ccd_data.copy()
