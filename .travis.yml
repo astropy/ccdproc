@@ -16,6 +16,7 @@ python:
     - 2.7
     - 3.4
     - 3.5
+    - 3.6
 
 env:
     global:
@@ -38,12 +39,12 @@ matrix:
 
         # Try Astropy/NumPy development versions. This requires them to be
         # compiled during setup which takes some time.
-        - python: 3.5
+        - python: 3.6
           env: ASTROPY_VERSION=development NUMPY_VERSION=dev
                SETUP_CMD='test --coverage'
 
         # Do coverage tests for both latest Python versions
-        - python: 3.5
+        - python: 3.6
           env: SETUP_CMD='test --coverage'
 
         - python: 2.7
