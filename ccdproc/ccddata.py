@@ -232,10 +232,7 @@ class CCDData(NDDataArray):
 
     @unit.setter
     def unit(self, value):
-        if value is not None:
-            self._unit = u.Unit(value)
-        else:
-            self._unit = None
+        self._unit = u.Unit(value)
 
     @property
     def shape(self):
