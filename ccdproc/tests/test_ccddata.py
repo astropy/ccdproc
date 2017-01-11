@@ -31,6 +31,12 @@ def test_ccddata_must_have_unit():
         CCDData(np.zeros([100, 100]))
 
 
+def test_ccddata_meta_header_conflict():
+    with pytest.raises(ValueError) as exc:
+        CCDData([1, 2, 3], unit='', meta={1: 1}, header={2: 2})
+        assert "can't have both header and meta." in str(exc)
+
+
 @pytest.mark.data_size(10)
 def test_ccddata_simple(ccd_data):
     assert ccd_data.shape == (10, 10)
