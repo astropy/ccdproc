@@ -9,6 +9,8 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- removed ability to set ccdata.unit to None [#451]
+
 
 Bug Fixes
 ^^^^^^^^^
