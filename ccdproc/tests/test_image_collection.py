@@ -630,7 +630,7 @@ class TestImageFileCollection(object):
             means.append(ccd.data.mean())
 
         ic.refresh()
-        for idx, ccd in enumerate(ic.ccds(overwrite=True, unit='adu')):
+        for idx, ccd in enumerate(ic.ccds(unit='adu')):
             assert ccd.data.mean == means[idx]
 
     def test_refresh_method_sees_added_files(self, triage_setup):
