@@ -607,7 +607,6 @@ class TestImageFileCollection(object):
     @pytest.mark.skipif("os.environ.get('APPVEYOR') or os.sys.platform == 'win32'",
                         reason="fails on Windows because file "
                                "overwriting fails")
-
     def test_refresh_method_sees_added_keywords(self, triage_setup, tmpdir):
         ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
         # Add a keyword I know isn't already in the header to each file.
@@ -615,13 +614,24 @@ class TestImageFileCollection(object):
 
         for h in ic.headers(overwrite=True):
             h[not_in_header] = True
-        print(h)
         assert not_in_header not in ic.summary_info.colnames
 
         ic.refresh()
         # After refreshing the odd keyword should be present.
-        print(ic.keywords)
         assert not_in_header.lower() in ic.summary_info.colnames
+
+    def test_overwrite_ccddata(self, triage_setup, tmpdir):
+        # Regression test for #453
+        ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
+
+        means = []
+        for ccd in ic.ccds(overwrite=True, unit='adu'):
+            ccd.data += 1
+            means.append(ccd.data.mean())
+
+        ic.refresh()
+        for idx, ccd in enumerate(ic.ccds(overwrite=True, unit='adu')):
+            assert ccd.data.mean == means[idx]
 
     def test_refresh_method_sees_added_files(self, triage_setup):
         ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
