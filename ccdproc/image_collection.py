@@ -704,8 +704,11 @@ class ImageFileCollection(object):
 
         for full_path in self._paths():
             no_scale = do_not_scale_image_data
-            hdulist = fits.open(full_path,
-                                do_not_scale_image_data=no_scale)
+            if return_type == 'ccd':
+                ccddata = fits_ccddata_reader(full_path, **ccd_kwargs)
+            else:
+                hdulist = fits.open(full_path,
+                                    do_not_scale_image_data=no_scale)
 
             file_name = path.basename(full_path)
 
@@ -713,7 +716,7 @@ class ImageFileCollection(object):
                     'header': lambda: hdulist[0].header,
                     'hdu': lambda: hdulist[0],
                     'data': lambda: hdulist[0].data,
-                    'ccd': lambda: fits_ccddata_reader(full_path, **ccd_kwargs)
+                    'ccd': lambda: ccddata
                     }
             try:
                 yield (return_options[return_type]()  # pragma: no branch
@@ -739,11 +742,15 @@ class ImageFileCollection(object):
             nuke_existing = clobber or overwrite
             if (new_path != full_path) or nuke_existing:
                 try:
-                    hdulist.writeto(new_path, clobber=nuke_existing)
+                    if return_type == 'ccd':
+                        ccddata.write(new_path, clobber=nuke_existing)
+                    else:
+                        hdulist.writeto(new_path, clobber=nuke_existing)
                 except IOError:
                     logger.error('error writing file %s', new_path)
                     raise
-            hdulist.close()
+            if return_type != 'ccd':
+                hdulist.close()
 
         # reset mask
         for col in self.summary_info.columns:
