@@ -11,6 +11,8 @@ Other Changes and Additions
 
 - removed ability to set ccdata.unit to None [#451]
 
+- Added ``shutter_correction`` functions. [#419]
+
 
 Bug Fixes
 ^^^^^^^^^
