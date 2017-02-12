@@ -13,7 +13,7 @@ from astropy.nddata import StdDevUncertainty
 import astropy
 
 from numpy.testing import assert_array_equal
-from astropy.tests.helper import pytest
+import pytest
 
 from ..ccddata import CCDData
 from ..core import *

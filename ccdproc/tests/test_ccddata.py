@@ -4,9 +4,9 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import numpy as np
-from astropy.io import fits
+import pytest
 
-from astropy.tests.helper import pytest
+from astropy.io import fits
 from astropy.nddata import StdDevUncertainty, MissingDataAssociationException
 from astropy import units as u
 from astropy.extern import six

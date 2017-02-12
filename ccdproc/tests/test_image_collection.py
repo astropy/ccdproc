@@ -5,14 +5,14 @@ from __future__ import (print_function, division, absolute_import,
 import os
 from shutil import rmtree
 from tempfile import mkdtemp
-from glob import iglob, glob
+from glob import iglob
 import logging
-import stat
+import pytest
 
 import astropy.io.fits as fits
 import numpy as np
 
-from astropy.tests.helper import pytest, catch_warnings
+from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
 from ccdproc import CCDData

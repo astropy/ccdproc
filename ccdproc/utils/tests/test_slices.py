@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from astropy.tests.helper import pytest
+import pytest
 
 from ..slices import slice_from_string
 

@@ -2,8 +2,9 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import numpy as np
+import pytest
 
-from astropy.tests.helper import pytest, catch_warnings
+from astropy.tests.helper import catch_warnings
 
 from ..core import bitfield_to_boolean_mask
 

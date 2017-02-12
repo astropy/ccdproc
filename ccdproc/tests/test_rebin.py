@@ -2,10 +2,11 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import numpy as np
+import pytest
 
 from astropy.nddata import StdDevUncertainty
 
-from astropy.tests.helper import pytest, catch_warnings
+from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from ..core import rebin

@@ -5,7 +5,7 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 
 from astropy.extern import six
-from astropy.tests.helper import pytest
+import pytest
 
 from .. import subtract_bias, create_deviation, Keyword, CCDData
 
