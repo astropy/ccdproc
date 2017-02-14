@@ -30,10 +30,11 @@ _POWERS = (
 # only an unsigned may hold the result.
 _REPRESENTABLE_FLAGS = {
     'int8': 7, 'int16': 15, 'int32': 31, 'int64': 63,
-    'uint64': 64
+    'uint8': 8, 'uint16': 16, 'uint32': 32, 'uint64': 64
 }
 
-# The following could also be calculated using this statement:
+# The following could also be calculated using this statement (except for the
+# lower uint types - which should be avoided!)
 # {i: min((dtype for dtype, maxsize in REPRESENTABLE_FLAGS.items()
 #          if maxsize>=i),
 #         key=REPRESENTABLE_FLAGS.get)
@@ -385,7 +386,9 @@ class Bitmask(object):
         # If bitname or bitvals were given these are now converted to bitvalues
         # so we can do all the real processing in here.
         if bitval is not None:
-            maximum = _REPRESENTABLE_FLAGS[bitmask.dtype.name]
+            # There is no zero'th flag so subtract one from the representable
+            # flags to get the real number of flags
+            maximum = _REPRESENTABLE_FLAGS[bitmask.dtype.name] - 1
             # Make sure the maximum value doesn't exceed the limit given by the
             # dtype of the bitmask
             if max(bitval) > _POWERS[maximum]:
@@ -407,7 +410,8 @@ class Bitmask(object):
             # If we want to reverse the flag interpretation we must subtract
             # the value from the sum of all possible flags:
             if reverse_flag_interpretation:
-                cmpbitval = sum(_POWERS[:maximum+1]) - cmpbitval
+                cmpbitval = np.array(sum(_POWERS[:maximum+1]) - cmpbitval,
+                                     dtype=bitmask.dtype)
 
         # Finally create the mask using a bitwise and operation and return it.
         mask = np.zeros(bitmask.shape, dtype=bool)
