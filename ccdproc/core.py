@@ -29,7 +29,7 @@ __all__ = ['background_deviation_box', 'background_deviation_filter',
            'create_deviation', 'flat_correct', 'gain_correct', 'rebin',
            'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
            'transform_image', 'trim_image', 'wcs_project', 'Keyword',
-           'median_filter', 'ccdmask']
+           'median_filter', 'ccdmask', 'bitmask_to_mask']
 
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
@@ -1575,6 +1575,112 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
 
     else:
         raise TypeError('ccd is not an numpy.ndarray or a CCDData object.')
+
+
+def bitmask_to_mask(bitmask, bits=None, reverse=False):
+    """Convert a bitmask to a boolean mask.
+
+    Parameters
+    ----------
+    bitmask : `numpy.ndarray`-like of integer type
+        The bitmask to convert to a boolean mask.
+
+    bits : None, int or iterable containing int, optional
+        The bits that should be taken into account:
+
+        - *None*: use all bits
+        - *int*: treat the 1-bits in the integer as bits to use
+        - *iterable containing ints*: sum all the integers and then use all
+          bits that are 1 in the resulting integer.
+
+        Default is ``None``.
+
+    reverse : bool, optional
+        This parameter controls if the set ``bits`` should be used when
+        creating the mask (``False``) or ignored in this function (``True``).
+        Default is ``False``.
+
+    Returns
+    -------
+    mask : `numpy.ndarray` of boolean type
+        The boolean mask constructed from the bitmask.
+
+    Raises
+    ------
+    TypeError
+        If the bitmask or the bits are not of integer type.
+
+    ValueError
+        If the bits are ``None`` but reverse is ``True``.
+
+    Examples
+    --------
+    To create a mask where any bit in the bitmask is set one can simply pass
+    in the bitmask:
+
+        >>> from ccdproc import bitmask_to_mask
+        >>> import numpy as np
+        >>> bitmask_to_mask(np.arange(8))
+        array([False,  True,  True,  True,  True,  True,  True,  True], dtype=bool)
+
+    But also single bits can be used::
+
+        >>> bitmask_to_mask(np.arange(8), 1)
+        array([False,  True, False,  True, False,  True, False,  True], dtype=bool)
+
+    And also multiple bits::
+
+        >>> bitmask_to_mask(np.arange(8), [2, 4])
+        array([False, False,  True,  True,  True,  True,  True,  True], dtype=bool)
+
+    To specify specific bits to *ignore* the ``reverse`` parameter can be
+    used::
+
+        >>> bitmask_to_mask(np.arange(8), 1, reverse=True)
+        array([False, False,  True,  True,  True,  True,  True,  True], dtype=bool)
+    """
+    bitmask = np.asarray(bitmask)
+    if bitmask.dtype.kind not in ('u', 'i'):
+        raise TypeError('"bitmask" must be of integer type.')
+
+    # If the bits are None this function simplifies a lot because one can just
+    # check if any bit is set (not 0 in the array), so treat this special case
+    # early.
+    if bits is None:
+        if reverse:
+            raise ValueError('When setting "reverse" to "True" the "bits" '
+                             'must not be "None".')
+        return bitmask != 0
+
+    # Otherwise the bits should be given as single integer or a list of them.
+    try:
+        bits = sum(bits)
+    except TypeError as exc:
+        if 'object is not iterable' in str(exc):
+            pass
+        else:
+            raise TypeError('"bits" is iterable but it should only contain '
+                            'integers that can be summed.')
+
+    # There are some problems with numpy.ints and isinstance(val, int) so
+    # explicitly convert this to a Python integer.
+    try:
+        bits_as_int = int(bits)
+    except Exception:
+        raise TypeError('"bits" must be an integer or an iterable containing '
+                        'integers.')
+    if bits_as_int != bits:
+        raise TypeError('"bits" must be an integer or an iterable containing '
+                        'integers.')
+    else:
+        bits = bits_as_int
+
+    if reverse:
+        bits = ~bits
+
+    mask = np.zeros(bitmask.shape, dtype=bool)
+    mask = np.bitwise_and(bitmask, bits, out=mask, casting='unsafe')
+    return mask
 
 
 def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
