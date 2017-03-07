@@ -786,6 +786,8 @@ class ImageFileCollection(object):
         name='image', default_scaling='False', return_type='numpy.ndarray')
 
     def ccds(self, ccd_kwargs=None, **kwd):
+        if kwd.get('do_not_scale_image_data', None):
+            raise TypeError('cannot specify "do_not_scale_image_data=True" here.')
         return self._generator('ccd', ccd_kwargs=ccd_kwargs, **kwd)
     ccds.__doc__ = _generator.__doc__.format(
-        name='CCDData', default_scaling='True', return_type='ccdproc.CCDData')
+        name='CCDData', default_scaling='False', return_type='ccdproc.CCDData')
