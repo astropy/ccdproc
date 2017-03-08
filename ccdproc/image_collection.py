@@ -65,7 +65,7 @@ class ImageFileCollection(object):
         value.
     """
     def __init__(self, location=None, keywords=None, info_file=None,
-                 filenames=None):
+                 filenames=None, extension=None):
         self._location = location
         self._filenames = filenames
         self._files = []
@@ -108,6 +108,11 @@ class ImageFileCollection(object):
         # actually setting the correct value, this just ensure that there
         # is always *some* value.
         self._all_keywords = False
+
+        if extension is None:
+            self._extension = 0
+        else:
+            self._extension = extension
 
         if keywords:
             self.keywords = keywords
@@ -363,7 +368,8 @@ class ImageFileCollection(object):
             summary = input_summary
             n_previous = len(summary['file'])
 
-        h = fits.getheader(file_name)
+        h = fits.getheader(file_name, self._extension)
+
         assert 'file' not in h
 
         # Try opening header before this so that file name is only added if
@@ -694,10 +700,12 @@ class ImageFileCollection(object):
 
             file_name = path.basename(full_path)
 
+            extension_index = hdulist.index_of(self._extension)
+
             return_options = {
-                    'header': lambda: hdulist[0].header,
-                    'hdu': lambda: hdulist[0],
-                    'data': lambda: hdulist[0].data,
+                    'header': lambda: hdulist[extension_index].header,
+                    'hdu': lambda: hdulist[extension_index],
+                    'data': lambda: hdulist[extension_index].data,
                     'ccd': lambda: fits_ccddata_reader(full_path, **ccd_kwargs)
                     }
             try:
