@@ -351,7 +351,13 @@ class ImageFileCollection(object):
         def _add_val_to_dict(key, value, tbl_dict, n_previous, missing_marker):
             key = key.lower()
             try:
-                tbl_dict[key].append(value)
+                if key not in tbl_dict.keys():
+                    tbl_dict[key].append(value)
+                else:
+                    warnings.warn('The keyword "' + key.upper() +
+                    '" appears more than once in header' +
+                    '\nConsidering only the first occurence', AstropyUserWarning)
+
             except KeyError:
                 tbl_dict[key] = [missing_marker] * n_previous
                 tbl_dict[key].append(value)
