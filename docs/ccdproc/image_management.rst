@@ -25,6 +25,10 @@ example initialization looks like::
     >>> keys = ['imagetyp', 'object', 'filter', 'exposure']
     >>> ic1 = ImageFileCollection('.', keywords=keys) # only keep track of keys
 
+    >>> # the following line shouldn't be needed in real files but it's needed
+    >>> # because the testfile has no header entry for "filter".
+    >>> ic1.summary['filter'] = ic1.summary['filter'].astype(str)
+
 You can use the wildcard ``*`` in place of a list to indicate you want the
 collection to use all keywords in the headers::
 
