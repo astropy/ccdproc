@@ -657,6 +657,20 @@ class TestImageFileCollection(object):
         for i in range(len(collection.summary)):
             assert(collection.summary['file'][i] == collection.files[i])
 
+    def test_duplicate_keywords(self, triage_setup):
+        # Make sure duplicated keywords don't make the imagefilecollection
+        # fail.
+        hdu = fits.PrimaryHDU()
+        hdu.data = np.zeros((5, 5))
+        hdu.header['stupid'] = 'fun'
+        hdu.header.append(('stupid', 'nofun'))
+
+        hdu.writeto(os.path.join(triage_setup.test_dir, 'duplicated.fits'))
+
+        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
+                                                  keywords='*')
+        assert 'stupid' in ic.summary.colnames
+
     def test_ccds_generator_in_different_directory(self, triage_setup, tmpdir):
         """
         Regression test for https://github.com/astropy/ccdproc/issues/421 in
