@@ -705,6 +705,9 @@ class ImageFileCollection(object):
         for full_path in self._paths():
             no_scale = do_not_scale_image_data
             if return_type == 'ccd':
+                # No need to check for "do_not_scale_image_data" because if
+                # it's True then it should be already rejected by the "ccds"
+                # method.
                 ccddata = fits_ccddata_reader(full_path, **ccd_kwargs)
             else:
                 hdulist = fits.open(full_path,
@@ -787,7 +790,8 @@ class ImageFileCollection(object):
 
     def ccds(self, ccd_kwargs=None, **kwd):
         if kwd.get('do_not_scale_image_data', None):
-            raise TypeError('cannot specify "do_not_scale_image_data=True" here.')
+            raise TypeError('cannot specify "do_not_scale_image_data=True" '
+                            'for CCDData objects.')
         return self._generator('ccd', ccd_kwargs=ccd_kwargs, **kwd)
     ccds.__doc__ = _generator.__doc__.format(
         name='CCDData', default_scaling='False', return_type='ccdproc.CCDData')

@@ -247,6 +247,12 @@ class TestImageFileCollection(object):
         for ccd in collection.ccds(ccd_kwargs=ccd_kwargs):
             assert isinstance(ccd, CCDData)
 
+    def test_generator_ccds_noscale(self, triage_setup):
+        collection = image_collection.ImageFileCollection(
+                location=triage_setup.test_dir, keywords=['imagetyp'])
+        with pytest.raises(TypeError):
+            collection.ccds(do_not_scale_image_data=True)
+
     def test_consecutive_fiilters(self, triage_setup):
         collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
                                              keywords=['imagetyp',
