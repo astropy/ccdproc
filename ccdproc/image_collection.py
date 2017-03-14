@@ -184,19 +184,19 @@ class ImageFileCollection(object):
 
         logging.debug('keywords in setter before pruning: %s.', keywords)
 
-        # remove duplicates and force a copy
-        new_keys = list(set(keywords))
+        # remove duplicates and force a copy so we can sort the items later
+        # by their given position.
+        new_keys_set = set(keywords)
+        new_keys_lst = list(new_keys_set)
+        new_keys_set.add('file')
 
-        logging.debug('keywords after pruning %s.', new_keys)
+        logging.debug('keywords after pruning %s.', new_keys_lst)
 
-        full_new_keys = list(set(new_keys))
-        full_new_keys.append('file')
-        full_new_set = set(full_new_keys)
         current_set = set(self.keywords)
-        if full_new_set.issubset(current_set):
+        if new_keys_set.issubset(current_set):
             logging.debug('table columns before trimming: %s.',
                           ' '.join(current_set))
-            cut_keys = current_set.difference(full_new_set)
+            cut_keys = current_set.difference(new_keys_set)
             logging.debug('will try removing columns: %s.',
                           ' '.join(cut_keys))
             for key in cut_keys:
@@ -206,8 +206,8 @@ class ImageFileCollection(object):
         else:
             logging.debug('should be building new table...')
             # Reorder the keywords to match the initial ordering.
-            new_keys.sort(key=keywords.index)
-            self._summary_info = self._fits_summary(header_keywords=new_keys)
+            new_keys_lst.sort(key=keywords.index)
+            self._summary_info = self._fits_summary(new_keys_lst)
 
     @property
     def files(self):
