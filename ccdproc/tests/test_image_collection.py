@@ -148,6 +148,26 @@ class TestImageFileCollection(object):
         new_data = np.array(collection.summary_info)
         assert (new_data == old_data).all()
 
+    def test_multiple_extensions(self, triage_setup):
+        ext1 = fits.PrimaryHDU()
+        ext2 = fits.ImageHDU(name='MASK')
+        hdulist = fits.hdu.hdulist.HDUList([ext1, ext2])
+
+        hdulist.writeto(os.path.join(triage_setup.test_dir, 'multi-extension.fits'))
+        ic2 = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*',
+            filenames=['multi-extension.fits'], hdu='MASK')
+
+        ic1 = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*',
+            filenames=['multi-extension.fits'], hdu=0)
+
+        column2 = ic2.summary_info.colnames
+        column1 = ic1.summary_info.colnames
+
+        list1 = [key.lower() for key in ext2.header]
+        list2 = ic2.summary_info.colnames[1:]
+
+        assert list1 == list2
+
     def test_headers(self, triage_setup):
         collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
                                              keywords=['imagetyp'])
