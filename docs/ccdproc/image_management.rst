@@ -48,8 +48,8 @@ Selecting files
 Selecting the files that match a set of criteria, for example all images in
 the I band with exposure time less than 60 seconds you could do::
 
-    >>> matches = (ic1.summary['filter'] == 'I') & (ic1.summary['exposure'] < 60)
-    >>> my_files = ic1.summary['file'][matches]
+    >>> matches = (ic1.summary['filter'] == 'I') & (ic1.summary['exposure'] < 60)  # doctest: +SKIP
+    >>> my_files = ic1.summary['file'][matches]  # doctest: +SKIP
 
 The column ``file`` is added automatically when the image collection is created.
 
@@ -57,7 +57,7 @@ For more simple selection, when you just want files whose keywords exactly
 match particular values, say all I band images with exposure time of 30
 seconds, there is a convenience method ``.files_filtered``::
 
-    >>> my_files = ic1.files_filtered(filter='I', exposure=30)
+    >>> my_files = ic1.files_filtered(filter='I', exposure=30)  # doctest: +SKIP
 
 The optional arguments to ``files_filtered`` are used to filter the list of
 files.
@@ -70,7 +70,7 @@ next to each other. To do this, the images in a collection can be sorted with
 the ``sort`` method using the fits header keys in the same way you would sort a
 :class:`~astropy.table.Table`::
 
-    >>> ic1.sort(['object', 'filter'])
+    >>> ic1.sort(['object', 'filter'])  # doctest: +SKIP
 
 Iterating over hdus, headers, data, or ccds
 -------------------------------------------
@@ -82,7 +82,7 @@ For example, to iterate over all of the I band images with exposure of
 30 seconds, performing some basic operation on the data (very contrived
 example)::
 
-    >>> for hdu in ic1.hdus(imagetyp='LiGhT', filter='I', exposure=30):
+    >>> for hdu in ic1.hdus(imagetyp='LiGhT', filter='I', exposure=30):  # doctest: +SKIP
     ...     hdu.header['exposure']
     ...     new_data = hdu.data - hdu.data.mean()
 
@@ -96,7 +96,7 @@ All of them have the option to also provide the file name in addition to the
 hdu (or header or data)::
 
     >>> for hdu, fname in ic1.hdus(return_fname=True,
-    ...                            imagetyp='LiGhT', filter='I', exposure=30):
+    ...                            imagetyp='LiGhT', filter='I', exposure=30):  # doctest: +SKIP
     ...    hdu.header['meansub'] = True
     ...    hdu.data = hdu.data - hdu.data.mean()
     ...    hdu.writeto(fname + '.new')
@@ -116,7 +116,7 @@ example below has (almost) the same effect of the example above, subtracting
 the mean from each image and saving to a new file::
 
     >>> for hdu in ic1.hdus(save_with_name='_new',
-    ...                     imagetyp='LiGhT', filter='I', exposure=30):
+    ...                     imagetyp='LiGhT', filter='I', exposure=30):  # doctest: +SKIP
     ...    hdu.header['meansub'] = True
     ...    hdu.data = hdu.data - hdu.data.mean()
 
@@ -132,7 +132,7 @@ all of the I band images with 30 second exposure from the original
 location to ``other_dir``::
 
     >>> for hdu in ic1.hdus(save_location='other_dir',
-    ...                     imagetyp='LiGhT', filter='I', exposure=30):
+    ...                     imagetyp='LiGhT', filter='I', exposure=30):  # doctest: +SKIP
     ...     pass
 
 This option can be combined with the previous one to also give the files a
@@ -144,7 +144,7 @@ preserves no backup. The example below replaces each of the I band images
 with 30 second exposure with a file that has had the mean subtracted::
 
     >>> for hdu in ic1.hdus(overwrite=True,
-    ...                     imagetyp='LiGhT', filter='I', exposure=30):
+    ...                     imagetyp='LiGhT', filter='I', exposure=30):  # doctest: +SKIP
     ...    hdu.header['meansub'] = True
     ...    hdu.data = hdu.data - hdu.data.mean()
 
