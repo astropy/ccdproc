@@ -628,16 +628,19 @@ class TestImageFileCollection(object):
 
     def test_overwrite_ccddata(self, triage_setup, tmpdir):
         # Regression test for #453
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
+        ic = image_collection.ImageFileCollection(
+            triage_setup.test_dir,
+            keywords='*')
+        ccd_kwargs = {'unit': 'adu'}
 
         means = []
-        for ccd in ic.ccds(overwrite=True, unit='adu'):
-            ccd.data += 1
+        for ccd in ic.ccds(overwrite=True, ccd_kwargs=ccd_kwargs):
+            ccd.data += 1  # modify the data inplace!
             means.append(ccd.data.mean())
 
         ic.refresh()
-        for idx, ccd in enumerate(ic.ccds(unit='adu')):
-            assert ccd.data.mean == means[idx]
+        for idx, ccd in enumerate(ic.ccds(ccd_kwargs=ccd_kwargs)):
+            assert ccd.data.mean() == means[idx]
 
     def test_refresh_method_sees_added_files(self, triage_setup):
         ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
