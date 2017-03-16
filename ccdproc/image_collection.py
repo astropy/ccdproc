@@ -163,6 +163,9 @@ class ImageFileCollection(object):
 
         Setting the keywords causes the summary table to be regenerated unless
         the new keywords are a subset of the old.
+
+        .. versionchanged:: 1.3
+            Added ``deleter`` for ``keywords`` property.
         """
         if self.summary_info:
             return self.summary_info.keys()
@@ -208,6 +211,12 @@ class ImageFileCollection(object):
             # Reorder the keywords to match the initial ordering.
             new_keys_lst.sort(key=keywords.index)
             self._summary_info = self._fits_summary(new_keys_lst)
+
+    @keywords.deleter
+    def keywords(self):
+        # since keywords are drawn from self.summary_info, setting
+        # summary_info = [] deletes the keywords.
+        self._summary_info = []
 
     @property
     def files(self):
