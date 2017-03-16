@@ -58,6 +58,11 @@ class ImageFileCollection(object):
         The filenames are assumed to be in ``location``.
         Default is ``None``.
 
+     hdu: str or int, optional
+         Name/Index of the extension, which specifies the extension to extract data
+         from all files in a given directory.
+         Default is 0.
+
     Raises
     ------
     ValueError

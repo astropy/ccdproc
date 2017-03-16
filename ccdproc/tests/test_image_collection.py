@@ -163,6 +163,8 @@ class TestImageFileCollection(object):
         column2 = ic2.summary_info.colnames
         column1 = ic1.summary_info.colnames
 
+        assert column1 != column2
+
         list1 = [key.lower() for key in ext2.header]
         list2 = ic2.summary_info.colnames[1:]
 

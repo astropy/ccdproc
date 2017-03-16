@@ -36,6 +36,7 @@ Alphabetical list of contributors
 * Brigitta Sipocz (@bsipocz)
 * Connor Stotts (@stottsco)
 * Ole Streicher (@olebole)
+* JVSN Reddy (@janga1997)
 * Erik Tollerud (@eteq)
 * Zè Vinícius (@mirca)
 * Josh Walawender (@joshwalawender)
@@ -45,4 +46,3 @@ Alphabetical list of contributors
 please send an email to the coordinators, or
 `open a pull request for this page <https://github.com/astropy/ccdproc/edit/master/AUTHORS.rst>`_
 in the `ccdproc repository <https://github.com/astropy/ccdproc>`_)
-
