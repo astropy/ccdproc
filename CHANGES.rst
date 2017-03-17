@@ -4,7 +4,7 @@
 
 New Features
 ^^^^^^^^^^^^
-
+- Add representation for ImageFileCollection [#475]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
