@@ -58,7 +58,7 @@ class ImageFileCollection(object):
         The filenames are assumed to be in ``location``.
         Default is ``None``.
 
-     hdu: str or int, optional
+     ext: str or int, optional
          Name/Index of the extension, which specifies the extension to extract data
          from all files in a given directory.
          Default is 0.
@@ -70,7 +70,7 @@ class ImageFileCollection(object):
         value.
     """
     def __init__(self, location=None, keywords=None, info_file=None,
-                 filenames=None, hdu=0):
+                 filenames=None, ext=0):
         self._location = location
         self._filenames = filenames
         self._files = []
@@ -114,7 +114,7 @@ class ImageFileCollection(object):
         # is always *some* value.
         self._all_keywords = False
 
-        self._hdu = hdu
+        self._ext = ext
 
         if keywords:
             self.keywords = keywords
@@ -222,6 +222,13 @@ class ImageFileCollection(object):
         list of str, Unfiltered list of FITS files in location.
         """
         return self._files
+
+    @property
+    def ext(self):
+        """
+        str,The extension for which all 
+        """
+        return self._ext
 
     def values(self, keyword, unique=False):
         """
@@ -370,7 +377,7 @@ class ImageFileCollection(object):
             summary = input_summary
             n_previous = len(summary['file'])
 
-        h = fits.getheader(file_name, self._hdu)
+        h = fits.getheader(file_name, self._ext)
 
         assert 'file' not in h
 
@@ -702,13 +709,13 @@ class ImageFileCollection(object):
 
             file_name = path.basename(full_path)
 
-            hdu_index = hdulist.index_of(self._hdu)
-            ccd_kwargs.setdefault('hdu', hdu_index)
+            ext_index = hdulist.index_of(self._ext)
+            ccd_kwargs.setdefault('ext', ext_index)
 
             return_options = {
-                    'header': lambda: hdulist[hdu_index].header,
-                    'hdu': lambda: hdulist[hdu_index],
-                    'data': lambda: hdulist[hdu_index].data,
+                    'header': lambda: hdulist[ext_index].header,
+                    'hdu': lambda: hdulist[ext_index],
+                    'data': lambda: hdulist[ext_index].data,
                     'ccd': lambda: fits_ccddata_reader(full_path, **ccd_kwargs)
                     }
             try:

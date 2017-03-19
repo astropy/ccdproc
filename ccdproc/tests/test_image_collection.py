@@ -155,10 +155,10 @@ class TestImageFileCollection(object):
 
         hdulist.writeto(os.path.join(triage_setup.test_dir, 'multi-extension.fits'))
         ic2 = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*',
-            filenames=['multi-extension.fits'], hdu='MASK')
+            filenames=['multi-extension.fits'], ext='MASK')
 
         ic1 = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*',
-            filenames=['multi-extension.fits'], hdu=0)
+            filenames=['multi-extension.fits'], ext=0)
 
         column2 = ic2.summary_info.colnames
         column1 = ic1.summary_info.colnames

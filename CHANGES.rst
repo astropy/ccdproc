@@ -4,7 +4,9 @@
 
 New Features
 ^^^^^^^^^^^^
+
 - added feature to specify extension when calling ImageFileCollection [#463]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
