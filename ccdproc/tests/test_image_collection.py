@@ -670,6 +670,8 @@ class TestImageFileCollection(object):
         ic = image_collection.ImageFileCollection(triage_setup.test_dir,
                                                   keywords='*')
         assert 'stupid' in ic.summary.colnames
+        assert 'fun' in ic.summary['stupid']
+        assert 'nofun' not in ic.summary['stupid']
 
     def test_ccds_generator_in_different_directory(self, triage_setup, tmpdir):
         """

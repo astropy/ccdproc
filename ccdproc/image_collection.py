@@ -386,7 +386,7 @@ class ImageFileCollection(object):
             k = k.lower()
 
             if k in ['comment', 'history']:
-                multi_entry_keys[k.lower()].append(str(v))
+                multi_entry_keys[k].append(str(v))
                 # Accumulate these in a separate dictionary until the
                 # end to avoid adding multiple entries to summary.
                 continue
