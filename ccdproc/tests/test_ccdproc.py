@@ -984,3 +984,89 @@ def test_ccd_process():
     assert(occd.unit == u.electron)
     # Make sure the original keyword is still present. Regression test for #401
     assert occd.meta['testkw'] == 100
+
+
+def test_bitmask_to_mask_failures():
+    arr = np.ones((3, 3), dtype=int)
+    # Bitmask is not of integer type
+    with pytest.raises(TypeError):
+        bitmask_to_mask([1, 2, 3.])
+
+    # bits None but reverse True
+    with pytest.raises(ValueError):
+        bitmask_to_mask(arr, reverse=True)
+
+    # bits is not an integer
+    with pytest.raises(TypeError):
+        bitmask_to_mask(arr, 1.5)
+
+    # bits is not convertible to integer
+    with pytest.raises(TypeError):
+        bitmask_to_mask(arr, "1.5")
+
+    # bits is iterable but contains not-integers
+    with pytest.raises(TypeError):
+        bitmask_to_mask(arr, [1, 2, 3.5])
+
+
+def _bitmask_helper(mask, reference_mask):
+    assert mask.dtype.kind == 'b'
+    np.testing.assert_array_equal(mask, reference_mask)
+
+
+def test_bitmask_to_mask_without_bits():
+    bitmask = np.arange(1000)
+    mask = bitmask_to_mask(bitmask)
+    _bitmask_helper(mask, bitmask > 0)
+
+
+def test_bitmask_to_mask_with_bits():
+    bitmask = np.arange(8)
+    # Corresponding to binary: [000, 001, 010, 011, 100, 101, 110, 111]
+
+    # Bits given as integer
+    _bitmask_helper(bitmask_to_mask(bitmask, 1), [0, 1, 0, 1, 0, 1, 0, 1])
+    _bitmask_helper(bitmask_to_mask(bitmask, 2), [0, 0, 1, 1, 0, 0, 1, 1])
+    _bitmask_helper(bitmask_to_mask(bitmask, 4), [0, 0, 0, 0, 1, 1, 1, 1])
+    _bitmask_helper(bitmask_to_mask(bitmask, 1+2), [0, 1, 1, 1, 0, 1, 1, 1])
+    _bitmask_helper(bitmask_to_mask(bitmask, 1+4), [0, 1, 0, 1, 1, 1, 1, 1])
+    _bitmask_helper(bitmask_to_mask(bitmask, 2+4), [0, 0, 1, 1, 1, 1, 1, 1])
+    _bitmask_helper(bitmask_to_mask(bitmask, 1+2+4), [0, 1, 1, 1, 1, 1, 1, 1])
+    # ... as list
+    _bitmask_helper(bitmask_to_mask(bitmask, [1]), [0, 1, 0, 1, 0, 1, 0, 1])
+    _bitmask_helper(bitmask_to_mask(bitmask, [2]), [0, 0, 1, 1, 0, 0, 1, 1])
+    _bitmask_helper(bitmask_to_mask(bitmask, [4]), [0, 0, 0, 0, 1, 1, 1, 1])
+    _bitmask_helper(bitmask_to_mask(bitmask, [1, 2]), [0, 1, 1, 1, 0, 1, 1, 1])
+    _bitmask_helper(bitmask_to_mask(bitmask, [1, 4]), [0, 1, 0, 1, 1, 1, 1, 1])
+    _bitmask_helper(bitmask_to_mask(bitmask, [2, 4]), [0, 0, 1, 1, 1, 1, 1, 1])
+    _bitmask_helper(bitmask_to_mask(bitmask, [1, 2, 4]),
+                    [0, 1, 1, 1, 1, 1, 1, 1])
+
+    # reversed
+    _bitmask_helper(bitmask_to_mask(bitmask, 1, reverse=True),
+                    bitmask_to_mask(bitmask, 2+4))
+    _bitmask_helper(bitmask_to_mask(bitmask, 2, reverse=True),
+                    bitmask_to_mask(bitmask, 1+4))
+    _bitmask_helper(bitmask_to_mask(bitmask, 4, reverse=True),
+                    bitmask_to_mask(bitmask, 1+2))
+    _bitmask_helper(bitmask_to_mask(bitmask, 1+2, reverse=True),
+                    bitmask_to_mask(bitmask, 4))
+    _bitmask_helper(bitmask_to_mask(bitmask, 1+4, reverse=True),
+                    bitmask_to_mask(bitmask, 2))
+    _bitmask_helper(bitmask_to_mask(bitmask, 2+4, reverse=True),
+                    bitmask_to_mask(bitmask, 1))
+    _bitmask_helper(bitmask_to_mask(bitmask, 1+2+4, reverse=True), 0)
+    # ... as list
+    _bitmask_helper(bitmask_to_mask(bitmask, [1], reverse=True),
+                    bitmask_to_mask(bitmask, [2, 4]))
+    _bitmask_helper(bitmask_to_mask(bitmask, [2], reverse=True),
+                    bitmask_to_mask(bitmask, [1, 4]))
+    _bitmask_helper(bitmask_to_mask(bitmask, [4], reverse=True),
+                    bitmask_to_mask(bitmask, [1, 2]))
+    _bitmask_helper(bitmask_to_mask(bitmask, [1, 2], reverse=True),
+                    bitmask_to_mask(bitmask, [4]))
+    _bitmask_helper(bitmask_to_mask(bitmask, [1, 4], reverse=True),
+                    bitmask_to_mask(bitmask, [2]))
+    _bitmask_helper(bitmask_to_mask(bitmask, [2, 4], reverse=True),
+                    bitmask_to_mask(bitmask, [1]))
+    _bitmask_helper(bitmask_to_mask(bitmask, [1, 2, 4], reverse=True), 0)

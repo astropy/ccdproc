@@ -5,6 +5,8 @@
 New Features
 ^^^^^^^^^^^^
 
+- Added ``bitmask_to_mask`` function. [#459]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
