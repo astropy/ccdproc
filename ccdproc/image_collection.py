@@ -349,7 +349,6 @@ class ImageFileCollection(object):
         from collections import OrderedDict
 
         def _add_val_to_dict(key, value, tbl_dict, n_previous, missing_marker):
-            key = key.lower()
             try:
                 tbl_dict[key].append(value)
             except KeyError:
@@ -379,19 +378,35 @@ class ImageFileCollection(object):
         multi_entry_keys = {'comment': [],
                             'history': []}
 
+        alreadyencountered = set()
         for k, v in six.iteritems(h):
             if k == '':
                 continue
 
-            if k.lower() in ['comment', 'history']:
-                multi_entry_keys[k.lower()].append(str(v))
+            k = k.lower()
+
+            if k in ['comment', 'history']:
+                multi_entry_keys[k].append(str(v))
                 # Accumulate these in a separate dictionary until the
                 # end to avoid adding multiple entries to summary.
                 continue
+            elif k in alreadyencountered:
+                # The "normal" multi-entries HISTORY, COMMENT and BLANK are
+                # already processed so any further duplication is probably
+                # a mistake. It would lead to problems in ImageFileCollection
+                # to add it as well, so simply ignore those.
+                warnings.warn(
+                    'Header from file "{f}" contains multiple entries for {k},'
+                    ' the pair "{k}={v}" will be ignored.'
+                    ''.format(k=k, v=v, f=file_name),
+                    UserWarning)
+                continue
             else:
-                val = v
+                # Add the key to the already encountered keys so we don't add
+                # it more than once.
+                alreadyencountered.add(k)
 
-            _add_val_to_dict(k, val, summary, n_previous, missing_marker)
+            _add_val_to_dict(k, v, summary, n_previous, missing_marker)
 
         for k, v in six.iteritems(multi_entry_keys):
             if v:

@@ -15,6 +15,9 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- ``ImageFileCollection`` now handles Headers with duplicated keywords
+  (other than ``COMMENT`` and ``HISTORY``) by ignoring all but the first. [#467]
+
 
 1.2.0 (2016-12-13)
 ------------------
