@@ -59,9 +59,8 @@ class ImageFileCollection(object):
         Default is ``None``.
 
      ext: str or int, optional
-         Name/Index of the extension, which specifies the extension to extract data
-         from all files in a given directory.
-         Default is 0.
+         The extension from which the header and data will be read in all files.
+         Default is ``0``.
 
     Raises
     ------
@@ -226,7 +225,7 @@ class ImageFileCollection(object):
     @property
     def ext(self):
         """
-        str,The extension for which all 
+        str or int, The extension from which the header and data will be read in all files.
         """
         return self._ext
 

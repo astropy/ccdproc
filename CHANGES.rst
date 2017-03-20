@@ -5,8 +5,7 @@
 New Features
 ^^^^^^^^^^^^
 
-- added feature to specify extension when calling ImageFileCollection [#463]
-
+- Added ext parameter and property to ImageFileCollection to specify the FITS extension.
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

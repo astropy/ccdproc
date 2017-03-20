@@ -160,6 +160,9 @@ class TestImageFileCollection(object):
         ic1 = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*',
             filenames=['multi-extension.fits'], ext=0)
 
+        assert ic1.ext == 0
+        assert ic2.ext == 'MASK'
+
         column2 = ic2.summary_info.colnames
         column1 = ic1.summary_info.colnames
 
