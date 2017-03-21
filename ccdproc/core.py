@@ -23,7 +23,7 @@ from scipy import ndimage
 from .ccddata import CCDData
 from .utils.slices import slice_from_string
 from .log_meta import log_to_metadata
-from .extern.bitmask import bitmask2mask as _bitmask2mask
+from .extern.bitmask import bitfield_to_boolean_mask as _bitfield_to_boolean_mask
 
 __all__ = ['background_deviation_box', 'background_deviation_filter',
            'ccd_process', 'cosmicray_median', 'cosmicray_lacosmic',
@@ -1741,7 +1741,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
     return mask
 
 
-def bitmask2mask(bitmask, ignore_bits=0):
+def bitmask2mask(bitmask, ignore_bits=0, flip_bits=None):
     """Convert an integer bit mask as boolean mask.
 
     Parameters
@@ -1810,7 +1810,8 @@ def bitmask2mask(bitmask, ignore_bits=0):
 
     Instead of directly specifying the **bits flags to ignore** one can also
     pass in the **only bits that shouldn't be ignored** by prepending a ``~``
-    to the string of ``ignore_bits``::
+    to the string of ``ignore_bits`` (or if it's not a string in
+    ``ignore_bits`` one can set ``flip_bits=True``)::
 
         >>> # ignore all bit flags except the one for 2.
         >>> ccdproc.bitmask2mask(np.arange(8), ignore_bits='~(2)')
@@ -1819,12 +1820,13 @@ def bitmask2mask(bitmask, ignore_bits=0):
         >>> ccdproc.bitmask2mask(np.arange(8), ignore_bits='~(1, 8, 32)')
         array([False,  True, False,  True, False,  True, False,  True], dtype=bool)
 
+        >>> # Equivalent for a list using flip_bits.
+        >>> ccdproc.bitmask2mask(np.arange(8), ignore_bits=[1, 8, 32], flip_bits=True)
+        array([False,  True, False,  True, False,  True, False,  True], dtype=bool)
+
     """
-    bitmask = np.asarray(bitmask)
-    if isinstance(ignore_bits, (list, tuple)):
-        ignore_bits = sum(ignore_bits)
-    return _bitmask2mask(bitmask, ignore_bits,
-                         good_mask_value=False, dtype=bool)
+    return _bitfield_to_boolean_mask(bitmask, ignore_bits, flip_bits=flip_bits,
+                                     good_mask_value=False, dtype=bool)
 
 
 class Keyword(object):
