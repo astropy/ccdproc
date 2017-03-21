@@ -16,8 +16,8 @@ except ImportError:
 packagename = os.path.basename(os.path.dirname(__file__))
 TESTED_VERSIONS[packagename] = version
 
-## Uncomment the following line to treat all DeprecationWarnings as
-## exceptions
+# Uncomment the following line to treat all DeprecationWarnings as
+# exceptions
 # enable_deprecations_as_exceptions()
 
 # Add astropy to test header information and remove unused packages.

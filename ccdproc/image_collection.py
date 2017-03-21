@@ -11,6 +11,7 @@ import numpy.ma as ma
 from astropy.table import Table
 import astropy.io.fits as fits
 from astropy.extern import six
+from astropy.utils import minversion
 
 import warnings
 from astropy.utils.exceptions import AstropyUserWarning
@@ -21,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 __all__ = ['ImageFileCollection']
 __doctest_skip__ = ['*']
+
+_ASTROPY_LT_1_3 = not minversion("astropy", "1.3")
 
 
 class ImageFileCollection(object):
@@ -745,10 +748,16 @@ class ImageFileCollection(object):
             # I really should have called the option overwrite from
             # the beginning. The hack below ensures old code works,
             # at least...
-            nuke_existing = clobber or overwrite
+            if clobber or overwrite:
+                if _ASTROPY_LT_1_3:
+                    nuke_existing = {'clobber': True}
+                else:
+                    nuke_existing = {'overwrite': True}
+            else:
+                nuke_existing = {}
             if (new_path != full_path) or nuke_existing:
                 try:
-                    hdulist.writeto(new_path, clobber=nuke_existing)
+                    hdulist.writeto(new_path, **nuke_existing)
                 except IOError:
                     logger.error('error writing file %s', new_path)
                     raise

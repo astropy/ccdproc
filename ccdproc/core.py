@@ -1098,14 +1098,14 @@ def rebin(ccd, newshape):
     --------
     Given an array that is 100x100::
 
-        >>> import numpy as np
-        >>> from astropy import units as u
-        >>> arr1 = CCDData(np.ones([10, 10]), unit=u.adu)
+        import numpy as np
+        from astropy import units as u
+        arr1 = CCDData(np.ones([10, 10]), unit=u.adu)
 
     The syntax for rebinning an array to a shape
     of (20,20) is::
 
-        >>> rebinned = rebin(arr1, (20,20))
+        rebin(arr1, (20,20))
     """
     # check to see that is in a nddata type
     if isinstance(ccd, np.ndarray):
