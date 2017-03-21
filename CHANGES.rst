@@ -5,6 +5,8 @@
 New Features
 ^^^^^^^^^^^^
 
+- Add keywords.deleter method to ImageFileCollection [#474]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

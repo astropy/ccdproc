@@ -101,6 +101,14 @@ class TestImageFileCollection(object):
             location=triage_setup.test_dir, filenames=fn, keywords=['filter'])
         assert img_collection.files == [fn]
 
+    def test_keywords_deleter(self, triage_setup):
+        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
+                                                  keywords='*')
+
+        assert ic.keywords != []
+        del ic.keywords
+        assert ic.keywords == []
+
     def test_files_with_compressed(self, triage_setup):
         collection = image_collection.ImageFileCollection(
             location=triage_setup.test_dir)
