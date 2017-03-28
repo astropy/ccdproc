@@ -37,6 +37,7 @@ env:
 
 matrix:
     include:
+
         # Try Astropy/NumPy development versions. This requires them to be
         # compiled during setup which takes some time.
         - python: 3.6
@@ -72,11 +73,10 @@ matrix:
         - python: 3.6
           env: NUMPY_VERSION=prerelease
 
-        # pycodestyle test, see setup.cfg for tested inconsistencies
+        # pycodestyle test, see setup.cfg for tested pep8 warnings/errors
         - python: 3.6
           env: MAIN_CMD='pycodestyle ccdproc --count  --show-source --show-pep8'
                SETUP_CMD=''
-               CONDA_DEPENDENCIES='pycodestyle'
 
 install:
 
