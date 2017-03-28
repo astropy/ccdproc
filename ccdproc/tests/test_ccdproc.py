@@ -26,7 +26,6 @@ except:
     HAS_BLOCK_X_FUNCS = False
 
 
-
 # test creating deviation
 # success expected if u_image * u_gain = u_readnoise
 @pytest.mark.parametrize('u_image,u_gain,u_readnoise,expect_success', [
@@ -666,42 +665,42 @@ def test_create_deviation_does_not_change_input(ccd_data):
     assert original.unit == ccd_data.unit
 
 def test_cosmicray_median_does_not_change_input(ccd_data):
-	original = ccd_data.copy()
-	error = np.zeros_like(ccd_data)
-	ccd = cosmicray_median(ccd_data,error_image = error, thresh = 5, mbox = 11, gbox = 0, rbox = 0)
-	np.testing.assert_array_equal(original.data,ccd_data.data)
-	assert original.unit == ccd_data.unit
+    original = ccd_data.copy()
+    error = np.zeros_like(ccd_data)
+    ccd = cosmicray_median(ccd_data,error_image=error, thresh=5, mbox=11, gbox=0, rbox=0)
+    np.testing.assert_array_equal(original.data,ccd_data.data)
+    assert original.unit == ccd_data.unit
 
 def test_cosmicray_lacosmic_does_not_change_input(ccd_data):
-	original = ccd_data.copy()
-	error = np.zeros_like(ccd_data)
-	ccd = cosmicray_lacosmic(ccd_data)
-	np.testing.assert_array_equal(original.data, ccd_data.data)
-	assert original.unit == ccd_data.unit
+    original = ccd_data.copy()
+    error = np.zeros_like(ccd_data)
+    ccd = cosmicray_lacosmic(ccd_data)
+    np.testing.assert_array_equal(original.data, ccd_data.data)
+    assert original.unit == ccd_data.unit
 
 def test_flat_correct_does_not_change_input(ccd_data):
-	original = ccd_data.copy()
-	flat = CCDData(np.zeros_like(ccd_data), unit = ccd_data.unit)
-	ccd = flat_correct(ccd_data,flat=flat)
-	np.testing.assert_array_equal(original.data, ccd_data.data)
-	assert original.unit == ccd_data.unit
+    original = ccd_data.copy()
+    flat = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
+    ccd = flat_correct(ccd_data,flat=flat)
+    np.testing.assert_array_equal(original.data, ccd_data.data)
+    assert original.unit == ccd_data.unit
 
 def test_gain_correct_does_not_change_input(ccd_data):
     original = ccd_data.copy()
-    ccd = gain_correct(ccd_data, gain = 1, gain_unit = ccd_data.unit)
+    ccd = gain_correct(ccd_data, gain=1, gain_unit=ccd_data.unit)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
 def test_subtract_bias_does_not_change_input(ccd_data):
     original = ccd_data.copy()
-    master_frame = CCDData(np.zeros_like(ccd_data),unit = ccd_data.unit)
-    ccd = subtract_bias(ccd_data, master = master_frame)
+    master_frame = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
+    ccd = subtract_bias(ccd_data, master=master_frame)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
 def test_trim_image_does_not_change_input(ccd_data):
     original = ccd_data.copy()
-    ccd = trim_image(ccd_data, fits_section = None)
+    ccd = trim_image(ccd_data, fits_section=None)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
