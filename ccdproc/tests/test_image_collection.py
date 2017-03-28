@@ -510,7 +510,7 @@ class TestImageFileCollection(object):
             warnings = f.readlines()
 
         assert (len(warnings) == 1)
-        is_in = ['unable to open table file' in w  for w in warnings]
+        is_in = ['unable to open table file' in w for w in warnings]
         assert all(is_in)
         # Do we raise an error if the table name is bad AND the location
         # is None?
@@ -615,7 +615,6 @@ class TestImageFileCollection(object):
     @pytest.mark.skipif("os.environ.get('APPVEYOR') or os.sys.platform == 'win32'",
                         reason="fails on Windows because file "
                                "overwriting fails")
-
     def test_refresh_method_sees_added_keywords(self, triage_setup, tmpdir):
         ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
         # Add a keyword I know isn't already in the header to each file.

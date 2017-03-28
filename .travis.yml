@@ -27,6 +27,7 @@ env:
         - ASTROPY_VERSION=stable
         - CONDA_DEPENDENCIES='scipy astroscrappy reproject scikit-image'
         - PIP_DEPENDENCIES=''
+        - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
         - CONDA_CHANNELS='astropy-ci-extras astropy'
 
@@ -72,6 +73,11 @@ matrix:
         - python: 3.6
           env: NUMPY_VERSION=prerelease
 
+        # pycodestyle test, see setup.cfg for tested pep8 warnings/errors
+        - python: 3.6
+          env: MAIN_CMD='pycodestyle ccdproc --count  --show-source --show-pep8'
+               SETUP_CMD=''
+
 install:
 
     - git clone git://github.com/astropy/ci-helpers.git
@@ -79,7 +85,7 @@ install:
 
 
 script:
-   - python setup.py $SETUP_CMD
+   - $MAIN_CMD $SETUP_CMD
 
 after_success:
     # If coveralls.io is set up for this package, uncomment the line
