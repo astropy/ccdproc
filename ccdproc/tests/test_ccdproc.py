@@ -742,7 +742,6 @@ def test_wcs_project_onto_same_wcs(ccd_data):
     assert new_ccd.wcs.wcs.compare(target_wcs.wcs)
 
     # Make sure data matches within some reasonable tolerance.
-    print((ccd_data.data-new_ccd.data).max())
     np.testing.assert_allclose(ccd_data.data, new_ccd.data, rtol=1e-5)
 
 

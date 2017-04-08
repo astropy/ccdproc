@@ -28,14 +28,11 @@ def test_fits_summary(triage_setup):
     ic = image_collection.ImageFileCollection(triage_setup.test_dir,
                                               keywords=keywords)
     summary = ic._fits_summary(header_keywords=keywords)
-    print(summary['file'])
-    print(summary.keys())
     assert len(summary['file']) == triage_setup.n_test['files']
     for keyword in keywords:
         assert len(summary[keyword]) == triage_setup.n_test['files']
     # explicit conversion to array is needed to avoid astropy Table bug in
     # 0.2.4
-    print(np.array(summary['file'] == 'no_filter_no_object_bias.fit'))
     no_filter_no_object_row = np.array(summary['file'] ==
                                        'no_filter_no_object_bias.fit')
     # there should be no filter keyword in the bias file
@@ -61,8 +58,6 @@ class TestImageFileCollection(object):
     def test_filter_files(self, triage_setup):
         img_collection = image_collection.ImageFileCollection(
             location=triage_setup.test_dir, keywords=['imagetyp', 'filter'])
-        print(img_collection.files_filtered(imagetyp='bias'))
-        print(triage_setup.n_test)
         assert len(img_collection.files_filtered(
             imagetyp='bias')) == triage_setup.n_test['bias']
         assert len(img_collection.files) == triage_setup.n_test['files']
@@ -232,9 +227,7 @@ class TestImageFileCollection(object):
         assert (len(new_collection._paths()) ==
                 2 * (triage_setup.n_test['files']) -
                 triage_setup.n_test['compressed'])
-        print(glob(triage_setup.test_dir + '/*_new*'))
         [os.remove(fil) for fil in iglob(triage_setup.test_dir + '/*_new*')]
-        print(glob(triage_setup.test_dir + '/*_new*'))
 
     def test_generator_data(self, triage_setup):
         collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
@@ -265,7 +258,6 @@ class TestImageFileCollection(object):
         assert(len(no_files_match) == 0)
         some_files_should_match = collection.files_filtered(object=None,
                                                             imagetyp='light')
-        print(some_files_should_match)
         assert(len(some_files_should_match) ==
                triage_setup.n_test['need_object'])
 
@@ -321,7 +313,6 @@ class TestImageFileCollection(object):
         empty_dir = tmpdir.mkdtemp()
         some_file = empty_dir.join('some_file.txt')
         some_file.dump('words')
-        print(empty_dir.listdir())
         collection = image_collection.ImageFileCollection(location=empty_dir.strpath,
                                              keywords=['imagetyp'])
         assert (collection.summary_info is None)
@@ -397,7 +388,6 @@ class TestImageFileCollection(object):
             ic.values('filter')
         # If I ask for unique values do I get them?
         values = ic.values('imagetyp', unique=True)
-        print(ic.summary_info['imagetyp'])
         assert values == list(set(ic.summary_info['imagetyp']))
         assert len(values) < len(ic.summary_info['imagetyp'])
         # Does the list of non-unique values match the raw column?
@@ -538,7 +528,6 @@ class TestImageFileCollection(object):
         execs = 0
         for h in ic.headers():
             execs += 1
-            print(h)
         assert not execs
 
     def check_all_keywords_in_collection(self, image_collection):
@@ -590,7 +579,6 @@ class TestImageFileCollection(object):
                                            'blank.fits'))
 
         ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
-        print(ic.summary_info.colnames)
         assert 'col0' not in ic.summary_info.colnames
 
     def test_header_with_long_history_roundtrips_to_disk(self, triage_setup):
@@ -623,12 +611,10 @@ class TestImageFileCollection(object):
 
         for h in ic.headers(overwrite=True):
             h[not_in_header] = True
-        print(h)
         assert not_in_header not in ic.summary_info.colnames
 
         ic.refresh()
         # After refreshing the odd keyword should be present.
-        print(ic.keywords)
         assert not_in_header.lower() in ic.summary_info.colnames
 
     def test_refresh_method_sees_added_files(self, triage_setup):
@@ -640,7 +626,6 @@ class TestImageFileCollection(object):
             pass
         ic.refresh()
         new_len = len(ic.summary_info) - triage_setup.n_test['compressed']
-        print(ic.summary_info['file'])
         assert new_len == 2 * original_len
 
     def test_keyword_order_is_preserved(self, triage_setup):
