@@ -69,7 +69,7 @@ class ImageFileCollection(object):
         value.
     """
     def __init__(self, location=None, keywords=None, info_file=None,
-                 filenames=None):
+                 filenames=None, glob_include=None, glob_exclude=None):
         self._location = location
         self._filenames = filenames
         self._files = []
@@ -106,6 +106,16 @@ class ImageFileCollection(object):
                                    info_path)
                 else:
                     raise
+
+        # Include or exclude files from the collection based on glob pattern
+        # matching
+        if glob_exclude is not None:
+            glob_exclude = str(glob_exclude) # some minimal validation
+        self.glob_exclude = glob_exclude
+
+        if glob_include is not None:
+            glob_include = str(glob_include)
+        self.glob_include = glob_include
 
         # Used internally to keep track of whether the user asked for all
         # keywords or a specific list. The keywords setter takes care of
@@ -330,7 +340,22 @@ class ImageFileCollection(object):
             else:
                 files = self._filenames
         else:
-            files = self._fits_files_in_directory()
+            _files = self._fits_files_in_directory()
+
+            files = []
+            for fn in _files:
+
+                # logic is backwards because we continue if fnmatch()
+                #   doesn't evaluate
+                if (self.glob_include is not None and
+                    not fnmatch.fnmatch(fn, self.glob_include)):
+                    continue
+
+                if (self.glob_exclude is not None and
+                    fnmatch.fnmatch(fn, self.glob_exclude)):
+                    continue
+
+                files.append(fn)
 
         return files
 
