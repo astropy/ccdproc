@@ -70,6 +70,17 @@ class ImageFileCollection(object):
     """
     def __init__(self, location=None, keywords=None, info_file=None,
                  filenames=None, glob_include=None, glob_exclude=None):
+
+        # Include or exclude files from the collection based on glob pattern
+        # matching - has to go above call to _get_files()
+        if glob_exclude is not None:
+            glob_exclude = str(glob_exclude) # some minimal validation
+        self.glob_exclude = glob_exclude
+
+        if glob_include is not None:
+            glob_include = str(glob_include)
+        self.glob_include = glob_include
+
         self._location = location
         self._filenames = filenames
         self._files = []
@@ -106,16 +117,6 @@ class ImageFileCollection(object):
                                    info_path)
                 else:
                     raise
-
-        # Include or exclude files from the collection based on glob pattern
-        # matching
-        if glob_exclude is not None:
-            glob_exclude = str(glob_exclude) # some minimal validation
-        self.glob_exclude = glob_exclude
-
-        if glob_include is not None:
-            glob_include = str(glob_include)
-        self.glob_include = glob_include
 
         # Used internally to keep track of whether the user asked for all
         # keywords or a specific list. The keywords setter takes care of
