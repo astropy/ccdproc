@@ -62,6 +62,16 @@ class ImageFileCollection(object):
         The filenames are assumed to be in ``location``.
         Default is ``None``.
 
+    glob_include: str, optional
+        Unix-style filename pattern to select filenames to include in the file
+        collection. Can be used in conjunction with ``glob_exclude`` to
+        easily select subsets of files in the target directory.
+
+    glob_exclude: str, optional
+        Unix-style filename pattern to select filenames to exclude from the
+        file collection. Can be used in conjunction with ``glob_include`` to
+        easily select subsets of files in the target directory.
+
     Raises
     ------
     ValueError
