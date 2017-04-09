@@ -693,11 +693,11 @@ class ImageFileCollection(object):
 
         Returns
         -------
-        {return_type}
+        `{return_type}`
             If ``return_fname`` is ``False``, yield the next {name} in the
             collection.
 
-        ({return_type}, str)
+        (`{return_type}`, str)
             If ``return_fname`` is ``True``, yield a tuple of
             ({name}, ``file name``) for the next item in the collection.
         """
@@ -788,7 +788,8 @@ class ImageFileCollection(object):
                                do_not_scale_image_data=do_not_scale_image_data,
                                **kwd)
     hdus.__doc__ = _generator.__doc__.format(
-        name='HDU', default_scaling='False', return_type='astropy.io.fits.HDU')
+        name='HDUList', default_scaling='False',
+        return_type='astropy.io.fits.HDUList')
 
     def data(self, do_not_scale_image_data=False, **kwd):
         return self._generator('data',
