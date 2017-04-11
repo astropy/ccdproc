@@ -700,3 +700,22 @@ class TestImageFileCollection(object):
         # This generated an IOError before the issue was fixed.
         for _ in coll.ccds(ccd_kwargs={'unit': 'adu'}):
             pass
+
+    def test_glob_matching(self, triage_setup):
+        # We'll create two files with strange names to test glob
+        #   includes / excludes
+        one = fits.PrimaryHDU()
+        one.data = np.zeros((100, 100))
+        one.header[''] = 'whatever'
+
+        one.writeto(os.path.join(triage_setup.test_dir, 'SPAM_stuff.fits'))
+        one.writeto(os.path.join(triage_setup.test_dir, 'SPAM_other_stuff.fits'))
+
+        coll = image_collection.ImageFileCollection(triage_setup.test_dir,
+                                                    glob_include='SPAM*')
+        assert len(coll.files) == 2
+
+        coll = image_collection.ImageFileCollection(triage_setup.test_dir,
+                                                    glob_include='SPAM*',
+                                                    glob_exclude='*other*')
+        assert len(coll.files) == 1
