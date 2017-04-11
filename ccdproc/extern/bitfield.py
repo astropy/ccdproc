@@ -1,4 +1,4 @@
-# External license! License can be found in "licenses/LICENSE_BITMASK.txt".
+# External license! License can be found in "licenses/LICENSE_STSCI_TOOLS.txt".
 
 """
 A module that provides functions for manipulating bitmasks and data quality
@@ -116,7 +116,7 @@ def interpret_bit_flags(bit_flags, flip_bits=None):
 
     Examples
     --------
-        >>> from ccdproc.extern.bitmask import interpret_bit_flags
+        >>> from ccdproc.extern.bitfield import interpret_bit_flags
         >>> "{0:016b}".format(0xFFFF & interpret_bit_flags(28))
         '0000000000011100'
         >>> "{0:016b}".format(0xFFFF & interpret_bit_flags('4,8,16'))
@@ -370,35 +370,35 @@ good_mask_value=True, dtype=numpy.bool\_)
 
     Examples
     --------
-        >>> from ccdproc.extern import bitmask
+        >>> from ccdproc.extern import bitfield
         >>> import numpy as np
         >>> dqbits = np.asarray([[0, 0, 1, 2, 0, 8, 12, 0],
         ...                      [10, 4, 0, 0, 0, 16, 6, 0]])
-        >>> bitmask.bitfield_to_boolean_mask(dqbits, ignore_flags=0,
+        >>> bitfield.bitfield_to_boolean_mask(dqbits, ignore_flags=0,
         ...                                  dtype=int)
         array([[1, 1, 0, 0, 1, 0, 0, 1],
                [0, 0, 1, 1, 1, 0, 0, 1]])
-        >>> bitmask.bitfield_to_boolean_mask(dqbits, ignore_flags=0,
+        >>> bitfield.bitfield_to_boolean_mask(dqbits, ignore_flags=0,
         ...                                  dtype=bool)
         array([[ True,  True, False, False,  True, False, False,  True],
                [False, False,  True,  True,  True, False, False,  True]], dtype=bool)
-        >>> bitmask.bitfield_to_boolean_mask(dqbits, ignore_flags=6,
+        >>> bitfield.bitfield_to_boolean_mask(dqbits, ignore_flags=6,
         ...                                  good_mask_value=0, dtype=int)
         array([[0, 0, 1, 0, 0, 1, 1, 0],
                [1, 0, 0, 0, 0, 1, 0, 0]])
-        >>> bitmask.bitfield_to_boolean_mask(dqbits, ignore_flags=~6,
+        >>> bitfield.bitfield_to_boolean_mask(dqbits, ignore_flags=~6,
         ...                                  good_mask_value=0, dtype=int)
         array([[0, 0, 0, 1, 0, 0, 1, 0],
                [1, 1, 0, 0, 0, 0, 1, 0]])
-        >>> bitmask.bitfield_to_boolean_mask(dqbits, ignore_flags=6, dtype=int,
+        >>> bitfield.bitfield_to_boolean_mask(dqbits, ignore_flags=6, dtype=int,
         ...                                  flip_bits=True, good_mask_value=0)
         array([[0, 0, 0, 1, 0, 0, 1, 0],
                [1, 1, 0, 0, 0, 0, 1, 0]])
-        >>> bitmask.bitfield_to_boolean_mask(dqbits, ignore_flags='~(2+4)',
+        >>> bitfield.bitfield_to_boolean_mask(dqbits, ignore_flags='~(2+4)',
         ...                                  good_mask_value=0, dtype=int)
         array([[0, 0, 0, 1, 0, 0, 1, 0],
                [1, 1, 0, 0, 0, 0, 1, 0]])
-        >>> bitmask.bitfield_to_boolean_mask(dqbits, ignore_flags=[2, 4],
+        >>> bitfield.bitfield_to_boolean_mask(dqbits, ignore_flags=[2, 4],
         ...                                  flip_bits=True, good_mask_value=0,
         ...                                  dtype=int)
         array([[0, 0, 0, 1, 0, 0, 1, 0],

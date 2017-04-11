@@ -10,6 +10,9 @@ New Features
 - Added ``glob_include`` and ``glob_exclude`` parameter to
   ``ImageFileCollection`` [#484]
 
+- Add ``bitfield_to_boolean_mask`` function to convert a ``bitfield`` to a
+  boolean mask (following the numpy conventions). [#460]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
