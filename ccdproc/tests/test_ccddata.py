@@ -700,7 +700,6 @@ def test_mask_arithmetic_ccd(ccd_data, operation):
     np.testing.assert_equal(result.mask, ccd_data.mask)
 
 
-
 def test_write_read_multiextensionfits_mask_default(ccd_data, tmpdir):
     # Test that if a mask is present the mask is saved and loaded by default.
     ccd_data.mask = ccd_data.data > 10

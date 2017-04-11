@@ -1,3 +1,5 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+
 # this contains imports plugins that configure py.test for astropy tests.
 # by importing them here in conftest.py they are discoverable by py.test
 # no matter how it is invoked within the source tree.
@@ -16,8 +18,8 @@ except ImportError:
 packagename = os.path.basename(os.path.dirname(__file__))
 TESTED_VERSIONS[packagename] = version
 
-## Uncomment the following line to treat all DeprecationWarnings as
-## exceptions
+# Uncomment the following line to treat all DeprecationWarnings as
+# exceptions
 # enable_deprecations_as_exceptions()
 
 # Add astropy to test header information and remove unused packages.

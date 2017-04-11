@@ -1,3 +1,4 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (print_function, division, absolute_import,
                         unicode_literals)
 
@@ -11,6 +12,7 @@ import numpy.ma as ma
 from astropy.table import Table
 import astropy.io.fits as fits
 from astropy.extern import six
+from astropy.utils import minversion
 
 import warnings
 from astropy.utils.exceptions import AstropyUserWarning
@@ -21,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 __all__ = ['ImageFileCollection']
 __doctest_skip__ = ['*']
+
+_ASTROPY_LT_1_3 = not minversion("astropy", "1.3")
 
 
 class ImageFileCollection(object):
@@ -169,6 +173,9 @@ class ImageFileCollection(object):
 
         Setting the keywords causes the summary table to be regenerated unless
         the new keywords are a subset of the old.
+
+        .. versionchanged:: 1.3
+            Added ``deleter`` for ``keywords`` property.
         """
         if self.summary_info:
             return self.summary_info.keys()
@@ -214,6 +221,12 @@ class ImageFileCollection(object):
             # Reorder the keywords to match the initial ordering.
             new_keys_lst.sort(key=keywords.index)
             self._summary_info = self._fits_summary(new_keys_lst)
+
+    @keywords.deleter
+    def keywords(self):
+        # since keywords are drawn from self.summary_info, setting
+        # summary_info = [] deletes the keywords.
+        self._summary_info = []
 
     @property
     def files(self):
@@ -362,7 +375,6 @@ class ImageFileCollection(object):
         from collections import OrderedDict
 
         def _add_val_to_dict(key, value, tbl_dict, n_previous, missing_marker):
-            key = key.lower()
             try:
                 tbl_dict[key].append(value)
             except KeyError:
@@ -393,19 +405,35 @@ class ImageFileCollection(object):
         multi_entry_keys = {'comment': [],
                             'history': []}
 
+        alreadyencountered = set()
         for k, v in six.iteritems(h):
             if k == '':
                 continue
 
-            if k.lower() in ['comment', 'history']:
-                multi_entry_keys[k.lower()].append(str(v))
+            k = k.lower()
+
+            if k in ['comment', 'history']:
+                multi_entry_keys[k].append(str(v))
                 # Accumulate these in a separate dictionary until the
                 # end to avoid adding multiple entries to summary.
                 continue
+            elif k in alreadyencountered:
+                # The "normal" multi-entries HISTORY, COMMENT and BLANK are
+                # already processed so any further duplication is probably
+                # a mistake. It would lead to problems in ImageFileCollection
+                # to add it as well, so simply ignore those.
+                warnings.warn(
+                    'Header from file "{f}" contains multiple entries for {k},'
+                    ' the pair "{k}={v}" will be ignored.'
+                    ''.format(k=k, v=v, f=file_name),
+                    UserWarning)
+                continue
             else:
-                val = v
+                # Add the key to the already encountered keys so we don't add
+                # it more than once.
+                alreadyencountered.add(k)
 
-            _add_val_to_dict(k, val, summary, n_previous, missing_marker)
+            _add_val_to_dict(k, v, summary, n_previous, missing_marker)
 
         for k, v in six.iteritems(multi_entry_keys):
             if v:
@@ -738,10 +766,16 @@ class ImageFileCollection(object):
             # I really should have called the option overwrite from
             # the beginning. The hack below ensures old code works,
             # at least...
-            nuke_existing = clobber or overwrite
+            if clobber or overwrite:
+                if _ASTROPY_LT_1_3:
+                    nuke_existing = {'clobber': True}
+                else:
+                    nuke_existing = {'overwrite': True}
+            else:
+                nuke_existing = {}
             if (new_path != full_path) or nuke_existing:
                 try:
-                    hdulist.writeto(new_path, clobber=nuke_existing)
+                    hdulist.writeto(new_path, **nuke_existing)
                 except IOError:
                     logger.error('error writing file %s', new_path)
                     raise

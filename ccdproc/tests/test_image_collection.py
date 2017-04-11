@@ -1,3 +1,4 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (print_function, division, absolute_import,
                         unicode_literals)
 
@@ -100,6 +101,14 @@ class TestImageFileCollection(object):
         img_collection = image_collection.ImageFileCollection(
             location=triage_setup.test_dir, filenames=fn, keywords=['filter'])
         assert img_collection.files == [fn]
+
+    def test_keywords_deleter(self, triage_setup):
+        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
+                                                  keywords='*')
+
+        assert ic.keywords != []
+        del ic.keywords
+        assert ic.keywords == []
 
     def test_files_with_compressed(self, triage_setup):
         collection = image_collection.ImageFileCollection(
@@ -527,7 +536,7 @@ class TestImageFileCollection(object):
             warnings = f.readlines()
 
         assert (len(warnings) == 1)
-        is_in = ['unable to open table file' in w  for w in warnings]
+        is_in = ['unable to open table file' in w for w in warnings]
         assert all(is_in)
         # Do we raise an error if the table name is bad AND the location
         # is None?
@@ -632,7 +641,6 @@ class TestImageFileCollection(object):
     @pytest.mark.skipif("os.environ.get('APPVEYOR') or os.sys.platform == 'win32'",
                         reason="fails on Windows because file "
                                "overwriting fails")
-
     def test_refresh_method_sees_added_keywords(self, triage_setup, tmpdir):
         ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
         # Add a keyword I know isn't already in the header to each file.
@@ -681,6 +689,22 @@ class TestImageFileCollection(object):
             assert((str(hdu.header), fname) in all_elements)
         for i in range(len(collection.summary)):
             assert(collection.summary['file'][i] == collection.files[i])
+
+    def test_duplicate_keywords(self, triage_setup):
+        # Make sure duplicated keywords don't make the imagefilecollection
+        # fail.
+        hdu = fits.PrimaryHDU()
+        hdu.data = np.zeros((5, 5))
+        hdu.header['stupid'] = 'fun'
+        hdu.header.append(('stupid', 'nofun'))
+
+        hdu.writeto(os.path.join(triage_setup.test_dir, 'duplicated.fits'))
+
+        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
+                                                  keywords='*')
+        assert 'stupid' in ic.summary.colnames
+        assert 'fun' in ic.summary['stupid']
+        assert 'nofun' not in ic.summary['stupid']
 
     def test_ccds_generator_in_different_directory(self, triage_setup, tmpdir):
         """

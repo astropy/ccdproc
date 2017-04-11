@@ -5,7 +5,11 @@
 New Features
 ^^^^^^^^^^^^
 
-- Added ext parameter and property to ImageFileCollection to specify the FITS extension.
+
+- Added ext parameter and property to ImageFileCollection to specify the FITS extension.[#463]
+
+- Add keywords.deleter method to ImageFileCollection [#474]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,6 +19,9 @@ Other Changes and Additions
 
 Bug Fixes
 ^^^^^^^^^
+
+- ``ImageFileCollection`` now handles Headers with duplicated keywords
+  (other than ``COMMENT`` and ``HISTORY``) by ignoring all but the first. [#467]
 
 
 1.2.0 (2016-12-13)

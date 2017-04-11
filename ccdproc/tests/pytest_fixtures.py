@@ -1,3 +1,4 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
@@ -141,7 +142,7 @@ def triage_setup(request):
     def teardown():
         for key in n_test.keys():
             n_test[key] = 0
-        try: 
+        try:
             rmtree(test_dir)
         except OSError:
             # If we cannot clean up just keep going.

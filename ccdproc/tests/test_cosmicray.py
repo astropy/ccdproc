@@ -11,7 +11,8 @@ from astropy.utils import NumpyRNGContext
 from astropy.nddata import StdDevUncertainty
 
 
-from ..core import *
+from ..core import (cosmicray_lacosmic, cosmicray_median,
+                    background_deviation_box, background_deviation_filter)
 
 DATA_SCALE = 5.3
 NCRAYS = 30
@@ -20,7 +21,7 @@ NCRAYS = 30
 def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
     size = data.shape[0]
     with NumpyRNGContext(125):
-        crrays = np.random.random_integers(0, size - 1, size=(ncrays, 2))
+        crrays = np.random.randint(0, size, size=(ncrays, 2))
         # use (threshold + 1) below to make sure cosmic ray is well above the
         # threshold no matter what the random number generator returns
         crflux = (10 * scale * np.random.random(NCRAYS) +
@@ -145,8 +146,8 @@ def test_cosmicray_median_rbox(ccd_data):
 @pytest.mark.data_scale(DATA_SCALE)
 def test_cosmicray_median_background_deviation(ccd_data):
     with pytest.raises(TypeError):
-        crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11,
-                                 error_image='blank')
+        cosmicray_median(ccd_data.data, thresh=5, mbox=11,
+                         error_image='blank')
 
 
 def test_background_deviation_box():

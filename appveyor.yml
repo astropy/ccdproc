@@ -12,7 +12,7 @@ environment:
                         # to the matrix section.
       CONDA_DEPENDENCIES: "scipy astroscrappy reproject scikit-image"
       PIP_DEPENDENCIES: ""
-      CONDA_CHANNELS: "astropy conda-forge"
+      CONDA_CHANNELS: "astropy"
 
   matrix:
 
