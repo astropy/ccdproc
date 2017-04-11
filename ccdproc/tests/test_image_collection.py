@@ -690,7 +690,7 @@ class TestImageFileCollection(object):
         # We'll create two files with strange names to test glob
         #   includes / excludes
         one = fits.PrimaryHDU()
-        one.data = np.zeros((100, 100))
+        one.data = np.zeros((5, 5))
         one.header[''] = 'whatever'
 
         one.writeto(os.path.join(triage_setup.test_dir, 'SPAM_stuff.fits'))
