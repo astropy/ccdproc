@@ -100,7 +100,7 @@ class ImageFileCollection(object):
         if self._files == []:
             warnings.warn("no FITS files in the collection.",
                           AstropyUserWarning)
-        self._summary_info = {}
+        self._summary = {}
         if keywords is None:
             if info_file is not None:
                 # Default to empty list so that keywords will be populated
@@ -115,11 +115,9 @@ class ImageFileCollection(object):
             except (AttributeError, TypeError):
                 info_path = info_file
             try:
-                self._summary_info = Table.read(info_path,
-                                                format='ascii',
-                                                delimiter=',')
-                self._summary_info = Table(self._summary_info,
-                                           masked=True)
+                self._summary = Table.read(info_path, format='ascii',
+                                           delimiter=',')
+                self._summary = Table(self._summary, masked=True)
             except IOError:
                 if location:
                     logger.warning('unable to open table file %s, will try '
@@ -160,19 +158,24 @@ class ImageFileCollection(object):
         collection then the order of the columns is the order of the
         keywords.
         """
-        return self._summary_info
+        return self._summary
 
     @property
     def summary_info(self):
         """
-        Deprecated -- use `summary` instead -- `~astropy.table.Table` of values
-        of FITS keywords for files in the collection.
+        `~astropy.table.Table` of values of FITS keywords for files in the
+        collection.
 
         Each keyword is a column heading. In addition, there is a column
         called 'file' that contains the name of the FITS file. The directory
         is not included as part of that name.
+
+        .. deprecated:: 0.4
         """
-        return self._summary_info
+        warnings.warn('"summary_info" is deprecated and will be removed in '
+                      'a future version. Use the "summary" attribute instead.',
+                      AstropyUserWarning)
+        return self._summary
 
     @property
     def location(self):
@@ -192,17 +195,17 @@ class ImageFileCollection(object):
         .. versionchanged:: 1.3
             Added ``deleter`` for ``keywords`` property.
         """
-        if self.summary_info:
-            return self.summary_info.keys()
+        if self.summary:
+            return self.summary.keys()
         else:
             return []
 
     @keywords.setter
     def keywords(self, keywords=None):
-        # since keywords are drawn from self.summary_info, setting
-        # summary_info sets the keywords.
+        # since keywords are drawn from self.summary, setting
+        # summary sets the keywords.
         if keywords is None:
-            self._summary_info = []
+            self._summary = []
             return
 
         if keywords == '*':
@@ -228,20 +231,20 @@ class ImageFileCollection(object):
             logging.debug('will try removing columns: %s.',
                           ' '.join(cut_keys))
             for key in cut_keys:
-                self._summary_info.remove_column(key)
+                self._summary.remove_column(key)
             logging.debug('after removal column names are: %s.',
                           ' '.join(self.keywords))
         else:
             logging.debug('should be building new table...')
             # Reorder the keywords to match the initial ordering.
             new_keys_lst.sort(key=keywords.index)
-            self._summary_info = self._fits_summary(new_keys_lst)
+            self._summary = self._fits_summary(new_keys_lst)
 
     @keywords.deleter
     def keywords(self):
-        # since keywords are drawn from self.summary_info, setting
-        # summary_info = [] deletes the keywords.
-        self._summary_info = []
+        # since keywords are drawn from self._summary, setting
+        # _summary = [] deletes the keywords.
+        self._summary = []
 
     @property
     def files(self):
@@ -273,9 +276,9 @@ class ImageFileCollection(object):
                 'keyword %s is not in the current summary' % keyword)
 
         if unique:
-            return list(set(self.summary_info[keyword]))
+            return list(set(self.summary[keyword]))
         else:
-            return list(self.summary_info[keyword])
+            return list(self.summary[keyword])
 
     def files_filtered(self, **kwd):
         """Determine files whose keywords have listed values.
@@ -298,13 +301,13 @@ class ImageFileCollection(object):
         NOTE: Value comparison is case *insensitive* for strings.
         """
         # force a copy by explicitly converting to a list
-        current_file_mask = list(self.summary_info['file'].mask)
+        current_file_mask = list(self.summary['file'].mask)
 
         include_path = kwd.pop('include_path', False)
 
         self._find_keywords_by_values(**kwd)
-        filtered_files = self.summary_info['file'].compressed()
-        self.summary_info['file'].mask = current_file_mask
+        filtered_files = self.summary['file'].compressed()
+        self.summary['file'].mask = current_file_mask
         if include_path:
             filtered_files = [path.join(self._location, f)
                               for f in filtered_files]
@@ -317,7 +320,7 @@ class ImageFileCollection(object):
         keywords = '*' if self._all_keywords else self.keywords
         # Re-load list of files
         self._files = self._get_files()
-        self._summary_info = self._fits_summary(header_keywords=keywords)
+        self._summary = self._fits_summary(header_keywords=keywords)
 
     def sort(self, keys=None):
         """Sort the list of files to determine the order of iteration.
@@ -331,9 +334,9 @@ class ImageFileCollection(object):
             The key(s) to order the table by.
             Default is ``None``.
         """
-        if len(self._summary_info) > 0:
-            self._summary_info.sort(keys)
-            self._files = list(self.summary_info['file'])
+        if len(self._summary) > 0:
+            self._summary.sort(keys)
+            self._files = list(self.summary['file'])
 
     def _get_files(self):
         """ Helper method which checks whether ``files`` should be set
@@ -578,7 +581,7 @@ class ImageFileCollection(object):
 
         if (set(keywords).issubset(set(self.keywords))):
             # we already have the information in memory
-            use_info = self.summary_info
+            use_info = self.summary
         else:
             # we need to load information about these keywords.
             use_info = self._fits_summary(header_keywords=keywords)
@@ -621,8 +624,8 @@ class ImageFileCollection(object):
         # the numpy convention is that the mask is True for values to
         # be omitted, hence use ~matches.
         logger.debug('Matches: %s', matches)
-        self.summary_info['file'].mask = ma.nomask
-        self.summary_info['file'][~matches] = ma.masked
+        self.summary['file'].mask = ma.nomask
+        self.summary['file'][~matches] = ma.masked
 
     def _fits_files_in_directory(self, extensions=None,
                                  compressed=True):
@@ -738,13 +741,13 @@ class ImageFileCollection(object):
             ({name}, ``file name``) for the next item in the collection.
         """
         # store mask so we can reset at end--must COPY, otherwise
-        # current_mask just points to the mask of summary_info
-        if not self.summary_info:
+        # current_mask just points to the mask of summary
+        if not self.summary:
             return
 
         current_mask = {}
-        for col in self.summary_info.columns:
-            current_mask[col] = self.summary_info[col].mask
+        for col in self.summary.columns:
+            current_mask[col] = self.summary[col].mask
 
         if kwd:
             self._find_keywords_by_values(**kwd)
@@ -801,14 +804,14 @@ class ImageFileCollection(object):
             hdulist.close()
 
         # reset mask
-        for col in self.summary_info.columns:
-            self.summary_info[col].mask = current_mask[col]
+        for col in self.summary.columns:
+            self.summary[col].mask = current_mask[col]
 
     def _paths(self):
         """
         Full path to each file.
         """
-        unmasked_files = self.summary_info['file'].compressed()
+        unmasked_files = self.summary['file'].compressed()
         return [path.join(self.location, file_) for file_ in unmasked_files]
 
     def headers(self, do_not_scale_image_data=True, **kwd):
