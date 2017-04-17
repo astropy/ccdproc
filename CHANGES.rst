@@ -13,6 +13,9 @@ Other Changes and Additions
 
 - removed ability to set ccdata.unit to None [#451]
 
+- deprecated ``summary_info`` property of ``ImageFileCollection`` now raises
+  a deprecation warning. [#486]
+
 
 Bug Fixes
 ^^^^^^^^^
