@@ -30,6 +30,7 @@ Alphabetical list of contributors
 * Stefan Nelson (@stefannelson)
 * Joe Philip Ninan (@indiajoe)
 * Punyaslok Pattnaik (@Punyaslok)
+* Adrian Price-Whelan (@adrn)
 * Evert Rol (@evertrol)
 * William Schoenell (@wschoenell)
 * Sourav Singh (@souravsingh)

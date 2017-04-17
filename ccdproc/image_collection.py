@@ -62,15 +62,17 @@ class ImageFileCollection(object):
         The filenames are assumed to be in ``location``.
         Default is ``None``.
 
-    glob_include: str, optional
+    glob_include: str or None, optional
         Unix-style filename pattern to select filenames to include in the file
         collection. Can be used in conjunction with ``glob_exclude`` to
         easily select subsets of files in the target directory.
+        Default is ``None``.
 
-    glob_exclude: str, optional
+    glob_exclude: str or None, optional
         Unix-style filename pattern to select filenames to exclude from the
         file collection. Can be used in conjunction with ``glob_include`` to
         easily select subsets of files in the target directory.
+        Default is ``None``.
 
     Raises
     ------
@@ -84,7 +86,7 @@ class ImageFileCollection(object):
         # Include or exclude files from the collection based on glob pattern
         # matching - has to go above call to _get_files()
         if glob_exclude is not None:
-            glob_exclude = str(glob_exclude) # some minimal validation
+            glob_exclude = str(glob_exclude)  # some minimal validation
         self.glob_exclude = glob_exclude
 
         if glob_include is not None:
@@ -354,22 +356,13 @@ class ImageFileCollection(object):
             else:
                 files = self._filenames
         else:
-            _files = self._fits_files_in_directory()
+            files = self._fits_files_in_directory()
 
-            files = []
-            for fn in _files:
-
-                # logic is backwards because we continue if fnmatch()
-                #   doesn't evaluate
-                if (self.glob_include is not None and
-                    not fnmatch.fnmatch(fn, self.glob_include)):
-                    continue
-
-                if (self.glob_exclude is not None and
-                    fnmatch.fnmatch(fn, self.glob_exclude)):
-                    continue
-
-                files.append(fn)
+            if self.glob_include is not None:
+                files = fnmatch.filter(files, self.glob_include)
+            if self.glob_exclude is not None:
+                files = [file for file in files
+                         if not fnmatch.fnmatch(file, self.glob_exclude)]
 
         return files
 

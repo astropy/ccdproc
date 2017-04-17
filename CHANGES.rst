@@ -7,6 +7,9 @@ New Features
 
 - Add keywords.deleter method to ImageFileCollection [#474]
 
+- Added ``glob_include`` and ``glob_exclude`` parameter to
+  ``ImageFileCollection`` [#484]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
