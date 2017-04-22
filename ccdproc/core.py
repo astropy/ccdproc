@@ -56,7 +56,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
                 gain=None, readnoise=None, oscan_median=True, oscan_model=None,
                 min_value=None, dark_exposure=None, data_exposure=None,
                 exposure_key=None, exposure_unit=None,
-                dark_scale=False):
+                dark_scale=False, gain_corrected=True):
     """Perform basic processing on ccd data.
 
     The following steps can be included:
@@ -164,6 +164,10 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         If True, scale the dark frame by the exposure times.
         Default is ``False``.
 
+    gain_corrected : bool, optional
+        If True, the calibration frames have already been gain. 
+        Default is ``True``.
+
     Returns
     -------
     occd : `~ccdproc.CCDData`
@@ -223,12 +227,11 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         raise TypeError('bad_pixel_mask is not None or numpy.ndarray.')
 
     # apply the gain correction
-    if isinstance(gain, Quantity):
-        nccd = gain_correct(nccd, gain)
-    elif gain is None:
-        pass
-    else:
+    if not (gain is None or isinstance(gain, Quantity)):
         raise TypeError('gain is not None or astropy.units.Quantity.')
+
+    if isinstance(gain, Quantity) and gain_corrected:
+        nccd = gain_correct(nccd, gain)
 
     # subtracting the master bias
     if isinstance(master_bias, CCDData):
@@ -260,6 +263,10 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     else:
         raise TypeError(
             'master_flat is not None or a CCDData object.')
+
+    # apply the gain correction only at the end if gain_corrected is False
+    if isinstance(gain, Quantity) and gain_corrected is False:
+        nccd = gain_correct(nccd, gain)
 
     return nccd
 
