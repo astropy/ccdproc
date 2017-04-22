@@ -23,13 +23,14 @@ from scipy import ndimage
 from .ccddata import CCDData
 from .utils.slices import slice_from_string
 from .log_meta import log_to_metadata
+from .extern.bitfield import bitfield_to_boolean_mask as _bitfield_to_boolean_mask
 
 __all__ = ['background_deviation_box', 'background_deviation_filter',
            'ccd_process', 'cosmicray_median', 'cosmicray_lacosmic',
            'create_deviation', 'flat_correct', 'gain_correct', 'rebin',
            'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
            'transform_image', 'trim_image', 'wcs_project', 'Keyword',
-           'median_filter', 'ccdmask']
+           'median_filter', 'ccdmask', 'bitfield_to_boolean_mask']
 
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
@@ -1738,6 +1739,95 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                                 not np.all(mask[line:lend + 1, col])):
                             mask[line:lend, col] = True
     return mask
+
+
+def bitfield_to_boolean_mask(bitfield, ignore_bits=0, flip_bits=None):
+    """Convert an integer bit field to a boolean mask.
+
+    Parameters
+    ----------
+    bitfield : `numpy.ndarray` of integer dtype
+        The array of bit flags.
+
+    ignore_bits : int, None or str, optional
+        The bits to ignore when converting the bitfield.
+
+        - If it's an integer it's binary representation is interpreted as the
+          bits to ignore. ``0`` means that all bit flags are taken into
+          account while a binary representation of all ``1`` means that all
+          flags would be ignored.
+        - If it's ``None`` then all flags are ignored
+        - If it's a string then it must be a ``,`` or ``+`` seperated string
+          of integers that bits to ignore. If the string starts with an ``~``
+          the integers are interpreted as **the only flags** to take into
+          account.
+
+        Default is ``0``.
+
+    Returns
+    -------
+    mask : `numpy.ndarray` of boolean dtype
+        The bitfield converted to a boolean mask that can be used for
+        `numpy.ma.MaskedArray` or `~ccdproc.CCDData`.
+
+    Examples
+    --------
+    Bitfields (or data quality arrays) are integer arrays where the binary
+    representation of the values indicates wheter a specific flag is set or
+    not. The convention is that a value of ``0`` represents a **good value**
+    and a value that is ``!= 0`` represents a value that is in some (or
+    multiple) ways considered a **bad value**. The ``bitfield_to_boolean_mask``
+    function can be used by default to create a boolean mask wherever any bit
+    flag is set::
+
+        >>> import ccdproc
+        >>> import numpy as np
+        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8))
+        array([False,  True,  True,  True,  True,  True,  True,  True], dtype=bool)
+
+    To ignore all bit flags ``ignore_bits=None`` can be used::
+
+        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits=None)
+        array([False, False, False, False, False, False, False, False], dtype=bool)
+
+    To ignore only specific bit flags one can use a ``list`` of bits flags to
+    ignore::
+
+        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits=[1, 4])
+        array([False, False,  True,  True, False, False,  True,  True], dtype=bool)
+
+    There are some equivalent ways::
+
+        >>> # pass in the sum of the "ignore_bits" directly
+        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits=5)  # 1 + 4
+        array([False, False,  True,  True, False, False,  True,  True], dtype=bool)
+        >>> # use a comma seperated string of integers
+        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits='1, 4')
+        array([False, False,  True,  True, False, False,  True,  True], dtype=bool)
+        >>> # use a + seperated string of integers
+        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits='1+4')
+        array([False, False,  True,  True, False, False,  True,  True], dtype=bool)
+
+    Instead of directly specifying the **bits flags to ignore** one can also
+    pass in the **only bits that shouldn't be ignored** by prepending a ``~``
+    to the string of ``ignore_bits`` (or if it's not a string in
+    ``ignore_bits`` one can set ``flip_bits=True``)::
+
+        >>> # ignore all bit flags except the one for 2.
+        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits='~(2)')
+        array([False, False,  True,  True, False, False,  True,  True], dtype=bool)
+        >>> # ignore all bit flags except the one for 1, 8 and 32.
+        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits='~(1, 8, 32)')
+        array([False,  True, False,  True, False,  True, False,  True], dtype=bool)
+
+        >>> # Equivalent for a list using flip_bits.
+        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits=[1, 8, 32], flip_bits=True)
+        array([False,  True, False,  True, False,  True, False,  True], dtype=bool)
+
+    """
+    return _bitfield_to_boolean_mask(
+        bitfield, ignore_bits, flip_bits=flip_bits,
+        good_mask_value=False, dtype=bool)
 
 
 class Keyword(object):
