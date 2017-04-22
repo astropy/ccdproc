@@ -10,6 +10,10 @@ New Features
 - Added ``glob_include`` and ``glob_exclude`` parameter to
   ``ImageFileCollection`` [#484]
 
+- Added ``gain_corrected`` option in ccd_process so that 
+  calibration files do not need to previously been gain
+  corrected 
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
