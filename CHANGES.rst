@@ -10,9 +10,12 @@ New Features
 - Added ``glob_include`` and ``glob_exclude`` parameter to
   ``ImageFileCollection`` [#484]
 
+- Add ``bitfield_to_boolean_mask`` function to convert a ``bitfield`` to a
+  boolean mask (following the numpy conventions). [#460]
+
 - Added ``gain_corrected`` option in ccd_process so that 
   calibration files do not need to previously been gain
-  corrected 
+  corrected [#491]
 
 
 Other Changes and Additions
