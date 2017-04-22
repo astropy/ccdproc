@@ -165,7 +165,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         Default is ``False``.
 
     gain_corrected : bool, optional
-        If True, the calibration frames have already been gain. 
+        If True, the calibration frames have already been gain corrected.
         Default is ``True``.
 
     Returns
