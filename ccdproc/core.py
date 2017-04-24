@@ -166,7 +166,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         Default is ``False``.
 
     gain_corrected : bool, optional
-        If True, the ``master_bias``, ``master_flat``, and ``dark_frame`` 
+        If True, the ``master_bias``, ``master_flat``, and ``dark_frame``
         have already been gain corrected.  Default is ``True``.
 
     Returns
