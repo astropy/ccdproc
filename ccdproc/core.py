@@ -98,19 +98,19 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     master_bias : `~ccdproc.CCDData` or None, optional
         A master bias frame to be subtracted from ccd. The unit of the
         master bias frame should match the unit of the image **after
-        gain correction**.
+        gain correction** if ``gain_corrected`` is True.
         Default is ``None``.
 
     dark_frame : `~ccdproc.CCDData` or None, optional
         A dark frame to be subtracted from the ccd. The unit of the
         master dark frame should match the unit of the image **after
-        gain correction**.
+        gain correction** if ``gain_corrected`` is True.
         Default is ``None``.
 
     master_flat : `~ccdproc.CCDData` or None, optional
         A master flat frame to be divided into ccd. The unit of the
         master flat frame should match the unit of the image **after
-        gain correction**.
+        gain correction** if ``gain_corrected`` is True.
         Default is ``None``.
 
     bad_pixel_mask : `numpy.ndarray` or None, optional
@@ -166,8 +166,8 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         Default is ``False``.
 
     gain_corrected : bool, optional
-        If True, the calibration frames have already been gain corrected.
-        Default is ``True``.
+        If True, the ``master_bias``, ``master_flat``, and ``dark_frame`` 
+        have already been gain corrected.  Default is ``True``.
 
     Returns
     -------
@@ -231,7 +231,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     if not (gain is None or isinstance(gain, Quantity)):
         raise TypeError('gain is not None or astropy.units.Quantity.')
 
-    if isinstance(gain, Quantity) and gain_corrected:
+    if gain is not None and gain_corrected:
         nccd = gain_correct(nccd, gain)
 
     # subtracting the master bias
@@ -266,7 +266,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
             'master_flat is not None or a CCDData object.')
 
     # apply the gain correction only at the end if gain_corrected is False
-    if isinstance(gain, Quantity) and gain_corrected is False:
+    if gain is not None and not gain_corrected:
         nccd = gain_correct(nccd, gain)
 
     return nccd
