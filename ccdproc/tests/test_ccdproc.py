@@ -917,7 +917,7 @@ def test_ccd_process():
     assert occd.meta['testkw'] == 100
 
 def test_ccd_process_gain_corrected():
-    # test the through ccd_process
+    # test the through ccd_process with gain_corrected as False
     ccd_data = CCDData(10.0 * np.ones((100, 100)), unit=u.adu)
     ccd_data.data[:, -10:] = 2
     ccd_data.meta['testkw'] = 100
