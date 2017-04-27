@@ -742,7 +742,6 @@ def test_wcs_project_onto_same_wcs(ccd_data):
     assert new_ccd.wcs.wcs.compare(target_wcs.wcs)
 
     # Make sure data matches within some reasonable tolerance.
-    print((ccd_data.data-new_ccd.data).max())
     np.testing.assert_allclose(ccd_data.data, new_ccd.data, rtol=1e-5)
 
 
@@ -905,6 +904,42 @@ def test_ccd_process():
                        readnoise=5**0.5 * u.electron, oscan_median=True,
                        dark_scale=False, dark_exposure=1.*u.s,
                        data_exposure=1.*u.s)
+
+    # final results should be (10 - 2) / 2.0 - 2 = 2
+    # error should be (4 + 5)**0.5 / 0.5  = 3.0
+
+    np.testing.assert_array_equal(2.0 * np.ones((100, 90)), occd.data)
+    np.testing.assert_almost_equal(3.0 * np.ones((100, 90)),
+                                  occd.uncertainty.array)
+    np.testing.assert_array_equal(mask, occd.mask)
+    assert(occd.unit == u.electron)
+    # Make sure the original keyword is still present. Regression test for #401
+    assert occd.meta['testkw'] == 100
+
+def test_ccd_process_gain_corrected():
+    # test the through ccd_process with gain_corrected as False
+    ccd_data = CCDData(10.0 * np.ones((100, 100)), unit=u.adu)
+    ccd_data.data[:, -10:] = 2
+    ccd_data.meta['testkw'] = 100
+
+    mask = np.zeros((100, 90))
+
+    masterbias = CCDData(4.0 * np.ones((100, 90)), unit=u.adu)
+    masterbias.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+
+    dark_frame = CCDData(0.0 * np.ones((100, 90)), unit=u.adu)
+    dark_frame.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+
+    masterflat = CCDData(5.0 * np.ones((100, 90)), unit=u.adu)
+    masterflat.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+
+    occd = ccd_process(ccd_data, oscan=ccd_data[:, -10:], trim='[1:90,1:100]',
+                       error=True, master_bias=masterbias,
+                       master_flat=masterflat, dark_frame=dark_frame,
+                       bad_pixel_mask=mask, gain=0.5 * u.electron/u.adu,
+                       readnoise=5**0.5 * u.electron, oscan_median=True,
+                       dark_scale=False, dark_exposure=1.*u.s,
+                       data_exposure=1.*u.s, gain_corrected=False)
 
     # final results should be (10 - 2) / 2.0 - 2 = 2
     # error should be (4 + 5)**0.5 / 0.5  = 3.0

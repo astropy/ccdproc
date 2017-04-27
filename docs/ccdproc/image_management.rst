@@ -14,7 +14,8 @@ a directory that contains FITS images.
 
 The class :class:`~ccdproc.image_collection.ImageFileCollection` is meant to
 make working with a directory of FITS images easier by allowing you select the
-files you act on based on the values of FITS keywords in their headers.
+files you act on based on the values of FITS keywords in their headers or based
+on Unix shell-style filename matching.
 
 It is initialized with the name of a directory containing FITS images and a
 list of FITS keywords you want the
@@ -29,6 +30,13 @@ You can use the wildcard ``*`` in place of a list to indicate you want the
 collection to use all keywords in the headers::
 
     >>> ic_all = ImageFileCollection('.', keywords='*')
+
+You can indicate filename patterns to include or exclude using Unix shell-style
+expressions. For example, to include all filenames that begin with ``1d_`` but
+not ones that include the word ``bad``, you could do::
+
+    >>> ic_all = ImageFileCollection('.', glob_include='1d_*',
+    ...                              glob_exclude='*bad*')
 
 Most of the useful interaction with the image collection is via its
 ``.summary`` property, a :class:`~astropy.table.Table` of the value of each keyword for each

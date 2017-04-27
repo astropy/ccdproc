@@ -328,6 +328,34 @@ image footprint. The underlying functionality is proved by the `reproject
 project`_. Please see :ref:reprojection for more details.
 
 
+Data Quality Flags (Bitfields and bitmasks)
+-------------------------------------------
+
+Some FITS files contain data quality flags or bitfield extension, while these
+are currently not supported as part of `~ccdproc.CCDData` these can be loaded
+manually using `~astropy.io.fits` and converted to regular (`numpy`-like) masks
+(with `~ccdproc.bitfield_to_boolean_mask`) that are supported by many
+operations in `ccdproc`.
+
+.. code::
+
+    import numpy as np
+    from astropy.io import fits
+    from ccdproc import bitfield_to_boolean_mask, CCDData
+
+    fitsfilename = 'some_fits_file.fits'
+    bitfieldextension = extensionname_or_extensionnumber
+
+    # Read the data of the fits file as CCDData object
+    ccd = CCDData.read(fitsfilename)
+
+    # Open the file again (assuming the bitfield is saved in the same FITS file)
+    mask = bitfield_to_boolean_mask(fits.getdata(fitsfilename, bitfieldextension))
+
+    # Save the mask as "mask" attribute of the ccd
+    ccd.mask = mask
+
+
 Filter and Convolution
 ----------------------
 
