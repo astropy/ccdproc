@@ -157,7 +157,9 @@ class TestImageFileCollection(object):
 
     def test_multiple_extensions(self, triage_setup):
         ext1 = fits.PrimaryHDU()
+        ext1.data = np.arange(1,5)
         ext2 = fits.ImageHDU(name='MASK')
+        ext2.data = np.arange(6,10)
         hdulist = fits.hdu.hdulist.HDUList([ext1, ext2])
 
         hdulist.writeto(os.path.join(triage_setup.test_dir, 'multi-extension.fits'))
@@ -179,6 +181,16 @@ class TestImageFileCollection(object):
         list2 = ic2.summary_info.colnames[1:]
 
         assert list1 == list2
+
+        ccd_kwargs = {'unit': 'adu'}
+        for data, hdr, hdu, ccd in zip(ic2.data(), ic2.headers(), ic2.hdus(), ic2.ccds(ccd_kwargs)):
+            np.testing.assert_array_equal(data, ext2.data)
+            assert hdr == ext2.header
+            # Now compare that the generators each give the same stuff
+            np.testing.assert_array_equal(data, ccd.data)
+            np.testing.assert_array_equal(data, hdu.data)
+            assert hdr == hdu.header
+            assert hdr == ccd.meta
 
     def test_headers(self, triage_setup):
         collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
