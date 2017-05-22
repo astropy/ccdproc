@@ -151,8 +151,6 @@ class TestImageFileCollection(object):
         assert repr(ic) == "ImageFileCollection(location='{0}', keywords='*', filenames={1})".format(
             triage_setup.test_dir, ic._filenames)
 
-
-
     def test_hdus_masking(self, triage_setup):
         collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
                                              keywords=['imagetyp', 'exposure'])

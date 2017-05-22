@@ -146,7 +146,7 @@ class ImageFileCollection(object):
         if self._info_file is not None:
             str_repr += ("info_file={}, ").format(self._info_file)
 
-        str_repr +=("filenames={})").format(self._filenames)
+        str_repr += ("filenames={})").format(self._filenames)
 
         return str_repr
 
