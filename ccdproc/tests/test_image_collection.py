@@ -155,26 +155,29 @@ class TestImageFileCollection(object):
         new_data = np.array(collection.summary)
         assert (new_data == old_data).all()
 
-    def test_multiple_extensions(self, triage_setup):
+    @pytest.mark.parametrize('extension', ['TESTEXT', 1, ('TESTEXT', 1)])
+    def test_multiple_extensions(self, triage_setup, extension):
         ext1 = fits.PrimaryHDU()
-        ext1.data = np.arange(1,5)
+        ext1.data = np.arange(1, 5)
         # It is important than the name used for this test extension
         # NOT be MASK or UNCERT because both are treated in a special
         # way by the FITS reader.
         test_ext_name = 'TESTEXT'
         ext2 = fits.ImageHDU(name=test_ext_name)
-        ext2.data = np.arange(6,10)
+        ext2.data = np.arange(6, 10)
         hdulist = fits.hdu.hdulist.HDUList([ext1, ext2])
 
-        hdulist.writeto(os.path.join(triage_setup.test_dir, 'multi-extension.fits'))
-        ic2 = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*',
-            filenames=['multi-extension.fits'], ext=test_ext_name)
+        hdulist.writeto(os.path.join(triage_setup.test_dir,
+                                     'multi-extension.fits'))
+        ic2 = image_collection.ImageFileCollection(
+            triage_setup.test_dir, keywords='*',
+            filenames=['multi-extension.fits'], ext=extension)
 
-        ic1 = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*',
-            filenames=['multi-extension.fits'], ext=0)
+        ic1 = image_collection.ImageFileCollection(triage_setup.test_dir,
+                    keywords='*', filenames=['multi-extension.fits'], ext=0)
 
         assert ic1.ext == 0
-        assert ic2.ext == test_ext_name
+        assert ic2.ext == extension
 
         column2 = ic2.summary_info.colnames
         column1 = ic1.summary_info.colnames
@@ -187,7 +190,10 @@ class TestImageFileCollection(object):
         assert list1 == list2
 
         ccd_kwargs = {'unit': 'adu'}
-        for data, hdr, hdu, ccd in zip(ic2.data(), ic2.headers(), ic2.hdus(), ic2.ccds(ccd_kwargs)):
+        for data, hdr, hdu, ccd in zip(ic2.data(),
+                                       ic2.headers(),
+                                       ic2.hdus(),
+                                       ic2.ccds(ccd_kwargs)):
             np.testing.assert_array_equal(data, ext2.data)
             assert hdr == ext2.header
             # Now compare that the generators each give the same stuff
