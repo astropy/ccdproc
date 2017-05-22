@@ -146,6 +146,11 @@ class TestImageFileCollection(object):
             n_hdus += 1
         assert n_hdus == triage_setup.n_test['files']
 
+    def test_repr_method(self, triage_setup):
+        ic = image_collection.ImageFileCollection(location=triage_setup.test_dir)
+        assert repr(ic) == "ImageFileCollection(location='{0}', keywords='*', filenames={1})".format(
+            triage_setup.test_dir, ic._filenames)
+
     def test_hdus_masking(self, triage_setup):
         collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
                                              keywords=['imagetyp', 'exposure'])

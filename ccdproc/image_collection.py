@@ -96,6 +96,7 @@ class ImageFileCollection(object):
         self._location = location
         self._filenames = filenames
         self._files = []
+        self._info_file = info_file
         if location:
             self._files = self._get_files()
 
@@ -136,6 +137,18 @@ class ImageFileCollection(object):
 
         if keywords:
             self.keywords = keywords
+
+    def __repr__(self):
+
+        kw = "'*'" if self._all_keywords else self.keywords[1:]
+        str_repr = ("{self.__class__.__name__}(location='{self._location}', keywords={kw}, ").format(self=self, kw=kw)
+
+        if self._info_file is not None:
+            str_repr += ("info_file={}, ").format(self._info_file)
+
+        str_repr += ("filenames={})").format(self._filenames)
+
+        return str_repr
 
     @property
     def summary(self):

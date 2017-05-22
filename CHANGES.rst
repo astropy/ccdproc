@@ -4,6 +4,7 @@
 
 New Features
 ^^^^^^^^^^^^
+- Add representation for ImageFileCollection [#475]
 
 - Add keywords.deleter method to ImageFileCollection [#474]
 
@@ -15,7 +16,6 @@ New Features
 
 - Added ``gain_corrected`` option in ccd_process so that calibration 
   files do not need to previously been gain corrected [#491]
-
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
