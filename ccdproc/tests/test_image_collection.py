@@ -158,19 +158,23 @@ class TestImageFileCollection(object):
     def test_multiple_extensions(self, triage_setup):
         ext1 = fits.PrimaryHDU()
         ext1.data = np.arange(1,5)
-        ext2 = fits.ImageHDU(name='MASK')
+        # It is important than the name used for this test extension
+        # NOT be MASK or UNCERT because both are treated in a special
+        # way by the FITS reader.
+        test_ext_name = 'TESTEXT'
+        ext2 = fits.ImageHDU(name=test_ext_name)
         ext2.data = np.arange(6,10)
         hdulist = fits.hdu.hdulist.HDUList([ext1, ext2])
 
         hdulist.writeto(os.path.join(triage_setup.test_dir, 'multi-extension.fits'))
         ic2 = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*',
-            filenames=['multi-extension.fits'], ext='MASK')
+            filenames=['multi-extension.fits'], ext=test_ext_name)
 
         ic1 = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*',
             filenames=['multi-extension.fits'], ext=0)
 
         assert ic1.ext == 0
-        assert ic2.ext == 'MASK'
+        assert ic2.ext == test_ext_name
 
         column2 = ic2.summary_info.colnames
         column1 = ic1.summary_info.colnames

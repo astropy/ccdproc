@@ -264,7 +264,8 @@ class ImageFileCollection(object):
     @property
     def ext(self):
         """
-        str or int, The extension from which the header and data will be read in all files.
+        str or int, The extension from which the header and data will
+        be read in all files.
         """
         return self._ext
 
@@ -769,13 +770,14 @@ class ImageFileCollection(object):
             file_name = path.basename(full_path)
 
             ext_index = hdulist.index_of(self._ext)
-            ccd_kwargs.setdefault('ext', ext_index)
 
             return_options = {
                     'header': lambda: hdulist[ext_index].header,
                     'hdu': lambda: hdulist[ext_index],
                     'data': lambda: hdulist[ext_index].data,
-                    'ccd': lambda: fits_ccddata_reader(full_path, **ccd_kwargs)
+                    'ccd': lambda: fits_ccddata_reader(full_path,
+                                                       hdu=ext_index,
+                                                       **ccd_kwargs)
                     }
             try:
                 yield (return_options[return_type]()  # pragma: no branch
