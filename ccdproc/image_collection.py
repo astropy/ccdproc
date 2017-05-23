@@ -631,7 +631,7 @@ class ImageFileCollection(object):
         # be omitted, hence use ~matches.
         logger.debug('Matches: %s', matches)
         self.summary['file'].mask = ma.nomask
-        self.summary['file'][~matches] = ma.masked
+        self.summary['file'].mask[~matches] = True
 
     def _fits_files_in_directory(self, extensions=None,
                                  compressed=True):
