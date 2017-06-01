@@ -310,9 +310,10 @@ class CCDData(NDDataArray):
 
         wcs_relax : bool
             Value of the ``relax`` parameter to use in converting the WCS to a
-            FITS header. The common ``CTYPE`` ``RA---TAN-SIP`` and
-            ``DEC--TAN-SIP`` requires ``relax=True`` for the ``-SIP`` part
-            of the ``CTYPE`` to be preserved.
+            FITS header using `~astropy.wcs.WCS.to_header`. The common
+            ``CTYPE`` ``RA---TAN-SIP`` and ``DEC--TAN-SIP`` requires
+            ``relax=True`` for the ``-SIP`` part of the ``CTYPE`` to be
+            preserved.
 
         Raises
         -------
