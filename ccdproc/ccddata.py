@@ -295,7 +295,7 @@ class CCDData(NDDataArray):
             self._uncertainty = value
 
     def to_hdu(self, hdu_mask='MASK', hdu_uncertainty='UNCERT',
-               hdu_flags=None):
+               hdu_flags=None, wcs_relax=True):
         """Creates an HDUList object from a CCDData object.
 
         Parameters
@@ -307,6 +307,12 @@ class CCDData(NDDataArray):
             is not appended.
             Default is ``'MASK'`` for mask, ``'UNCERT'`` for uncertainty and
             ``None`` for flags.
+
+        wcs_relax : bool
+            Value of the ``relax`` parameter to use in converting the WCS to a
+            FITS header. The common ``CTYPE`` ``RA---TAN-SIP`` and
+            ``DEC--TAN-SIP`` requires ``relax=True`` for the ``-SIP`` part
+            of the ``CTYPE`` to be preserved.
 
         Raises
         -------
@@ -353,7 +359,7 @@ class CCDData(NDDataArray):
             # Note that until astropy/astropy#3967 is closed, the extend
             # will fail if there are comment cards in the WCS header but
             # not header.
-            wcs_header = self.wcs.to_header()
+            wcs_header = self.wcs.to_header(relax=wcs_relax)
             header.extend(wcs_header, useblanks=False, update=True)
         hdus = [fits.PrimaryHDU(self.data, header)]
 

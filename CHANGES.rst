@@ -14,8 +14,12 @@ New Features
 - Add ``bitfield_to_boolean_mask`` function to convert a ``bitfield`` to a
   boolean mask (following the numpy conventions). [#460]
 
-- Added ``gain_corrected`` option in ccd_process so that calibration 
+- Added ``gain_corrected`` option in ccd_process so that calibration
   files do not need to previously been gain corrected [#491]
+
+- Add a new ``wcs_relax`` argument to ``CCDData.to_header()`` that is passed
+  through to the ``WCS`` method of the same name to allow more flexible
+  handing of headers with SIP distortion. [#501]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
