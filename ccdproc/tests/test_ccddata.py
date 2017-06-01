@@ -13,6 +13,7 @@ from astropy.extern import six
 from astropy import log
 from astropy.wcs import WCS
 from astropy.utils import minversion
+from astropy.utils.data import get_pkg_data_filename
 
 from ..ccddata import CCDData
 from .. import subtract_dark
@@ -689,6 +690,46 @@ def test_wcs_arithmetic_ccd(ccd_data, operation):
     result = method(ccd_data2)
     assert result.wcs == ccd_data.wcs
     assert ccd_data2.wcs is None
+
+
+def test_wcs_sip_handling():
+    """
+    Check whether the ctypes RA---TAN-SIP and DEC--TAN-SIP survive
+    a roundtrip unchanged.
+    """
+    data_file = get_pkg_data_filename('data/sip-wcs.fit')
+
+    def check_wcs_ctypes(header):
+        expected_wcs_ctypes = {
+            'CTYPE1': 'RA---TAN-SIP',
+            'CTYPE2': 'DEC--TAN-SIP'
+        }
+
+        return [header[k] == v for k, v in expected_wcs_ctypes.items()]
+
+    ccd_original = CCDData.read(data_file)
+    good_ctype = check_wcs_ctypes(ccd_original.meta)
+    assert all(good_ctype)
+
+    ccd_new = ccd_original.to_hdu()
+    good_ctype = check_wcs_ctypes(ccd_new[0].header)
+    assert all(good_ctype)
+
+    # Try converting to header with wcs_relax=False and
+    # the header should contain the CTYPE keywords without
+    # the -SIP
+
+    ccd_no_relax = ccd_original.to_hdu(wcs_relax=False)
+    good_ctype = check_wcs_ctypes(ccd_no_relax[0].header)
+    if ASTROPY_GT_1_2:
+        # This behavior was introduced in astropy 1.2.
+        assert not any(good_ctype)
+        assert ccd_no_relax[0].header['CTYPE1'] == 'RA---TAN'
+        assert ccd_no_relax[0].header['CTYPE2'] == 'DEC--TAN'
+    else:
+        # The -SIP is left in place.
+        assert all(good_ctype)
+
 
 @pytest.mark.parametrize('operation',
                          ['multiply', 'divide', 'add', 'subtract'])
