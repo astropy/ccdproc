@@ -715,6 +715,16 @@ def test_wcs_sip_handling():
     good_ctype = check_wcs_ctypes(ccd_new[0].header)
     assert all(good_ctype)
 
+    # Try converting to header with wcs_relax=False and
+    # the header should contain the CTYPE keywords without
+    # the -SIP
+
+    ccd_no_relax = ccd_original.to_hdu(wcs_relax=False)
+    good_ctype = check_wcs_ctypes(ccd_no_relax[0].header)
+    assert not any(good_ctype)
+    assert ccd_no_relax[0].header['CTYPE1'] == 'RA---TAN'
+    assert ccd_no_relax[0].header['CTYPE2'] == 'DEC--TAN'
+
 
 @pytest.mark.parametrize('operation',
                          ['multiply', 'divide', 'add', 'subtract'])
