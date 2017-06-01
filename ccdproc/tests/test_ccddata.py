@@ -721,9 +721,14 @@ def test_wcs_sip_handling():
 
     ccd_no_relax = ccd_original.to_hdu(wcs_relax=False)
     good_ctype = check_wcs_ctypes(ccd_no_relax[0].header)
-    assert not any(good_ctype)
-    assert ccd_no_relax[0].header['CTYPE1'] == 'RA---TAN'
-    assert ccd_no_relax[0].header['CTYPE2'] == 'DEC--TAN'
+    if ASTROPY_GT_1_2:
+        # This behavior was introduced in astropy 1.2.
+        assert not any(good_ctype)
+        assert ccd_no_relax[0].header['CTYPE1'] == 'RA---TAN'
+        assert ccd_no_relax[0].header['CTYPE2'] == 'DEC--TAN'
+    else:
+        # The -SIP is left in place.
+        assert all(good_ctype)
 
 
 @pytest.mark.parametrize('operation',
