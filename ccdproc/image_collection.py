@@ -62,6 +62,10 @@ class ImageFileCollection(object):
         The filenames are assumed to be in ``location``.
         Default is ``None``.
 
+     ext: str or int, optional
+         The extension from which the header and data will be read in all files.
+         Default is ``0``.
+
     glob_include: str or None, optional
         Unix-style filename pattern to select filenames to include in the file
         collection. Can be used in conjunction with ``glob_exclude`` to
@@ -81,7 +85,7 @@ class ImageFileCollection(object):
         value.
     """
     def __init__(self, location=None, keywords=None, info_file=None,
-                 filenames=None, glob_include=None, glob_exclude=None):
+                 filenames=None, glob_include=None, glob_exclude=None, ext=0):
 
         # Include or exclude files from the collection based on glob pattern
         # matching - has to go above call to _get_files()
@@ -134,6 +138,8 @@ class ImageFileCollection(object):
         # actually setting the correct value, this just ensure that there
         # is always *some* value.
         self._all_keywords = False
+
+        self._ext = ext
 
         if keywords:
             self.keywords = keywords
@@ -267,6 +273,14 @@ class ImageFileCollection(object):
         list of str, Unfiltered list of FITS files in location.
         """
         return self._files
+
+    @property
+    def ext(self):
+        """
+        str or int, The extension from which the header and data will
+        be read in all files.
+        """
+        return self._ext
 
     def values(self, keyword, unique=False):
         """
@@ -420,7 +434,8 @@ class ImageFileCollection(object):
             summary = input_summary
             n_previous = len(summary['file'])
 
-        h = fits.getheader(file_name)
+        h = fits.getheader(file_name, self._ext)
+
         assert 'file' not in h
 
         # Try opening header before this so that file name is only added if
@@ -767,11 +782,15 @@ class ImageFileCollection(object):
 
             file_name = path.basename(full_path)
 
+            ext_index = hdulist.index_of(self._ext)
+
             return_options = {
-                    'header': lambda: hdulist[0].header,
-                    'hdu': lambda: hdulist[0],
-                    'data': lambda: hdulist[0].data,
-                    'ccd': lambda: fits_ccddata_reader(full_path, **ccd_kwargs)
+                    'header': lambda: hdulist[ext_index].header,
+                    'hdu': lambda: hdulist[ext_index],
+                    'data': lambda: hdulist[ext_index].data,
+                    'ccd': lambda: fits_ccddata_reader(full_path,
+                                                       hdu=ext_index,
+                                                       **ccd_kwargs)
                     }
             try:
                 yield (return_options[return_type]()  # pragma: no branch

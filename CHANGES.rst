@@ -6,6 +6,9 @@ New Features
 ^^^^^^^^^^^^
 - Add representation for ImageFileCollection [#475]
 
+
+- Added ext parameter and property to ImageFileCollection to specify the FITS extension.[#463]
+
 - Add keywords.deleter method to ImageFileCollection [#474]
 
 - Added ``glob_include`` and ``glob_exclude`` parameter to
