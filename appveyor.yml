@@ -13,6 +13,7 @@ environment:
       CONDA_DEPENDENCIES: "scipy astroscrappy reproject scikit-image"
       PIP_DEPENDENCIES: ""
       CONDA_CHANNELS: "astropy"
+      ASTROPY_USE_SYSTEM_PYTEST: 1
 
   matrix:
 
