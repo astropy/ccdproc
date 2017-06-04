@@ -8,7 +8,7 @@ from shutil import rmtree
 
 import numpy as np
 
-from astropy.tests.helper import pytest
+import pytest
 from astropy import units as u
 from astropy.utils import NumpyRNGContext
 from astropy.io import fits

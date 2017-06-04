@@ -7,7 +7,7 @@ from numpy.testing import assert_array_equal
 
 import numpy as np
 
-from astropy.tests.helper import pytest
+import pytest
 
 from ..core import ccdmask
 from ..ccddata import CCDData

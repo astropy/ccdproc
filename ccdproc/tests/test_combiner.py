@@ -8,7 +8,7 @@ import numpy as np
 import astropy.units as u
 from astropy.stats import median_absolute_deviation as mad
 
-from astropy.tests.helper import pytest
+import pytest
 from astropy.utils.data import get_pkg_data_filename
 from astropy.wcs import WCS
 

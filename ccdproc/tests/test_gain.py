@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 from numpy.testing import assert_array_equal
-from astropy.tests.helper import pytest
+import pytest
 from astropy.units.quantity import Quantity
 import astropy.units as u
 
