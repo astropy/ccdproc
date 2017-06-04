@@ -564,8 +564,8 @@ def combine(img_list, output_file=None,
         if isinstance(img_list, np.ndarray):
             img_list = img_list.to_list()
         elif isinstance(img_list, str) and (',' in img_list):
-        else:
             img_list = img_list.split(',')
+        else:
             raise ValueError(
                 "unrecognised input for list of images to combine.")
 
