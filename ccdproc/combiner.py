@@ -461,7 +461,7 @@ def combine(img_list, output_file=None,
 
     Parameters
     -----------
-    img_list : list or str
+    img_list : `numpy.ndarray`, list or str
         A list of fits filenames or `~ccdproc.CCDData` objects that will be
         combined together. Or a string of fits filenames separated by comma
         ",".
@@ -559,11 +559,13 @@ def combine(img_list, output_file=None,
         CCDData object based on the combined input of CCDData objects.
     """
     if not isinstance(img_list, list):
-        # If not a list, check whether it is a string of filenames separated
-        # by comma
-        if isinstance(img_list, str) and (',' in img_list):
-            img_list = img_list.split(',')
+        # If not a list, check whether it is a numpy ndarray or string of
+        # filenames separated by comma
+        if isinstance(img_list, np.ndarray):
+            img_list = img_list.to_list()
+        elif isinstance(img_list, str) and (',' in img_list):
         else:
+            img_list = img_list.split(',')
             raise ValueError(
                 "unrecognised input for list of images to combine.")
 

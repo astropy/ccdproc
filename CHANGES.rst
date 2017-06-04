@@ -24,6 +24,9 @@ New Features
   through to the ``WCS`` method of the same name to allow more flexible
   handing of headers with SIP distortion. [#501]
 
+- ``combine`` now accepts ``numpy.ndarray`` as the input ``img_list``. [#493]
+
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
