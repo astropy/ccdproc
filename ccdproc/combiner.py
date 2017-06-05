@@ -562,7 +562,7 @@ def combine(img_list, output_file=None,
         # If not a list, check whether it is a numpy ndarray or string of
         # filenames separated by comma
         if isinstance(img_list, np.ndarray):
-            img_list = img_list.to_list()
+            img_list = img_list.tolist()
         elif isinstance(img_list, str) and (',' in img_list):
             img_list = img_list.split(',')
         else:
