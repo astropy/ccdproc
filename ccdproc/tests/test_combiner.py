@@ -302,7 +302,6 @@ def test_combine_numpyndarray():
     np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data)
 
 
-
 def test_combiner_result_dtype():
     """Regression test: #391
 
