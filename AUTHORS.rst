@@ -16,6 +16,7 @@ Project Coordinators
 Alphabetical list of contributors
 ---------------------------------
 
+* Yoonsoo P. Bach (@ysBach)
 * Kyle Barbary (@kbarbary)
 * Javier Blasco (@javierblasco)
 * Christoph Deil (@cdeil)

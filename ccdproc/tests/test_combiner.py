@@ -284,6 +284,24 @@ def test_combine_average_fitsimages():
     np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data)
 
 
+def test_combine_numpyndarray():
+    """ Test of numpy ndarray implementation: #493
+
+    Test the average combine using ``Combiner`` and ``combine`` with input
+    ``img_list`` in the format of ``numpy.ndarray``.
+    """
+    fitsfile = get_pkg_data_filename('data/a8280271.fits')
+    ccd = CCDData.read(fitsfile, unit=u.adu)
+    ccd_list = [ccd]*3
+    c = Combiner(ccd_list)
+    ccd_by_combiner = c.average_combine()
+
+    fitsfilename_list = np.array([fitsfile]*3)
+    avgccd = combine(fitsfilename_list, output_file=None, method='average', unit=u.adu)
+    # averaging same fits images should give back same fits image
+    np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data)
+
+
 def test_combiner_result_dtype():
     """Regression test: #391
 
