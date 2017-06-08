@@ -235,18 +235,6 @@ class CCDData(NDDataArray):
         self._unit = u.Unit(value)
 
     @property
-    def shape(self):
-        return self.data.shape
-
-    @property
-    def size(self):
-        return self.data.size
-
-    @property
-    def dtype(self):
-        return self.data.dtype
-
-    @property
     def header(self):
         return self._meta
 
