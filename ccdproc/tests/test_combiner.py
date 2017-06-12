@@ -410,7 +410,7 @@ def test_sum_combine_uncertainty(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.sum_combine(uncertainty_func=np.sum)
-    uncert_ref = np.sum(c.data_arr, 0) / np.sqrt(3)
+    uncert_ref = np.sum(c.data_arr, 0) / np.sqrt(3) * len(ccd_list)
     np.testing.assert_array_equal(ccd.uncertainty.array, uncert_ref)
 
     # Compare this also to the "combine" call
