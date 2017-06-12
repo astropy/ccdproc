@@ -205,6 +205,16 @@ def test_combiner_average(ccd_data):
     assert ccd.unit == u.adu
     assert ccd.meta['NCOMBINE'] == len(ccd_list)
 
+#test that the sum combination works and returns a ccddata object
+def test_combiner_sum(ccd_data):
+    ccd_list = [ccd_data, ccd_data, ccd_data]
+    c = Combiner(ccd_list)
+    ccd = c.sum_combine()
+    assert isinstance(ccd, CCDData)
+    assert ccd.shape == (100, 100)
+    assert ccd.unit == u.adu
+    assert ccd.meta['NCOMBINE'] == len(ccd_list)
+
 
 #test data combined with mask is created correctly
 def test_combiner_mask_average(ccd_data):
@@ -392,6 +402,19 @@ def test_median_combine_uncertainty(ccd_data):
 
     # Compare this also to the "combine" call
     ccd2 = combine(ccd_list, method='median', combine_uncertainty_function=np.sum)
+    np.testing.assert_array_equal(ccd.data, ccd2.data)
+    np.testing.assert_array_equal(ccd.uncertainty.array, ccd2.uncertainty.array)
+
+#test the optional uncertainty function in sum_combine
+def test_sum_combine_uncertainty(ccd_data):
+    ccd_list = [ccd_data, ccd_data, ccd_data]
+    c = Combiner(ccd_list)
+    ccd = c.sum_combine(uncertainty_func=np.sum)
+    uncert_ref = np.sum(c.data_arr, 0) / np.sqrt(3)
+    np.testing.assert_array_equal(ccd.uncertainty.array, uncert_ref)
+
+    # Compare this also to the "combine" call
+    ccd2 = combine(ccd_list, method='sum', combine_uncertainty_function=np.sum)
     np.testing.assert_array_equal(ccd.data, ccd2.data)
     np.testing.assert_array_equal(ccd.uncertainty.array, ccd2.uncertainty.array)
 

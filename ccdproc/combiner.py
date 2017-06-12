@@ -447,6 +447,71 @@ class Combiner(object):
         # return the combined image
         return combined_image
 
+    def sum_combine(self, sum_func=ma.sum, scale_to=None,
+                        uncertainty_func=ma.std):
+        """
+        Sum combine together a set of arrays.
+
+        A `~ccdproc.CCDData` object is returned with the data property
+        set to the sum of the arrays. If the data was masked or any
+        data have been rejected, those pixels will not be included in the
+        average. A mask will be returned, and if a pixel has been
+        rejected in all images, it will be masked. The uncertainty of
+        the combined image is set by the standard deviation of the input
+        images.
+
+        Parameters
+        ----------
+        scale_func : function, optional
+            Function to calculate the sum. Defaults to
+            `numpy.ma.sum`.
+
+        scale_to : float or None, optional
+            Scaling factor used in the sum combined image. If given,
+            it overrides `scaling`. Defaults to ``None``.
+
+        uncertainty_func : function, optional
+            Function to calculate uncertainty. Defaults to `numpy.ma.std`.
+
+        Returns
+        -------
+        combined_image: `~ccdproc.CCDData`
+            CCDData object based on the combined input of CCDData objects.
+        """
+        if scale_to is not None:
+            scalings = scale_to
+        elif self.scaling is not None:
+            scalings = self.scaling
+        else:
+            scalings = 1.0
+
+        # set up the data
+        data = sum_func(scalings * self.data_arr, axis=0)
+
+        # set up the mask
+        masked_values = self.data_arr.mask.sum(axis=0)
+        mask = (masked_values == len(self.data_arr))
+
+        # set up the deviation
+        uncertainty = uncertainty_func(self.data_arr, axis=0)
+        # Divide uncertainty by the number of pixel (#309)
+        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
+        # Convert uncertainty to plain numpy array (#351)
+        uncertainty = np.asarray(uncertainty)
+        # Multyply by number of data
+        uncertainty *= len(self.data_arr)
+
+        # create the combined image with a dtype that matches the combiner
+        combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
+                                 mask=mask, unit=self.unit,
+                                 uncertainty=StdDevUncertainty(uncertainty))
+
+        # update the meta data
+        combined_image.meta['NCOMBINE'] = len(self.data_arr)
+
+        # return the combined image
+        return combined_image
+
 
 def combine(img_list, output_file=None,
             method='average', weights=None, scale=None, mem_limit=16e9,
@@ -476,6 +541,7 @@ def combine(img_list, output_file=None,
 
         - ``'average'`` : To combine by calculating the average.
         - ``'median'`` : To combine by calculating the median.
+        - ``'sum'`` : To combine by calculating the sum.
 
         Default is ``'average'``.
 
@@ -547,8 +613,8 @@ def combine(img_list, output_file=None,
         Default is ``None``.
 
     combine_uncertainty_function : callable, None, optional
-        If ``None`` use the default uncertainty func when using average or
-        median combine, otherwise use the function provided.
+        If ``None`` use the default uncertainty func when using average, median or
+        sum combine, otherwise use the function provided.
         Default is ``None``.
 
     ccdkwargs : Other keyword arguments for `ccdproc.fits_ccddata_reader`.
@@ -574,6 +640,8 @@ def combine(img_list, output_file=None,
         combine_function = 'average_combine'
     elif method == 'median':
         combine_function = 'median_combine'
+    elif method == 'sum':
+        combine_function = 'sum_combine'
     else:
         raise ValueError("unrecognised combine method : {0}.".format(method))
 

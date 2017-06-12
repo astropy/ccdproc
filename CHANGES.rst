@@ -26,6 +26,8 @@ New Features
 
 - ``combine`` now accepts ``numpy.ndarray`` as the input ``img_list``. [#493, #503]
 
+- Added ```sum``` option in method for ```combime```. [#500]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
