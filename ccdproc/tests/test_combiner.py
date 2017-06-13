@@ -280,6 +280,22 @@ def test_combiner_mask_median(ccd_data):
     assert ccd.mask[0, 0]
     assert not ccd.mask[5, 5]
 
+
+#test data combined with mask is created correctly
+def test_combiner_mask_sum(ccd_data):
+    data = np.zeros((10, 10))
+    data[5, 5] = 1
+    mask = (data == 0)
+    ccd = CCDData(data, unit=u.adu, mask=mask)
+    ccd_list = [ccd, ccd, ccd]
+    c = Combiner(ccd_list)
+    ccd = c.sum_combine()
+    assert ccd.data[0, 0] == 0
+    assert ccd.data[5, 5] == 3
+    assert ccd.mask[0, 0]
+    assert not ccd.mask[5, 5]
+
+
 #test combiner convenience function reads fits file and combine as expected
 def test_combine_average_fitsimages():
     fitsfile = get_pkg_data_filename('data/a8280271.fits')
@@ -410,7 +426,7 @@ def test_sum_combine_uncertainty(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.sum_combine(uncertainty_func=np.sum)
-    uncert_ref = np.sum(c.data_arr, 0) / np.sqrt(3) * len(ccd_list)
+    uncert_ref = np.sum(c.data_arr, 0)
     np.testing.assert_array_equal(ccd.uncertainty.array, uncert_ref)
 
     # Compare this also to the "combine" call
