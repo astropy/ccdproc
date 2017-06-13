@@ -455,10 +455,10 @@ class Combiner(object):
         A `~ccdproc.CCDData` object is returned with the data property
         set to the sum of the arrays. If the data was masked or any
         data have been rejected, those pixels will not be included in the
-        average. A mask will be returned, and if a pixel has been
+        sum. A mask will be returned, and if a pixel has been
         rejected in all images, it will be masked. The uncertainty of
-        the combined image is set by the standard deviation of the input
-        images.
+        the combined image is set by the multiplication of summation of
+        standard deviation of the input by square root of number of images.
 
         Parameters
         ----------
@@ -495,11 +495,14 @@ class Combiner(object):
         # set up the deviation
         uncertainty = uncertainty_func(self.data_arr, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
+        # Commented out because it cancels the effect of 'Multiply uncertainty by square root of the number of images'
+        # uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
         uncertainty = np.asarray(uncertainty)
-        # Multyply by number of data
-        uncertainty *= len(self.data_arr)
+        # Multiply uncertainty by square root of the number of images
+        # Commented out because it cancels the effect of 'Divide uncertainty by the number of pixel (#309)'
+        # uncertainty *= np.sqrt(len(self.data_arr) - masked_values)
+
 
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
