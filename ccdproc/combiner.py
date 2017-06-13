@@ -503,7 +503,6 @@ class Combiner(object):
         # Commented out because it cancels the effect of 'Divide uncertainty by the number of pixel (#309)'
         # uncertainty *= np.sqrt(len(self.data_arr) - masked_values)
 
-
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
                                  mask=mask, unit=self.unit,
