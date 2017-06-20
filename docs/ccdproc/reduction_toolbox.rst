@@ -325,7 +325,7 @@ Reprojecting onto a different image footprint
 
 An image with coordinate information (WCS) can be reprojected onto a different
 image footprint. The underlying functionality is proved by the `reproject
-project`_. Please see :ref:reprojection for more details.
+project`_. Please see :ref:`reprojection` for more details.
 
 
 Data Quality Flags (Bitfields and bitmasks)
