@@ -479,7 +479,7 @@ def test_combiner_uncertainty_sum_mask():
                 CCDData(np.ones((10, 10))*2, unit=u.adu),
                 CCDData(np.ones((10, 10))*3, unit=u.adu)]
     c = Combiner(ccd_list)
-    ccd = c.average_combine()
+    ccd = c.sum_combine()
     # Just the standard deviation of ccd data.
     ref_uncertainty = np.ones((10, 10)) * np.std([1, 2, 3])
     ref_uncertainty[5, 5] = np.std([2, 3])
