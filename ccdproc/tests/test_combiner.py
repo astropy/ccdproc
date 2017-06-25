@@ -73,6 +73,9 @@ def test_combiner_dtype(ccd_data):
     med = c.median_combine()
     # dtype of median should match dtype of input
     assert med.dtype == c.dtype
+    result_sum = c.sum_combine()
+    # dtype of sum should match dtype of input
+    assert result_sum.dtype == c.dtype
 
 
 #test mask is created from ccd.data
@@ -542,7 +545,7 @@ def test_clip_extrema_3d():
     np.testing.assert_array_equal(result, expected)
 
 
-@pytest.mark.parametrize('comb_func', ['average_combine', 'median_combine'])
+@pytest.mark.parametrize('comb_func', ['average_combine', 'median_combine', 'sum_combine'])
 def test_writeable_after_combine(ccd_data, tmpdir, comb_func):
     tmp_file = tmpdir.join('tmp.fits')
     from ..combiner import Combiner
