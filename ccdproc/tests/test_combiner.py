@@ -467,6 +467,22 @@ def test_combiner_uncertainty_average_mask():
     np.testing.assert_array_almost_equal(ccd.uncertainty.array,
                                          ref_uncertainty)
 
+# test resulting uncertainty is corrected for the number of images (with mask)
+def test_combiner_uncertainty_sum_mask():
+    mask = np.zeros((10, 10), dtype=np.bool_)
+    mask[5, 5] = True
+    ccd_with_mask = CCDData(np.ones((10, 10)), unit=u.adu, mask=mask)
+    ccd_list = [ccd_with_mask,
+                CCDData(np.ones((10, 10))*2, unit=u.adu),
+                CCDData(np.ones((10, 10))*3, unit=u.adu)]
+    c = Combiner(ccd_list)
+    ccd = c.average_combine()
+    # Just the standard deviation of ccd data.
+    ref_uncertainty = np.ones((10, 10)) * np.std([1, 2, 3])
+    ref_uncertainty[5, 5] = np.std([2, 3])
+    np.testing.assert_array_almost_equal(ccd.uncertainty.array,
+                                         ref_uncertainty)
+
 def test_combiner_3d():
     data1 = CCDData(3 * np.ones((5,5,5)), unit=u.adu)
     data2 = CCDData(2 * np.ones((5,5,5)), unit=u.adu)
