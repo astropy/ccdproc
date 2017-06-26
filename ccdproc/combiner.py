@@ -459,8 +459,8 @@ class Combiner(object):
         rejected in all images, it will be masked. The uncertainty of
         the combined image is set by the multiplication of summation of
         standard deviation of the input by square root of number of images.
-        Because sum_combine returns 'pure sum' with masked pixels ignored, if 
-        re-scaled sum is needed, average_combine have to be used with 
+        Because sum_combine returns 'pure sum' with masked pixels ignored, if
+        re-scaled sum is needed, average_combine have to be used with
         multiplication by number of images combined.
 
         Parameters
@@ -504,7 +504,7 @@ class Combiner(object):
         # Convert uncertainty to plain numpy array (#351)
         uncertainty = np.asarray(uncertainty)
         # Multiply uncertainty by square root of the number of images
-        # Commented out because it cancels the effect of 'Divide uncertainty 
+        # Commented out because it cancels the effect of 'Divide uncertainty
         # by the number of pixel (#309)'
         # uncertainty *= np.sqrt(len(self.data_arr) - masked_values)
 
