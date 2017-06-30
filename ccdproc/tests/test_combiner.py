@@ -429,7 +429,7 @@ def test_sum_combine_uncertainty(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.sum_combine(uncertainty_func=np.sum)
-    uncert_ref = np.sum(c.data_arr, 0)
+    uncert_ref = np.sum(c.data_arr, 0) * np.sqrt(3)
     np.testing.assert_array_equal(ccd.uncertainty.array, uncert_ref)
 
     # Compare this also to the "combine" call
@@ -482,7 +482,8 @@ def test_combiner_uncertainty_sum_mask():
     ccd = c.sum_combine()
     # Just the standard deviation of ccd data.
     ref_uncertainty = np.ones((10, 10)) * np.std([1, 2, 3])
-    ref_uncertainty[5, 5] = np.std([2, 3])
+    ref_uncertainty *= np.sqrt(3)
+    ref_uncertainty[5, 5] = np.std([2, 3]) * np.sqrt(2)
     np.testing.assert_array_almost_equal(ccd.uncertainty.array,
                                          ref_uncertainty)
 

@@ -498,15 +498,11 @@ class Combiner(object):
         # set up the deviation
         uncertainty = uncertainty_func(self.data_arr, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        # Commented out because it cancels the effect of 'Multiply uncertainty
-        # by square root of the number of images'
-        # uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
+         uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
         uncertainty = np.asarray(uncertainty)
         # Multiply uncertainty by square root of the number of images
-        # Commented out because it cancels the effect of 'Divide uncertainty
-        # by the number of pixel (#309)'
-        # uncertainty *= np.sqrt(len(self.data_arr) - masked_values)
+        uncertainty *= len(self.data_arr) - masked_values
 
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
