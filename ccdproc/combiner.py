@@ -498,7 +498,7 @@ class Combiner(object):
         # set up the deviation
         uncertainty = uncertainty_func(self.data_arr, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-         uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
+        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
         uncertainty = np.asarray(uncertainty)
         # Multiply uncertainty by square root of the number of images
