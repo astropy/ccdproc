@@ -4,8 +4,8 @@
 
 New Features
 ^^^^^^^^^^^^
-- Add representation for ImageFileCollection [#475]
 
+- Add representation for ImageFileCollection [#475, #515]
 
 - Added ext parameter and property to ImageFileCollection to specify the FITS extension.[#463]
 

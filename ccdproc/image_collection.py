@@ -62,10 +62,6 @@ class ImageFileCollection(object):
         The filenames are assumed to be in ``location``.
         Default is ``None``.
 
-     ext: str or int, optional
-         The extension from which the header and data will be read in all files.
-         Default is ``0``.
-
     glob_include: str or None, optional
         Unix-style filename pattern to select filenames to include in the file
         collection. Can be used in conjunction with ``glob_exclude`` to
@@ -77,6 +73,10 @@ class ImageFileCollection(object):
         file collection. Can be used in conjunction with ``glob_include`` to
         easily select subsets of files in the target directory.
         Default is ``None``.
+
+     ext: str or int, optional
+         The extension from which the header and data will be read in all files.
+         Default is ``0``.
 
     Raises
     ------
@@ -145,14 +145,46 @@ class ImageFileCollection(object):
             self.keywords = keywords
 
     def __repr__(self):
+        if self.location is None:
+            location = ""
+        else:
+            location = "location={!r}".format(self.location)
 
-        kw = "'*'" if self._all_keywords else self.keywords[1:]
-        str_repr = ("{self.__class__.__name__}(location='{self._location}', keywords={kw}, ").format(self=self, kw=kw)
+        if self._all_keywords:
+            kw = ""
+        else:
+            kw = "keywords={!r}".format(self.keywords[1:])
 
-        if self._info_file is not None:
-            str_repr += ("info_file={}, ").format(self._info_file)
+        if self._info_file is None:
+            infofile = ''
+        else:
+            infofile = "info_file={!r}".format(self._info_file)
 
-        str_repr += ("filenames={})").format(self._filenames)
+        if self.glob_exclude is None:
+            glob_exclude = ''
+        else:
+            glob_exclude = "glob_exclude={!r}".format(self.glob_exclude)
+
+        if self.glob_include is None:
+            glob_include = ''
+        else:
+            glob_include = "glob_include={!r}".format(self.glob_include)
+
+        if self.ext == 0:
+            ext = ""
+        else:
+            ext = "ext={}".format(self.ext)
+
+        if self._filenames is None:
+            filenames = ""
+        else:
+            filenames = ", filenames={}".format(self._filenames)
+
+        params = [location, kw, infofile, filenames, glob_include, glob_exclude, ext]
+        params = ', '.join([p for p in params if p])
+
+        str_repr = "{self.__class__.__name__}({params})".format(
+            self=self, params=params)
 
         return str_repr
 
