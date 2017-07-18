@@ -73,6 +73,9 @@ def test_combiner_dtype(ccd_data):
     med = c.median_combine()
     # dtype of median should match dtype of input
     assert med.dtype == c.dtype
+    result_sum = c.sum_combine()
+    # dtype of sum should match dtype of input
+    assert result_sum.dtype == c.dtype
 
 
 #test mask is created from ccd.data
@@ -205,6 +208,16 @@ def test_combiner_average(ccd_data):
     assert ccd.unit == u.adu
     assert ccd.meta['NCOMBINE'] == len(ccd_list)
 
+#test that the sum combination works and returns a ccddata object
+def test_combiner_sum(ccd_data):
+    ccd_list = [ccd_data, ccd_data, ccd_data]
+    c = Combiner(ccd_list)
+    ccd = c.sum_combine()
+    assert isinstance(ccd, CCDData)
+    assert ccd.shape == (100, 100)
+    assert ccd.unit == u.adu
+    assert ccd.meta['NCOMBINE'] == len(ccd_list)
+
 
 #test data combined with mask is created correctly
 def test_combiner_mask_average(ccd_data):
@@ -269,6 +282,22 @@ def test_combiner_mask_median(ccd_data):
     assert ccd.data[5, 5] == 1
     assert ccd.mask[0, 0]
     assert not ccd.mask[5, 5]
+
+
+#test data combined with mask is created correctly
+def test_combiner_mask_sum(ccd_data):
+    data = np.zeros((10, 10))
+    data[5, 5] = 1
+    mask = (data == 0)
+    ccd = CCDData(data, unit=u.adu, mask=mask)
+    ccd_list = [ccd, ccd, ccd]
+    c = Combiner(ccd_list)
+    ccd = c.sum_combine()
+    assert ccd.data[0, 0] == 0
+    assert ccd.data[5, 5] == 3
+    assert ccd.mask[0, 0]
+    assert not ccd.mask[5, 5]
+
 
 #test combiner convenience function reads fits file and combine as expected
 def test_combine_average_fitsimages():
@@ -395,6 +424,19 @@ def test_median_combine_uncertainty(ccd_data):
     np.testing.assert_array_equal(ccd.data, ccd2.data)
     np.testing.assert_array_equal(ccd.uncertainty.array, ccd2.uncertainty.array)
 
+#test the optional uncertainty function in sum_combine
+def test_sum_combine_uncertainty(ccd_data):
+    ccd_list = [ccd_data, ccd_data, ccd_data]
+    c = Combiner(ccd_list)
+    ccd = c.sum_combine(uncertainty_func=np.sum)
+    uncert_ref = np.sum(c.data_arr, 0) * np.sqrt(3)
+    np.testing.assert_almost_equal(ccd.uncertainty.array, uncert_ref)
+
+    # Compare this also to the "combine" call
+    ccd2 = combine(ccd_list, method='sum', combine_uncertainty_function=np.sum)
+    np.testing.assert_array_equal(ccd.data, ccd2.data)
+    np.testing.assert_array_equal(ccd.uncertainty.array, ccd2.uncertainty.array)
+
 
 # test resulting uncertainty is corrected for the number of images
 def test_combiner_uncertainty_average():
@@ -425,6 +467,23 @@ def test_combiner_uncertainty_average_mask():
     # Correction because we combined two images.
     ref_uncertainty /= np.sqrt(3)
     ref_uncertainty[5, 5] = np.std([2, 3]) / np.sqrt(2)
+    np.testing.assert_array_almost_equal(ccd.uncertainty.array,
+                                         ref_uncertainty)
+
+# test resulting uncertainty is corrected for the number of images (with mask)
+def test_combiner_uncertainty_sum_mask():
+    mask = np.zeros((10, 10), dtype=np.bool_)
+    mask[5, 5] = True
+    ccd_with_mask = CCDData(np.ones((10, 10)), unit=u.adu, mask=mask)
+    ccd_list = [ccd_with_mask,
+                CCDData(np.ones((10, 10))*2, unit=u.adu),
+                CCDData(np.ones((10, 10))*3, unit=u.adu)]
+    c = Combiner(ccd_list)
+    ccd = c.sum_combine()
+    # Just the standard deviation of ccd data.
+    ref_uncertainty = np.ones((10, 10)) * np.std([1, 2, 3])
+    ref_uncertainty *= np.sqrt(3)
+    ref_uncertainty[5, 5] = np.std([2, 3]) * np.sqrt(2)
     np.testing.assert_array_almost_equal(ccd.uncertainty.array,
                                          ref_uncertainty)
 
@@ -487,7 +546,7 @@ def test_clip_extrema_3d():
     np.testing.assert_array_equal(result, expected)
 
 
-@pytest.mark.parametrize('comb_func', ['average_combine', 'median_combine'])
+@pytest.mark.parametrize('comb_func', ['average_combine', 'median_combine', 'sum_combine'])
 def test_writeable_after_combine(ccd_data, tmpdir, comb_func):
     tmp_file = tmpdir.join('tmp.fits')
     from ..combiner import Combiner
