@@ -54,7 +54,7 @@ matrix:
 
         # Check for sphinx doc build warnings
         - python: 2.7
-          env: SETUP_CMD='build_sphinx -w'
+          env: SETUP_CMD='build_docs -w'
 
         # Check compatibility with the current astropy LTS release
         - python: 2.7
