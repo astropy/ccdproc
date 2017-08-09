@@ -126,4 +126,6 @@ Using `ccdproc`
 
 .. automodapi:: ccdproc
 
+.. automodapi:: ccdproc.utils.slices
+
 .. _GitHub repo: https://github.com/astropy/ccdproc
