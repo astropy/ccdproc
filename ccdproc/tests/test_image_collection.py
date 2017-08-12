@@ -17,7 +17,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from ccdproc import CCDData
 
-from .. import image_collection
+from ..image_collection import ImageFileCollection
 
 _filters = []
 _original_dir = ''
@@ -25,8 +25,8 @@ _original_dir = ''
 
 def test_fits_summary(triage_setup):
     keywords = ['imagetyp', 'filter']
-    ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                              keywords=keywords)
+    ic = ImageFileCollection(triage_setup.test_dir,
+                             keywords=keywords)
     summary = ic._fits_summary(header_keywords=keywords)
     assert len(summary['file']) == triage_setup.n_test['files']
     for keyword in keywords:
@@ -36,7 +36,7 @@ def test_fits_summary(triage_setup):
     no_filter_no_object_row = np.array(summary['file'] ==
                                        'no_filter_no_object_bias.fit')
     # there should be no filter keyword in the bias file
-    assert (summary['filter'][no_filter_no_object_row].mask)
+    assert summary['filter'][no_filter_no_object_row].mask
 
 
 # This should work mark all test methods as using the triage_setup
@@ -56,7 +56,7 @@ class TestImageFileCollection(object):
         return logger
 
     def test_filter_files(self, triage_setup):
-        img_collection = image_collection.ImageFileCollection(
+        img_collection = ImageFileCollection(
             location=triage_setup.test_dir, keywords=['imagetyp', 'filter'])
         assert len(img_collection.files_filtered(
             imagetyp='bias')) == triage_setup.n_test['bias']
@@ -66,8 +66,7 @@ class TestImageFileCollection(object):
         assert len(img_collection.values('imagetyp', unique=True)) == 2
 
     def test_filtered_files_have_proper_path(self, triage_setup):
-        ic = image_collection.ImageFileCollection(
-                location=triage_setup.test_dir, keywords='*')
+        ic = ImageFileCollection(location=triage_setup.test_dir, keywords='*')
         # Get a subset of the files.
         plain_biases = ic.files_filtered(imagetyp='bias')
         # Force a copy...
@@ -79,7 +78,7 @@ class TestImageFileCollection(object):
             assert os.path.basename(path_b) == plain_b
 
     def test_summary_is_summary_info(self, triage_setup):
-        img_collection = image_collection.ImageFileCollection(
+        img_collection = ImageFileCollection(
             location=triage_setup.test_dir, keywords=['imagetyp', 'filter'])
         # summary_info is deprecated.
         with catch_warnings(AstropyUserWarning) as w:
@@ -88,7 +87,7 @@ class TestImageFileCollection(object):
 
     def test_filenames_are_set_properly(self, triage_setup):
         fn = ['filter_no_object_bias.fit', 'filter_object_light_foo.fit']
-        img_collection = image_collection.ImageFileCollection(
+        img_collection = ImageFileCollection(
             location=triage_setup.test_dir, filenames=fn, keywords=['filter'])
         assert img_collection.files == fn
 
@@ -96,27 +95,24 @@ class TestImageFileCollection(object):
         assert img_collection.files == fn
 
         fn = 'filter_no_object_bias.fit'
-        img_collection = image_collection.ImageFileCollection(
+        img_collection = ImageFileCollection(
             location=triage_setup.test_dir, filenames=fn, keywords=['filter'])
         assert img_collection.files == [fn]
 
     def test_keywords_deleter(self, triage_setup):
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                                  keywords='*')
+        ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
 
         assert ic.keywords != []
         del ic.keywords
         assert ic.keywords == []
 
     def test_files_with_compressed(self, triage_setup):
-        collection = image_collection.ImageFileCollection(
-            location=triage_setup.test_dir)
+        collection = ImageFileCollection(location=triage_setup.test_dir)
         assert len(collection._fits_files_in_directory(
             compressed=True)) == triage_setup.n_test['files']
 
     def test_files_with_no_compressed(self, triage_setup):
-        collection = image_collection.ImageFileCollection(
-            location=triage_setup.test_dir)
+        collection = ImageFileCollection(location=triage_setup.test_dir)
         n_files_found = len(
             collection._fits_files_in_directory(compressed=False))
         n_uncompressed = (triage_setup.n_test['files'] -
@@ -124,14 +120,14 @@ class TestImageFileCollection(object):
         assert n_files_found == n_uncompressed
 
     def test_generator_full_path(self, triage_setup):
-        collection = image_collection.ImageFileCollection(
+        collection = ImageFileCollection(
             location=triage_setup.test_dir, keywords=['imagetyp'])
 
         for path, file_name in zip(collection._paths(), collection.files):
             assert path == os.path.join(triage_setup.test_dir, file_name)
 
     def test_hdus(self, triage_setup):
-        collection = image_collection.ImageFileCollection(
+        collection = ImageFileCollection(
             location=triage_setup.test_dir, keywords=['imagetyp'])
 
         n_hdus = 0
@@ -147,13 +143,13 @@ class TestImageFileCollection(object):
         assert n_hdus == triage_setup.n_test['files']
 
     def test_repr_method(self, triage_setup):
-        ic = image_collection.ImageFileCollection(location=triage_setup.test_dir)
+        ic = ImageFileCollection(location=triage_setup.test_dir)
         assert repr(ic) == "ImageFileCollection(location='{0}', keywords='*', filenames={1})".format(
             triage_setup.test_dir, ic._filenames)
 
     def test_hdus_masking(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp', 'exposure'])
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=['imagetyp', 'exposure'])
         old_data = np.array(collection.summary)
         for hdu in collection.hdus(imagetyp='bias'):
             pass
@@ -174,12 +170,13 @@ class TestImageFileCollection(object):
 
         hdulist.writeto(os.path.join(triage_setup.test_dir,
                                      'multi-extension.fits'))
-        ic2 = image_collection.ImageFileCollection(
+        ic2 = ImageFileCollection(
             triage_setup.test_dir, keywords='*',
             filenames=['multi-extension.fits'], ext=extension)
 
-        ic1 = image_collection.ImageFileCollection(triage_setup.test_dir,
-                    keywords='*', filenames=['multi-extension.fits'], ext=0)
+        ic1 = ImageFileCollection(
+            triage_setup.test_dir,
+            keywords='*', filenames=['multi-extension.fits'], ext=0)
 
         assert ic1.ext == 0
         assert ic2.ext == extension
@@ -208,8 +205,8 @@ class TestImageFileCollection(object):
             assert hdr == ccd.meta
 
     def test_headers(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=['imagetyp'])
         n_headers = 0
         for header in collection.headers():
             assert isinstance(header, fits.Header)
@@ -218,14 +215,13 @@ class TestImageFileCollection(object):
         assert n_headers == triage_setup.n_test['files']
 
     def test_headers_save_location(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=['imagetyp'])
         destination = mkdtemp()
         for header in collection.headers(save_location=destination):
             pass
-        new_collection = \
-            image_collection.ImageFileCollection(location=destination,
-                                    keywords=['imagetyp'])
+        new_collection = ImageFileCollection(location=destination,
+                                             keywords=['imagetyp'])
         basenames = lambda paths: set(
             [os.path.basename(file) for file in paths])
 
@@ -234,8 +230,8 @@ class TestImageFileCollection(object):
         rmtree(destination)
 
     def test_headers_with_filter(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=['imagetyp'])
         cnt = 0
         for header in collection.headers(imagetyp='light'):
             assert header['imagetyp'].lower() == 'light'
@@ -243,8 +239,8 @@ class TestImageFileCollection(object):
         assert cnt == triage_setup.n_test['light']
 
     def test_headers_with_multiple_filters(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=['imagetyp'])
         cnt = 0
         for header in collection.headers(imagetyp='light',
                                          filter='R'):
@@ -255,16 +251,16 @@ class TestImageFileCollection(object):
                        triage_setup.n_test['need_filter'])
 
     def test_headers_with_filter_wildcard(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=['imagetyp'])
         cnt = 0
         for header in collection.headers(imagetyp='*'):
             cnt += 1
         assert cnt == triage_setup.n_test['files']
 
     def test_headers_with_filter_missing_keyword(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=['imagetyp'])
         for header in collection.headers(imagetyp='light',
                                          object=''):
             assert header['imagetyp'].lower() == 'light'
@@ -272,43 +268,41 @@ class TestImageFileCollection(object):
                 header['object']
 
     def test_generator_headers_save_with_name(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=['imagetyp'])
         for header in collection.headers(save_with_name='_new'):
             assert isinstance(header, fits.Header)
-        new_collection = \
-            image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                    keywords=['imagetyp'])
+        new_collection = ImageFileCollection(location=triage_setup.test_dir,
+                                             keywords=['imagetyp'])
         assert (len(new_collection._paths()) ==
                 2 * (triage_setup.n_test['files']) -
                 triage_setup.n_test['compressed'])
         [os.remove(fil) for fil in iglob(triage_setup.test_dir + '/*_new*')]
 
     def test_generator_data(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=['imagetyp'])
         for img in collection.data():
             assert isinstance(img, np.ndarray)
 
     def test_generator_ccds_without_unit(self, triage_setup):
-        collection = image_collection.ImageFileCollection(
+        collection = ImageFileCollection(
                 location=triage_setup.test_dir, keywords=['imagetyp'])
 
         with pytest.raises(ValueError):
             ccd = next(collection.ccds())
 
     def test_generator_ccds(self, triage_setup):
-        collection = image_collection.ImageFileCollection(
+        collection = ImageFileCollection(
                 location=triage_setup.test_dir, keywords=['imagetyp'])
         ccd_kwargs = {'unit': 'adu'}
         for ccd in collection.ccds(ccd_kwargs=ccd_kwargs):
             assert isinstance(ccd, CCDData)
 
     def test_consecutive_fiilters(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp',
-                                                       'filter',
-                                                       'object'])
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=['imagetyp', 'filter',
+                                                   'object'])
         no_files_match = collection.files_filtered(object='fdsafs')
         assert(len(no_files_match) == 0)
         some_files_should_match = collection.files_filtered(object=None,
@@ -318,8 +312,8 @@ class TestImageFileCollection(object):
 
     def test_filter_does_not_not_permanently_change_file_mask(self,
                                                               triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=['imagetyp'])
         # ensure all files are originally unmasked
         assert not collection.summary['file'].mask.any()
         # generate list that will match NO files
@@ -332,8 +326,8 @@ class TestImageFileCollection(object):
                             (['imagetyp'], ['imagetyp', 'filter'])])
     def test_keyword_setting(self, new_keywords, collection_keys,
                              triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=collection_keys)
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=collection_keys)
         tbl_orig = collection.summary
         collection.keywords = new_keywords
         tbl_new = collection.summary
@@ -353,13 +347,13 @@ class TestImageFileCollection(object):
         assert 'object' not in tbl_orig.keys()
 
     def test_keyword_setting_to_empty_list(self, triage_setup):
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir)
+        ic = ImageFileCollection(triage_setup.test_dir)
         ic.keywords = []
         assert ['file'] == ic.keywords
 
     def test_header_and_filename(self, triage_setup):
-        collection = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                             keywords=['imagetyp'])
+        collection = ImageFileCollection(location=triage_setup.test_dir,
+                                         keywords=['imagetyp'])
         for header, fname in collection.headers(return_fname=True):
             assert (fname in collection.summary['file'])
             assert (isinstance(header, fits.Header))
@@ -368,8 +362,8 @@ class TestImageFileCollection(object):
         empty_dir = tmpdir.mkdtemp()
         some_file = empty_dir.join('some_file.txt')
         some_file.dump('words')
-        collection = image_collection.ImageFileCollection(location=empty_dir.strpath,
-                                             keywords=['imagetyp'])
+        collection = ImageFileCollection(location=empty_dir.strpath,
+                                         keywords=['imagetyp'])
         assert collection.summary is None
         for hdr in collection.headers():
             # this statement should not be reached if there are no FITS files
@@ -388,8 +382,7 @@ class TestImageFileCollection(object):
         log = tmpdir.join('tmp.log')
         self._setup_logger(log.strpath)
 
-        _ = image_collection.ImageFileCollection(location=bad_dir.strpath,
-                                                 keywords=[])
+        _ = ImageFileCollection(location=bad_dir.strpath, keywords=[])
 
         with open(log.strpath) as f:
             warnings = f.read()
@@ -404,8 +397,8 @@ class TestImageFileCollection(object):
         passed to the ImageFileCollection and to files_filtered
         but the latter is not a subset of the former.
         """
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                     keywords=['imagetyp', 'exptime'])
+        ic = ImageFileCollection(triage_setup.test_dir,
+                                 keywords=['imagetyp', 'exptime'])
         n_files = len(ic.files)
         files_missing_this_key = ic.files_filtered(imagetyp='*',
                                                    monkeys=None)
@@ -414,8 +407,8 @@ class TestImageFileCollection(object):
 
     def test_duplicate_keywords_in_setting(self, triage_setup):
         keywords_in = ['imagetyp', 'a', 'a']
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                     keywords=keywords_in)
+        ic = ImageFileCollection(triage_setup.test_dir,
+                                 keywords=keywords_in)
         for key in set(keywords_in):
             assert (key in ic.keywords)
         # one keyword gets added: file
@@ -423,21 +416,19 @@ class TestImageFileCollection(object):
 
     def test_keyword_includes_file(self, triage_setup):
         keywords_in = ['file', 'imagetyp']
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                     keywords=keywords_in)
+        ic = ImageFileCollection(triage_setup.test_dir,
+                                 keywords=keywords_in)
         assert 'file' in ic.keywords
         file_keywords = [key for key in ic.keywords if key == 'file']
         assert len(file_keywords) == 1
 
     def test_setting_keywords_to_none(self, triage_setup):
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                     keywords=['imagetyp'])
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=['imagetyp'])
         ic.keywords = None
         assert ic.summary == []
 
     def test_getting_value_for_keyword(self, triage_setup):
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                     keywords=['imagetyp'])
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=['imagetyp'])
         # Does it fail if the keyword is not in the summary?
         with pytest.raises(ValueError):
             ic.values('filter')
@@ -459,13 +450,11 @@ class TestImageFileCollection(object):
         # create an empty file...
         with open(path_bad, 'w'):
             pass
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                     keywords=['imagetyp'])
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=['imagetyp'])
         assert not_fits not in ic.summary['file']
         os.remove(path_bad)
 
-    def test_data_type_mismatch_in_fits_keyword_values(self, tmpdir,
-                                                       triage_setup):
+    def test_data_type_mismatch_in_fits_keyword_values(self, triage_setup):
         # If one keyword has an unexpected type, do we notice?
         img = np.uint16(np.arange(100))
         bad_filter = fits.PrimaryHDU(img)
@@ -473,28 +462,27 @@ class TestImageFileCollection(object):
         bad_filter.header['filter'] = 15.0
         path_bad = os.path.join(triage_setup.test_dir, 'bad_filter.fit')
         bad_filter.writeto(path_bad)
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                     keywords=['filter'])
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=['filter'])
         # dtype is object when there is a mix of types
         assert ic.summary['filter'].dtype == np.dtype('O')
         os.remove(path_bad)
 
     def test_filter_by_numerical_value(self, triage_setup):
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords=['naxis'])
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=['naxis'])
         should_be_zero = ic.files_filtered(naxis=2)
         assert len(should_be_zero) == 0
         should_not_be_zero = ic.files_filtered(naxis=1)
         assert len(should_not_be_zero) == triage_setup.n_test['files']
 
     def test_files_filtered_with_full_path(self, triage_setup):
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords=['naxis'])
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=['naxis'])
         files = ic.files_filtered(naxis=1, include_path=True)
 
         for f in files:
             assert f.startswith(triage_setup.test_dir)
 
     def test_unknown_generator_type_raises_error(self, triage_setup):
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords=['naxis'])
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=['naxis'])
         with pytest.raises(ValueError):
             for foo in ic._generator('not a real generator'):
                 pass
@@ -504,21 +492,20 @@ class TestImageFileCollection(object):
         new_tmp = tmpdir.mkdtemp()
         bad_directory = new_tmp.join('foo')
 
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords=['naxis'])
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=['naxis'])
         with pytest.raises(IOError):
             for hdr in ic.headers(save_location=bad_directory.strpath):
                 pass
 
     def test_initializing_from_table(self, triage_setup):
         keys = ['imagetyp', 'filter']
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                     keywords=keys)
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=keys)
         table = ic.summary
         table_path = os.path.join(triage_setup.test_dir, 'input_tbl.csv')
         nonsense = 'forks'
         table['imagetyp'][0] = nonsense
         table.write(table_path, format='ascii', delimiter=',')
-        ic = image_collection.ImageFileCollection(location=None, info_file=table_path)
+        ic = ImageFileCollection(location=None, info_file=table_path)
         # keywords can only have been set from saved table
         for key in keys:
             assert key in ic.keywords
@@ -528,8 +515,8 @@ class TestImageFileCollection(object):
         with pytest.raises((AttributeError, TypeError)):
             for h in ic.headers():
                 pass
-        ic = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                     info_file=table_path)
+        ic = ImageFileCollection(location=triage_setup.test_dir,
+                                 info_file=table_path)
         # we now have a location, so did we get files?
         assert len(ic.files) == len(table)
         # Is the summary table masked?
@@ -540,16 +527,15 @@ class TestImageFileCollection(object):
         # Does ImageFileCollection summary contain values from table?
         assert nonsense in ic.summary['imagetyp']
 
-    def test_initializing_from_table_file_that_does_not_exist(self,
-                                                              triage_setup,
-                                                              tmpdir):
+    def test_initializing_from_table_file_that_does_not_exist(
+            self, triage_setup, tmpdir):
         log = tmpdir.join('tmp.log')
 
         self._setup_logger(log.strpath)
 
         # Do we get a warning if we try reading a file that doesn't exist,
         # but where we can initialize from a directory?
-        ic = image_collection.ImageFileCollection(
+        ic = ImageFileCollection(
             location=triage_setup.test_dir,
             info_file='iufadsdhfasdifre')
 
@@ -562,24 +548,23 @@ class TestImageFileCollection(object):
         # Do we raise an error if the table name is bad AND the location
         # is None?
         with pytest.raises(IOError):
-            ic = image_collection.ImageFileCollection(location=None,
-                                         info_file='iufadsdhfasdifre')
+            ic = ImageFileCollection(location=None,
+                                     info_file='iufadsdhfasdifre')
         # Do we raise an error if the table name is bad AND
         # the location is given but is bad?
         with pytest.raises(OSError):
-            ic = image_collection.ImageFileCollection(location='dasifjoaurun',
-                                         info_file='iufadsdhfasdifre')
+            ic = ImageFileCollection(location='dasifjoaurun',
+                                     info_file='iufadsdhfasdifre')
 
-    def test_no_fits_files_in_collection(self,tmpdir):
+    def test_no_fits_files_in_collection(self):
         with catch_warnings(AstropyUserWarning) as warning_lines:
             # FIXME: What exactly does this assert?
-            assert("no fits files in the collection.")
+            assert "no fits files in the collection."
 
     def test_initialization_with_no_keywords(self, triage_setup):
         # This test is primarily historical -- the old default for
         # keywords was an empty list (it is now the wildcard '*').
-        ic = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                                  keywords=[])
+        ic = ImageFileCollection(location=triage_setup.test_dir, keywords=[])
         # iteration below failed before bugfix...
         execs = 0
         for h in ic.headers():
@@ -594,14 +579,12 @@ class TestImageFileCollection(object):
                 assert k.lower() in lower_case_columns
 
     def test_tabulate_all_keywords(self, triage_setup):
-        ic = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                     keywords='*')
+        ic = ImageFileCollection(location=triage_setup.test_dir, keywords='*')
         self.check_all_keywords_in_collection(ic)
 
     def test_summary_table_is_always_masked(self, triage_setup):
         # First, try grabbing all of the keywords
-        ic = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                     keywords='*')
+        ic = ImageFileCollection(location=triage_setup.test_dir, keywords='*')
         assert ic.summary.masked
         # Now, try keywords that every file will have
         ic.keywords = ['bitpix']
@@ -612,15 +595,15 @@ class TestImageFileCollection(object):
 
     def test_case_of_keywords_respected(self, triage_setup):
         keywords_in = ['BitPix', 'instrume', 'NAXIS']
-        ic = image_collection.ImageFileCollection(location=triage_setup.test_dir,
-                                     keywords=keywords_in)
+        ic = ImageFileCollection(location=triage_setup.test_dir,
+                                 keywords=keywords_in)
         for key in keywords_in:
             assert key in ic.summary.colnames
 
     def test_grabbing_all_keywords_and_specific_keywords(self, triage_setup):
         keyword_not_in_headers = 'OIdn89!@'
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                     keywords=['*', keyword_not_in_headers])
+        ic = ImageFileCollection(triage_setup.test_dir,
+                                 keywords=['*', keyword_not_in_headers])
         assert keyword_not_in_headers in ic.summary.colnames
         self.check_all_keywords_in_collection(ic)
 
@@ -634,7 +617,7 @@ class TestImageFileCollection(object):
         blank_keyword.writeto(os.path.join(triage_setup.test_dir,
                                            'blank.fits'))
 
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
+        ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
         assert 'col0' not in ic.summary.colnames
 
     def test_header_with_long_history_roundtrips_to_disk(self, triage_setup):
@@ -652,7 +635,7 @@ class TestImageFileCollection(object):
         long_history.header['history'] = 'And then something odd happened'
         path_history = os.path.join(triage_setup.test_dir, 'long_history.fit')
         long_history.writeto(path_history)
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
+        ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
         ic.summary.write('test_table.txt', format='ascii.csv')
         table_disk = Table.read('test_table.txt', format='ascii.csv')
         assert len(table_disk) == len(ic.summary)
@@ -660,8 +643,8 @@ class TestImageFileCollection(object):
     @pytest.mark.skipif("os.environ.get('APPVEYOR') or os.sys.platform == 'win32'",
                         reason="fails on Windows because file "
                                "overwriting fails")
-    def test_refresh_method_sees_added_keywords(self, triage_setup, tmpdir):
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
+    def test_refresh_method_sees_added_keywords(self, triage_setup):
+        ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
         # Add a keyword I know isn't already in the header to each file.
         not_in_header = 'BARKARK'
 
@@ -675,7 +658,7 @@ class TestImageFileCollection(object):
         assert not_in_header.lower() in ic.summary.colnames
 
     def test_refresh_method_sees_added_files(self, triage_setup):
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir, keywords='*')
+        ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
         # Compressed files don't get copied. Not sure why...
         original_len = len(ic.summary) - triage_setup.n_test['compressed']
         # Generate additional files in this directory
@@ -687,12 +670,11 @@ class TestImageFileCollection(object):
 
     def test_keyword_order_is_preserved(self, triage_setup):
         keywords = ['imagetyp', 'exposure', 'filter']
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                                  keywords=keywords)
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=keywords)
         assert ic.keywords == ['file'] + keywords
 
     def test_sorting(self, triage_setup):
-        collection = image_collection.ImageFileCollection(
+        collection = ImageFileCollection(
             location=triage_setup.test_dir,
             keywords=['imagetyp', 'filter', 'object'])
 
@@ -717,8 +699,7 @@ class TestImageFileCollection(object):
 
         hdu.writeto(os.path.join(triage_setup.test_dir, 'duplicated.fits'))
 
-        ic = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                                  keywords='*')
+        ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
         assert 'stupid' in ic.summary.colnames
         assert 'fun' in ic.summary['stupid']
         assert 'nofun' not in ic.summary['stupid']
@@ -730,7 +711,7 @@ class TestImageFileCollection(object):
         not the location of the ImageFileCollection.
         """
 
-        coll = image_collection.ImageFileCollection(triage_setup.test_dir)
+        coll = ImageFileCollection(triage_setup.test_dir)
 
         # The temporary directory below should be different that the collection
         # location.
@@ -753,11 +734,9 @@ class TestImageFileCollection(object):
         one.writeto(os.path.join(triage_setup.test_dir, 'SPAM_stuff.fits'))
         one.writeto(os.path.join(triage_setup.test_dir, 'SPAM_other_stuff.fits'))
 
-        coll = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                                    glob_include='SPAM*')
+        coll = ImageFileCollection(triage_setup.test_dir, glob_include='SPAM*')
         assert len(coll.files) == 2
 
-        coll = image_collection.ImageFileCollection(triage_setup.test_dir,
-                                                    glob_include='SPAM*',
-                                                    glob_exclude='*other*')
+        coll = ImageFileCollection(triage_setup.test_dir, glob_include='SPAM*',
+                                   glob_exclude='*other*')
         assert len(coll.files) == 1
