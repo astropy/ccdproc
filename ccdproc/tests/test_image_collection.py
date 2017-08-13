@@ -43,8 +43,6 @@ def test_fits_summary(triage_setup):
 # fixture, but it doesn't, so the fixture is given explicitly as an
 # argument to each method.
 # @pytest.mark.usefixtures("triage_setup")
-@pytest.mark.skipif("os.environ.get('APPVEYOR')",
-                    reason="fails on AppVeyor/Windows")
 class TestImageFileCollection(object):
     def _setup_logger(self, path, level=logging.WARN):
         """
