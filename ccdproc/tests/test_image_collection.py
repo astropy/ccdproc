@@ -6,6 +6,7 @@ import os
 from shutil import rmtree
 from tempfile import mkdtemp
 from glob import iglob
+import sys
 import logging
 import pytest
 
@@ -14,6 +15,7 @@ import numpy as np
 
 from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.extern import six
 
 from ccdproc import CCDData
 
@@ -43,8 +45,6 @@ def test_fits_summary(triage_setup):
 # fixture, but it doesn't, so the fixture is given explicitly as an
 # argument to each method.
 # @pytest.mark.usefixtures("triage_setup")
-@pytest.mark.skipif("os.environ.get('APPVEYOR')",
-                    reason="fails on AppVeyor/Windows")
 class TestImageFileCollection(object):
     def _setup_logger(self, path, level=logging.WARN):
         """
@@ -704,6 +704,9 @@ class TestImageFileCollection(object):
         assert 'fun' in ic.summary['stupid']
         assert 'nofun' not in ic.summary['stupid']
 
+    @pytest.mark.skipif(
+        "sys.platform.startswith('win') and six.PY2",
+        reason="os.path.samefile isn't available on windows (python < 3.2).")
     def test_ccds_generator_in_different_directory(self, triage_setup, tmpdir):
         """
         Regression test for https://github.com/astropy/ccdproc/issues/421 in
