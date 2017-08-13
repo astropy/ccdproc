@@ -178,7 +178,7 @@ class ImageFileCollection(object):
         if self._filenames is None:
             filenames = ""
         else:
-            filenames = ", filenames={}".format(self._filenames)
+            filenames = "filenames={}".format(self._filenames)
 
         params = [location, kw, infofile, filenames, glob_include, glob_exclude, ext]
         params = ', '.join([p for p in params if p])
@@ -466,7 +466,7 @@ class ImageFileCollection(object):
             summary = input_summary
             n_previous = len(summary['file'])
 
-        h = fits.getheader(file_name, self._ext)
+        h = fits.getheader(file_name, self.ext)
 
         assert 'file' not in h
 
@@ -814,7 +814,7 @@ class ImageFileCollection(object):
 
             file_name = path.basename(full_path)
 
-            ext_index = hdulist.index_of(self._ext)
+            ext_index = hdulist.index_of(self.ext)
 
             return_options = {
                     'header': lambda: hdulist[ext_index].header,
