@@ -95,7 +95,13 @@ class TestImageFileCollectionRepresentation(object):
         ic = ImageFileCollection(
             location=triage_setup.test_dir, keywords=['naxis'])
         ic.summary.write(summary_file_path)
-        ic2 = ImageFileCollection(info_file=summary_file_path)
+        with catch_warnings(AstropyUserWarning) as w:
+            ic2 = ImageFileCollection(info_file=summary_file_path)
+        # ImageFileCollections from info_files contain no files. That issues
+        # a Warning that we'll ignore here.
+        assert len(w) == 1
+        assert 'no FITS files in the collection' in str(w[0].message)
+
         ref = ("ImageFileCollection(keywords=['naxis'], info_file={0!r})"
                .format(summary_file_path))
         assert repr(ic2) == ref
