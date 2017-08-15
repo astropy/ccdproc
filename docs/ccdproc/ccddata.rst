@@ -9,10 +9,10 @@ Getting started
 Getting data in
 +++++++++++++++
 
-The tools in `ccdproc` accept only `~ccdproc.CCDData` objects, a
+The tools in `ccdproc` accept only `~astropy.nddata.CCDData` objects, a
 subclass of `~astropy.nddata.NDData`.
 
-Creating a `~ccdproc.ccddata.CCDData` object from any array-like data is easy:
+Creating a `~astropy.nddata.CCDData` object from any array-like data is easy:
 
     >>> import numpy as np
     >>> import ccdproc
@@ -32,13 +32,13 @@ above) or from unit objects:
     >>> ccd_electron = ccdproc.CCDData([1, 2, 3], unit="electron")
 
 If you prefer *not* to use the unit functionality then use the special unit
-``u.dimensionless_unscaled`` when you create your `~ccdproc.ccddata.CCDData`
+``u.dimensionless_unscaled`` when you create your `~astropy.nddata.CCDData`
 images:
 
     >>> ccd_unitless = ccdproc.CCDData(np.zeros((10, 10)),
     ...                                unit=u.dimensionless_unscaled)
 
-A `~ccdproc.ccddata.CCDData` object can also be initialized from a FITS file:
+A `~astropy.nddata.CCDData` object can also be initialized from a FITS file:
 
     >>> ccd = ccdproc.CCDData.read('my_file.fits', unit="adu")  # doctest: +SKIP
 
@@ -76,8 +76,8 @@ dictionary is.
 Getting data out
 ++++++++++++++++
 
-A `~ccdproc.CCDData` object behaves like a numpy array (masked if the
-`~ccdproc.CCDData` mask is set) in expressions, and the underlying
+A `~astropy.nddata.CCDData` object behaves like a numpy array (masked if the
+`~astropy.nddata.CCDData` mask is set) in expressions, and the underlying
 data (ignoring any mask) is accessed through ``data`` attribute:
 
     >>> ccd_masked = ccdproc.CCDData([1, 2, 3], unit="adu", mask=[0, 0, 1])
@@ -99,7 +99,7 @@ You can force conversion to a numpy array with:
            fill_value = 999999)
     <BLANKLINE>
 
-A method for converting a `~ccdproc.ccddata.CCDData` object to a FITS HDU list
+A method for converting a `~astropy.nddata.CCDData` object to a FITS HDU list
 is also available. It converts the metadata to a FITS header:
 
     >>> hdulist = ccd_masked.to_hdu()
@@ -111,7 +111,7 @@ You can also write directly to a FITS file:
 Masks and flags
 +++++++++++++++
 
-Although not required when a `~ccdproc.ccddata.CCDData` image is created you
+Although not required when a `~astropy.nddata.CCDData` image is created you
 can also specify a mask and/or flags.
 
 A mask is a boolean array the same size as the data in which a value of
@@ -125,17 +125,17 @@ shape of the data. For more details on setting flags see
 WCS
 +++
 
-The  ``wcs`` attribute of `~ccdproc.ccddata.CCDData` object can be set two ways.
+The  ``wcs`` attribute of `~astropy.nddata.CCDData` object can be set two ways.
 
-+ If the `~ccdproc.ccddata.CCDData` object is created from a FITS file that has
++ If the `~astropy.nddata.CCDData` object is created from a FITS file that has
   WCS keywords in the header, the ``wcs`` attribute is set to a
   `astropy.wcs.WCS` object using the information in the FITS header.
 
-+ The WCS can also be provided when the `~ccdproc.ccddata.CCDData` object is
++ The WCS can also be provided when the `~astropy.nddata.CCDData` object is
   constructed with the ``wcs`` argument.
 
 Either way, the ``wcs`` attribute is kept up to date if the
-`~ccdproc.ccddata.CCDData` image is trimmed.
+`~astropy.nddata.CCDData` image is trimmed.
 
 Uncertainty
 -----------
@@ -163,7 +163,7 @@ or by providing a `~numpy.ndarray` with the same shape as the data:
 
 In this case the uncertainty is assumed to be
 `~astropy.nddata.StdDevUncertainty`. Using `~astropy.nddata.StdDevUncertainty`
-is required to enable error propagation in `~ccdproc.ccddata.CCDData`
+is required to enable error propagation in `~astropy.nddata.CCDData`
 
 If you want access to the underlying uncertainty use its ``.array`` attribute:
 
@@ -174,14 +174,14 @@ Arithmetic with images
 ----------------------
 
 Methods are provided to perform arithmetic operations with a
-`~ccdproc.ccddata.CCDData` image and a number, an astropy
+`~astropy.nddata.CCDData` image and a number, an astropy
 `~astropy.units.Quantity` (a number with units) or another
-`~ccdproc.ccddata.CCDData` image.
+`~astropy.nddata.CCDData` image.
 
 Using these methods propagates errors correctly (if the errors are
 uncorrelated), take care of any necessary unit conversions, and apply masks
 appropriately. Note that the metadata of the result is *not* set if the operation
-is between two `~ccdproc.ccddata.CCDData` objects.
+is between two `~astropy.nddata.CCDData` objects.
 
     >>> result = ccd.multiply(0.2 * u.adu)
     >>> uncertainty_ratio = result.uncertainty.array[0, 0]/ccd.uncertainty.array[0, 0]
@@ -202,4 +202,4 @@ The arithmetic operators ``*``, ``/``, ``+`` and ``-`` are *not* overridden.
 
 .. note::
    If two images have different WCS values, the wcs on the first
-   `~ccdproc.ccddata.CCDData` object will be used for the resultant object.
+   `~astropy.nddata.CCDData` object will be used for the resultant object.

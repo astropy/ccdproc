@@ -71,14 +71,14 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     * subtraction of a dark frame (:func:`subtract_dark`)
     * correction of flat field (:func:`flat_correct`)
 
-    The task returns a processed `~ccdproc.CCDData` object.
+    The task returns a processed `~astropy.nddata.CCDData` object.
 
     Parameters
     ----------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         Frame to be reduced.
 
-    oscan : `~ccdproc.ccddata.CCDData`, str or None, optional
+    oscan : `~astropy.nddata.CCDData`, str or None, optional
         For no overscan correction, set to None. Otherwise provide a region
         of ccd from which the overscan is extracted, using the FITS
         conventions for index order and index start, or a
@@ -95,19 +95,19 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         If True, create an uncertainty array for ccd.
         Default is ``False``.
 
-    master_bias : `~ccdproc.CCDData` or None, optional
+    master_bias : `~astropy.nddata.CCDData` or None, optional
         A master bias frame to be subtracted from ccd. The unit of the
         master bias frame should match the unit of the image **after
         gain correction** if ``gain_corrected`` is True.
         Default is ``None``.
 
-    dark_frame : `~ccdproc.CCDData` or None, optional
+    dark_frame : `~astropy.nddata.CCDData` or None, optional
         A dark frame to be subtracted from the ccd. The unit of the
         master dark frame should match the unit of the image **after
         gain correction** if ``gain_corrected`` is True.
         Default is ``None``.
 
-    master_flat : `~ccdproc.CCDData` or None, optional
+    master_flat : `~astropy.nddata.CCDData` or None, optional
         A master flat frame to be divided into ccd. The unit of the
         master flat frame should match the unit of the image **after
         gain correction** if ``gain_corrected`` is True.
@@ -171,7 +171,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
     Returns
     -------
-    occd : `~ccdproc.CCDData`
+    occd : `~astropy.nddata.CCDData`
         Reduded ccd.
 
     Examples
@@ -282,7 +282,7 @@ def create_deviation(ccd_data, gain=None, readnoise=None):
 
     Parameters
     ----------
-    ccd_data : `~ccdproc.CCDData`
+    ccd_data : `~astropy.nddata.CCDData`
         Data whose deviation will be calculated.
 
     gain : `~astropy.units.Quantity` or None, optional
@@ -306,7 +306,7 @@ def create_deviation(ccd_data, gain=None, readnoise=None):
 
     Returns
     -------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         CCDData object with uncertainty created; uncertainty is in the same
         units as the data in the parameter ``ccd_data``.
 
@@ -347,10 +347,10 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 
     Parameters
     ----------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         Data to have overscan frame corrected.
 
-    overscan : `~ccdproc.CCDData` or None, optional
+    overscan : `~astropy.nddata.CCDData` or None, optional
         Slice from ``ccd`` that contains the overscan. Must provide either
         this argument or ``fits_section``, but not both.
         Default is ``None``.
@@ -390,7 +390,7 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 
     Returns
     -------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         CCDData object with overscan subtracted.
 
     Notes
@@ -484,7 +484,7 @@ def trim_image(ccd, fits_section=None):
 
     Parameters
     ----------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         CCD image to be trimmed, sliced if desired.
 
     fits_section : str or None, optional
@@ -496,7 +496,7 @@ def trim_image(ccd, fits_section=None):
 
     Returns
     -------
-    trimmed_ccd : `~ccdproc.CCDData`
+    trimmed_ccd : `~astropy.nddata.CCDData`
         Trimmed image.
 
     Examples
@@ -547,17 +547,17 @@ def subtract_bias(ccd, master):
 
     Parameters
     ----------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         Image from which bias will be subtracted.
 
-    master : `~ccdproc.CCDData`
+    master : `~astropy.nddata.CCDData`
         Master image to be subtracted from ``ccd``.
 
     {log}
 
     Returns
     -------
-    result : `~ccdproc.CCDData`
+    result : `~astropy.nddata.CCDData`
         CCDData object with bias subtracted.
     """
 
@@ -584,10 +584,10 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
 
     Parameters
     ----------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         Image from which dark will be subtracted.
 
-    master : `~ccdproc.CCDData`
+    master : `~astropy.nddata.CCDData`
         Dark image.
 
     dark_exposure : `~astropy.units.Quantity` or None, optional
@@ -617,7 +617,7 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
 
     Returns
     -------
-    result : `~ccdproc.CCDData`
+    result : `~astropy.nddata.CCDData`
         Dark-subtracted image.
     """
     if not (isinstance(ccd, CCDData) and isinstance(master, CCDData)):
@@ -686,7 +686,7 @@ def gain_correct(ccd, gain, gain_unit=None):
 
     Parameters
     ----------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
       Data to have gain corrected.
 
     gain : `~astropy.units.Quantity` or `~ccdproc.Keyword`
@@ -701,7 +701,7 @@ def gain_correct(ccd, gain, gain_unit=None):
 
     Returns
     -------
-    result : `~ccdproc.CCDData`
+    result : `~astropy.nddata.CCDData`
       CCDData object with gain corrected.
     """
     if isinstance(gain, Keyword):
@@ -724,10 +724,10 @@ def flat_correct(ccd, flat, min_value=None):
 
     Parameters
     ----------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         Data to be transformed.
 
-    flat : `~ccdproc.CCDData`
+    flat : `~astropy.nddata.CCDData`
         Flatfield to apply to the data.
 
     min_value : float or None, optional
@@ -740,7 +740,7 @@ def flat_correct(ccd, flat, min_value=None):
 
     Returns
     -------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         CCDData object with flat corrected.
     """
     # Use the min_value to replace any values in the flat
@@ -770,7 +770,7 @@ def transform_image(ccd, transform_func, **kwargs):
 
     Parameters
     ----------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         Data to be flatfield corrected.
 
     transform_func : callable
@@ -783,7 +783,7 @@ def transform_image(ccd, transform_func, **kwargs):
 
     Returns
     -------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         A transformed CCDData object.
 
     Notes
@@ -849,7 +849,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
 
     Parameters
     ----------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         Data to be projected.
 
     target_wcs : `~astropy.wcs.WCS` object
@@ -874,7 +874,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
 
     Returns
     -------
-    ccd : `~ccdproc.CCDData`
+    ccd : `~astropy.nddata.CCDData`
         A transformed CCDData object.
     """
     from reproject import reproject_interp
@@ -930,7 +930,7 @@ def sigma_func(arr, axis=None):
 
     Parameters
     ----------
-    arr : `~ccdproc.CCDData` or `numpy.ndarray`
+    arr : `~astropy.nddata.CCDData` or `numpy.ndarray`
         Array whose deviation is to be calculated.
 
     axis : int, tuple of ints or None, optional
@@ -1072,7 +1072,7 @@ def rebin(ccd, newshape):
 
     Parameters
     ----------
-    data : `~ccdproc.CCDData` or `numpy.ndarray`
+    data : `~astropy.nddata.CCDData` or `numpy.ndarray`
         Data to rebin.
 
     newshape : tuple
@@ -1080,7 +1080,7 @@ def rebin(ccd, newshape):
 
     Returns
     -------
-    output : `~ccdproc.CCDData` or `numpy.ndarray`
+    output : `~astropy.nddata.CCDData` or `numpy.ndarray`
         An array with the new shape. It will have the same type as the input
         object.
 
@@ -1088,7 +1088,7 @@ def rebin(ccd, newshape):
     ------
     TypeError
         A type error is raised if data is not an `numpy.ndarray` or
-        `~ccdproc.CCDData`.
+        `~astropy.nddata.CCDData`.
 
     ValueError
         A value error is raised if the dimension of the new shape is not equal
@@ -1244,8 +1244,8 @@ def _blkavg(data, newshape):
 def median_filter(data, *args, **kwargs):
     """See `scipy.ndimage.median_filter` for arguments.
 
-    If the ``data`` is a `~ccdproc.CCDData` object the result will be another
-    `~ccdproc.CCDData` object with the median filtered data as ``data`` and
+    If the ``data`` is a `~astropy.nddata.CCDData` object the result will be another
+    `~astropy.nddata.CCDData` object with the median filtered data as ``data`` and
     copied ``unit`` and ``meta``.
     """
     if isinstance(data, CCDData):
@@ -1272,7 +1272,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
     Parameters
     ----------
-    ccd : `~ccdproc.CCDData` or `numpy.ndarray`
+    ccd : `~astropy.nddata.CCDData` or `numpy.ndarray`
         Data to have cosmic ray cleaned.
 
     sigclip : float, optional
@@ -1373,9 +1373,9 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
     Returns
     -------
-    nccd : `~ccdproc.CCDData` or `numpy.ndarray`
+    nccd : `~astropy.nddata.CCDData` or `numpy.ndarray`
         An object of the same type as ccd is returned. If it is a
-        `~ccdproc.CCDData`, the mask attribute will also be updated with
+        `~astropy.nddata.CCDData`, the mask attribute will also be updated with
         areas identified with cosmic rays masked.
 
     crmask : `numpy.ndarray`
@@ -1404,7 +1404,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
        with the bad pixels replaced by the local median from a box of 11
        pixels; and it would return a mask indicating the bad pixels.
 
-    2) Given an `~ccdproc.CCDData` object with an uncertainty frame, the syntax
+    2) Given an `~astropy.nddata.CCDData` object with an uncertainty frame, the syntax
        for running cosmicrar_lacosmic would be:
 
        >>> newccd = cosmicray_lacosmic(ccd, sigclip=5)   # doctest: +SKIP
@@ -1461,7 +1461,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
 
     Parameters
     ----------
-    ccd : `~ccdproc.CCDData`, `numpy.ndarray` or `numpy.ma.MaskedArray`
+    ccd : `~astropy.nddata.CCDData`, `numpy.ndarray` or `numpy.ma.MaskedArray`
         Data to have cosmic ray cleaned.
 
     thresh : float, optional
@@ -1493,9 +1493,9 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
 
     Returns
     -------
-    nccd : `~ccdproc.CCDData` or `numpy.ndarray`
+    nccd : `~astropy.nddata.CCDData` or `numpy.ndarray`
         An object of the same type as ccd is returned. If it is a
-        `~ccdproc.CCDData`, the mask attribute will also be updated with
+        `~astropy.nddata.CCDData`, the mask attribute will also be updated with
         areas identified with cosmic rays masked.
 
     nccd : `numpy.ndarray`
@@ -1516,7 +1516,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
        with the bad pixels replaced by the local median from a box of 11
        pixels; and it would return a mask indicating the bad pixels.
 
-    2) Given an `~ccdproc.CCDData` object with an uncertainty frame, the syntax
+    2) Given an `~astropy.nddata.CCDData` object with an uncertainty frame, the syntax
        for running cosmicray_median would be:
 
        >>> newccd = cosmicray_median(ccd, thresh=5, mbox=11,
@@ -1598,7 +1598,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
 
     Parameters
     ----------
-    ratio : `~ccdproc.CCDData`
+    ratio : `~astropy.nddata.CCDData`
         Data to used to form mask.  Typically this is the ratio of two flat
         field images.
 
@@ -1781,7 +1781,7 @@ def bitfield_to_boolean_mask(bitfield, ignore_bits=0, flip_bits=None):
     -------
     mask : `numpy.ndarray` of boolean dtype
         The bitfield converted to a boolean mask that can be used for
-        `numpy.ma.MaskedArray` or `~ccdproc.CCDData`.
+        `numpy.ma.MaskedArray` or `~astropy.nddata.CCDData`.
 
     Examples
     --------

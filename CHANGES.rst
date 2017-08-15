@@ -44,6 +44,8 @@ Other Changes and Additions
   ``fits_ccddata_writer`` will be imported from ``astropy.nddata`` if
   astropy >= 2.0 is installed (instead of the one defined in ``ccdproc``). [#528]
 
+- Building the documentation requires astropy >= 2.0. [#528]
+
 
 Bug Fixes
 ^^^^^^^^^
