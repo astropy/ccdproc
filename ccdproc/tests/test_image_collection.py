@@ -41,6 +41,73 @@ def test_fits_summary(triage_setup):
     assert summary['filter'][no_filter_no_object_row].mask
 
 
+class TestImageFileCollectionRepresentation(object):
+    def test_repr_location(self, triage_setup):
+        ic = ImageFileCollection(location=triage_setup.test_dir)
+        assert repr(ic) == "ImageFileCollection(location={0!r})".format(
+            triage_setup.test_dir)
+
+    def test_repr_keywords(self, triage_setup):
+        ic = ImageFileCollection(
+            location=triage_setup.test_dir, keywords=['imagetyp'])
+        ref = ("ImageFileCollection(location={0!r}, keywords=['imagetyp'])"
+               .format(triage_setup.test_dir))
+        assert repr(ic) == ref
+
+    def test_repr_globs(self, triage_setup):
+        ic = ImageFileCollection(
+            location=triage_setup.test_dir, glob_exclude="*no_filter*",
+            glob_include="*object_light*")
+        ref = ("ImageFileCollection(location={0!r}, "
+               "glob_include='*object_light*', "
+               "glob_exclude='*no_filter*')"
+               .format(triage_setup.test_dir))
+        assert repr(ic) == ref
+
+    def test_repr_files(self, triage_setup):
+        ic = ImageFileCollection(
+            location=triage_setup.test_dir,
+            filenames=['no_filter_no_object_light.fit',
+                       'no_filter_no_object_bias.fit'])
+        ref = ("ImageFileCollection(location={0!r}, "
+               "filenames=[{1}'no_filter_no_object_light.fit', "
+               "{1}'no_filter_no_object_bias.fit'])"
+               .format(triage_setup.test_dir, 'u' if six.PY2 else ''))
+        assert repr(ic) == ref
+
+    def test_repr_ext(self, triage_setup):
+
+        hdul = fits.HDUList([fits.PrimaryHDU(np.ones((10, 10))),
+                             fits.ImageHDU(np.ones((10, 10)))])
+        hdul.writeto(os.path.join(triage_setup.test_dir, 'mef.fits'))
+
+        ic = ImageFileCollection(
+            location=triage_setup.test_dir,
+            filenames=['mef.fits'],
+            ext=1)
+        ref = ("ImageFileCollection(location={0!r}, "
+               "filenames=[{1}'mef.fits'], "
+               "ext=1)"
+               .format(triage_setup.test_dir, 'u' if six.PY2 else ''))
+        assert repr(ic) == ref
+
+    def test_repr_info(self, triage_setup):
+        summary_file_path = os.path.join(triage_setup.test_dir, 'info.csv')
+        ic = ImageFileCollection(
+            location=triage_setup.test_dir, keywords=['naxis'])
+        ic.summary.write(summary_file_path)
+        with catch_warnings(AstropyUserWarning) as w:
+            ic2 = ImageFileCollection(info_file=summary_file_path)
+        # ImageFileCollections from info_files contain no files. That issues
+        # a Warning that we'll ignore here.
+        assert len(w) == 1
+        assert 'no FITS files in the collection' in str(w[0].message)
+
+        ref = ("ImageFileCollection(keywords=['naxis'], info_file={0!r})"
+               .format(summary_file_path))
+        assert repr(ic2) == ref
+
+
 # This should work mark all test methods as using the triage_setup
 # fixture, but it doesn't, so the fixture is given explicitly as an
 # argument to each method.
@@ -141,11 +208,6 @@ class TestImageFileCollection(object):
                     (data.dtype is np.dtype(np.uint16)))
             n_hdus += 1
         assert n_hdus == triage_setup.n_test['files']
-
-    def test_repr_method(self, triage_setup):
-        ic = ImageFileCollection(location=triage_setup.test_dir)
-        assert repr(ic) == "ImageFileCollection(location='{0}', keywords='*', filenames={1})".format(
-            triage_setup.test_dir, ic._filenames)
 
     def test_hdus_masking(self, triage_setup):
         collection = ImageFileCollection(location=triage_setup.test_dir,
