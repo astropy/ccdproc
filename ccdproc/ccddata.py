@@ -20,6 +20,7 @@ from astropy.wcs import WCS
 
 _ASTROPY_LT_1_2 = not minversion("astropy", "1.2")
 _ASTROPY_LT_1_3 = not minversion("astropy", "1.3")
+_ASTROPY_GT_2_0 = minversion("astropy", "2.0")
 
 # FIXME: Remove the content of the following "if" as soon as astropy 1.1 isn't
 # supported anymore. This is just a temporary workaround to fix the memory leak
@@ -795,3 +796,8 @@ try:
     CCDData.write.__doc__ = fits_ccddata_writer.__doc__
 except AttributeError:
     CCDData.write.__func__.__doc__ = fits_ccddata_writer.__doc__
+
+# CCDData moved to astropy core so we just import them from there (overwriting)
+# the classes defined here.
+if _ASTROPY_GT_2_0:
+    from astropy.nddata import fits_ccddata_reader, fits_ccddata_writer, CCDData
