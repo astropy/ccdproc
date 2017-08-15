@@ -91,11 +91,11 @@ class ImageFileCollection(object):
         # matching - has to go above call to _get_files()
         if glob_exclude is not None:
             glob_exclude = str(glob_exclude)  # some minimal validation
-        self.glob_exclude = glob_exclude
+        self._glob_exclude = glob_exclude
 
         if glob_include is not None:
             glob_include = str(glob_include)
-        self.glob_include = glob_include
+        self._glob_include = glob_include
 
         self._location = location
         self._filenames = filenames
@@ -305,6 +305,22 @@ class ImageFileCollection(object):
         list of str, Unfiltered list of FITS files in location.
         """
         return self._files
+
+    @property
+    def glob_include(self):
+        """
+        str or None, Unix-style filename pattern to select filenames to include
+        in the file collection.
+        """
+        return self._glob_include
+
+    @property
+    def glob_exclude(self):
+        """
+        str or None, Unix-style filename pattern to select filenames to exclude
+        in the file collection.
+        """
+        return self._glob_exclude
 
     @property
     def ext(self):

@@ -805,3 +805,9 @@ class TestImageFileCollection(object):
         coll = ImageFileCollection(triage_setup.test_dir, glob_include='SPAM*',
                                    glob_exclude='*other*')
         assert len(coll.files) == 1
+
+        # the glob attributes are readonly, so setting them raises an Exception.
+        with pytest.raises(AttributeError):
+            coll.glob_exclude = '*stuff*'
+        with pytest.raises(AttributeError):
+            coll.glob_include = '*stuff*'
