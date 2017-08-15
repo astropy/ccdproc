@@ -58,7 +58,16 @@ matrix:
 
         # Check compatibility with the current astropy LTS release
         - python: 2.7
-          env: ASTROPY_VERSION=LTS PYTEST_VERSION=2.7
+          env: ASTROPY_VERSION=LTS
+               SETUP_CMD='test --coverage'
+
+        # Check compatibility with the pre-LTS astropys
+        - python: 3.6
+          env: ASTROPY_VERSION=1.3
+               SETUP_CMD='test --coverage'
+
+        - python: 3.6
+          env: ASTROPY_VERSION=1.0 PYTEST_VERSION=2.7
                SETUP_CMD='test --coverage'
 
         # Try older numpy, python versions
