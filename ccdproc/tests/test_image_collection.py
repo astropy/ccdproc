@@ -789,6 +789,21 @@ class TestImageFileCollection(object):
         for _ in coll.ccds(ccd_kwargs={'unit': 'adu'}):
             pass
 
+    def test_ccds_generator_does_not_support_overwrite(self, triage_setup):
+        """
+        CCDData objects have several attributes that make it hard to
+        reliably support overwriting. For example in what extension should
+        mask, uncertainty be written?
+        Also CCDData doesn't explicitly support in-place operations so it's to
+        easy to create a new CCDData object inadvertantly and all modifications
+        might be lost.
+        """
+        ic = ImageFileCollection(triage_setup.test_dir)
+        with pytest.raises(NotImplementedError):
+            ic.ccds(overwrite=True)
+        with pytest.raises(NotImplementedError):
+            ic.ccds(clobber=True)
+
     def test_glob_matching(self, triage_setup):
         # We'll create two files with strange names to test glob
         #   includes / excludes
