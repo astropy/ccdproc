@@ -639,7 +639,7 @@ class ImageFileCollection(object):
             # we need to load information about these keywords.
             use_info = self._fits_summary(header_keywords=keywords)
 
-        matches = np.array([True] * len(use_info))
+        matches = np.ones(len(use_info), dtype=bool)
         for key, value in zip(keywords, values):
             logger.debug('key %s, value %s', key, value)
             logger.debug('value in table %s', use_info[key])
@@ -652,7 +652,7 @@ class ImageFileCollection(object):
                 if isinstance(value, six.string_types):
                     # need to loop explicitly over array rather than using
                     # where to correctly do string comparison.
-                    have_this_value = np.array([False] * len(use_info))
+                    have_this_value = np.zeros(len(use_info), dtype=bool)
                     for idx, file_key_value in enumerate(use_info[key]):
                         if value_not_missing[idx]:
                             value_matches = (file_key_value.lower() ==
