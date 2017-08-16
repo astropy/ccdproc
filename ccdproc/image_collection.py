@@ -825,9 +825,10 @@ class ImageFileCollection(object):
                                                        **ccd_kwargs)
                     }
             try:
-                yield (return_options[return_type]()  # pragma: no branch
-                       if (not return_fname) else
-                       (return_options[return_type](), file_name))
+                if return_fname:
+                    yield return_options[return_type](), file_name
+                else:
+                    yield return_options[return_type]()
             except KeyError:
                 raise ValueError('no generator for {}'.format(return_type))
 
