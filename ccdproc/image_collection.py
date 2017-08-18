@@ -574,7 +574,7 @@ class ImageFileCollection(object):
 
         file_name_column = MaskedColumn(name='file', data=self.files)
 
-        if not header_keys or (header_keys == set(['file'])):
+        if not header_keys or (header_keys == {'file'}):
             summary_table = Table(masked=True)
             summary_table.add_column(file_name_column)
             return summary_table
@@ -604,7 +604,7 @@ class ImageFileCollection(object):
         self._set_column_name_case_to_match_keywords(header_keys,
                                                      summary_table)
         missing_columns = header_keys - set(summary_table.colnames)
-        missing_columns -= set(['*'])
+        missing_columns -= {'*'}
 
         length = len(summary_table)
         for column in missing_columns:
@@ -615,7 +615,7 @@ class ImageFileCollection(object):
         if '*' not in header_keys:
             # Rearrange table columns to match order of keywords.
             # File always comes first.
-            header_keys -= set(['file'])
+            header_keys -= {'file'}
             original_order = ['file'] + sorted(header_keys,
                                                key=original_keywords.index)
             summary_table = summary_table[original_order]
@@ -646,7 +646,7 @@ class ImageFileCollection(object):
         keywords = kwd.keys()
         values = kwd.values()
 
-        if (set(keywords).issubset(set(self.keywords))):
+        if set(keywords).issubset(self.keywords):
             # we already have the information in memory
             use_info = self.summary
         else:
