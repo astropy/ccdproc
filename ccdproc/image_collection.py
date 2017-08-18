@@ -542,14 +542,13 @@ class ImageFileCollection(object):
 
     def _set_column_name_case_to_match_keywords(self, header_keys,
                                                 summary_table):
-        key_name_dict = {k.lower(): k for k in header_keys
-                         if k != k.lower()}
-
-        for lcase, user_case in six.iteritems(key_name_dict):
-            try:
-                summary_table.rename_column(lcase, user_case)
-            except KeyError:
-                pass
+        for k in header_keys:
+            k_lower = k.lower()
+            if k_lower != k:
+                try:
+                    summary_table.rename_column(k_lower, k)
+                except KeyError:
+                    pass
 
     def _fits_summary(self, header_keywords=None):
         """
