@@ -2,6 +2,7 @@
 from __future__ import (print_function, division, absolute_import,
                         unicode_literals)
 
+from collections import OrderedDict
 import fnmatch
 from os import listdir, path
 import logging
@@ -9,7 +10,7 @@ import logging
 import numpy as np
 import numpy.ma as ma
 
-from astropy.table import Table
+from astropy.table import Table, MaskedColumn
 import astropy.io.fits as fits
 from astropy.extern import six
 from astropy.utils import minversion
@@ -17,7 +18,7 @@ from astropy.utils import minversion
 import warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
-from .ccddata import fits_ccddata_reader
+from .ccddata import fits_ccddata_reader, _recognized_fits_file_extensions
 
 logger = logging.getLogger(__name__)
 
@@ -466,7 +467,6 @@ class ImageFileCollection(object):
         -------
         file_table : `~astropy.table.Table`
         """
-        from collections import OrderedDict
 
         def _add_val_to_dict(key, value, tbl_dict, n_previous, missing_marker):
             try:
@@ -560,7 +560,6 @@ class ImageFileCollection(object):
             Keywords whose value should be extracted from FITS headers.
             Default value is ``None``.
         """
-        from astropy.table import MaskedColumn
 
         if not self.files:
             return None
@@ -717,7 +716,6 @@ class ImageFileCollection(object):
         list
             *Names* of the files (with extension), not the full pathname.
         """
-        from .ccddata import _recognized_fits_file_extensions
 
         full_extensions = extensions or list(_recognized_fits_file_extensions)
 
