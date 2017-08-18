@@ -44,6 +44,10 @@ Bug Fixes
 - ``ImageFileCollection`` now handles Headers with duplicated keywords
   (other than ``COMMENT`` and ``HISTORY``) by ignoring all but the first. [#467]
 
+- The ``ccd`` method of ``ImageFileCollection`` will raise an
+  ``NotImplementedError`` in case the parameter ``overwrite=True`` or
+  ``clobber=True`` is used instead of silently ignoring the parameter.
+
 
 1.2.0 (2016-12-13)
 ------------------
