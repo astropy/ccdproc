@@ -821,57 +821,56 @@ class ImageFileCollection(object):
 
         for full_path in self._paths():
             no_scale = do_not_scale_image_data
-            hdulist = fits.open(full_path,
-                                do_not_scale_image_data=no_scale)
+            with fits.open(full_path,
+                           do_not_scale_image_data=no_scale) as hdulist:
 
-            file_name = path.basename(full_path)
+                file_name = path.basename(full_path)
 
-            ext_index = hdulist.index_of(self.ext)
+                ext_index = hdulist.index_of(self.ext)
 
-            return_options = {
-                    'header': lambda: hdulist[ext_index].header,
-                    'hdu': lambda: hdulist[ext_index],
-                    'data': lambda: hdulist[ext_index].data,
-                    'ccd': lambda: fits_ccddata_reader(full_path,
-                                                       hdu=ext_index,
-                                                       **ccd_kwargs)
-                    }
-            try:
-                if return_fname:
-                    yield return_options[return_type](), file_name
-                else:
-                    yield return_options[return_type]()
-            except KeyError:
-                raise ValueError('no generator for {}'.format(return_type))
-
-            if save_location:
-                destination_dir = save_location
-            else:
-                destination_dir = path.dirname(full_path)
-            basename = path.basename(full_path)
-            if save_with_name:
-                base, ext = path.splitext(basename)
-                basename = base + save_with_name + ext
-
-            new_path = path.join(destination_dir, basename)
-
-            # I really should have called the option overwrite from
-            # the beginning. The hack below ensures old code works,
-            # at least...
-            if clobber or overwrite:
-                if _ASTROPY_LT_1_3:
-                    nuke_existing = {'clobber': True}
-                else:
-                    nuke_existing = {'overwrite': True}
-            else:
-                nuke_existing = {}
-            if (new_path != full_path) or nuke_existing:
+                return_options = {
+                        'header': lambda: hdulist[ext_index].header,
+                        'hdu': lambda: hdulist[ext_index],
+                        'data': lambda: hdulist[ext_index].data,
+                        'ccd': lambda: fits_ccddata_reader(full_path,
+                                                           hdu=ext_index,
+                                                           **ccd_kwargs)
+                        }
                 try:
-                    hdulist.writeto(new_path, **nuke_existing)
-                except IOError:
-                    logger.error('error writing file %s', new_path)
-                    raise
-            hdulist.close()
+                    if return_fname:
+                        yield return_options[return_type](), file_name
+                    else:
+                        yield return_options[return_type]()
+                except KeyError:
+                    raise ValueError('no generator for {}'.format(return_type))
+
+                if save_location:
+                    destination_dir = save_location
+                else:
+                    destination_dir = path.dirname(full_path)
+                basename = path.basename(full_path)
+                if save_with_name:
+                    base, ext = path.splitext(basename)
+                    basename = base + save_with_name + ext
+
+                new_path = path.join(destination_dir, basename)
+
+                # I really should have called the option overwrite from
+                # the beginning. The hack below ensures old code works,
+                # at least...
+                if clobber or overwrite:
+                    if _ASTROPY_LT_1_3:
+                        nuke_existing = {'clobber': True}
+                    else:
+                        nuke_existing = {'overwrite': True}
+                else:
+                    nuke_existing = {}
+                if (new_path != full_path) or nuke_existing:
+                    try:
+                        hdulist.writeto(new_path, **nuke_existing)
+                    except IOError:
+                        logger.error('error writing file %s', new_path)
+                        raise
 
         # reset mask
         for col in self.summary.columns:
