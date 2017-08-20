@@ -400,7 +400,7 @@ class ImageFileCollection(object):
         self._files = self._get_files()
         self._summary = self._fits_summary(header_keywords=keywords)
 
-    def sort(self, keys=None):
+    def sort(self, keys):
         """Sort the list of files to determine the order of iteration.
 
         Sort the table of files according to one or more keys. This does not
@@ -408,9 +408,8 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-        keys : str, list of str or None, optional
+        keys : str, list of str
             The key(s) to order the table by.
-            Default is ``None``.
         """
         if len(self._summary) > 0:
             self._summary.sort(keys)

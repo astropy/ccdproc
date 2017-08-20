@@ -14,6 +14,7 @@ import astropy.io.fits as fits
 import numpy as np
 
 from astropy.tests.helper import catch_warnings
+from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.extern import six
 
@@ -23,6 +24,8 @@ from ..image_collection import ImageFileCollection
 
 _filters = []
 _original_dir = ''
+
+_ASTROPY_LT_1_3 = not minversion("astropy", "1.3")
 
 
 def test_fits_summary(triage_setup):
@@ -750,6 +753,15 @@ class TestImageFileCollection(object):
             assert((str(hdu.header), fname) in all_elements)
         for i in range(len(collection.summary)):
             assert(collection.summary['file'][i] == collection.files[i])
+
+    @pytest.mark.skipif(
+        _ASTROPY_LT_1_3,
+        reason="It seems to fail with a TypeError there but because of "
+               "different reasons (something to do with NumPy).")
+    def test_sorting_without_key_fails(self, triage_setup):
+        ic = ImageFileCollection(location=triage_setup.test_dir)
+        with pytest.raises(ValueError):
+            ic.sort(keys=None)
 
     def test_duplicate_keywords(self, triage_setup):
         # Make sure duplicated keywords don't make the imagefilecollection

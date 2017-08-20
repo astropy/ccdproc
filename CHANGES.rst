@@ -48,6 +48,9 @@ Bug Fixes
   ``NotImplementedError`` in case the parameter ``overwrite=True`` or
   ``clobber=True`` is used instead of silently ignoring the parameter.
 
+- The ``sort`` method of ``ImageFileCollection`` now requires an explicitly
+  given ``keys`` argument. [tbd]
+
 
 1.2.0 (2016-12-13)
 ------------------
