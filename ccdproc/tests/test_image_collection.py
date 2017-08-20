@@ -751,6 +751,11 @@ class TestImageFileCollection(object):
         for i in range(len(collection.summary)):
             assert(collection.summary['file'][i] == collection.files[i])
 
+    def test_sorting_without_key_fails(self, triage_setup):
+        ic = ImageFileCollection(location=triage_setup.test_dir)
+        with pytest.raises(ValueError):
+            ic.sort(keys=None)
+
     def test_duplicate_keywords(self, triage_setup):
         # Make sure duplicated keywords don't make the imagefilecollection
         # fail.
