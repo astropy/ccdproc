@@ -257,17 +257,23 @@ class TestImageFileCollection(object):
         assert list1 == list2
 
         ccd_kwargs = {'unit': 'adu'}
-        for data, hdr, hdu, ccd in zip(ic2.data(),
-                                       ic2.headers(),
-                                       ic2.hdus(),
-                                       ic2.ccds(ccd_kwargs)):
+        for data in ic2.data():
             np.testing.assert_array_equal(data, ext2.data)
+
+        for hdr in ic2.headers():
             assert hdr == ext2.header
-            # Now compare that the generators each give the same stuff
-            np.testing.assert_array_equal(data, ccd.data)
-            np.testing.assert_array_equal(data, hdu.data)
-            assert hdr == hdu.header
-            assert hdr == ccd.meta
+
+        for hdu in ic2.hdus():
+            np.testing.assert_array_equal(hdu.data, ext2.data)
+            assert hdu.header == ext2.header
+
+        for ccd in ic2.ccds(ccd_kwargs=ccd_kwargs):
+            np.testing.assert_array_equal(ccd.data, ext2.data)
+            # In this case we can't simply compare the meta of the CCD to the
+            # original header because the astropy 2.0 CCDData will remove
+            # the keys that are covered by the WCS already.
+            for key in ccd.meta:
+                assert ccd.meta[key] == ext2.header[key]
 
     def test_headers(self, triage_setup):
         collection = ImageFileCollection(location=triage_setup.test_dir,
