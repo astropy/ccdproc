@@ -255,7 +255,7 @@ class ImageFileCollection(object):
             return []
 
     @keywords.setter
-    def keywords(self, keywords=None):
+    def keywords(self, keywords):
         # since keywords are drawn from self.summary, setting
         # summary sets the keywords.
         if keywords is None:
