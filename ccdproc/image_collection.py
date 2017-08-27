@@ -549,15 +549,15 @@ class ImageFileCollection(object):
                 except KeyError:
                     pass
 
-    def _fits_summary(self, header_keywords=None):
+    def _fits_summary(self, header_keywords):
         """
         Generate a summary table of keywords from FITS headers.
 
         Parameters
         ----------
-        header_keywords : list of str, '*' or None, optional
-            Keywords whose value should be extracted from FITS headers.
-            Default value is ``None``.
+        header_keywords : list of str or '*'
+            Keywords whose value should be extracted from FITS headers or '*'
+            to extract all.
         """
 
         if not self.files:
