@@ -4,7 +4,7 @@
 Define utility functions and classes for ccdproc
 """
 
-__all__ = []
+__all__ = ["slice_from_string"]
 
 
 def slice_from_string(string, fits_convention=False):

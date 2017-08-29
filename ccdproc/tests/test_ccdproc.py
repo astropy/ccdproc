@@ -16,13 +16,16 @@ from numpy.testing import assert_array_equal
 import pytest
 
 from ..ccddata import CCDData
-from ..core import *
+from ..core import (
+    ccd_process, cosmicray_median, cosmicray_lacosmic, create_deviation,
+    flat_correct, gain_correct, subtract_bias, subtract_dark, subtract_overscan,
+    transform_image, trim_image, wcs_project, Keyword)
 from ..core import _blkavg
 
 try:
-    from ..core import block_reduce
+    from ..core import block_reduce, block_average, block_replicate
     HAS_BLOCK_X_FUNCS = True
-except:
+except ImportError:
     HAS_BLOCK_X_FUNCS = False
 
 

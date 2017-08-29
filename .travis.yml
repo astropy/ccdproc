@@ -54,20 +54,31 @@ matrix:
 
         # Check for sphinx doc build warnings
         - python: 2.7
-          env: SETUP_CMD='build_sphinx -w'
+          env: SETUP_CMD='build_docs -w'
 
         # Check compatibility with the current astropy LTS release
         - python: 2.7
-          env: ASTROPY_VERSION=LTS PYTEST_VERSION=2.7
+          env: ASTROPY_VERSION=LTS
+               SETUP_CMD='test --coverage'
+
+        # Check compatibility with the pre-LTS astropys
+        - python: 3.6
+          env: ASTROPY_VERSION=1.3
+               SETUP_CMD='test --coverage'
+
+        - python: 3.6
+          env: ASTROPY_VERSION=1.0 PYTEST_VERSION=2.7
                SETUP_CMD='test --coverage'
 
         # Try older numpy, python versions
         - python: 3.4
           env: NUMPY_VERSION=1.10
 
-        # Try older numpy, python versions
         - python: 3.5
           env: NUMPY_VERSION=1.11
+
+        - python: 3.6
+          env: NUMPY_VERSION=1.12
 
         # Try numpy pre-release version. This runs only when a pre-release
         # is available on pypi.

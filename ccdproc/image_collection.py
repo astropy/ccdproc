@@ -2,6 +2,7 @@
 from __future__ import (print_function, division, absolute_import,
                         unicode_literals)
 
+from collections import OrderedDict
 import fnmatch
 from os import listdir, path
 import logging
@@ -9,7 +10,7 @@ import logging
 import numpy as np
 import numpy.ma as ma
 
-from astropy.table import Table
+from astropy.table import Table, MaskedColumn
 import astropy.io.fits as fits
 from astropy.extern import six
 from astropy.utils import minversion
@@ -17,7 +18,7 @@ from astropy.utils import minversion
 import warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
-from .ccddata import fits_ccddata_reader
+from .ccddata import fits_ccddata_reader, _recognized_fits_file_extensions
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +63,6 @@ class ImageFileCollection(object):
         The filenames are assumed to be in ``location``.
         Default is ``None``.
 
-     ext: str or int, optional
-         The extension from which the header and data will be read in all files.
-         Default is ``0``.
-
     glob_include: str or None, optional
         Unix-style filename pattern to select filenames to include in the file
         collection. Can be used in conjunction with ``glob_exclude`` to
@@ -77,6 +74,10 @@ class ImageFileCollection(object):
         file collection. Can be used in conjunction with ``glob_include`` to
         easily select subsets of files in the target directory.
         Default is ``None``.
+
+     ext: str or int, optional
+         The extension from which the header and data will be read in all files.
+         Default is ``0``.
 
     Raises
     ------
@@ -91,11 +92,11 @@ class ImageFileCollection(object):
         # matching - has to go above call to _get_files()
         if glob_exclude is not None:
             glob_exclude = str(glob_exclude)  # some minimal validation
-        self.glob_exclude = glob_exclude
+        self._glob_exclude = glob_exclude
 
         if glob_include is not None:
             glob_include = str(glob_include)
-        self.glob_include = glob_include
+        self._glob_include = glob_include
 
         self._location = location
         self._filenames = filenames
@@ -145,14 +146,46 @@ class ImageFileCollection(object):
             self.keywords = keywords
 
     def __repr__(self):
+        if self.location is None:
+            location = ""
+        else:
+            location = "location={!r}".format(self.location)
 
-        kw = "'*'" if self._all_keywords else self.keywords[1:]
-        str_repr = ("{self.__class__.__name__}(location='{self._location}', keywords={kw}, ").format(self=self, kw=kw)
+        if self._all_keywords:
+            kw = ""
+        else:
+            kw = "keywords={!r}".format(self.keywords[1:])
 
-        if self._info_file is not None:
-            str_repr += ("info_file={}, ").format(self._info_file)
+        if self._info_file is None:
+            infofile = ''
+        else:
+            infofile = "info_file={!r}".format(self._info_file)
 
-        str_repr += ("filenames={})").format(self._filenames)
+        if self.glob_exclude is None:
+            glob_exclude = ''
+        else:
+            glob_exclude = "glob_exclude={!r}".format(self.glob_exclude)
+
+        if self.glob_include is None:
+            glob_include = ''
+        else:
+            glob_include = "glob_include={!r}".format(self.glob_include)
+
+        if self.ext == 0:
+            ext = ""
+        else:
+            ext = "ext={}".format(self.ext)
+
+        if self._filenames is None:
+            filenames = ""
+        else:
+            filenames = "filenames={}".format(self._filenames)
+
+        params = [location, kw, infofile, filenames, glob_include, glob_exclude, ext]
+        params = ', '.join([p for p in params if p])
+
+        str_repr = "{self.__class__.__name__}({params})".format(
+            self=self, params=params)
 
         return str_repr
 
@@ -222,7 +255,7 @@ class ImageFileCollection(object):
             return []
 
     @keywords.setter
-    def keywords(self, keywords=None):
+    def keywords(self, keywords):
         # since keywords are drawn from self.summary, setting
         # summary sets the keywords.
         if keywords is None:
@@ -273,6 +306,22 @@ class ImageFileCollection(object):
         list of str, Unfiltered list of FITS files in location.
         """
         return self._files
+
+    @property
+    def glob_include(self):
+        """
+        str or None, Unix-style filename pattern to select filenames to include
+        in the file collection.
+        """
+        return self._glob_include
+
+    @property
+    def glob_exclude(self):
+        """
+        str or None, Unix-style filename pattern to select filenames to exclude
+        in the file collection.
+        """
+        return self._glob_exclude
 
     @property
     def ext(self):
@@ -351,7 +400,7 @@ class ImageFileCollection(object):
         self._files = self._get_files()
         self._summary = self._fits_summary(header_keywords=keywords)
 
-    def sort(self, keys=None):
+    def sort(self, keys):
         """Sort the list of files to determine the order of iteration.
 
         Sort the table of files according to one or more keys. This does not
@@ -359,9 +408,8 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-        keys : str, list of str or None, optional
+        keys : str, list of str
             The key(s) to order the table by.
-            Default is ``None``.
         """
         if len(self._summary) > 0:
             self._summary.sort(keys)
@@ -418,7 +466,6 @@ class ImageFileCollection(object):
         -------
         file_table : `~astropy.table.Table`
         """
-        from collections import OrderedDict
 
         def _add_val_to_dict(key, value, tbl_dict, n_previous, missing_marker):
             try:
@@ -434,7 +481,7 @@ class ImageFileCollection(object):
             summary = input_summary
             n_previous = len(summary['file'])
 
-        h = fits.getheader(file_name, self._ext)
+        h = fits.getheader(file_name, self.ext)
 
         assert 'file' not in h
 
@@ -494,26 +541,24 @@ class ImageFileCollection(object):
 
     def _set_column_name_case_to_match_keywords(self, header_keys,
                                                 summary_table):
-        key_name_dict = {k.lower(): k for k in header_keys
-                         if k != k.lower()}
+        for k in header_keys:
+            k_lower = k.lower()
+            if k_lower != k:
+                try:
+                    summary_table.rename_column(k_lower, k)
+                except KeyError:
+                    pass
 
-        for lcase, user_case in six.iteritems(key_name_dict):
-            try:
-                summary_table.rename_column(lcase, user_case)
-            except KeyError:
-                pass
-
-    def _fits_summary(self, header_keywords=None):
+    def _fits_summary(self, header_keywords):
         """
         Generate a summary table of keywords from FITS headers.
 
         Parameters
         ----------
-        header_keywords : list of str, '*' or None, optional
-            Keywords whose value should be extracted from FITS headers.
-            Default value is ``None``.
+        header_keywords : list of str or '*'
+            Keywords whose value should be extracted from FITS headers or '*'
+            to extract all.
         """
-        from astropy.table import MaskedColumn
 
         if not self.files:
             return None
@@ -528,7 +573,7 @@ class ImageFileCollection(object):
 
         file_name_column = MaskedColumn(name='file', data=self.files)
 
-        if not header_keys or (header_keys == set(['file'])):
+        if not header_keys or (header_keys == {'file'}):
             summary_table = Table(masked=True)
             summary_table.add_column(file_name_column)
             return summary_table
@@ -558,7 +603,7 @@ class ImageFileCollection(object):
         self._set_column_name_case_to_match_keywords(header_keys,
                                                      summary_table)
         missing_columns = header_keys - set(summary_table.colnames)
-        missing_columns -= set(['*'])
+        missing_columns -= {'*'}
 
         length = len(summary_table)
         for column in missing_columns:
@@ -569,7 +614,7 @@ class ImageFileCollection(object):
         if '*' not in header_keys:
             # Rearrange table columns to match order of keywords.
             # File always comes first.
-            header_keys -= set(['file'])
+            header_keys -= {'file'}
             original_order = ['file'] + sorted(header_keys,
                                                key=original_keywords.index)
             summary_table = summary_table[original_order]
@@ -600,14 +645,14 @@ class ImageFileCollection(object):
         keywords = kwd.keys()
         values = kwd.values()
 
-        if (set(keywords).issubset(set(self.keywords))):
+        if set(keywords).issubset(self.keywords):
             # we already have the information in memory
             use_info = self.summary
         else:
             # we need to load information about these keywords.
             use_info = self._fits_summary(header_keywords=keywords)
 
-        matches = np.array([True] * len(use_info))
+        matches = np.ones(len(use_info), dtype=bool)
         for key, value in zip(keywords, values):
             logger.debug('key %s, value %s', key, value)
             logger.debug('value in table %s', use_info[key])
@@ -620,7 +665,7 @@ class ImageFileCollection(object):
                 if isinstance(value, six.string_types):
                     # need to loop explicitly over array rather than using
                     # where to correctly do string comparison.
-                    have_this_value = np.array([False] * len(use_info))
+                    have_this_value = np.zeros(len(use_info), dtype=bool)
                     for idx, file_key_value in enumerate(use_info[key]):
                         if value_not_missing[idx]:
                             value_matches = (file_key_value.lower() ==
@@ -670,7 +715,6 @@ class ImageFileCollection(object):
         list
             *Names* of the files (with extension), not the full pathname.
         """
-        from .ccddata import _recognized_fits_file_extensions
 
         full_extensions = extensions or list(_recognized_fits_file_extensions)
 
@@ -782,7 +826,7 @@ class ImageFileCollection(object):
 
             file_name = path.basename(full_path)
 
-            ext_index = hdulist.index_of(self._ext)
+            ext_index = hdulist.index_of(self.ext)
 
             return_options = {
                     'header': lambda: hdulist[ext_index].header,
@@ -793,9 +837,10 @@ class ImageFileCollection(object):
                                                        **ccd_kwargs)
                     }
             try:
-                yield (return_options[return_type]()  # pragma: no branch
-                       if (not return_fname) else
-                       (return_options[return_type](), file_name))
+                if return_fname:
+                    yield return_options[return_type](), file_name
+                else:
+                    yield return_options[return_type]()
             except KeyError:
                 raise ValueError('no generator for {}'.format(return_type))
 
@@ -863,6 +908,9 @@ class ImageFileCollection(object):
         name='image', default_scaling='False', return_type='numpy.ndarray')
 
     def ccds(self, ccd_kwargs=None, **kwd):
+        if kwd.get('clobber') or kwd.get('overwrite'):
+            raise NotImplementedError(
+                "overwrite=True (or clobber=True) is not supported for CCDs.")
         return self._generator('ccd', ccd_kwargs=ccd_kwargs, **kwd)
     ccds.__doc__ = _generator.__doc__.format(
         name='CCDData', default_scaling='True', return_type='ccdproc.CCDData')

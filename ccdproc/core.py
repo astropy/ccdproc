@@ -1602,11 +1602,12 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         Data to used to form mask.  Typically this is the ratio of two flat
         field images.
 
-    findbadcolumns: `bool`, optional
+    findbadcolumns : `bool`, optional
         If set to True, the code will search for bad column sections.  Note
         that this treats columns as special and breaks symmetry between lines
         and columns and so is likely only appropriate for detectors which have
         readout directions.
+        Default is ``False``.
 
     byblocks : `bool`, optional
         If set to true, the code will divide the image up in to blocks of size
@@ -1616,25 +1617,30 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         to generate a running box version of the standard
         deviation estimate and use that value for the standard deviation at
         each pixel.
+        Default is ``False``.
 
-    ncmed, nlmed: `int`, optional
+    ncmed, nlmed : `int`, optional
         The column and line size of the moving median rectangle used to
         estimate the uncontaminated local signal. The column median size should
         be at least 3 pixels to span single bad columns.
+        Default is ``7``.
 
-    ncsig, nlsig: `int`, optional
+    ncsig, nlsig : `int`, optional
         The column and line size of regions used to estimate the uncontaminated
         local sigma using a percentile. The size of the box should contain of
         order 100 pixels or more.
+        Default is ``15``.
 
-    lsigma, hsigma: `float`, optional
+    lsigma, hsigma : `float`, optional
         Positive sigma factors to use for selecting pixels below and above the
         median level based on the local percentile sigma.
+        Default is ``9``.
 
-    ngood: `int`, optional
+    ngood : `int`, optional
         Gaps of undetected pixels along the column direction of length less
         than this amount are also flagged as bad pixels, if they are between
         pixels masked in that column.
+        Default is ``5``.
 
     Returns
     -------
