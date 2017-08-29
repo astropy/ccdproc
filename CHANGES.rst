@@ -70,6 +70,10 @@ Bug Fixes
 
 - Suppress errors during WCS creation in CCDData.read(). [#552]
 
+- The generator methods in ``ImageFileCollection`` now don't leave open file
+  handles in case the iterator wasn't advanced or an exception was raised
+  either inside the method itself or during the loop. [#545]
+
 
 1.2.0 (2016-12-13)
 ------------------
