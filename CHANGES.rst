@@ -51,6 +51,10 @@ Bug Fixes
 - The ``sort`` method of ``ImageFileCollection`` now requires an explicitly
   given ``keys`` argument. [tbd]
 
+- Fixed a problem with ``CCDData.read`` when the extension wasn't given and the
+  primary HDU contained no ``data`` but another HDU did. In that case the header
+  were not correctly combined. [#541]
+
 
 1.2.0 (2016-12-13)
 ------------------
