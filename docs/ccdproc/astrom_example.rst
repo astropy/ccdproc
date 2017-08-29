@@ -35,7 +35,7 @@ center and field of view.
     >>> from astropy.coordinates import SkyCoord
     >>> from astroquery.vizier import Vizier
     >>> center = SkyCoord(12.717536711448934, -27.778460891 ,unit=('deg','deg'))
-    >>> viz_gaia = Vizier(catalog='	I/324/igsl3')
+    >>> viz_gaia = Vizier(catalog='I/337/gaia')
     >>> viz_gaia.ROW_LIMIT=-1
     >>> gaia = viz_gaia.query_region(coordinates=center, radius='6 arcmin')[0]
 
