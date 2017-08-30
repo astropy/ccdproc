@@ -17,6 +17,7 @@ from astropy.tests.helper import catch_warnings
 from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.extern import six
+from astropy.extern.six.moves import zip
 
 from ccdproc import CCDData
 
