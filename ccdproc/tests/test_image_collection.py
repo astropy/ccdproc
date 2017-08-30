@@ -246,13 +246,13 @@ class TestImageFileCollection(object):
         assert ic1.ext == 0
         assert ic2.ext == extension
 
-        column2 = ic2.summary_info.colnames
-        column1 = ic1.summary_info.colnames
+        column2 = ic2.summary.colnames
+        column1 = ic1.summary.colnames
 
         assert column1 != column2
 
         list1 = [key.lower() for key in ext2.header]
-        list2 = ic2.summary_info.colnames[1:]
+        list2 = ic2.summary.colnames[1:]
 
         assert list1 == list2
 
