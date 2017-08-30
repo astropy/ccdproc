@@ -784,11 +784,11 @@ class ImageFileCollection(object):
             Default is ``False``.
 
         ccd_kwargs : dict, optional
-            Dict with parameters for `~ccdproc.fits_ccddata_reader`.
+            Dict with parameters for `~astropy.nddata.fits_ccddata_reader`.
             For instance, the key ``'unit'`` can be used to specify the unit
             of the data. If ``'unit'`` is not given then ``'adu'`` is used as
             the default unit.
-            See `~ccdproc.fits_ccddata_reader` for a complete list of
+            See `~astropy.nddata.fits_ccddata_reader` for a complete list of
             parameters that can be passed through ``ccd_kwargs``.
 
         kwd :
@@ -913,4 +913,4 @@ class ImageFileCollection(object):
                 "overwrite=True (or clobber=True) is not supported for CCDs.")
         return self._generator('ccd', ccd_kwargs=ccd_kwargs, **kwd)
     ccds.__doc__ = _generator.__doc__.format(
-        name='CCDData', default_scaling='True', return_type='ccdproc.CCDData')
+        name='CCDData', default_scaling='True', return_type='astropy.nddata.CCDData')

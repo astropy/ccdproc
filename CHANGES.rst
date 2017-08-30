@@ -37,6 +37,15 @@ Other Changes and Additions
 - deprecated ``summary_info`` property of ``ImageFileCollection`` now raises
   a deprecation warning. [#486]
 
+- Logging will include the abbreviation even if the ``meta`` attribute of
+  the processed ``CCDData`` isn't a ``fits.Header``. [#528]
+
+- The ``CCDData`` class and the functions ``fits_ccddata_reader`` and
+  ``fits_ccddata_writer`` will be imported from ``astropy.nddata`` if
+  astropy >= 2.0 is installed (instead of the one defined in ``ccdproc``). [#528]
+
+- Building the documentation requires astropy >= 2.0. [#528]
+
 
 Bug Fixes
 ^^^^^^^^^

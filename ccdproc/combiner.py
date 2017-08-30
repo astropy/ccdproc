@@ -20,7 +20,7 @@ class Combiner(object):
     """
     A class for combining CCDData objects.
 
-    The Combiner class is used to combine together `~ccdproc.CCDData` objects
+    The Combiner class is used to combine together `~astropy.nddata.CCDData` objects
     including the method for combining the data, rejecting outlying data,
     and weighting used for combining frames.
 
@@ -37,13 +37,13 @@ class Combiner(object):
     Raises
     ------
     TypeError
-        If the ``ccd_list`` are not `~ccdproc.CCDData` objects, have different
+        If the ``ccd_list`` are not `~astropy.nddata.CCDData` objects, have different
         units, or are different shapes.
 
     Examples
     --------
     The following is an example of combining together different
-    `~ccdproc.CCDData` objects::
+    `~astropy.nddata.CCDData` objects::
 
         >>> import numpy as np
         >>> import astropy.units as u
@@ -116,7 +116,7 @@ class Combiner(object):
     @property
     def weights(self):
         """
-        Weights used when combining the `~ccdproc.CCDData` objects.
+        Weights used when combining the `~astropy.nddata.CCDData` objects.
 
         Parameters
         ----------
@@ -311,7 +311,7 @@ class Combiner(object):
         """
         Median combine a set of arrays.
 
-        A `~ccdproc.CCDData` object is returned with the data property set to
+        A `~astropy.nddata.CCDData` object is returned with the data property set to
         the median of the arrays. If the data was masked or any data have been
         rejected, those pixels will not be included in the median. A mask will
         be returned, and if a pixel has been rejected in all images, it will be
@@ -335,7 +335,7 @@ class Combiner(object):
 
         Returns
         -------
-        combined_image: `~ccdproc.CCDData`
+        combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
 
         Warnings
@@ -387,7 +387,7 @@ class Combiner(object):
         """
         Average combine together a set of arrays.
 
-        A `~ccdproc.CCDData` object is returned with the data property
+        A `~astropy.nddata.CCDData` object is returned with the data property
         set to the average of the arrays. If the data was masked or any
         data have been rejected, those pixels will not be included in the
         average. A mask will be returned, and if a pixel has been
@@ -410,7 +410,7 @@ class Combiner(object):
 
         Returns
         -------
-        combined_image: `~ccdproc.CCDData`
+        combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
         if scale_to is not None:
@@ -452,7 +452,7 @@ class Combiner(object):
         """
         Sum combine together a set of arrays.
 
-        A `~ccdproc.CCDData` object is returned with the data property
+        A `~astropy.nddata.CCDData` object is returned with the data property
         set to the sum of the arrays. If the data was masked or any
         data have been rejected, those pixels will not be included in the
         sum. A mask will be returned, and if a pixel has been
@@ -478,7 +478,7 @@ class Combiner(object):
 
         Returns
         -------
-        combined_image: `~ccdproc.CCDData`
+        combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
         if scale_to is not None:
@@ -530,7 +530,7 @@ def combine(img_list, output_file=None,
     Parameters
     -----------
     img_list : `numpy.ndarray`, list or str
-        A list of fits filenames or `~ccdproc.CCDData` objects that will be
+        A list of fits filenames or `~astropy.nddata.CCDData` objects that will be
         combined together. Or a string of fits filenames separated by comma
         ",".
 
@@ -620,11 +620,11 @@ def combine(img_list, output_file=None,
         sum combine, otherwise use the function provided.
         Default is ``None``.
 
-    ccdkwargs : Other keyword arguments for `ccdproc.fits_ccddata_reader`.
+    ccdkwargs : Other keyword arguments for `astropy.nddata.fits_ccddata_reader`.
 
     Returns
     -------
-    combined_image : `~ccdproc.CCDData`
+    combined_image : `~astropy.nddata.CCDData`
         CCDData object based on the combined input of CCDData objects.
     """
     if not isinstance(img_list, list):

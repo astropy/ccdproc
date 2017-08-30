@@ -332,7 +332,7 @@ Data Quality Flags (Bitfields and bitmasks)
 -------------------------------------------
 
 Some FITS files contain data quality flags or bitfield extension, while these
-are currently not supported as part of `~ccdproc.CCDData` these can be loaded
+are currently not supported as part of `~astropy.nddata.CCDData` these can be loaded
 manually using `~astropy.io.fits` and converted to regular (`numpy`-like) masks
 (with `~ccdproc.bitfield_to_boolean_mask`) that are supported by many
 operations in `ccdproc`.
@@ -368,7 +368,7 @@ the scientific python packages:
   but are mostly limited to special data types (mostly unsigned integers).
 
 For convenience one of these is also accessible through the ``ccdproc``
-package namespace which accepts `~ccdproc.CCDData` objects and then also
+package namespace which accepts `~astropy.nddata.CCDData` objects and then also
 returns one:
 
 - `~ccdproc.median_filter`

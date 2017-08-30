@@ -9,7 +9,7 @@ Introduction
 
 The `ccdproc` package provides:
 
-+ An image class, `~ccdproc.CCDData`, that includes an uncertainty for the
++ An image class, `~astropy.nddata.CCDData`, that includes an uncertainty for the
   data, units and methods for performing arithmetic with images including the
   propagation of uncertainties.
 + A set of functions performing common CCD data reduction steps (e.g. dark
@@ -35,7 +35,7 @@ a FITS file:
     >>> image_1 = ccdproc.CCDData(np.ones((10, 10)), unit="adu")
 
 An example of reading from a FITS file is
-``image_2 = ccdproc.CCDData.read('my_image.fits', unit="electron")`` (the
+``image_2 = astropy.nddata.CCDData.read('my_image.fits', unit="electron")`` (the
 ``electron`` unit is defined as part of ``ccdproc``).
 
 The metadata of a ``CCDData`` object may be any dictionary-like object, including a FITS header. When a ``CCDData`` object is initialized from FITS file its metadata is a FITS header.
@@ -46,7 +46,7 @@ attribute:
     >>> sub_image = image_1[:, 1:-3]  # a CCDData object
     >>> sub_data =  image_1.data[:, 1:-3]  # a numpy array
 
-See the documentation for `~ccdproc.CCDData` for a complete list of attributes.
+See the documentation for `~astropy.nddata.CCDData` for a complete list of attributes.
 
 Most operations are performed by functions in `ccdproc`:
 
@@ -125,6 +125,9 @@ Using `ccdproc`
     reduction_examples.rst
 
 .. automodapi:: ccdproc
+   :skip: CCDData
+   :skip: fits_ccddata_writer
+   :skip: fits_ccddata_reader
 
 .. automodapi:: ccdproc.utils.slices
 
