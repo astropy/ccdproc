@@ -8,6 +8,8 @@ from astropy.modeling import models
 from astropy.units.quantity import Quantity
 import astropy.units as u
 from astropy.wcs import WCS
+from astropy.tests.helper import catch_warnings
+from astropy.utils.exceptions import AstropyUserWarning
 
 from astropy.nddata import StdDevUncertainty
 import astropy
@@ -566,7 +568,10 @@ def test_block_reduce():
                   mask=np.zeros((4, 4), dtype=bool),
                   uncertainty=StdDevUncertainty(np.ones((4, 4))),
                   wcs=np.zeros((4, 4)))
-    ccd_summed = block_reduce(ccd, (2, 2))
+    with catch_warnings(AstropyUserWarning) as w:
+        ccd_summed = block_reduce(ccd, (2, 2))
+    assert len(w) == 1
+    assert 'following attributes were set' in str(w[0].message)
     assert isinstance(ccd_summed, CCDData)
     assert np.all(ccd_summed.data == 4)
     assert ccd_summed.data.shape == (2, 2)
@@ -590,7 +595,11 @@ def test_block_average():
                   uncertainty=StdDevUncertainty(np.ones((4, 4))),
                   wcs=np.zeros((4, 4)))
     ccd.data[::2, ::2] = 2
-    ccd_avgd = block_average(ccd, (2, 2))
+    with catch_warnings(AstropyUserWarning) as w:
+        ccd_avgd = block_average(ccd, (2, 2))
+    assert len(w) == 1
+    assert 'following attributes were set' in str(w[0].message)
+
     assert isinstance(ccd_avgd, CCDData)
     assert np.all(ccd_avgd.data == 1.25)
     assert ccd_avgd.data.shape == (2, 2)
@@ -613,7 +622,11 @@ def test_block_replicate():
                   mask=np.zeros((4, 4), dtype=bool),
                   uncertainty=StdDevUncertainty(np.ones((4, 4))),
                   wcs=np.zeros((4, 4)))
-    ccd_repl = block_replicate(ccd, (2, 2))
+    with catch_warnings(AstropyUserWarning) as w:
+        ccd_repl = block_replicate(ccd, (2, 2))
+    assert len(w) == 1
+    assert 'following attributes were set' in str(w[0].message)
+
     assert isinstance(ccd_repl, CCDData)
     assert np.all(ccd_repl.data == 0.25)
     assert ccd_repl.data.shape == (8, 8)
