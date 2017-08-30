@@ -46,10 +46,10 @@ Bug Fixes
 
 - The ``ccd`` method of ``ImageFileCollection`` will raise an
   ``NotImplementedError`` in case the parameter ``overwrite=True`` or
-  ``clobber=True`` is used instead of silently ignoring the parameter.
+  ``clobber=True`` is used instead of silently ignoring the parameter. [#527]
 
 - The ``sort`` method of ``ImageFileCollection`` now requires an explicitly
-  given ``keys`` argument. [tbd]
+  given ``keys`` argument. [#534]
 
 
 1.2.0 (2016-12-13)
