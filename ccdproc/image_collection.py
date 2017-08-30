@@ -883,10 +883,8 @@ class ImageFileCollection(object):
             elif return_type == 'data':
                 return_thing = fits.getdata(full_path, self.ext, **add_kwargs)
             elif return_type == 'ccd':
-                with fits.open(full_path, **add_kwargs) as hdulist:
-                    ext_index = hdulist.index_of(self.ext)
                 return_thing = fits_ccddata_reader(
-                    full_path, hdu=ext_index, **ccd_kwargs)
+                    full_path, hdu=self.ext, **ccd_kwargs)
             elif return_type == 'hdu':
                 with fits.open(full_path, **add_kwargs) as hdulist:
                     ext_index = hdulist.index_of(self.ext)
