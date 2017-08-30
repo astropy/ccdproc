@@ -106,11 +106,15 @@ def test_initialize_from_fits_with_data_in_different_extension(tmpdir):
     hdus.writeto(filename)
     with catch_warnings(FITSFixedWarning) as w:
         ccd = CCDData.read(filename, unit='adu')
-    assert len(w) == 0
+    if not ASTROPY_GT_2_0 or minversion("astropy", "2.0.2"):
+        # Test can only succeed if astropy <= 2 (where it uses ccdprocs CCDData)
+        # or with the patched astropy.nddata.CCDData
+        # (probably included in 2.0.2)
+        assert len(w) == 0
+        # check that the header is the combined header
+        assert hdu2.header + hdu1.header == ccd.header
     # ccd should pick up the unit adu from the fits header...did it?
     np.testing.assert_array_equal(ccd.data, fake_img)
-    # check that the header is the combined header
-    assert hdu2.header + hdu1.header == ccd.header
 
 
 def test_initialize_from_fits_with_extension(tmpdir):
