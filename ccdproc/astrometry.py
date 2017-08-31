@@ -89,6 +89,50 @@ def _get_index(z, n_stars):
         if count==z: return i, j, k
         count += 1
 
+def calc_triangle(x, y, i, j, k):
+    """From three points, create a description of a triangle
+
+    Parameters
+    ----------
+    x: ~numpy.ndarray
+        Array of x-positions
+        
+    y: ~numpy.ndarray
+        Array of y-positions
+        
+    i: int
+        index of first object
+        
+    j: int
+        index of second object
+        
+    k: int
+        index of third object
+    
+    Returns
+    -------
+    sides: ~numpy.ndarray
+        Array of the length of each side of the triangle normalized to 
+        the longest side
+        
+    angles: ~numpy.ndarray
+        Array of the angles of each vertices of the triangle
+        
+    order: ~numpy.ndarray
+        Order of the shortest to longest side 
+
+    """
+    d1 = distance(x[i], y[i], x[j], y[j])
+    d2 = distance(x[i], y[i], x[k], y[k])
+    d3 = distance(x[j], y[j], x[k], y[k])
+    sides = np.array([d1,d2,d3])
+    a1 = triangle_angle(d1, d2, d3)
+    a2 = triangle_angle(d2, d1, d3)
+    a3 = triangle_angle(d3, d1, d2)
+    angles = np.array([a1, a2, a3])
+    order = sides.argsort()
+    return sides/sides.max(), angles, order
+
 def _calc_ratio(x, y, i, j, k):
     """Calculate the ratio of the distance between the vertex at index i to 
     points j and k. 
@@ -119,8 +163,8 @@ def _calc_ratio(x, y, i, j, k):
     """
     d1 = distance(x[i], y[i], x[j], y[j])
     d2 = distance(x[i], y[i], x[k], y[k])
-    if d2==0: d2 = np.inf
-    return d1/d2
+    if d2==0: ratio = np.nan
+    return d1/d2 
 
 def distance_ratios(x, y):
     """For all permutations of points in x,y calculatio the ratio between
@@ -147,7 +191,7 @@ def distance_ratios(x, y):
     return np.array(ratio)
 
 
-def match_by_triangle(x, y, r, d, n_groups=2, limit=0.02):
+def match_by_triangle(x, y, r, d, n_groups=2, n_limit=30, limit=0.02):
     """Use triangles with in the set of objects to find the matched coordinates
 
     Parameters
@@ -164,8 +208,11 @@ def match_by_triangle(x, y, r, d, n_groups=2, limit=0.02):
     d: ~numpy.ndarray
         DEC position of objects
 
-    n_groups: ~numpy.ndarray
+    n_groups: int
         Number of triangles to use for the matching
+
+    n_limit: int
+        Limit on the number of objects to match
 
     limit: float
         Tolerance for matching ratio of distances
@@ -181,14 +228,16 @@ def match_by_triangle(x, y, r, d, n_groups=2, limit=0.02):
     # triangles that have the same ratio between their 
     # legs.  Due to the possibiity of centroiding errors
     # or missing data sets, we follow a two step process
-    # 
+    # The second step is to then match objects which 
+    # are close to gether
+    
     w_ratio =  distance_ratios(r, d)
     for i in range(n_groups):
-        p = calc_ratio(x, y, 0, 1, i+2)
-        r = abs(w_ratio - p)
+        p = _calc_ratio(x, y, 0, 1, i+2)
+        diff = abs(w_ratio - p)
         guess=[]
-        for m in np.where(r<limit)[0]:
-            n=get_index(m, len(ras))
+        for m in np.where(diff<limit)[0]:
+            n=_get_index(m, len(r))
             guess.append([n[0], n[1], n[2]])
             
         if guess_all is None: 
