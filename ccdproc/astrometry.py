@@ -6,6 +6,11 @@ from __future__ import (absolute_import, division, print_function,
 import itertools as it
 import numpy as np
 
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from astropy import wcs
+from astropy.modeling import models
+from astropy.modeling import fitting
 from astropy.stats import median_absolute_deviation
 
 import math
@@ -88,6 +93,30 @@ def _get_index(z, n_stars):
     for i, j, k in it.permutations(range(0,n_stars),3):       
         if count==z: return i, j, k
         count += 1
+
+def triangle_angle(a, b, c):
+    """Given the length of three sides, calculate
+       the angle of side a
+   
+    Parameters
+    ----------
+    a: float
+       Side of a triangle
+
+    b: float
+       Side of a triangle
+
+    c: float
+       Side of a triangle
+
+
+    Returns
+    -------
+    theta: float
+       Angle of a triangle in radians
+    """
+    return np.arccos((b**2+c**2-a**2)/(2*b*c))
+
 
 def calc_triangle(x, y, i, j, k):
     """From three points, create a description of a triangle
@@ -191,8 +220,38 @@ def distance_ratios(x, y):
     return np.array(ratio)
 
 
-def match_by_triangle(x, y, r, d, n_groups=2, n_limit=30, limit=0.02):
+def match_by_triangle(x, y, ra, dec, n_limit=30, tolerance=0.02, clean_limit=5,
+                      match_tolerance=1*u.arcsec, m_init=models.Polynomial2D(1), 
+                      fitter = fitting.LinearLSQFitter()):
     """Use triangles with in the set of objects to find the matched coordinates
+
+    The algorithm creates a set of triangles representing every set of three 
+    stars in the input list of objects.  The first step is to limit the 
+    input list of right ascension and declination to the number of objects
+    provided by n_limit.   Then, a triangle is created for each unique
+    triplet in the remaining list.  The triangle is described by the
+    length of each side, the angle of each vertices, and a ranking of each 
+    side from shortest to longest.   The length of the sides is normalized
+    such that the longest side has unit length.   
+
+    In order of the given x,y coordinates, a list of matched coordinates is 
+    created.   A triangle is created for each  unique triplet in the x,y coordinates 
+    and the length of the normalized sides  and angle of the verticies 
+    is compared to all of the triangles created for the input ra,dec coordinates.
+    A match is considered to occur if the absolute difference between the 
+    sides and the angles between the two triangles is less than the tolerance.
+
+    If clean_limt=0, the indices of each triplet that matches is added to a
+    list that includes the indices of the x,y and ra,dec sources.  This list 
+    of indices is then returned to the user.
+
+    If clean_limit>0, then a second step is implement to verify the match.  Each
+    triplet that satisfies the tolerance limit is then passed onto a second 
+    function, `match_by_fit`, that uses the three match sources to calculate 
+    a transformtion, and then matches the entire list of sources based on the 
+    transformation and how close it is to another source within match_tolerance.
+    If a triplet results in a number of matches greater than clean_limit, then 
+    the indices of the matched triplet are returned. 
 
     Parameters
     ----------
@@ -202,47 +261,125 @@ def match_by_triangle(x, y, r, d, n_groups=2, n_limit=30, limit=0.02):
     y: ~numpy.ndarray
         y-position of objects
 
-    r: ~numpy.ndarray
+    ra: ~numpy.ndarray
         RA position of objects
 
-    d: ~numpy.ndarray
+    dec: ~numpy.ndarray
         DEC position of objects
-
-    n_groups: int
-        Number of triangles to use for the matching
 
     n_limit: int
         Limit on the number of objects to match
 
-    limit: float
+    tolerance: float
         Tolerance for matching ratio of distances
+
+    clean_limit: int 
+        Numbe of stars required for a match.  Set to zero to return 
+        all stars whose ratios satisify the tolerance limit. 
+
+    match_tolerance: ~astropy.Quantity
+        Tolerance for when matching all sources based on their distance.
+
+    m_init: astropy.modeling.models
+        A model instance for describing the transformation between coordinate
+        systems.  It should be a FittableModel2D instance. 
+
+    fitter: astropy.modeling.fitting
+        A fitting routine for fitting the transformations. 
 
     Returns
     -------
-    match_list: ~numpy.ndarray
-        flat array of all the permutations of the ratio between the distances 
+    matches: list
+        If clean_limit=0, this returns a list of inices for all triplets of stars 
+        with side and angle ratios belwo the tolerance.   If clean_limit>0, then
+        this returns the indices of the first match to also satisfy the 
+        clean_limit requirement.  
 
     """
-
-    # first step is to find possible matches based on 
-    # triangles that have the same ratio between their 
-    # legs.  Due to the possibiity of centroiding errors
-    # or missing data sets, we follow a two step process
-    # The second step is to then match objects which 
-    # are close to gether
     
-    w_ratio =  distance_ratios(r, d)
-    for i in range(n_groups):
-        p = _calc_ratio(x, y, 0, 1, i+2)
-        diff = abs(w_ratio - p)
-        guess=[]
-        for m in np.where(diff<limit)[0]:
-            n=_get_index(m, len(r))
-            guess.append([n[0], n[1], n[2]])
+    # shortent the ra lists if necessary
+    if len(ra)>n_limit:
+        r = ra[:n_limit]
+        d = dec[:n_limit]
+    else:
+        r = ra
+        d = dec
+        
+    
+    # create the potential list of matches
+    world_ratio = {}
+    for i, j, k in it.combinations(range(len(r)),3):
+            world_ratio[(i,j,k)]=calc_triangle(r, d, i, j, k)
+                                   
+    
+    matches = []
+    for i, j, k in it.combinations(range(len(x)),3):
+        base = calc_triangle(x, y, i, j, k)
+        for key in world_ratio:
+            tri = world_ratio[key]  
+            if np.allclose(base[0][base[2]], tri[0][tri[2]], atol=tolerance) and np.allclose(base[1][base[2]], tri[1][tri[2]], atol=tolerance):
+                idp, idx = match_by_fit(x, y, r, d, (i,j,k), key, match_tolerance, 
+                                    m_init=m_init, fitter = fitter)  
+                if clean_limit==0:
+                    matches.append([(i,j,k), key])
+                elif len(idp)>clean_limit:
+                    return [(i,j,k), key]
+                
+    return matches
+
+
+def match_by_fit(x, y, ra, dec, idp, idw, tolerance, 
+                 m_init=models.Polynomial2D(1), 
+                 fitter = fitting.LinearLSQFitter()):
+    """Match coordinates after determing the transformation
+
+    Given two sets of coodrindates, determine the number of matches between the two by determining
+    a transformaiton based on a set of  matched objects as specified by their indices.
+
+    Parameters
+    ----------
+    x: ~numpy.ndarray
+        x-position of objects
+
+    y: ~numpy.ndarray
+        y-position of objects
+
+    ra: ~numpy.ndarray
+        RA position of objects in degrees
+
+    dec: ~numpy.ndarray
+        DEC position of objects in degrees
+
+    idp: ~numpy.ndarray
+        Indices of x,y that match with objects in ra,dec
+
+    idw: ~numpy.ndarray
+        Indices of ra,dec that match with objects in x,y
+
+    tolerance: ~astropy.Quantity
+        Tolerance for when matching all sources based on their distance.
+
+    m_init: astropy.modeling.models
+        A model instance for describing the transformation between coordinate
+        systems.  It should be a FittableModel2D instance. 
+
+    Returns
+    -------
+    match_idx:  ~numpy.ndarray
+        Indices of x,y that match with objects in ra,dec
+
+    match_idw: ~numpy.ndarray
+        Indices of ra,dec that match with objects in x,y
+
+    """
+    r_fit = fitter(m_init, x[[idp]], y[[idp]], ra[[idw]])
+    d_fit = fitter(m_init, x[[idp]], y[[idp]], dec[[idw]])
             
-        if guess_all is None: 
-            guess_all = guess.copy() 
-        else:
-            for g in guess_all:
-                if not ((g[0], g[1]) in [(z[0], z[1]) for z in guess]):
-                    guess_all.remove(g)
+    # apply to coordinates and determine the matches
+    c = SkyCoord(ra*u.degree, dec*u.degree)
+    c2 = SkyCoord(r_fit(x,y)*u.degree, d_fit(x,y)*u.degree)
+    idx, d2d, d3d = c2.match_to_catalog_sky(c)
+    
+    return idx[d2d<tolerance], np.where(d2d<tolerance)[0], 
+    
+
