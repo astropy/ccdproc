@@ -298,12 +298,13 @@ def match_by_triangle(x, y, ra, dec, n_limit=30, tolerance=0.02, clean_limit=5,
     """
     
     # shortent the ra lists if necessary
+    # correct the RA for projection at different dec's
     if len(ra)>n_limit:
-        r = ra[:n_limit]
         d = dec[:n_limit]
+        r = ra[:n_limit]
     else:
-        r = ra
         d = dec
+        r = ra 
         
     
     # create the potential list of matches
@@ -323,6 +324,8 @@ def match_by_triangle(x, y, ra, dec, n_limit=30, tolerance=0.02, clean_limit=5,
                 if clean_limit==0:
                     matches.append([(i,j,k), key])
                 elif len(idp)>clean_limit:
+                    print(base)
+                    print(tri)
                     return [(i,j,k), key]
                 
     return matches
@@ -362,6 +365,10 @@ def match_by_fit(x, y, ra, dec, idp, idw, tolerance,
     m_init: astropy.modeling.models
         A model instance for describing the transformation between coordinate
         systems.  It should be a FittableModel2D instance. 
+   
+    fitter: astropy.modeling.fitting
+        A fitting routine for fitting the transformations. 
+
 
     Returns
     -------
@@ -378,8 +385,79 @@ def match_by_fit(x, y, ra, dec, idp, idw, tolerance,
     # apply to coordinates and determine the matches
     c = SkyCoord(ra*u.degree, dec*u.degree)
     c2 = SkyCoord(r_fit(x,y)*u.degree, d_fit(x,y)*u.degree)
-    idx, d2d, d3d = c2.match_to_catalog_sky(c)
+    idw, d2d, d3d = c2.match_to_catalog_sky(c)
     
-    return idx[d2d<tolerance], np.where(d2d<tolerance)[0], 
+    return np.where(d2d<tolerance)[0], idw[d2d<tolerance]
     
 
+def create_wcs_from_fit(x, y, r, d, idp, idw, xref=0, yref=0,
+                        m_init=models.Polynomial2D(1), fitter = fitting.LinearLSQFitter()):
+    """ Create WCS from a list of match coordinates
+
+    Paramters
+    ---------
+    x: ~numpy.ndarray
+        x-position of objects
+
+    y: ~numpy.ndarray
+        y-position of objects
+
+    ra: ~numpy.ndarray
+        RA position of objects in degrees
+
+    dec: ~numpy.ndarray
+        DEC position of objects in degrees
+
+    idp: ~numpy.ndarray
+        Indices of x,y that match with objects in ra,dec
+
+    idw: ~numpy.ndarray
+        Indices of ra,dec that match with objects in x,y
+
+    xref: float
+        Pixel coordinate for the reference x-position
+
+    yref: float
+        Pixel coordinate for the reference y-position
+
+    m_init: astropy.modeling.models
+        A model instance for describing the transformation between coordinate
+        systems.  It should be a FittableModel2D instance. 
+
+    fitter: astropy.modeling.fitting
+        A fitting routine for fitting the transformations. 
+
+    
+    Returns
+    -------
+    wcs: astropy.wcs.WCS
+       A WCS object based on the two sets of matching coordinates
+
+
+    Notes
+    -----
+    The function currently only handles linear transformation between
+    the coordinates.  Higher order distortion corrections should
+    be applied prior to the calculation of the WCS. 
+    
+    """
+    r_fit = fitter(m_init, x[[idp]]-xref, y[[idp]]-yref, r[[idw]])
+    d_fit = fitter(m_init, x[[idp]]-xref, y[[idp]]-yref, d[[idw]])
+    cosd = np.cos(d_fit.c0_0.value*u.degree)
+    
+    # Create a new WCS object.  The number of axes must be set
+    # from the start
+    w = wcs.WCS(naxis=2)
+
+    
+    # Set up an "tan" projection
+    w.wcs.crpix = [xref,yref]
+    w.wcs.cd = np.array([r_fit.c1_0.value * cosd, 
+                         r_fit.c0_1.value * cosd, 
+                         d_fit.c1_0.value, 
+                         d_fit.c0_1.value]).reshape(2,2)
+    w.wcs.crval = [r_fit.c0_0.value, d_fit.c0_0.value]
+    w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+    # w.wcs.set_pv([(4, 1, 45.0)])
+    
+    return  w
