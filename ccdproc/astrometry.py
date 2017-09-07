@@ -15,7 +15,10 @@ from astropy.stats import median_absolute_deviation
 
 import math
 
-__all__ = ['remove_duplicates', 'distance', 'distance_ratios']
+__all__ = ['remove_duplicates', 'distance', 'distance_ratios',
+           'triangle_angle', 'calc_triangle', 'match_by_triangle',
+           'match_by_fit']
+
 
 def remove_duplicates(x, y, tolerance):
     """Remove duplicates within a certain tolerance from a pair of coordiantes
@@ -31,14 +34,21 @@ def remove_duplicates(x, y, tolerance):
     tolerance: float
         tolerance for removal of dupliactes
 
- 
+
+    Returns
+    -------
+    x: ~numpy.ndarray
+        x-position of objects with duplicates removed
+
+    y: ~numpy.ndarray
+        y-position of objects with duplicates removed
     """
     mask = np.ones(len(x), dtype=bool)
 
     for i in range(len(x)):
         if mask[i]:
             d = ((x - x[i])**2 + (y - y[i])**2)**0.5
-            j = np.where((d<tolerance))
+            j = np.where((d < tolerance))
             mask[j] = False
             mask[i] = True
 
@@ -48,7 +58,6 @@ def remove_duplicates(x, y, tolerance):
 def distance(x1, y1, x2, y2):
     """Calcluate the distance between points
 
-    
     Parameters
     ----------
     x1: float or ~numpy.ndarray
@@ -70,34 +79,37 @@ def distance(x1, y1, x2, y2):
     """
     return ((x1-x2)**2 + (y1-y2)**2)**0.5
 
+
 def _get_index(z, n_stars):
     """Return the indices from a set of permutations of length n_stars
-    
+
     For example, it will return the indices of the three stars
     corresponding to the output from distance ratio
 
     Parameters
     ----------
     z: int
-        Index from 1-d permuation array 
-  
+        Index from 1-d permuation array
+
     n_stars: int
         Number of stars in the original array
 
     Returns
     -------
     indices: tuple
-       i, j, k indices 
+       i, j, k indices
     """
-    count=0
-    for i, j, k in it.permutations(range(0,n_stars),3):       
-        if count==z: return i, j, k
+    count = 0
+    for i, j, k in it.permutations(range(0, n_stars), 3):
+        if count == z: 
+            return i, j, k
         count += 1
+
 
 def triangle_angle(a, b, c):
     """Given the length of three sides, calculate
        the angle of side a
-   
+
     Parameters
     ----------
     a: float
@@ -125,23 +137,23 @@ def calc_triangle(x, y, i, j, k):
     ----------
     x: ~numpy.ndarray
         Array of x-positions
-        
+
     y: ~numpy.ndarray
         Array of y-positions
-        
+
     i: int
         index of first object
-        
+
     j: int
         index of second object
-        
+
     k: int
         index of third object
-    
+
     Returns
     -------
     sides: ~numpy.ndarray
-        Array of the length of each side of the triangle normalized to 
+        Array of the length of each side of the triangle normalized to
         the longest side
         
     angles: ~numpy.ndarray
@@ -161,6 +173,7 @@ def calc_triangle(x, y, i, j, k):
     angles = np.array([a1, a2, a3])
     order = sides.argsort()
     return sides/sides.max(), angles, order
+
 
 def _calc_ratio(x, y, i, j, k):
     """Calculate the ratio of the distance between the vertex at index i to 
@@ -194,6 +207,7 @@ def _calc_ratio(x, y, i, j, k):
     d2 = distance(x[i], y[i], x[k], y[k])
     if d2==0: ratio = np.nan
     return d1/d2 
+
 
 def distance_ratios(x, y):
     """For all permutations of points in x,y calculatio the ratio between
