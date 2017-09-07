@@ -11,7 +11,8 @@ from astropy.nddata import StdDevUncertainty, MissingDataAssociationException
 from astropy import units as u
 from astropy.extern import six
 from astropy import log
-from astropy.wcs import WCS
+from astropy.wcs import WCS, FITSFixedWarning
+from astropy.tests.helper import catch_warnings
 from astropy.utils import minversion
 from astropy.utils.data import get_pkg_data_filename
 
@@ -20,6 +21,7 @@ from .. import subtract_dark
 
 
 ASTROPY_GT_1_2 = minversion("astropy", "1.2")
+ASTROPY_GT_2_0 = minversion("astropy", "2.0")
 
 
 def test_ccddata_empty():
@@ -97,17 +99,22 @@ def test_initialize_from_fits_with_ADU_in_header(tmpdir):
 
 def test_initialize_from_fits_with_data_in_different_extension(tmpdir):
     fake_img = np.random.random(size=(100, 100))
-    new_hdul = fits.HDUList()
     hdu1 = fits.PrimaryHDU()
     hdu2 = fits.ImageHDU(fake_img)
     hdus = fits.HDUList([hdu1, hdu2])
     filename = tmpdir.join('afile.fits').strpath
     hdus.writeto(filename)
-    ccd = CCDData.read(filename, unit='adu')
+    with catch_warnings(FITSFixedWarning) as w:
+        ccd = CCDData.read(filename, unit='adu')
+    if not ASTROPY_GT_2_0 or minversion("astropy", "2.0.2"):
+        # Test can only succeed if astropy <= 2 (where it uses ccdprocs CCDData)
+        # or with the patched astropy.nddata.CCDData
+        # (probably included in 2.0.2)
+        assert len(w) == 0
+        # check that the header is the combined header
+        assert hdu2.header + hdu1.header == ccd.header
     # ccd should pick up the unit adu from the fits header...did it?
     np.testing.assert_array_equal(ccd.data, fake_img)
-    # check that the header is the combined header
-    assert hdu1.header + hdu2.header == ccd.header
 
 
 def test_initialize_from_fits_with_extension(tmpdir):
@@ -645,7 +652,13 @@ def test_wcs_attribute(ccd_data, tmpdir):
     # Converting CCDData object with wcs to an hdu shouldn't
     # create duplicate wcs-related entries in the header.
     ccd_new_hdu = ccd_new.to_hdu()[0]
-    assert len(ccd_new_hdu.header) == original_header_length
+    if not ASTROPY_GT_2_0:
+        # from astropy 2.0 on the CCDData has been moved to the astropy core
+        # package and the WCS attributes are removed from the meta when the
+        # data is read the WCS related attributes are removed.
+        # In that case the length of the read header will differ from the
+        # header in the HDU after `to_hdu` is called.
+        assert len(ccd_new_hdu.header) == original_header_length
 
     # Making a CCDData with WCS (but not WCS in the header) should lead to
     # WCS information in the header when it is converted to an HDU.
@@ -704,20 +717,23 @@ def test_wcs_sip_handling():
     """
     data_file = get_pkg_data_filename('data/sip-wcs.fit')
 
-    def check_wcs_ctypes(header):
+    def check_wcs_ctypes_header(header):
         expected_wcs_ctypes = {
             'CTYPE1': 'RA---TAN-SIP',
             'CTYPE2': 'DEC--TAN-SIP'
         }
-
         return [header[k] == v for k, v in expected_wcs_ctypes.items()]
 
+    def check_wcs_ctypes_wcs(wcs):
+        expected = ['RA---TAN-SIP', 'DEC--TAN-SIP']
+        return [act == ref for act, ref in zip(wcs.wcs.ctype, expected)]
+
     ccd_original = CCDData.read(data_file)
-    good_ctype = check_wcs_ctypes(ccd_original.meta)
+    good_ctype = check_wcs_ctypes_wcs(ccd_original.wcs)
     assert all(good_ctype)
 
     ccd_new = ccd_original.to_hdu()
-    good_ctype = check_wcs_ctypes(ccd_new[0].header)
+    good_ctype = check_wcs_ctypes_header(ccd_new[0].header)
     assert all(good_ctype)
 
     # Try converting to header with wcs_relax=False and
@@ -725,7 +741,7 @@ def test_wcs_sip_handling():
     # the -SIP
 
     ccd_no_relax = ccd_original.to_hdu(wcs_relax=False)
-    good_ctype = check_wcs_ctypes(ccd_no_relax[0].header)
+    good_ctype = check_wcs_ctypes_header(ccd_no_relax[0].header)
     if ASTROPY_GT_1_2:
         # This behavior was introduced in astropy 1.2.
         assert not any(good_ctype)

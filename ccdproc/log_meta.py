@@ -11,6 +11,7 @@ import numpy as np
 from astropy.extern import six
 from astropy.nddata import NDData
 from astropy import units as u
+from astropy.io import fits
 
 import ccdproc  # really only need Keyword from ccdproc
 
@@ -28,6 +29,29 @@ _LOG_ARG_HELP = \
         containing the arguments the function was called with, except the
         value of this argument.
     """.format(arg=_LOG_ARGUMENT)
+
+
+def _insert_in_metadata_fits_safe(ccd, key, value):
+    from .core import _short_names
+
+    if key in _short_names:
+        # This keyword was (hopefully) added by autologging but the
+        # combination of it and its value not FITS-compliant in two
+        # ways: the keyword name may be more than 8 characters and
+        # the value may be too long. FITS cannot handle both of
+        # those problems at once, so this fixes one of those
+        # problems...
+        # Shorten, sort of...
+        short_name = _short_names[key]
+        if isinstance(ccd.meta, fits.Header):
+            ccd.meta['HIERARCH {0}'.format(key.upper())] = (
+                short_name, "Shortened name for ccdproc command")
+        else:
+            ccd.meta[key] = (
+                short_name, "Shortened name for ccdproc command")
+        ccd.meta[short_name] = value
+    else:
+        ccd.meta[key] = value
 
 
 def log_to_metadata(func):
@@ -89,7 +113,7 @@ def log_to_metadata(func):
             meta_dict = {key: log_val}
 
         for k, v in six.iteritems(meta_dict):
-            result._insert_in_metadata_fits_safe(k, v)
+            _insert_in_metadata_fits_safe(result, k, v)
         return result
 
     return wrapper

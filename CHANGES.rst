@@ -37,6 +37,15 @@ Other Changes and Additions
 - deprecated ``summary_info`` property of ``ImageFileCollection`` now raises
   a deprecation warning. [#486]
 
+- Logging will include the abbreviation even if the ``meta`` attribute of
+  the processed ``CCDData`` isn't a ``fits.Header``. [#528]
+
+- The ``CCDData`` class and the functions ``fits_ccddata_reader`` and
+  ``fits_ccddata_writer`` will be imported from ``astropy.nddata`` if
+  astropy >= 2.0 is installed (instead of the one defined in ``ccdproc``). [#528]
+
+- Building the documentation requires astropy >= 2.0. [#528]
+
 
 Bug Fixes
 ^^^^^^^^^
@@ -46,10 +55,14 @@ Bug Fixes
 
 - The ``ccd`` method of ``ImageFileCollection`` will raise an
   ``NotImplementedError`` in case the parameter ``overwrite=True`` or
-  ``clobber=True`` is used instead of silently ignoring the parameter.
+  ``clobber=True`` is used instead of silently ignoring the parameter. [#527]
 
 - The ``sort`` method of ``ImageFileCollection`` now requires an explicitly
-  given ``keys`` argument. [tbd]
+  given ``keys`` argument. [#534]
+
+- Fixed a problem with ``CCDData.read`` when the extension wasn't given and the
+  primary HDU contained no ``data`` but another HDU did. In that case the header
+  were not correctly combined. [#541]
 
 
 1.2.0 (2016-12-13)

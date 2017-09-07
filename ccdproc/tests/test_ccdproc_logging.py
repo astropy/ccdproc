@@ -75,8 +75,12 @@ def test_implicit_logging(ccd_data):
     bias = CCDData(np.zeros_like(ccd_data.data), unit="adu")
     result = subtract_bias(ccd_data, bias)
     assert "subtract_bias" in result.header
-    assert result.header['subtract_bias'] == "ccd=<CCDData>, master=<CCDData>"
+    assert result.header['subtract_bias'] == (
+        'subbias', 'Shortened name for ccdproc command')
+    assert result.header['subbias'] == "ccd=<CCDData>, master=<CCDData>"
 
     result = create_deviation(ccd_data, readnoise=3 * ccd_data.unit)
+    assert result.header['create_deviation'] == (
+        'creatvar', 'Shortened name for ccdproc command')
     assert ("readnoise="+str(3 * ccd_data.unit) in
-            result.header['create_deviation'])
+            result.header['creatvar'])
