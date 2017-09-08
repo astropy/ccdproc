@@ -11,9 +11,6 @@ from astropy.coordinates import SkyCoord
 from astropy import wcs
 from astropy.modeling import models
 from astropy.modeling import fitting
-from astropy.stats import median_absolute_deviation
-
-import math
 
 __all__ = ['remove_duplicates', 'distance', 'distance_ratios',
            'triangle_angle', 'calc_triangle', 'match_by_triangle',
@@ -21,26 +18,25 @@ __all__ = ['remove_duplicates', 'distance', 'distance_ratios',
 
 
 def remove_duplicates(x, y, tolerance):
-    """Remove duplicates within a certain tolerance from a pair of coordiantes
+    """Remove duplicates within a certain tolerance from a pair of coordiantes.
 
     Parameters
     ----------
-    x: ~numpy.ndarray
+    x : `numpy.ndarray`
         x-position of objects
 
-    y: ~numpy.ndarray
+    y : `numpy.ndarray`
         y-position of objects
 
-    tolerance: float
+    tolerance : float
         tolerance for removal of dupliactes
-
 
     Returns
     -------
-    x: ~numpy.ndarray
+    x : `numpy.ndarray`
         x-position of objects with duplicates removed
 
-    y: ~numpy.ndarray
+    y : `numpy.ndarray`
         y-position of objects with duplicates removed
     """
     mask = np.ones(len(x), dtype=bool)
@@ -56,47 +52,47 @@ def remove_duplicates(x, y, tolerance):
 
 
 def distance(x1, y1, x2, y2):
-    """Calcluate the distance between points
+    """Calcluate the distance between points.
 
     Parameters
     ----------
-    x1: float or ~numpy.ndarray
+    x1 : float or `numpy.ndarray`
         x-position of objects
 
-    y1: float or ~numpy.ndarray
+    y1 : float or `numpy.ndarray`
         y-position of objects
 
-    x2: float or ~numpy.ndarray
+    x2 : float or `numpy.ndarray`
         x-position of objects
 
-    y2: float or ~numpy.ndarray
+    y2 : float or `numpy.ndarray`
         y-position of objects
 
-    Return
-    ------
-    d: float or ~numpy.ndarray
+    Returns
+    -------
+    d : float or `numpy.ndarray`
         Distance between x1,y1 and x2,y2
     """
     return ((x1-x2)**2 + (y1-y2)**2)**0.5
 
 
 def _get_index(z, n_stars):
-    """Return the indices from a set of permutations of length n_stars
+    """Return the indices from a set of permutations of length ``n_stars``.
 
     For example, it will return the indices of the three stars
-    corresponding to the output from distance ratio
+    corresponding to the output from distance ratio.
 
     Parameters
     ----------
-    z: int
+    z : int
         Index from 1-d permuation array
 
-    n_stars: int
+    n_stars : int
         Number of stars in the original array
 
     Returns
     -------
-    indices: tuple
+    indices : tuple
        i, j, k indices
     """
     count = 0
@@ -112,19 +108,19 @@ def triangle_angle(a, b, c):
 
     Parameters
     ----------
-    a: float
+    a : float
        Side of a triangle
 
-    b: float
+    b : float
        Side of a triangle
 
-    c: float
+    c : float
        Side of a triangle
 
 
     Returns
     -------
-    theta: float
+    theta : float
        Angle of a triangle in radians
     """
     return np.arccos((b**2+c**2-a**2)/(2*b*c))
@@ -135,31 +131,31 @@ def calc_triangle(x, y, i, j, k):
 
     Parameters
     ----------
-    x: ~numpy.ndarray
+    x : `numpy.ndarray`
         Array of x-positions
 
-    y: ~numpy.ndarray
+    y : `numpy.ndarray`
         Array of y-positions
 
-    i: int
+    i : int
         index of first object
 
-    j: int
+    j : int
         index of second object
 
-    k: int
+    k : int
         index of third object
 
     Returns
     -------
-    sides: ~numpy.ndarray
+    sides : `numpy.ndarray`
         Array of the length of each side of the triangle normalized to
         the longest side
 
-    angles: ~numpy.ndarray
+    angles : `numpy.ndarray`
         Array of the angles of each vertices of the triangle
 
-    order: ~numpy.ndarray
+    order : `numpy.ndarray`
         Order of the shortest to longest side
 
     """
@@ -181,19 +177,19 @@ def _calc_ratio(x, y, i, j, k):
 
     Parameters
     ----------
-    x: ~numpy.ndarray
+    x : `numpy.ndarray`
         x-position of objects
 
-    y: ~numpy.ndarray
+    y : `numpy.ndarray`
         y-position of objects
 
-    i: int
+    i : int
         Index of the vertex
 
-    j: int
+    j : int
         Index for the first side
 
-    k: int
+    k : int
         Index for the second side
 
     Returns
@@ -216,15 +212,15 @@ def distance_ratios(x, y):
 
     Parameters
     ----------
-    x: ~numpy.ndarray
+    x : `numpy.ndarray`
         x-position of objects
 
-    y: ~numpy.ndarray
+    y : `numpy.ndarray`
         y-position of objects
 
     Returns
     -------
-    ratio: ~numpy.ndarray
+    ratio : `numpy.ndarray`
         flat array of all the permutations of the ratio between the distances
 
     """
@@ -244,15 +240,15 @@ def match_by_triangle(x, y, ra, dec, n_limit=30, tolerance=0.02, clean_limit=5,
     The algorithm creates a set of triangles representing every set of three
     stars in the input list of objects.  The first step is to limit the
     input list of right ascension and declination to the number of objects
-    provided by n_limit.   Then, a triangle is created for each unique
+    provided by n_limit.  Then, a triangle is created for each unique
     triplet in the remaining list.  The triangle is described by the
     length of each side, the angle of each vertices, and a ranking of each
-    side from shortest to longest.   The length of the sides is normalized
+    side from shortest to longest.  The length of the sides is normalized
     such that the longest side has unit length.
 
     In order of the given x,y coordinates, a list of matched coordinates is
-    created.   A triangle is created for each  unique triplet in the x,y
-    coordinates and the length of the normalized sides  and angle of the
+    created.  A triangle is created for each unique triplet in the x,y
+    coordinates and the length of the normalized sides and angle of the
     verticies is compared to all of the triangles created for the input
     ra,dec coordinates.  A match is considered to occur if the absolute
     difference between the sides and the angles between the two triangles is
@@ -273,43 +269,43 @@ def match_by_triangle(x, y, ra, dec, n_limit=30, tolerance=0.02, clean_limit=5,
 
     Parameters
     ----------
-    x: ~numpy.ndarray
+    x : `numpy.ndarray`
         x-position of objects
 
-    y: ~numpy.ndarray
+    y : `numpy.ndarray`
         y-position of objects
 
-    ra: ~numpy.ndarray
+    ra : `numpy.ndarray`
         RA position of objects
 
-    dec: ~numpy.ndarray
+    dec : `numpy.ndarray`
         DEC position of objects
 
-    n_limit: int
+    n_limit : int
         Limit on the number of objects to match
 
-    tolerance: float
+    tolerance : float
         Tolerance for matching ratio of distances
 
-    clean_limit: int
+    clean_limit : int
         Numbe of stars required for a match.  Set to zero to return
         all stars whose ratios satisify the tolerance limit.
 
-    match_tolerance: ~astropy.Quantity
+    match_tolerance : `astropy.units.Quantity`
         Tolerance for when matching all sources based on their distance.
 
-    m_init: astropy.modeling.models
+    m_init : `~astropy.modeling.Model`
         A model instance for describing the transformation between
         coordinate systems.  It should be a FittableModel2D instance.
 
-    fitter: astropy.modeling.fitting
+    fitter : `~astropy.modeling.fitting.Fitter`
         A fitting routine for fitting the transformations.
 
     Returns
     -------
-    matches: list
+    matches : list
         If clean_limit=0, this returns a list of inices for all triplets of
-        stars with side and angle ratios belwo the tolerance.   If
+        stars with side and angle ratios belwo the tolerance.  If
         clean_limit>0, then this returns the indices of the first match to
         also satisfy the clean_limit requirement.
 
@@ -360,41 +356,41 @@ def match_by_fit(x, y, ra, dec, idp, idw, tolerance,
 
     Parameters
     ----------
-    x: ~numpy.ndarray
+    x : `numpy.ndarray`
         x-position of objects
 
-    y: ~numpy.ndarray
+    y : `numpy.ndarray`
         y-position of objects
 
-    ra: ~numpy.ndarray
+    ra : `numpy.ndarray`
         RA position of objects in degrees
 
-    dec: ~numpy.ndarray
+    dec : `numpy.ndarray`
         DEC position of objects in degrees
 
-    idp: ~numpy.ndarray
+    idp : `numpy.ndarray`
         Indices of x,y that match with objects in ra,dec
 
-    idw: ~numpy.ndarray
+    idw : `numpy.ndarray`
         Indices of ra,dec that match with objects in x,y
 
-    tolerance: ~astropy.Quantity
+    tolerance : `astropy.units.Quantity`
         Tolerance for when matching all sources based on their distance.
 
-    m_init: astropy.modeling.models
+    m_init : `~astropy.modeling.Model`
         A model instance for describing the transformation between coordinate
         systems.  It should be a FittableModel2D instance.
 
-    fitter: astropy.modeling.fitting
+    fitter : `~astropy.modeling.fitting.Fitter`
         A fitting routine for fitting the transformations.
 
 
     Returns
     -------
-    match_idx:  ~numpy.ndarray
+    match_idx : `numpy.ndarray`
         Indices of x,y that match with objects in ra,dec
 
-    match_idw: ~numpy.ndarray
+    match_idw : `numpy.ndarray`
         Indices of ra,dec that match with objects in x,y
 
     """
@@ -409,48 +405,48 @@ def match_by_fit(x, y, ra, dec, idp, idw, tolerance,
     return np.where(d2d < tolerance)[0], idw[d2d < tolerance]
 
 
-def create_wcs_from_fit(x, y, r, d, idp, idw, xref=0, yref=0,
+def create_wcs_from_fit(x, y, ra, dec, idp, idw, xref=0, yref=0,
                         m_init=models.Polynomial2D(1),
                         fitter=fitting.LinearLSQFitter()):
     """ Create WCS from a list of match coordinates
 
-    Paramters
-    ---------
-    x: ~numpy.ndarray
+    Parameters
+    ----------
+    x : `numpy.ndarray`
         x-position of objects
 
-    y: ~numpy.ndarray
+    y : `numpy.ndarray`
         y-position of objects
 
-    ra: ~numpy.ndarray
+    ra : `numpy.ndarray`
         RA position of objects in degrees
 
-    dec: ~numpy.ndarray
+    dec : `numpy.ndarray`
         DEC position of objects in degrees
 
-    idp: ~numpy.ndarray
+    idp : `numpy.ndarray`
         Indices of x,y that match with objects in ra,dec
 
-    idw: ~numpy.ndarray
+    idw : `numpy.ndarray`
         Indices of ra,dec that match with objects in x,y
 
-    xref: float
+    xref : float
         Pixel coordinate for the reference x-position
 
-    yref: float
+    yref : float
         Pixel coordinate for the reference y-position
 
-    m_init: astropy.modeling.models
+    m_init : `~astropy.modeling.Model`
         A model instance for describing the transformation between coordinate
         systems.  It should be a FittableModel2D instance.
 
-    fitter: astropy.modeling.fitting
+    fitter : `~astropy.modeling.fitting.Fitter`
         A fitting routine for fitting the transformations.
 
 
     Returns
     -------
-    wcs: astropy.wcs.WCS
+    wcs : `astropy.wcs.WCS`
        A WCS object based on the two sets of matching coordinates
 
 
@@ -461,8 +457,8 @@ def create_wcs_from_fit(x, y, r, d, idp, idw, xref=0, yref=0,
     be applied prior to the calculation of the WCS.
 
     """
-    r_fit = fitter(m_init, x[[idp]]-xref, y[[idp]]-yref, r[[idw]])
-    d_fit = fitter(m_init, x[[idp]]-xref, y[[idp]]-yref, d[[idw]])
+    r_fit = fitter(m_init, x[[idp]]-xref, y[[idp]]-yref, ra[[idw]])
+    d_fit = fitter(m_init, x[[idp]]-xref, y[[idp]]-yref, dec[[idw]])
     cosd = np.cos(d_fit.c0_0.value*u.degree)
 
     # Create a new WCS object.  The number of axes must be set

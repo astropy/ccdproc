@@ -123,11 +123,14 @@ Using `ccdproc`
     reduction_toolbox.rst
     image_management.rst
     reduction_examples.rst
+    astrom_example.rst
 
 .. automodapi:: ccdproc
    :skip: CCDData
    :skip: fits_ccddata_writer
    :skip: fits_ccddata_reader
+
+.. automodapi:: ccdproc.astrometry
 
 .. automodapi:: ccdproc.utils.slices
 

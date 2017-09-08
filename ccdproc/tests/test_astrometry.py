@@ -12,7 +12,7 @@ from astropy.tests.helper import pytest
 from astropy.utils.data import get_pkg_data_filename
 from astropy.wcs import WCS
 
-from ..astrometry import *
+from ..astrometry import remove_duplicates, distance, distance_ratios
 from ..astrometry import _calc_ratio, _get_index
 
 
