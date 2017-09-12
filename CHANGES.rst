@@ -64,6 +64,8 @@ Bug Fixes
   primary HDU contained no ``data`` but another HDU did. In that case the header
   were not correctly combined. [#541]
 
+- Suppress errors during WCS creation in CCDData.read(). [#552]
+
 
 1.2.0 (2016-12-13)
 ------------------
