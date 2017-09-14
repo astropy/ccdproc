@@ -706,12 +706,17 @@ def fits_ccddata_reader(filename, hdu=0, unit=None, hdu_uncertainty='UNCERT',
                                                              fits_unit_string))
 
         use_unit = unit or fits_unit_string
-        # Try constructing a WCS object. This may generate a warning, but never
-        # an error.
-        wcs = WCS(hdr)
-        # Test for success by checking to see if the wcs ctype has a non-empty
-        # value.
-        wcs = wcs if wcs.wcs.ctype[0] else None
+        # Try constructing a WCS object.
+        try:
+            wcs = WCS(hdr)
+        except Exception:
+            # Normally WCS only raises Warnings and doesn't fail but in rare
+            # cases (malformed header) it could fail...
+            wcs = None
+        else:
+            # Test for success by checking to see if the wcs ctype has a non-empty
+            # value.
+            wcs = wcs if wcs.wcs.ctype[0] else None
         ccd_data = CCDData(hdus[hdu].data, meta=hdr, unit=use_unit,
                            mask=mask, uncertainty=uncertainty, wcs=wcs)
 
