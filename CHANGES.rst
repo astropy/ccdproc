@@ -28,6 +28,10 @@ New Features
 
 - Added ``sum`` option in method for ``combime``. [#500, #508]
 
+- Add ``_replace_with_whitespace`` argument for the ``files_filtered`` and
+  generator methods of ``ImageFileCollection`` to allow filtering for whitespace
+  seperated keys. [#539]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,6 +69,10 @@ Bug Fixes
   were not correctly combined. [#541]
 
 - Suppress errors during WCS creation in CCDData.read(). [#552]
+
+- The generator methods in ``ImageFileCollection`` now don't leave open file
+  handles in case the iterator wasn't advanced or an exception was raised
+  either inside the method itself or during the loop. [#545]
 
 
 1.2.0 (2016-12-13)
