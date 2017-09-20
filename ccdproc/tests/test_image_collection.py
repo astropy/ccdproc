@@ -135,6 +135,27 @@ class TestImageFileCollection(object):
         assert ('flying monkeys' not in img_collection.keywords)
         assert len(img_collection.values('imagetyp', unique=True)) == 2
 
+    def test_filter_files_whitespace_keys(self, triage_setup):
+        hdr = fits.Header([('HIERARCH a b', 2)])
+        hdul = fits.HDUList([fits.PrimaryHDU(np.ones((10, 10)), header=hdr)])
+        hdul.writeto(os.path.join(triage_setup.test_dir,
+                                  'hdr_with_whitespace.fits'))
+
+        ic = ImageFileCollection(location=triage_setup.test_dir)
+        filtered = ic.files_filtered(a_b=2, replace_='_')
+        assert len(filtered) == 1
+        assert 'hdr_with_whitespace.fits' in filtered
+
+        # The same can be achieved by unpacking a dict yourself
+        filtered = ic.files_filtered(**{'a b': 2})
+        assert len(filtered) == 1
+        assert 'hdr_with_whitespace.fits' in filtered
+
+        # Also check it's working with generators:
+        for _, filename in ic.data(a_b=2, replace_='_',
+                                   return_fname=True):
+            assert filename == 'hdr_with_whitespace.fits'
+
     def test_filtered_files_have_proper_path(self, triage_setup):
         ic = ImageFileCollection(location=triage_setup.test_dir, keywords='*')
         # Get a subset of the files.
