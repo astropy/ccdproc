@@ -369,10 +369,11 @@ class ImageFileCollection(object):
         if char_to_replace is not None:
             kwargs = {key.replace(char_to_replace, ' '): value
                       for key, value in six.iteritems(kwargs)}
-            # It should be impossible to pass in strings so this doesn't have
-            # a check for non-string keys. The only functions that call this
-            # method only accept it as `**kwargs` so these have to be strings or
-            # it would raise "TypeError: func_name() keywords must be strings".
+            # It should be impossible to pass in not-strings so this function
+            # doesn't have a check for non-string keys. The only functions that
+            # call this method only accept it as `**kwargs` so these have to be
+            # strings or it would raise "TypeError: func_name() keywords must
+            # be strings". At least on Python 3.
         return kwargs
 
     def files_filtered(self, **kwd):
