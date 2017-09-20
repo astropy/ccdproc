@@ -142,7 +142,7 @@ class TestImageFileCollection(object):
                                   'hdr_with_whitespace.fits'))
 
         ic = ImageFileCollection(location=triage_setup.test_dir)
-        filtered = ic.files_filtered(a_b=2, _replace_with_whitespace='_')
+        filtered = ic.files_filtered(a_b=2, _replace='_')
         assert len(filtered) == 1
         assert 'hdr_with_whitespace.fits' in filtered
 
@@ -152,7 +152,7 @@ class TestImageFileCollection(object):
         assert 'hdr_with_whitespace.fits' in filtered
 
         # Also check it's working with generators:
-        for _, filename in ic.data(a_b=2, _replace_with_whitespace='_',
+        for _, filename in ic.data(a_b=2, _replace='_',
                                    return_fname=True):
             assert filename == 'hdr_with_whitespace.fits'
 

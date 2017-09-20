@@ -365,7 +365,7 @@ class ImageFileCollection(object):
         Currently this includes checking if any character should be replaced
         by a whitespace.
         """
-        char_to_replace = kwargs.pop('_replace_with_whitespace', None)
+        char_to_replace = kwargs.pop('replace_', None)
         if char_to_replace is not None:
             kwargs = {key.replace(char_to_replace, ' '): value
                       for key, value in six.iteritems(kwargs)}
@@ -385,7 +385,7 @@ class ImageFileCollection(object):
             contains not just the filename, but the full path to each file.
             Default is ``False``.
 
-        _replace_with_whitespace : str, optional, keyword-only
+        replace_ : str, optional, keyword-only
             If this parameter is given it should be a string of length 1 that
             indicates which character is replaced by a whitespace. This affects
             all keys passed in as ``**kwd``.
@@ -415,7 +415,7 @@ class ImageFileCollection(object):
         In case there is a keyword with whitespaces you can use::
 
             >>> collection.files_filtered(image_typ='LIGHT',
-            ...                           _replace_with_whitespace='_')
+            ...                           replace_='_')
 
         This will look for the ``image typ`` keyword (the underscore was
         replaced by a whitespace). This could be useful in case the header
@@ -839,7 +839,7 @@ class ImageFileCollection(object):
             See `~astropy.nddata.fits_ccddata_reader` for a complete list of
             parameters that can be passed through ``ccd_kwargs``.
 
-        _replace_with_whitespace : str, optional, keyword-only
+        replace_ : str, optional, keyword-only
             If this parameter is given it should be a string of length 1 that
             indicates which character is replaced by a whitespace. This affects
             all keys passed in as ``**kwd``.
