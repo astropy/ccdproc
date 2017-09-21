@@ -28,6 +28,9 @@ New Features
 
 - Added ``sum`` option in method for ``combime``. [#500, #508]
 
+- Add ``replace_`` argument for the ``files_filtered`` and generator methods of
+  ``ImageFileCollection`` to allow filtering for whitespace seperated keys. [#539]
+
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -63,6 +66,8 @@ Bug Fixes
 - Fixed a problem with ``CCDData.read`` when the extension wasn't given and the
   primary HDU contained no ``data`` but another HDU did. In that case the header
   were not correctly combined. [#541]
+
+- Suppress errors during WCS creation in CCDData.read(). [#552]
 
 
 1.2.0 (2016-12-13)

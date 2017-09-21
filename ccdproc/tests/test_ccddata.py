@@ -3,6 +3,8 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import textwrap
+
 import numpy as np
 import pytest
 
@@ -106,10 +108,10 @@ def test_initialize_from_fits_with_data_in_different_extension(tmpdir):
     hdus.writeto(filename)
     with catch_warnings(FITSFixedWarning) as w:
         ccd = CCDData.read(filename, unit='adu')
-    if not ASTROPY_GT_2_0 or minversion("astropy", "2.0.2"):
+    if not ASTROPY_GT_2_0 or minversion("astropy", "2.0.3"):
         # Test can only succeed if astropy <= 2 (where it uses ccdprocs CCDData)
         # or with the patched astropy.nddata.CCDData
-        # (probably included in 2.0.2)
+        # (scheduled for 2.0.3)
         assert len(w) == 0
         # check that the header is the combined header
         assert hdu2.header + hdu1.header == ccd.header
@@ -813,6 +815,49 @@ def test_write_read_multiextensionfits_custom_ext_names(ccd_data, tmpdir):
     np.testing.assert_array_equal(ccd_data.mask, ccd_after.mask)
     np.testing.assert_array_equal(ccd_data.uncertainty.array,
                                   ccd_after.uncertainty.array)
+
+
+@pytest.mark.skipif(ASTROPY_GT_2_0 and not minversion("astropy", "2.0.3"),
+                    reason="CCDData with reader is used from astropy and this "
+                           "Bug isn't fixed currently.")
+def test_read_wcs_not_creatable(tmpdir):
+    # The following Header can't be converted to a WCS object. See also
+    # astropy issue #6499.
+    hdr_txt_example_WCS = textwrap.dedent('''
+    SIMPLE  =                    T / Fits standard
+    BITPIX  =                   16 / Bits per pixel
+    NAXIS   =                    2 / Number of axes
+    NAXIS1  =                 1104 / Axis length
+    NAXIS2  =                 4241 / Axis length
+    CRVAL1  =         164.98110962 / Physical value of the reference pixel X
+    CRVAL2  =          44.34089279 / Physical value of the reference pixel Y
+    CRPIX1  =                -34.0 / Reference pixel in X (pixel)
+    CRPIX2  =               2041.0 / Reference pixel in Y (pixel)
+    CDELT1  =           0.10380000 / X Scale projected on detector (#/pix)
+    CDELT2  =           0.10380000 / Y Scale projected on detector (#/pix)
+    CTYPE1  = 'RA---TAN'           / Pixel coordinate system
+    CTYPE2  = 'WAVELENGTH'         / Pixel coordinate system
+    CUNIT1  = 'degree  '           / Units used in both CRVAL1 and CDELT1
+    CUNIT2  = 'nm      '           / Units used in both CRVAL2 and CDELT2
+    CD1_1   =           0.20760000 / Pixel Coordinate translation matrix
+    CD1_2   =           0.00000000 / Pixel Coordinate translation matrix
+    CD2_1   =           0.00000000 / Pixel Coordinate translation matrix
+    CD2_2   =           0.10380000 / Pixel Coordinate translation matrix
+    C2YPE1  = 'RA---TAN'           / Pixel coordinate system
+    C2YPE2  = 'DEC--TAN'           / Pixel coordinate system
+    C2NIT1  = 'degree  '           / Units used in both C2VAL1 and C2ELT1
+    C2NIT2  = 'degree  '           / Units used in both C2VAL2 and C2ELT2
+    RADECSYS= 'FK5     '           / The equatorial coordinate system
+    ''')
+    with catch_warnings(FITSFixedWarning):
+        hdr = fits.Header.fromstring(hdr_txt_example_WCS, sep='\n')
+    hdul = fits.HDUList([fits.PrimaryHDU(np.ones((4241, 1104)), header=hdr)])
+    filename = tmpdir.join('afile.fits').strpath
+    hdul.writeto(filename)
+    # The hdr cannot be converted to a WCS object because of an
+    # InconsistentAxisTypesError but it should still open the file
+    ccd = CCDData.read(filename, unit='adu')
+    assert ccd.wcs is None
 
 
 def test_wcs(ccd_data):
