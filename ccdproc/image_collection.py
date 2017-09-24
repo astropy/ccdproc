@@ -376,6 +376,50 @@ class ImageFileCollection(object):
             # be strings". At least on Python 3.
         return kwargs
 
+    def files_dictfiltered(self, filtersDict):
+        """Determine files whose keywords have listed values.
+
+        ``filtersDict`` is dict of keywords and values the files must have.
+        This allows for keywords with a "-" in the middle, as is allowed in FITS
+
+        If the keyword ``include_path=True`` is set, the returned list
+        contains not just the filename, but the full path to each file.
+
+        The value '*' represents any value.
+        A missing keyword is indicated by value ''.
+
+        value may be a subset of the complete keyword value
+
+        Example::
+
+            >>> keys = ['OBS-TIME']
+            >>> collection = ImageFileCollection('test/data', keywords=keys)
+            >>> collection.files_dictfiltered({'OBS-TIME':'0.001'})
+
+            >>> keys = ['DATE-OBS']
+            >>> collection = ImageFileCollection('test/data', keywords=keys)
+            >>> collection.files_dictfiltered({'DATE-OBS':'2017-08-27T14'})) # select a certain hour, not an exact time
+
+        NOTE: Value comparison is case *insensitive* for strings.
+        """
+        # force a copy by explicitly converting to a list
+        # print(filtersDict)  #only for testing purposes
+        current_file_mask = list(self.summary['file'].mask)
+
+
+        if 'include_path' in filtersDict:
+            include_path = filtersDict['include_path']
+        else:
+            include_path = False
+
+        self._find_keywordsdict_by_values(filtersDict)
+        filtered_files = self.summary['file'].compressed()
+        self.summary['file'].mask = current_file_mask
+        if include_path:
+            filtered_files = [path.join(self._location, f)
+                              for f in filtered_files]
+        return filtered_files
+      
     def files_filtered(self, **kwd):
         """Determine files whose keywords have listed values.
 
@@ -672,6 +716,74 @@ class ImageFileCollection(object):
             summary_table = Table(summary_table, masked=True)
 
         return summary_table
+
+     def _find_keywordsdict_by_values(self, filtersDict):
+        """
+        Michael Werger, 2017
+        Find files whose keywords specified as dictionary have given values
+
+        :param **kwd: is a dictionary of keywords and their values.
+        :return: matching
+
+        Example::
+
+            >>> keys = ['EXP-TIME']
+            >>> collection = ImageFileCollection('test/data', keywords=keys)
+            >>> collection.files_dictfiltered({'EXP-TIME':'0.001'})
+
+        """
+
+        keywords = filtersDict.keys()
+        values = filtersDict.values()
+
+        if set(keywords).issubset(self.keywords):
+            # we already have the information in memory
+            use_info = self.summary
+        else:
+            # we need to load information about these keywords.
+            use_info = self._fits_summary(header_keywords=keywords)
+
+        matches = np.ones(len(use_info), dtype=bool)
+        for key, value in zip(keywords, values):
+            logger.debug('key %s, value %s', key, value)
+            logger.debug('value in table %s', use_info[key])
+            value_missing = use_info[key].mask
+            logger.debug('value missing: %s', value_missing)
+            value_not_missing = np.logical_not(value_missing)
+            if value == '*':
+                have_this_value = value_not_missing
+            elif value is not None:
+                if isinstance(value, six.string_types):
+                # need to loop explicitly over array rather than using
+                # where to correctly do string comparison.
+                    have_this_value = np.zeros(len(use_info), dtype=bool)
+                    for idx, file_key_value in enumerate(use_info[key]):
+                        if value_not_missing[idx]:
+                            #print (file_key_value, value, str(file_key_value), str(value),str(value) in str(file_key_value) )
+                            value_matches = (str(value) in str(file_key_value)  )
+                        else:
+                            value_matches = False
+
+                        have_this_value[idx] = (value_not_missing[idx] &
+                                                value_matches)
+                else:
+                    have_this_value = value_not_missing
+                    tmp = (use_info[key][value_not_missing] == value)
+                    have_this_value[value_not_missing] = tmp
+                    have_this_value &= value_not_missing
+            else:
+                # this case--when value==None--is asking for the files which
+                # are missing a value for this keyword
+                have_this_value = value_missing
+
+
+            matches &= have_this_value
+
+        # the numpy convention is that the mask is True for values to
+        # be omitted, hence use ~matches.
+        logger.debug('Matches: %s', matches)
+        self.summary['file'].mask = ma.nomask
+        self.summary['file'].mask[~matches] = True
 
     def _find_keywords_by_values(self, **kwd):
         """
