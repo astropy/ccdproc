@@ -202,7 +202,7 @@ def _calc_ratio(x, y, i, j, k):
     d1 = distance(x[i], y[i], x[j], y[j])
     d2 = distance(x[i], y[i], x[k], y[k])
     if d2 == 0:
-        ratio = np.nan
+        return np.nan
     return d1/d2
 
 
