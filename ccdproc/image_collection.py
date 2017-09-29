@@ -877,29 +877,34 @@ class ImageFileCollection(object):
         ccd_kwargs = ccd_kwargs or {}
 
         for full_path in self._paths():
-            no_scale = do_not_scale_image_data
-            hdulist = fits.open(full_path,
-                                do_not_scale_image_data=no_scale)
+            add_kwargs = {'do_not_scale_image_data': do_not_scale_image_data}
+
+            # We need to open the file here, get the appropriate values and then
+            # close it again before it "yields" otherwise it's not garantueed
+            # that the generator actually advances and closes the file again.
+            # For example if one uses "next" on the generator manually the
+            # file handle could "leak".
+            if return_type == 'header':
+                return_thing = fits.getheader(full_path, self.ext)
+            elif return_type == 'data':
+                return_thing = fits.getdata(full_path, self.ext, **add_kwargs)
+            elif return_type == 'ccd':
+                return_thing = fits_ccddata_reader(
+                    full_path, hdu=self.ext, **ccd_kwargs)
+            elif return_type == 'hdu':
+                with fits.open(full_path, **add_kwargs) as hdulist:
+                    ext_index = hdulist.index_of(self.ext)
+                    # Need to copy the HDU to prevent lazy loading problems
+                    # and "IO operations on closed file" errors
+                    return_thing = hdulist[ext_index].copy()
+            else:
+                raise ValueError('no generator for {}'.format(return_type))
 
             file_name = path.basename(full_path)
-
-            ext_index = hdulist.index_of(self.ext)
-
-            return_options = {
-                    'header': lambda: hdulist[ext_index].header,
-                    'hdu': lambda: hdulist[ext_index],
-                    'data': lambda: hdulist[ext_index].data,
-                    'ccd': lambda: fits_ccddata_reader(full_path,
-                                                       hdu=ext_index,
-                                                       **ccd_kwargs)
-                    }
-            try:
-                if return_fname:
-                    yield return_options[return_type](), file_name
-                else:
-                    yield return_options[return_type]()
-            except KeyError:
-                raise ValueError('no generator for {}'.format(return_type))
+            if return_fname:
+                yield return_thing, file_name
+            else:
+                yield return_thing
 
             if save_location:
                 destination_dir = save_location
@@ -922,13 +927,24 @@ class ImageFileCollection(object):
                     nuke_existing = {'overwrite': True}
             else:
                 nuke_existing = {}
-            if (new_path != full_path) or nuke_existing:
-                try:
-                    hdulist.writeto(new_path, **nuke_existing)
-                except IOError:
-                    logger.error('error writing file %s', new_path)
-                    raise
-            hdulist.close()
+
+            if return_type == 'ccd':
+                pass
+            elif (new_path != full_path) or nuke_existing:
+                with fits.open(full_path, **add_kwargs) as hdulist:
+                    ext_index = hdulist.index_of(self.ext)
+                    if return_type == 'hdu':
+                        hdulist[ext_index] = return_thing
+                    elif return_type == 'data':
+                        hdulist[ext_index].data = return_thing
+                    elif return_type == 'header':
+                        hdulist[ext_index].header = return_thing
+
+                    try:
+                        hdulist.writeto(new_path, **nuke_existing)
+                    except IOError:
+                        logger.error('error writing file %s', new_path)
+                        raise
 
         # reset mask
         for col in self.summary.columns:
