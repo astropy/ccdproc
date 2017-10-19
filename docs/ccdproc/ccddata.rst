@@ -86,7 +86,7 @@ data (ignoring any mask) is accessed through ``data`` attribute:
                  mask = [False False  True],
            fill_value = 1e+20)
     <BLANKLINE>
-    >>> 2 * np.ones(3) * ccd_masked.data   # ignores the mask
+    >>> 2 * np.ones(3) * ccd_masked.data   # doctest: +FLOAT_CMP
     array([ 2.,  4.,  6.])
 
 You can force conversion to a numpy array with:
