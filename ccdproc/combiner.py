@@ -53,7 +53,7 @@ class Combiner(object):
         >>> ccddata3 = CCDData(np.ones((4, 4)), unit=u.adu)
         >>> c = Combiner([ccddata1, ccddata2, ccddata3])
         >>> ccdall = c.average_combine()
-        >>> ccdall
+        >>> ccdall  # doctest: +FLOAT_CMP
         CCDData([[ 0.66666667,  0.66666667,  0.66666667,  0.66666667],
                  [ 0.66666667,  0.66666667,  0.66666667,  0.66666667],
                  [ 0.66666667,  0.66666667,  0.66666667,  0.66666667],
