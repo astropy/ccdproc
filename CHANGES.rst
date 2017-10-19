@@ -49,6 +49,9 @@ Other Changes and Additions
 
 - Building the documentation requires astropy >= 2.0. [#528]
 
+- When reading a ``CCDData`` from a file the WCS-related keywords are removed
+  from the header. [#568]
+
 
 Bug Fixes
 ^^^^^^^^^
