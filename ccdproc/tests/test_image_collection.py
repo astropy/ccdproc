@@ -156,6 +156,12 @@ class TestImageFileCollection(object):
                                    return_fname=True):
             assert filename == 'hdr_with_whitespace.fits'
 
+    def test_filter_files_with_str_on_nonstr_column(self, triage_setup):
+        ic = ImageFileCollection(location=triage_setup.test_dir)
+        # Filtering an integer column with a string
+        filtered = ic.files_filtered(naxis='2')
+        assert len(filtered) == 0
+
     def test_filtered_files_have_proper_path(self, triage_setup):
         ic = ImageFileCollection(location=triage_setup.test_dir, keywords='*')
         # Get a subset of the files.

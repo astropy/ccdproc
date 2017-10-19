@@ -717,8 +717,14 @@ class ImageFileCollection(object):
                     have_this_value = np.zeros(len(use_info), dtype=bool)
                     for idx, file_key_value in enumerate(use_info[key]):
                         if value_not_missing[idx]:
-                            value_matches = (file_key_value.lower() ==
-                                             value.lower())
+                            try:
+                                value_matches = (
+                                    file_key_value.lower() == value.lower())
+                            except AttributeError:
+                                # In case we're dealing with an object column
+                                # there could be values other than strings in it
+                                # so it could fail with an AttributeError.
+                                value_matches = False
                         else:
                             value_matches = False
 
