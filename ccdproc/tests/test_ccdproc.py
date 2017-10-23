@@ -523,7 +523,7 @@ def test_gain_correct_quantity(ccd_data):
 
 
 #test transform is ccd
-def test_transform_isccd(ccd_data):
+def test_transform_isccd():
     with pytest.raises(TypeError):
         transform_image(1, 1)
 
@@ -644,7 +644,7 @@ def test_block_replicate():
 
 
 #test blockaveraging ndarray
-def test__blkavg_ndarray(ccd_data):
+def test__blkavg_ndarray():
     with pytest.raises(TypeError):
         _blkavg(1, (5, 5))
 

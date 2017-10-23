@@ -13,7 +13,7 @@ from ..core import rebin
 
 
 # test rebinning ndarray
-def test_rebin_ndarray(ccd_data):
+def test_rebin_ndarray():
     with pytest.raises(TypeError), catch_warnings(AstropyDeprecationWarning):
         rebin(1, (5, 5))
 

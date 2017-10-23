@@ -79,7 +79,7 @@ def test_combiner_dtype(ccd_data):
 
 
 #test mask is created from ccd.data
-def test_combiner_mask(ccd_data):
+def test_combiner_mask():
     data = np.zeros((10, 10))
     data[5, 5] = 1
     mask = (data == 0)
@@ -106,7 +106,7 @@ def test_weights_shape(ccd_data):
 
 
 #test the min-max rejection
-def test_combiner_minmax(ccd_data):
+def test_combiner_minmax():
     ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
                 CCDData(np.zeros((10, 10)) - 1000, unit=u.adu),
                 CCDData(np.zeros((10, 10)) + 1000, unit=u.adu)]
@@ -117,7 +117,7 @@ def test_combiner_minmax(ccd_data):
     assert ccd.data.mean() == 0
 
 
-def test_combiner_minmax_max(ccd_data):
+def test_combiner_minmax_max():
     ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
                 CCDData(np.zeros((10, 10)) - 1000, unit=u.adu),
                 CCDData(np.zeros((10, 10)) + 1000, unit=u.adu)]
@@ -127,7 +127,7 @@ def test_combiner_minmax_max(ccd_data):
     assert c.data_arr[2].mask.all()
 
 
-def test_combiner_minmax_min(ccd_data):
+def test_combiner_minmax_min():
     ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
                 CCDData(np.zeros((10, 10)) - 1000, unit=u.adu),
                 CCDData(np.zeros((10, 10)) + 1000, unit=u.adu)]
@@ -220,7 +220,7 @@ def test_combiner_sum(ccd_data):
 
 
 #test data combined with mask is created correctly
-def test_combiner_mask_average(ccd_data):
+def test_combiner_mask_average():
     data = np.zeros((10, 10))
     data[5, 5] = 1
     mask = (data == 0)
@@ -270,7 +270,7 @@ def test_combiner_scaling_fails(ccd_data):
 
 
 #test data combined with mask is created correctly
-def test_combiner_mask_median(ccd_data):
+def test_combiner_mask_median():
     data = np.zeros((10, 10))
     data[5, 5] = 1
     mask = (data == 0)
@@ -285,7 +285,7 @@ def test_combiner_mask_median(ccd_data):
 
 
 #test data combined with mask is created correctly
-def test_combiner_mask_sum(ccd_data):
+def test_combiner_mask_sum():
     data = np.zeros((10, 10))
     data[5, 5] = 1
     mask = (data == 0)
