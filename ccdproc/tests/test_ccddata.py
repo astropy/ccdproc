@@ -236,9 +236,10 @@ def test_setting_uncertainty_with_array(ccd_data):
     np.testing.assert_array_equal(ccd_data.uncertainty.array, fake_uncertainty)
 
 
-def test_setting_uncertainty_wrong_shape_raises_error(ccd_data):
+def test_setting_uncertainty_wrong_shape_raises_error():
+    ccd = CCDData(np.ones((10, 10)), unit='adu')
     with pytest.raises(ValueError):
-        ccd_data.uncertainty = np.random.random(size=2 * ccd_data.shape)
+        ccd.uncertainty = np.zeros((20, 20))
 
 
 def test_to_hdu(ccd_data):
