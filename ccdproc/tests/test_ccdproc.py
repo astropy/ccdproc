@@ -46,7 +46,7 @@ except ImportError:
 def test_create_deviation(ccd_data, u_image, u_gain, u_readnoise,
                           expect_success):
     ccd_data.unit = u_image
-    if u_gain:
+    if u_gain is not None:
         gain = 2.0 * u_gain
     else:
         gain = None
@@ -56,7 +56,7 @@ def test_create_deviation(ccd_data, u_image, u_gain, u_readnoise,
         assert ccd_var.uncertainty.array.shape == (10, 10)
         assert ccd_var.uncertainty.array.size == 100
         assert ccd_var.uncertainty.array.dtype == np.dtype(float)
-        if gain:
+        if gain is not None:
             expected_var = np.sqrt(2 * ccd_data.data + 5 ** 2) / 2
         else:
             expected_var = np.sqrt(ccd_data.data + 5 ** 2)
