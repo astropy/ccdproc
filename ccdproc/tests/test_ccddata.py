@@ -134,7 +134,7 @@ def test_initialize_from_fits_with_extension(tmpdir):
     np.testing.assert_array_equal(ccd.data, fake_img2)
 
 
-def test_write_unit_to_hdu(ccd_data, tmpdir):
+def test_write_unit_to_hdu(ccd_data):
     ccd_unit = ccd_data.unit
     hdulist = ccd_data.to_hdu()
     assert 'bunit' in hdulist[0].header
@@ -190,7 +190,7 @@ def test_fromMEF(ccd_data, tmpdir):
     np.testing.assert_array_equal(cd.data, 2 * ccd_data.data)
 
 
-def test_metafromheader(ccd_data):
+def test_metafromheader():
     hdr = fits.header.Header()
     hdr['observer'] = 'Edwin Hubble'
     hdr['exptime'] = '3600'

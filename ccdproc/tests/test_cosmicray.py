@@ -66,7 +66,7 @@ def test_cosmicray_lacosmic_check_data(ccd_data):
 
 
 @pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_median_check_data(ccd_data):
+def test_cosmicray_median_check_data():
     with pytest.raises(TypeError):
         ndata, crarr = cosmicray_median(10, thresh=5, mbox=11,
                                         error_image=DATA_SCALE)
