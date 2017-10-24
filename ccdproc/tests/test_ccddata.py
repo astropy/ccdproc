@@ -73,6 +73,32 @@ def test_initialize_from_FITS(ccd_data, tmpdir):
         assert cd.meta[k] == v
 
 
+def test_reader_removes_wcs_related_keywords(tmpdir):
+    arr = np.arange(100).reshape(10, 10)
+    # Create a WCS programatically (straight from the astropy WCS documentation)
+    w = WCS(naxis=2)
+    w.wcs.crpix = [-234.75, 8.3393]
+    w.wcs.cdelt = np.array([-0.066667, 0.066667])
+    w.wcs.crval = [0, -90]
+    w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
+    w.wcs.set_pv([(2, 1, 45.0)])
+    # Write the image including WCS to file
+    ccd = CCDData(arr, unit='adu', wcs=w)
+    filename = tmpdir.join('afile.fits').strpath
+    ccd.write(filename)
+
+    # Check that the header and the meta of the CCDData are not equal
+    ccd_fromfile = CCDData.read(filename)
+    read_header = ccd_fromfile.meta
+    ref_header = fits.getheader(filename)
+    ref_wcs = ccd_fromfile.wcs.to_header()
+    for key in read_header:
+        # Make sure no new keys were accidentally added
+        assert key in ref_header
+    for key in ref_header:
+        assert key in read_header or key in ref_wcs
+
+
 def test_initialize_from_fits_with_unit_in_header(tmpdir):
     fake_img = np.random.random(size=(100, 100))
     hdu = fits.PrimaryHDU(fake_img)
@@ -651,17 +677,6 @@ def test_wcs_attribute(ccd_data, tmpdir):
     assert ccd_new.wcs is not None
     # WCS attribute should be equal to wcs above.
     assert ccd_new.wcs.wcs == wcs.wcs
-
-    # Converting CCDData object with wcs to an hdu shouldn't
-    # create duplicate wcs-related entries in the header.
-    ccd_new_hdu = ccd_new.to_hdu()[0]
-    if not ASTROPY_GT_2_0:
-        # from astropy 2.0 on the CCDData has been moved to the astropy core
-        # package and the WCS attributes are removed from the meta when the
-        # data is read the WCS related attributes are removed.
-        # In that case the length of the read header will differ from the
-        # header in the HDU after `to_hdu` is called.
-        assert len(ccd_new_hdu.header) == original_header_length
 
     # Making a CCDData with WCS (but not WCS in the header) should lead to
     # WCS information in the header when it is converted to an HDU.
