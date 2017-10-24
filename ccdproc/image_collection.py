@@ -565,8 +565,8 @@ class ImageFileCollection(object):
                 # a mistake. It would lead to problems in ImageFileCollection
                 # to add it as well, so simply ignore those.
                 warnings.warn(
-                    'Header from file "{f}" contains multiple entries for {k},'
-                    ' the pair "{k}={v}" will be ignored.'
+                    'Header from file "{f}" contains multiple entries for '
+                    '"{k}", the pair "{k}={v}" will be ignored.'
                     ''.format(k=k, v=v, f=file_name),
                     UserWarning)
                 continue

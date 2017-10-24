@@ -800,7 +800,11 @@ class TestImageFileCollection(object):
 
         hdu.writeto(os.path.join(triage_setup.test_dir, 'duplicated.fits'))
 
-        ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
+        with catch_warnings(UserWarning) as w:
+            ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
+        assert len(w) == 1
+        assert 'stupid' in str(w[0].message)
+
         assert 'stupid' in ic.summary.colnames
         assert 'fun' in ic.summary['stupid']
         assert 'nofun' not in ic.summary['stupid']
