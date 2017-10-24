@@ -202,7 +202,7 @@ def _calc_ratio(x, y, i, j, k):
     d1 = distance(x[i], y[i], x[j], y[j])
     d2 = distance(x[i], y[i], x[k], y[k])
     if d2 == 0:
-        return  np.nan
+        return np.nan
     return d1/d2
 
 
@@ -275,10 +275,10 @@ def match_by_triangle(x, y, ra, dec, n_limit=30, tolerance=0.02, clean_limit=5,
     y : `numpy.ndarray`
         y-position of objects
 
-    ra : `numpy.ndarray`
+    ra : `numpy.ndarray` or `astropy.units.Quantity`
         RA position of objects
 
-    dec : `numpy.ndarray`
+    dec : `numpy.ndarray` or `astropy.units.Quantity`
         DEC position of objects
 
     n_limit : int
@@ -310,15 +310,21 @@ def match_by_triangle(x, y, ra, dec, n_limit=30, tolerance=0.02, clean_limit=5,
         also satisfy the clean_limit requirement.
 
     """
+    # convert to array only for the case of using <astropy 2.0
+    # and modeling doesn't work with units
+    if isinstance(ra, u.quantity.Quantity):
+        ra = ra.to(u.deg).value
+    if isinstance(dec, u.quantity.Quantity):
+        dec = dec.to(u.deg).value
 
     # shortent the ra lists if necessary
     # correct the RA for projection at different dec's
     if len(ra) > n_limit:
         d = dec[:n_limit]
-        r = ra[:n_limit] * np.cos(d*u.deg).value
+        r = ra[:n_limit] * np.cos(d.mean()*u.deg).value
     else:
         d = dec
-        r = ra  * np.cos(d*u.deg).value
+        r = ra * np.cos(d.mean()*u.deg).value
 
     # create the potential list of matches
     world_ratio = {}
@@ -396,9 +402,9 @@ def match_by_fit(x, y, ra, dec, idp, idw, tolerance,
     # convert to array only for the case of using <astropy 2.0
     # and modeling doesn't work with units
     if isinstance(ra, u.quantity.Quantity):
-       ra = ra.to(u.deg).value
+        ra = ra.to(u.deg).value
     if isinstance(dec, u.quantity.Quantity):
-       dec = dec.to(u.deg).value
+        dec = dec.to(u.deg).value
     r_fit = fitter(m_init, x[[idp]], y[[idp]], ra[[idw]])
     d_fit = fitter(m_init, x[[idp]], y[[idp]], dec[[idw]])
 
