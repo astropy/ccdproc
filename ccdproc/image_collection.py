@@ -359,24 +359,6 @@ class ImageFileCollection(object):
         else:
             return list(self.summary[keyword])
 
-    def _preprocess_kwargs_for_filtering(self, kwargs):
-        """Method to find out if the kwargs dictionary that will be used to
-        find matching files should be preprocessed.
-
-        Currently this includes checking if any character should be replaced
-        by a whitespace.
-        """
-        char_to_replace = kwargs.pop('replace_', None)
-        if char_to_replace is not None:
-            kwargs = {key.replace(char_to_replace, ' '): value
-                      for key, value in six.iteritems(kwargs)}
-            # It should be impossible to pass in not-strings so this function
-            # doesn't have a check for non-string keys. The only functions that
-            # call this method only accept it as `**kwargs` so these have to be
-            # strings or it would raise "TypeError: func_name() keywords must
-            # be strings". At least on Python 3.
-        return kwargs
-
     def files_filtered(self, **kwd):
         """Determine files whose keywords have listed values.
 
@@ -386,13 +368,6 @@ class ImageFileCollection(object):
             If the keyword ``include_path=True`` is set, the returned list
             contains not just the filename, but the full path to each file.
             Default is ``False``.
-
-        replace_ : str, optional, keyword-only
-            If this parameter is given it should be a string of length 1 that
-            indicates which character is replaced by a whitespace. This affects
-            all keys passed in as ``**kwd``.
-
-            .. versionadded:: 1.3
 
         **kwd :
             ``**kwd`` is dict of keywords and values the files must have.
@@ -414,14 +389,12 @@ class ImageFileCollection(object):
             >>> collection.files_filtered(imagetyp='LIGHT', filter='R')
             >>> collection.files_filtered(imagetyp='*', filter='')
 
-        In case there is a keyword with whitespaces you can use::
+        In case you want to filter with keyword names that cannot be used
+        as keyword argument name, you have to unpack them using a dictionary.
+        For example if a keyword name contains a space or a ``-``::
 
-            >>> collection.files_filtered(image_typ='LIGHT',
-            ...                           replace_='_')
-
-        This will look for the ``image typ`` keyword (the underscore was
-        replaced by a whitespace). This could be useful in case the header
-        contains keys like ``ESO TPL ID`` (or similar).
+            >>> add_filters = {'exp-time': 20, 'ESO TPL ID': 1050}
+            >>> collection.files_filtered(imagetyp='LIGHT', **add_filters)
 
         Notes
         -----
@@ -431,7 +404,6 @@ class ImageFileCollection(object):
         current_file_mask = list(self.summary['file'].mask)
 
         include_path = kwd.pop('include_path', False)
-        kwd = self._preprocess_kwargs_for_filtering(kwd)
 
         self._find_keywords_by_values(**kwd)
         filtered_files = self.summary['file'].compressed()
@@ -847,13 +819,6 @@ class ImageFileCollection(object):
             See `~astropy.nddata.fits_ccddata_reader` for a complete list of
             parameters that can be passed through ``ccd_kwargs``.
 
-        replace_ : str, optional, keyword-only
-            If this parameter is given it should be a string of length 1 that
-            indicates which character is replaced by a whitespace. This affects
-            all keys passed in as ``**kwd``.
-
-            .. versionadded:: 1.3
-
         **kwd :
             Any additional keywords are used to filter the items returned; see
             `files_filtered` examples for details.
@@ -878,7 +843,6 @@ class ImageFileCollection(object):
             current_mask[col] = self.summary[col].mask
 
         if kwd:
-            kwd = self._preprocess_kwargs_for_filtering(kwd)
             self._find_keywords_by_values(**kwd)
 
         ccd_kwargs = ccd_kwargs or {}

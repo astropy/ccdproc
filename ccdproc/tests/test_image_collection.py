@@ -143,11 +143,7 @@ class TestImageFileCollection(object):
                                   'hdr_with_whitespace.fits'))
 
         ic = ImageFileCollection(location=triage_setup.test_dir)
-        filtered = ic.files_filtered(a_b=2, replace_='_')
-        assert len(filtered) == 1
-        assert 'hdr_with_whitespace.fits' in filtered
-
-        # The same can be achieved by unpacking a dict yourself
+        # Using a dictionary and unpacking it should work
         filtered = ic.files_filtered(**{'a b': 2})
         assert len(filtered) == 1
         assert 'hdr_with_whitespace.fits' in filtered
