@@ -146,8 +146,8 @@ def test_combiner_sigmaclip_high():
                 CCDData(np.zeros((10, 10)) + 1000, unit=u.adu)]
 
     c = Combiner(ccd_list)
-    #using mad for more robust statistics vs. std
-    c.sigma_clipping(high_thresh=3, low_thresh=None, func=np.median,
+    # using mad for more robust statistics vs. std
+    c.sigma_clipping(high_thresh=3, low_thresh=None, func=np.ma.median,
                      dev_func=mad)
     assert c.data_arr[5].mask.all()
 
@@ -160,14 +160,14 @@ def test_combiner_sigmaclip_single_pix():
                 CCDData(np.zeros((10, 10)) + 10, unit=u.adu),
                 CCDData(np.zeros((10, 10)) - 10, unit=u.adu)]
     c = Combiner(ccd_list)
-    #add a single pixel in another array to check that
-    #that one gets rejected
+    # add a single pixel in another array to check that
+    # that one gets rejected
     c.data_arr[0, 5, 5] = 0
     c.data_arr[1, 5, 5] = -5
     c.data_arr[2, 5, 5] = 5
     c.data_arr[3, 5, 5] = -5
     c.data_arr[4, 5, 5] = 25
-    c.sigma_clipping(high_thresh=3, low_thresh=None, func=np.median,
+    c.sigma_clipping(high_thresh=3, low_thresh=None, func=np.ma.median,
                      dev_func=mad)
     assert c.data_arr.mask[4, 5, 5]
 
@@ -181,8 +181,8 @@ def test_combiner_sigmaclip_low():
                 CCDData(np.zeros((10, 10)) - 1000, unit=u.adu)]
 
     c = Combiner(ccd_list)
-    #using mad for more robust statistics vs. std
-    c.sigma_clipping(high_thresh=None, low_thresh=3, func=np.median,
+    # using mad for more robust statistics vs. std
+    c.sigma_clipping(high_thresh=None, low_thresh=3, func=np.ma.median,
                      dev_func=mad)
     assert c.data_arr[5].mask.all()
 
@@ -251,7 +251,7 @@ def test_combiner_with_scaling(ccd_data):
     assert avg_ccd.shape == ccd_data.shape
     median_ccd = combiner.median_combine()
     # Does median also scale to the correct value?
-    np.testing.assert_almost_equal(np.median(median_ccd),
+    np.testing.assert_almost_equal(np.median(median_ccd.data),
                                    np.median(ccd_data.data))
 
     # Set the scaling manually...
@@ -520,7 +520,7 @@ def test_3d_combiner_with_scaling(ccd_data):
     assert avg_ccd.shape == ccd_data.shape
     median_ccd = combiner.median_combine()
     # Does median also scale to the correct value?
-    np.testing.assert_almost_equal(np.median(median_ccd),
+    np.testing.assert_almost_equal(np.median(median_ccd.data),
                                    np.median(ccd_data.data))
 
     # Set the scaling manually...
