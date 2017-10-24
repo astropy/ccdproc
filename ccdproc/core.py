@@ -773,7 +773,7 @@ def transform_image(ccd, transform_func, **kwargs):
     Parameters
     ----------
     ccd : `~astropy.nddata.CCDData`
-        Data to be flatfield corrected.
+        Data to be transformed.
 
     transform_func : callable
         Function to be used to transform the data, mask and uncertainty.
@@ -1074,7 +1074,7 @@ def rebin(ccd, newshape):
 
     Parameters
     ----------
-    data : `~astropy.nddata.CCDData` or `numpy.ndarray`
+    ccd : `~astropy.nddata.CCDData` or `numpy.ndarray`
         Data to rebin.
 
     newshape : tuple
@@ -1772,7 +1772,7 @@ def bitfield_to_boolean_mask(bitfield, ignore_bits=0, flip_bits=None):
           account while a binary representation of all ``1`` means that all
           flags would be ignored.
         - If it's ``None`` then all flags are ignored
-        - If it's a string then it must be a ``,`` or ``+`` seperated string
+        - If it's a string then it must be a ``,`` or ``+`` separated string
           of integers that bits to ignore. If the string starts with an ``~``
           the integers are interpreted as **the only flags** to take into
           account.
@@ -1788,7 +1788,7 @@ def bitfield_to_boolean_mask(bitfield, ignore_bits=0, flip_bits=None):
     Examples
     --------
     Bitfields (or data quality arrays) are integer arrays where the binary
-    representation of the values indicates wheter a specific flag is set or
+    representation of the values indicates whether a specific flag is set or
     not. The convention is that a value of ``0`` represents a **good value**
     and a value that is ``!= 0`` represents a value that is in some (or
     multiple) ways considered a **bad value**. The ``bitfield_to_boolean_mask``

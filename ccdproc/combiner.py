@@ -450,7 +450,7 @@ class Combiner(object):
         return combined_image
 
     def sum_combine(self, sum_func=ma.sum, scale_to=None,
-                        uncertainty_func=ma.std):
+                    uncertainty_func=ma.std):
         """
         Sum combine together a set of arrays.
 
@@ -467,7 +467,7 @@ class Combiner(object):
 
         Parameters
         ----------
-        scale_func : function, optional
+        sum_func : function, optional
             Function to calculate the sum. Defaults to
             `numpy.ma.sum`.
 
