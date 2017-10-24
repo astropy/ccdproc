@@ -202,7 +202,7 @@ def _calc_ratio(x, y, i, j, k):
     d1 = distance(x[i], y[i], x[j], y[j])
     d2 = distance(x[i], y[i], x[k], y[k])
     if d2 == 0:
-        return np.nan
+        return  np.nan
     return d1/d2
 
 
@@ -315,10 +315,10 @@ def match_by_triangle(x, y, ra, dec, n_limit=30, tolerance=0.02, clean_limit=5,
     # correct the RA for projection at different dec's
     if len(ra) > n_limit:
         d = dec[:n_limit]
-        r = ra[:n_limit]
+        r = ra[:n_limit] * np.cos(d*u.deg).value
     else:
         d = dec
-        r = ra
+        r = ra  * np.cos(d*u.deg).value
 
     # create the potential list of matches
     world_ratio = {}
@@ -333,7 +333,6 @@ def match_by_triangle(x, y, ra, dec, n_limit=30, tolerance=0.02, clean_limit=5,
             if np.allclose(base[0][base[2]], tri[0][tri[2]], atol=tolerance) \
                and np.allclose(base[1][base[2]], tri[1][tri[2]],
                                atol=tolerance):
-
                 idp, idx = match_by_fit(x, y, r, d, (i, j, k), key,
                                         match_tolerance,
                                         m_init=m_init, fitter=fitter)
@@ -362,7 +361,7 @@ def match_by_fit(x, y, ra, dec, idp, idw, tolerance,
     y : `numpy.ndarray`
         y-position of objects
 
-    ra : `numpy.ndarray`
+    ra : `numpy.ndarray` or `~astropy.units.Quantity`
         RA position of objects in degrees
 
     dec : `numpy.ndarray`
