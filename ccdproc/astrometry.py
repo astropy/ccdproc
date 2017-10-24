@@ -364,7 +364,7 @@ def match_by_fit(x, y, ra, dec, idp, idw, tolerance,
     ra : `numpy.ndarray` or `~astropy.units.Quantity`
         RA position of objects in degrees
 
-    dec : `numpy.ndarray`
+    dec : `numpy.ndarray` or `~astropy.units.Quantity`
         DEC position of objects in degrees
 
     idp : `numpy.ndarray`
@@ -393,6 +393,12 @@ def match_by_fit(x, y, ra, dec, idp, idw, tolerance,
         Indices of ra,dec that match with objects in x,y
 
     """
+    # convert to array only for the case of using <astropy 2.0
+    # and modeling doesn't work with units
+    if isinstance(ra, u.quantity.Quantity):
+       ra = ra.to(u.deg).value
+    if isinstance(dec, u.quantity.Quantity):
+       dec = dec.to(u.deg).value
     r_fit = fitter(m_init, x[[idp]], y[[idp]], ra[[idw]])
     d_fit = fitter(m_init, x[[idp]], y[[idp]], dec[[idw]])
 

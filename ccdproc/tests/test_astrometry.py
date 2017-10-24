@@ -112,6 +112,27 @@ def test_match_by_fit():
     assert np.all(rr==np.arange(10))
     assert np.all(dd==np.arange(10))
 
+
+# match_by_fit
+def test_match_by_fit_quantity():
+    x_init = mod.models.Polynomial2D(1, c0_0=10, c1_0=0.1, c0_1= 0.2)
+    y_init = mod.models.Polynomial2D(1, c0_0=5, c1_0=0.2, c0_1= 0.1)
+
+    x = np.arange(10)
+    y = np.arange(10)
+
+    d = y_init(x,y)
+    r = x_init(x,y)
+
+    rr, dd = match_by_fit(x,y,r*u.deg,d*u.deg,[0,1,2], [0,1,2],
+                                  tolerance=0.1*u.degree)
+
+
+    assert np.all(rr==np.arange(10))
+    assert np.all(dd==np.arange(10))
+
+
+
 # create_wcs_from_fit
 def test_create_wcs_from_fit():
     x_init = mod.models.Polynomial2D(1, c0_0=10, c1_0=0.1, c0_1= 0.2)
