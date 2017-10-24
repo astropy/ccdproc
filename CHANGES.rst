@@ -73,6 +73,9 @@ Bug Fixes
   handles in case the iterator wasn't advanced or an exception was raised
   either inside the method itself or during the loop. [#553]
 
+- Allow non-string columns when filtering an ``ImageFileCollection`` with a
+  string value. [#567]
+
 
 1.2.0 (2016-12-13)
 ------------------
