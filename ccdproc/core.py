@@ -722,7 +722,8 @@ def gain_correct(ccd, gain, gain_unit=None):
 def flat_correct(ccd, flat, min_value=None, mean_value=None):
     """Correct the image for flat fielding.
 
-    The flat field image is normalized by its mean before flat correcting.
+    The flat field image is normalized by its mean or a user-supplied value
+    before flat correcting.
 
     Parameters
     ----------
