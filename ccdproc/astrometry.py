@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-# This module implements the combiner class.
+# This module implements the astrometry class.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
@@ -43,7 +43,7 @@ def remove_duplicates(x, y, tolerance):
 
     for i in range(len(x)):
         if mask[i]:
-            d = ((x - x[i])**2 + (y - y[i])**2)**0.5
+            d = distance(x, y, x[i], y[i])
             j = np.where((d < tolerance))
             mask[j] = False
             mask[i] = True
@@ -73,33 +73,7 @@ def distance(x1, y1, x2, y2):
     d : float or `numpy.ndarray`
         Distance between x1,y1 and x2,y2
     """
-    return ((x1-x2)**2 + (y1-y2)**2)**0.5
-
-
-def _get_index(z, n_stars):
-    """Return the indices from a set of permutations of length ``n_stars``.
-
-    For example, it will return the indices of the three stars
-    corresponding to the output from distance ratio.
-
-    Parameters
-    ----------
-    z : int
-        Index from 1-d permuation array
-
-    n_stars : int
-        Number of stars in the original array
-
-    Returns
-    -------
-    indices : tuple
-       i, j, k indices
-    """
-    count = 0
-    for i, j, k in it.permutations(range(0, n_stars), 3):
-        if count == z:
-            return i, j, k
-        count += 1
+    return np.hypot(x1-x2, y1-y2)
 
 
 def triangle_angle(a, b, c):

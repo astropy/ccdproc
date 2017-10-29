@@ -1,5 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-# This module implements the base CCDData class.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
@@ -16,8 +15,7 @@ from astropy.utils.data import get_pkg_data_filename
 
 from ..astrometry import (
     remove_duplicates, distance, distance_ratios, triangle_angle,
-    match_by_fit, create_wcs_from_fit)
-from ..astrometry import _calc_ratio, _get_index
+    match_by_fit, create_wcs_from_fit, _calc_ratio)
 
 
 # test that the Combiner raises error if empty
@@ -61,11 +59,7 @@ def test__calc_ratio_zero():
     assert np.isnan(_calc_ratio(x, y, 0, 1, 2))
 
 
-def test__get_index():
-    assert _get_index(3, 3) == (1, 2, 0)
-
-
-# remove
+# disant ratio test
 def test_distance_ratio():
     x = np.array([1, 4, 6])
     y = np.array([1, 5, 13])
