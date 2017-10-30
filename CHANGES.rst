@@ -52,6 +52,8 @@ Other Changes and Additions
 - When reading a ``CCDData`` from a file the WCS-related keywords are removed
   from the header. [#568]
 
+- The ``info_file`` argument for ``ImageFileCollection`` is now deprecated. [#585]
+
 
 Bug Fixes
 ^^^^^^^^^

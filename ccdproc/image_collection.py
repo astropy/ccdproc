@@ -59,6 +59,8 @@ class ImageFileCollection(object):
         list.
         Default is ``None``.
 
+        .. deprecated:: 1.3
+
     filenames: str, list of str, or None, optional
         List of the names of FITS files which will be added to the collection.
         The filenames are assumed to be in ``location``.
@@ -88,6 +90,10 @@ class ImageFileCollection(object):
     """
     def __init__(self, location=None, keywords=None, info_file=None,
                  filenames=None, glob_include=None, glob_exclude=None, ext=0):
+
+        if info_file is not None:
+            warnings.warn("The 'info_file' argument is deprecated and will be "
+                          "removed in a future version", DeprecationWarning)
 
         # Include or exclude files from the collection based on glob pattern
         # matching - has to go above call to _get_files()
