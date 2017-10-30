@@ -137,8 +137,10 @@ removed from the image.
 References
 ----------
 
-.. [1]
+.. [1] Gaia Collaboration et al. 2016, Astronomy and Astrophysics, 595, A2
 
-.. [2]
+.. [2] Ginsburg, A. et al. 2017, astropy/astroquery: v0.3.6 with fixed 
+       license., Zenodo, http://doi.org/10.5281/zenodo.826911
 
-.. [3]
+.. [3] Bradley, L. et al. 2016, astropy/photutils: v0.3. Zenodo.,
+       http://doi.org/10.5281/zenodo.164986
