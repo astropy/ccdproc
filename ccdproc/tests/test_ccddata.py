@@ -291,7 +291,16 @@ def test_to_hdu_long_metadata_item(ccd_data):
     result = subtract_dark(ccd_data, dark, dark_exposure=30 * u.second,
                            data_exposure=15 * u.second, scale=True)
     assert 'subtract_dark' in result.header
-    hdulist = result.to_hdu()
+    with catch_warnings() as w:
+        hdulist = result.to_hdu()
+    if ASTROPY_GT_2_0:
+        # Astropys CCDData only shortens the keyword name if the value is
+        # also longer than 72 chars.
+        assert len(w) == 1
+        assert str(w[0].message) == (
+            "Keyword name 'subtract_dark' is greater than 8 characters or "
+            "contains characters not allowed by the FITS standard; a HIERARCH "
+            "card will be created.")
     header = hdulist[0].header
     assert header['subtract_dark'] == _short_names['subtract_dark']
     args_value = header[_short_names['subtract_dark']]
@@ -592,7 +601,16 @@ def test_ccddata_header_does_not_corrupt_fits(ccd_data, tmpdir):
                         data_exposure=30*u.second)
     # The write below succeeds...
     long_key = tmpdir.join('long_key.fit').strpath
-    ccd.write(long_key)
+    with catch_warnings() as w:
+        ccd.write(long_key)
+    if ASTROPY_GT_2_0:
+        # Astropys CCDData only shortens the keyword name if the value is
+        # also longer than 72 chars.
+        assert len(w) == 1
+        assert str(w[0].message) == (
+            "Keyword name 'subtract_dark' is greater than 8 characters or "
+            "contains characters not allowed by the FITS standard; a HIERARCH "
+            "card will be created.")
 
     # And this read succeeds...
     ccd_read = CCDData.read(long_key, unit="adu")
