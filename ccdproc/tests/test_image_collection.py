@@ -455,8 +455,11 @@ class TestImageFileCollection(object):
         empty_dir = tmpdir.mkdtemp()
         some_file = empty_dir.join('some_file.txt')
         some_file.dump('words')
-        collection = ImageFileCollection(location=empty_dir.strpath,
-                                         keywords=['imagetyp'])
+        with catch_warnings() as w:
+            collection = ImageFileCollection(location=empty_dir.strpath,
+                                             keywords=['imagetyp'])
+        assert len(w) == 1
+        assert str(w[0].message) == "no FITS files in the collection."
         assert collection.summary is None
         for hdr in collection.headers():
             # this statement should not be reached if there are no FITS files
@@ -598,7 +601,12 @@ class TestImageFileCollection(object):
         nonsense = 'forks'
         table['imagetyp'][0] = nonsense
         table.write(table_path, format='ascii', delimiter=',')
-        ic = ImageFileCollection(location=None, info_file=table_path)
+        with catch_warnings() as w:
+            ic = ImageFileCollection(location=None, info_file=table_path)
+        # By using location=None we don't have actual files in the collection.
+        assert len(w) == 1
+        assert str(w[0].message) == "no FITS files in the collection."
+
         # keywords can only have been set from saved table
         for key in keys:
             assert key in ic.keywords
@@ -641,8 +649,13 @@ class TestImageFileCollection(object):
         # Do we raise an error if the table name is bad AND the location
         # is None?
         with pytest.raises(IOError):
-            ic = ImageFileCollection(location=None,
-                                     info_file='iufadsdhfasdifre')
+            # Because the location is None we get a Warning about "no files in
+            # the collection".
+            with catch_warnings() as w:
+                ImageFileCollection(location=None, info_file='iufadsdhfasdifre')
+        assert len(w) == 1
+        assert str(w[0].message) == "no FITS files in the collection."
+
         # Do we raise an error if the table name is bad AND
         # the location is given but is bad?
         with pytest.raises(OSError):
