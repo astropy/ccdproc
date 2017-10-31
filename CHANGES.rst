@@ -28,9 +28,6 @@ New Features
 
 - Added ``sum`` option in method for ``combime``. [#500, #508]
 
-- Add ``replace_`` argument for the ``files_filtered`` and generator methods of
-  ``ImageFileCollection`` to allow filtering for whitespace seperated keys. [#539]
-
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
