@@ -481,6 +481,47 @@ def test_flat_correct_min_value(ccd_data):
     assert flat_orig_data is not flat.data
 
 
+# test for flat correction
+@pytest.mark.data_scale(10)
+def test_flat_correct_mean_value(ccd_data):
+    # add metadata to header for a test below...
+    ccd_data.header['my_key'] = 42
+    size = ccd_data.shape[0]
+    # create the flat, with some scatter
+    # Note that mean value of flat is set below and is different than
+    # the mean of the flat data.
+    flat_mean = 5.0
+    data = np.random.normal(loc=1.0, scale=0.05, size=(size, size))
+    flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
+    flat_data = flat_correct(ccd_data, flat, add_keyword=None,
+                             mean_value=flat_mean)
+
+    #check that the flat was normalized
+    # Should be the case that flat * flat_data = ccd_data * flat_mean
+    # if the normalization was done correctly.
+    np.testing.assert_almost_equal((flat_data.data * flat.data).mean(),
+                                   ccd_data.data.mean() * flat_mean)
+    np.testing.assert_allclose(ccd_data.data / flat_data.data,
+                               flat.data / flat_mean)
+
+    # check that metadata is unchanged (since logging is turned off)
+    assert flat_data.header == ccd_data.header
+
+
+def test_flat_correct_mean_value_bad_value(ccd_data):
+    # Test that flat_correct raises the appropriate error if
+    # it is given a bad mean_value. Bad means <=0.
+    ccd_data.header['my_key'] = 42
+    size = ccd_data.shape[0]
+    # create the flat, with some scatter
+    data = np.random.normal(loc=1.0, scale=0.05, size=(size, size))
+    flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
+    with pytest.raises(ValueError) as e:
+        _ = flat_correct(ccd_data, flat, add_keyword=None,
+                         mean_value=-7)
+    assert "mean_value must be" in str(e)
+
+
 # test for deviation and for flat correction
 @pytest.mark.data_scale(10)
 @pytest.mark.data_mean(300)

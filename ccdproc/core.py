@@ -763,7 +763,11 @@ def flat_correct(ccd, flat, min_value=None, mean_value=None):
     # If a mean_value was input and is positive, use it to scale the flat
     if mean_value is not None and mean_value > 0:
         flat_mean_val = mean_value
+    elif mean_value is not None:
+        # mean_value was set to a bad value
+        raise ValueError('mean_value must be greater than zero.')
     else:
+        # mean_value was not set, use mean of the image.
         flat_mean_val = use_flat.data.mean()
 
     # Normalize the flat.
