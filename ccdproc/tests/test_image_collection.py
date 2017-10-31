@@ -100,12 +100,13 @@ class TestImageFileCollectionRepresentation(object):
         ic = ImageFileCollection(
             location=triage_setup.test_dir, keywords=['naxis'])
         ic.summary.write(summary_file_path)
-        with catch_warnings(AstropyUserWarning) as w:
+        with catch_warnings() as w:
             ic2 = ImageFileCollection(info_file=summary_file_path)
         # ImageFileCollections from info_files contain no files. That issues
         # a Warning that we'll ignore here.
-        assert len(w) == 1
-        assert 'no FITS files in the collection' in str(w[0].message)
+        assert len(w) == 2
+        assert "'info_file' argument is deprecated" in str(w[0].message)
+        assert 'no FITS files in the collection' in str(w[1].message)
 
         ref = ("ImageFileCollection(keywords=['naxis'], info_file={0!r})"
                .format(summary_file_path))
@@ -604,8 +605,9 @@ class TestImageFileCollection(object):
         with catch_warnings() as w:
             ic = ImageFileCollection(location=None, info_file=table_path)
         # By using location=None we don't have actual files in the collection.
-        assert len(w) == 1
-        assert str(w[0].message) == "no FITS files in the collection."
+        assert len(w) == 2
+        assert "'info_file' argument is deprecated" in str(w[0].message)
+        assert str(w[1].message) == "no FITS files in the collection."
 
         # keywords can only have been set from saved table
         for key in keys:
@@ -616,8 +618,11 @@ class TestImageFileCollection(object):
         with pytest.raises((AttributeError, TypeError)):
             for h in ic.headers():
                 pass
-        ic = ImageFileCollection(location=triage_setup.test_dir,
-                                 info_file=table_path)
+        with catch_warnings() as w:
+            ic = ImageFileCollection(location=triage_setup.test_dir,
+                                     info_file=table_path)
+        assert len(w) == 1
+        assert "'info_file' argument is deprecated" in str(w[0].message)
         # we now have a location, so did we get files?
         assert len(ic.files) == len(table)
         # Is the summary table masked?
@@ -636,9 +641,12 @@ class TestImageFileCollection(object):
 
         # Do we get a warning if we try reading a file that doesn't exist,
         # but where we can initialize from a directory?
-        ic = ImageFileCollection(
-            location=triage_setup.test_dir,
-            info_file='iufadsdhfasdifre')
+        with catch_warnings() as w:
+            ic = ImageFileCollection(
+                location=triage_setup.test_dir,
+                info_file='iufadsdhfasdifre')
+        assert len(w) == 1
+        assert "'info_file' argument is deprecated" in str(w[0].message)
 
         with open(log.strpath) as f:
             warnings = f.readlines()
@@ -653,14 +661,18 @@ class TestImageFileCollection(object):
             # the collection".
             with catch_warnings() as w:
                 ImageFileCollection(location=None, info_file='iufadsdhfasdifre')
-        assert len(w) == 1
-        assert str(w[0].message) == "no FITS files in the collection."
+        assert len(w) == 2
+        assert "'info_file' argument is deprecated" in str(w[0].message)
+        assert str(w[1].message) == "no FITS files in the collection."
 
         # Do we raise an error if the table name is bad AND
         # the location is given but is bad?
         with pytest.raises(OSError):
-            ic = ImageFileCollection(location='dasifjoaurun',
-                                     info_file='iufadsdhfasdifre')
+            with catch_warnings() as w:
+                ic = ImageFileCollection(location='dasifjoaurun',
+                                         info_file='iufadsdhfasdifre')
+        assert len(w) == 1
+        assert "'info_file' argument is deprecated" in str(w[0].message)
 
     def test_no_fits_files_in_collection(self):
         with catch_warnings(AstropyUserWarning) as warning_lines:
