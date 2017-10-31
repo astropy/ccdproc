@@ -43,6 +43,7 @@ Alphabetical list of contributors
 * Zè Vinícius (@mirca)
 * Josh Walawender (@joshwalawender)
 * Nathan Walker (@walkerna22)
+* Benjamin Weiner (@bjweiner)
 * Jiyong Youn (@hletrd)
 
 (If you have contributed to the ccdproc project and your name is missing,
