@@ -719,7 +719,7 @@ def gain_correct(ccd, gain, gain_unit=None):
 
 
 @log_to_metadata
-def flat_correct(ccd, flat, min_value=None, mean_value=None):
+def flat_correct(ccd, flat, min_value=None, norm_value=None):
     """Correct the image for flat fielding.
 
     The flat field image is normalized by its mean or a user-supplied value
@@ -739,12 +739,11 @@ def flat_correct(ccd, flat, min_value=None, mean_value=None):
         will replace all values in the flat by the min_value.
         Default is ``None``.
 
-    mean_value : float or None, optional
-        Normalize flat field by this argument rather than the mean of the
-        image. This allows fixing several different flat fields to have the
-        same scale. If this value is negative or 0, a ``ValueError`` is
-        raised.
-        Default is ``None``.
+    norm_value : float or None, optional
+        If not ``None``, normalize flat field by this argument rather than the
+        mean of the image. This allows fixing several different flat fields to
+        have the same scale. If this value is negative or 0, a ``ValueError``
+        is raised. Default is ``None``.
 
     {log}
 
@@ -760,14 +759,14 @@ def flat_correct(ccd, flat, min_value=None, mean_value=None):
         flat_min.data[flat_min.data < min_value] = min_value
         use_flat = flat_min
 
-    # If a mean_value was input and is positive, use it to scale the flat
-    if mean_value is not None and mean_value > 0:
-        flat_mean_val = mean_value
-    elif mean_value is not None:
-        # mean_value was set to a bad value
-        raise ValueError('mean_value must be greater than zero.')
+    # If a norm_value was input and is positive, use it to scale the flat
+    if norm_value is not None and norm_value > 0:
+        flat_mean_val = norm_value
+    elif norm_value is not None:
+        # norm_value was set to a bad value
+        raise ValueError('norm_value must be greater than zero.')
     else:
-        # mean_value was not set, use mean of the image.
+        # norm_value was not set, use mean of the image.
         flat_mean_val = use_flat.data.mean()
 
     # Normalize the flat.
