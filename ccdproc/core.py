@@ -738,11 +738,12 @@ def flat_correct(ccd, flat, min_value=None, mean_value=None):
         minimum value is applied to the flat or specified by a float which
         will replace all values in the flat by the min_value.
         Default is ``None``.
-        
+
     mean_value : float or None, optional
-        Normalize flat field by this argument rather than the mean of the image.
-        This allows fixing several different flat fields to have the same scale.
-        If this value is negative or 0 it will be ignored.
+        Normalize flat field by this argument rather than the mean of the
+        image. This allows fixing several different flat fields to have the
+        same scale. If this value is negative or 0, a ``ValueError`` is
+        raised.
         Default is ``None``.
 
     {log}
@@ -758,13 +759,13 @@ def flat_correct(ccd, flat, min_value=None, mean_value=None):
         flat_min = flat.copy()
         flat_min.data[flat_min.data < min_value] = min_value
         use_flat = flat_min
-    
+
     # If a mean_value was input and is positive, use it to scale the flat
     if mean_value is not None and mean_value > 0:
         flat_mean_val = mean_value
     else:
         flat_mean_val = use_flat.data.mean()
-   
+
     # Normalize the flat.
     flat_mean = flat_mean_val * use_flat.unit
     flat_normed = use_flat.divide(flat_mean)
