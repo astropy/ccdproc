@@ -719,10 +719,11 @@ def gain_correct(ccd, gain, gain_unit=None):
 
 
 @log_to_metadata
-def flat_correct(ccd, flat, min_value=None):
+def flat_correct(ccd, flat, min_value=None, norm_value=None):
     """Correct the image for flat fielding.
 
-    The flat field image is normalized by its mean before flat correcting.
+    The flat field image is normalized by its mean or a user-supplied value
+    before flat correcting.
 
     Parameters
     ----------
@@ -738,6 +739,12 @@ def flat_correct(ccd, flat, min_value=None):
         will replace all values in the flat by the min_value.
         Default is ``None``.
 
+    norm_value : float or None, optional
+        If not ``None``, normalize flat field by this argument rather than the
+        mean of the image. This allows fixing several different flat fields to
+        have the same scale. If this value is negative or 0, a ``ValueError``
+        is raised. Default is ``None``.
+
     {log}
 
     Returns
@@ -752,8 +759,18 @@ def flat_correct(ccd, flat, min_value=None):
         flat_min.data[flat_min.data < min_value] = min_value
         use_flat = flat_min
 
+    # If a norm_value was input and is positive, use it to scale the flat
+    if norm_value is not None and norm_value > 0:
+        flat_mean_val = norm_value
+    elif norm_value is not None:
+        # norm_value was set to a bad value
+        raise ValueError('norm_value must be greater than zero.')
+    else:
+        # norm_value was not set, use mean of the image.
+        flat_mean_val = use_flat.data.mean()
+
     # Normalize the flat.
-    flat_mean = use_flat.data.mean() * use_flat.unit
+    flat_mean = flat_mean_val * use_flat.unit
     flat_normed = use_flat.divide(flat_mean)
 
     # divide through the flat

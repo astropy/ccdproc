@@ -481,6 +481,41 @@ def test_flat_correct_min_value(ccd_data):
     assert flat_orig_data is not flat.data
 
 
+@pytest.mark.data_scale(10)
+def test_flat_correct_norm_value(ccd_data):
+    # Test flat correction with mean value that is different than
+    # the mean of the flat frame.
+
+    # create the flat, with some scatter
+    # Note that mean value of flat is set below and is different than
+    # the mean of the flat data.
+    flat_mean = 5.0
+    data = np.random.normal(loc=1.0, scale=0.05, size=ccd_data.shape)
+    flat = CCDData(data, meta=fits.Header(), unit=ccd_data.unit)
+    flat_data = flat_correct(ccd_data, flat, add_keyword=None,
+                             norm_value=flat_mean)
+
+    # check that the flat was normalized
+    # Should be the case that flat * flat_data = ccd_data * flat_mean
+    # if the normalization was done correctly.
+    np.testing.assert_almost_equal((flat_data.data * flat.data).mean(),
+                                   ccd_data.data.mean() * flat_mean)
+    np.testing.assert_allclose(ccd_data.data / flat_data.data,
+                               flat.data / flat_mean)
+
+
+def test_flat_correct_norm_value_bad_value(ccd_data):
+    # Test that flat_correct raises the appropriate error if
+    # it is given a bad norm_value. Bad means <=0.
+
+    # create the flat, with some scatter
+    data = np.random.normal(loc=1.0, scale=0.05, size=ccd_data.shape)
+    flat = CCDData(data, meta=fits.Header(), unit=ccd_data.unit)
+    with pytest.raises(ValueError) as e:
+        flat_correct(ccd_data, flat, add_keyword=None, norm_value=-7)
+    assert "norm_value must be" in str(e)
+
+
 # test for deviation and for flat correction
 @pytest.mark.data_scale(10)
 @pytest.mark.data_mean(300)
@@ -493,6 +528,7 @@ def test_flat_correct_deviation(ccd_data):
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat = create_deviation(flat, readnoise=0.5 * u.electron)
     ccd_data = flat_correct(ccd_data, flat)
+
 
 # test the uncertainty on the data after flat correction
 def test_flat_correct_data_uncertainty():
