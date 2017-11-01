@@ -28,7 +28,6 @@ New Features
 
 - Added ``sum`` option in method for ``combime``. [#500, #508]
 
-
 - Add ``norm_value`` argument to ``flat_correct`` that allows the normalization
   of the flat frame to be manually specified. [#584, #577]
 

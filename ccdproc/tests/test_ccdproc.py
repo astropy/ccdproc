@@ -482,7 +482,7 @@ def test_flat_correct_min_value(ccd_data):
 
 
 @pytest.mark.data_scale(10)
-def test_flat_correct_mean_value(ccd_data):
+def test_flat_correct_norm_value(ccd_data):
     # Test flat correction with mean value that is different than
     # the mean of the flat frame.
 
@@ -491,9 +491,9 @@ def test_flat_correct_mean_value(ccd_data):
     # the mean of the flat data.
     flat_mean = 5.0
     data = np.random.normal(loc=1.0, scale=0.05, size=ccd_data.shape)
-    flat = CCDData(data, meta=fits.header, unit=ccd_data.unit)
+    flat = CCDData(data, meta=fits.Header(), unit=ccd_data.unit)
     flat_data = flat_correct(ccd_data, flat, add_keyword=None,
-                             mean_value=flat_mean)
+                             norm_value=flat_mean)
 
     # check that the flat was normalized
     # Should be the case that flat * flat_data = ccd_data * flat_mean
@@ -504,17 +504,16 @@ def test_flat_correct_mean_value(ccd_data):
                                flat.data / flat_mean)
 
 
-def test_flat_correct_mean_value_bad_value(ccd_data):
+def test_flat_correct_norm_value_bad_value(ccd_data):
     # Test that flat_correct raises the appropriate error if
-    # it is given a bad mean_value. Bad means <=0.
+    # it is given a bad norm_value. Bad means <=0.
 
     # create the flat, with some scatter
     data = np.random.normal(loc=1.0, scale=0.05, size=ccd_data.shape)
-    flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
+    flat = CCDData(data, meta=fits.Header(), unit=ccd_data.unit)
     with pytest.raises(ValueError) as e:
-        flat_correct(ccd_data, flat, add_keyword=None,
-                     mean_value=-7)
-    assert "mean_value must be" in str(e)
+        flat_correct(ccd_data, flat, add_keyword=None, norm_value=-7)
+    assert "norm_value must be" in str(e)
 
 
 # test for deviation and for flat correction
