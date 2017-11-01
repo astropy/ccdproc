@@ -1,30 +1,31 @@
-1.3.0 (Unreleased)
-------------------
-
+1.3.0 (2017-11-1)
+-----------------
 
 New Features
 ^^^^^^^^^^^^
 
-- Add representation for ImageFileCollection [#475, #515]
+- Add representation for ImageFileCollection. [#475, #515]
 
-- Added ext parameter and property to ImageFileCollection to specify the FITS extension.[#463]
+- Added ext parameter and property to ImageFileCollection to specify the FITS
+  extension. [#463]
 
-- Add keywords.deleter method to ImageFileCollection [#474]
+- Add keywords.deleter method to ImageFileCollection. [#474]
 
 - Added ``glob_include`` and ``glob_exclude`` parameter to
-  ``ImageFileCollection`` [#484]
+  ``ImageFileCollection``. [#484]
 
 - Add ``bitfield_to_boolean_mask`` function to convert a ``bitfield`` to a
   boolean mask (following the numpy conventions). [#460]
 
 - Added ``gain_corrected`` option in ccd_process so that calibration
-  files do not need to previously been gain corrected [#491]
+  files do not need to previously been gain corrected. [#491]
 
 - Add a new ``wcs_relax`` argument to ``CCDData.to_header()`` that is passed
   through to the ``WCS`` method of the same name to allow more flexible
   handing of headers with SIP distortion. [#501]
 
-- ``combine`` now accepts ``numpy.ndarray`` as the input ``img_list``. [#493, #503]
+- ``combine`` now accepts ``numpy.ndarray`` as the input ``img_list``.
+  [#493, #503]
 
 - Added ``sum`` option in method for ``combime``. [#500, #508]
 
@@ -35,7 +36,7 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- removed ability to set ccdata.unit to None [#451]
+- removed ability to set unit of CCDData to None. [#451]
 
 - deprecated ``summary_info`` property of ``ImageFileCollection`` now raises
   a deprecation warning. [#486]
@@ -52,7 +53,8 @@ Other Changes and Additions
 - When reading a ``CCDData`` from a file the WCS-related keywords are removed
   from the header. [#568]
 
-- The ``info_file`` argument for ``ImageFileCollection`` is now deprecated. [#585]
+- The ``info_file`` argument for ``ImageFileCollection`` is now deprecated.
+  [#585]
 
 
 Bug Fixes
