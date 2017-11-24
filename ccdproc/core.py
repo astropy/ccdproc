@@ -1815,30 +1815,30 @@ def bitfield_to_boolean_mask(bitfield, ignore_bits=0, flip_bits=None):
         >>> import ccdproc
         >>> import numpy as np
         >>> ccdproc.bitfield_to_boolean_mask(np.arange(8))
-        array([False,  True,  True,  True,  True,  True,  True,  True], dtype=bool)
+        array([False,  True,  True,  True,  True,  True,  True,  True]...)
 
     To ignore all bit flags ``ignore_bits=None`` can be used::
 
         >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits=None)
-        array([False, False, False, False, False, False, False, False], dtype=bool)
+        array([False, False, False, False, False, False, False, False]...)
 
     To ignore only specific bit flags one can use a ``list`` of bits flags to
     ignore::
 
         >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits=[1, 4])
-        array([False, False,  True,  True, False, False,  True,  True], dtype=bool)
+        array([False, False,  True,  True, False, False,  True,  True]...)
 
     There are some equivalent ways::
 
         >>> # pass in the sum of the "ignore_bits" directly
         >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits=5)  # 1 + 4
-        array([False, False,  True,  True, False, False,  True,  True], dtype=bool)
+        array([False, False,  True,  True, False, False,  True,  True]...)
         >>> # use a comma seperated string of integers
         >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits='1, 4')
-        array([False, False,  True,  True, False, False,  True,  True], dtype=bool)
+        array([False, False,  True,  True, False, False,  True,  True]...)
         >>> # use a + seperated string of integers
         >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits='1+4')
-        array([False, False,  True,  True, False, False,  True,  True], dtype=bool)
+        array([False, False,  True,  True, False, False,  True,  True]...)
 
     Instead of directly specifying the **bits flags to ignore** one can also
     pass in the **only bits that shouldn't be ignored** by prepending a ``~``
@@ -1847,14 +1847,14 @@ def bitfield_to_boolean_mask(bitfield, ignore_bits=0, flip_bits=None):
 
         >>> # ignore all bit flags except the one for 2.
         >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits='~(2)')
-        array([False, False,  True,  True, False, False,  True,  True], dtype=bool)
+        array([False, False,  True,  True, False, False,  True,  True]...)
         >>> # ignore all bit flags except the one for 1, 8 and 32.
         >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits='~(1, 8, 32)')
-        array([False,  True, False,  True, False,  True, False,  True], dtype=bool)
+        array([False,  True, False,  True, False,  True, False,  True]...)
 
         >>> # Equivalent for a list using flip_bits.
         >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits=[1, 8, 32], flip_bits=True)
-        array([False,  True, False,  True, False,  True, False,  True], dtype=bool)
+        array([False,  True, False,  True, False,  True, False,  True]...)
 
     """
     return _bitfield_to_boolean_mask(
