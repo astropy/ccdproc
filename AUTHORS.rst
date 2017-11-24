@@ -27,6 +27,7 @@ Alphabetical list of contributors
 * Elias Holte (@Sondanaa)
 * Anthony Horton (@AnthonyHorton)
 * Jennifer Karr (@JenniferKarr)
+* Yücel Kılıç (@yucelkilic)
 * James McCormac (@jmccormac01)
 * Stefan Nelson (@stefannelson)
 * Joe Philip Ninan (@indiajoe)
