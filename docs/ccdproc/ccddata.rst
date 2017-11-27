@@ -81,11 +81,9 @@ A `~astropy.nddata.CCDData` object behaves like a numpy array (masked if the
 data (ignoring any mask) is accessed through ``data`` attribute:
 
     >>> ccd_masked = ccdproc.CCDData([1, 2, 3], unit="adu", mask=[0, 0, 1])
-    >>> 2 * np.ones(3) * ccd_masked   # one return value will be masked
-    masked_array(data = [2.0 4.0 --],
-                 mask = [False False  True],
-           fill_value = 1e+20)
-    <BLANKLINE>
+    >>> res = 2 * np.ones(3) * ccd_masked
+    >>> res.mask   # one return value will be masked
+    array([False, False,  True]...)
     >>> 2 * np.ones(3) * ccd_masked.data   # doctest: +FLOAT_CMP
     array([ 2.,  4.,  6.])
 
@@ -93,11 +91,7 @@ You can force conversion to a numpy array with:
 
     >>> np.asarray(ccd_masked)
     array([1, 2, 3])
-    >>> np.ma.array(ccd_masked.data, mask=ccd_masked.mask)
-    masked_array(data = [1 2 --],
-                 mask = [False False  True],
-           fill_value = 999999)
-    <BLANKLINE>
+    >>> np.ma.array(ccd_masked.data, mask=ccd_masked.mask)  # doctest: +SKIP
 
 A method for converting a `~astropy.nddata.CCDData` object to a FITS HDU list
 is also available. It converts the metadata to a FITS header:

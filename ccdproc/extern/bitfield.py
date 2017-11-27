@@ -381,7 +381,7 @@ good_mask_value=True, dtype=numpy.bool\_)
         >>> bitfield.bitfield_to_boolean_mask(dqbits, ignore_flags=0,
         ...                                  dtype=bool)
         array([[ True,  True, False, False,  True, False, False,  True],
-               [False, False,  True,  True,  True, False, False,  True]], dtype=bool)
+               [False, False,  True,  True,  True, False, False,  True]]...)
         >>> bitfield.bitfield_to_boolean_mask(dqbits, ignore_flags=6,
         ...                                  good_mask_value=0, dtype=int)
         array([[0, 0, 1, 0, 0, 1, 1, 0],
