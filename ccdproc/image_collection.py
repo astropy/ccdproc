@@ -734,7 +734,7 @@ class ImageFileCollection(object):
 
         Parameters
         ----------
-        extension : list of str or None, optional
+        extensions : list of str or None, optional
             List of filename extensions that are FITS files. Default is
             ``['fit', 'fits', 'fts']``.
             Default is ``None``.
