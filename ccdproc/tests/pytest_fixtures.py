@@ -13,9 +13,7 @@ import pytest
 from astropy import units as u
 from astropy.utils import NumpyRNGContext
 from astropy.io import fits
-
-
-from ..ccddata import CCDData
+from astropy.nddata import CCDData
 
 # If additional pytest markers are defined the key in the dictionary below
 # should be the name of the marker.

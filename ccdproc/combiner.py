@@ -7,10 +7,9 @@ from __future__ import (absolute_import, division, print_function,
 
 import numpy as np
 from numpy import ma
-from .ccddata import CCDData
 from .core import sigma_func
 
-from astropy.nddata import StdDevUncertainty
+from astropy.nddata import CCDData, StdDevUncertainty
 from astropy import log
 
 import math
@@ -49,7 +48,8 @@ class Combiner(object):
 
         >>> import numpy as np
         >>> import astropy.units as u
-        >>> from ccdproc import Combiner, CCDData
+        >>> from astropy.nddata import CCDData
+        >>> from ccdproc import Combiner
         >>> ccddata1 = CCDData(np.ones((4, 4)), unit=u.adu)
         >>> ccddata2 = CCDData(np.zeros((4, 4)), unit=u.adu)
         >>> ccddata3 = CCDData(np.ones((4, 4)), unit=u.adu)

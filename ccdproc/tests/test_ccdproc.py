@@ -11,13 +11,12 @@ from astropy.wcs import WCS
 from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
-from astropy.nddata import StdDevUncertainty
+from astropy.nddata import StdDevUncertainty, CCDData
 import astropy
 
 from numpy.testing import assert_array_equal
 import pytest
 
-from ..ccddata import CCDData
 from ..core import (
     ccd_process, cosmicray_median, cosmicray_lacosmic, create_deviation,
     flat_correct, gain_correct, subtract_bias, subtract_dark, subtract_overscan,

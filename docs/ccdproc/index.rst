@@ -31,8 +31,9 @@ a FITS file:
 
     >>> import numpy as np
     >>> from astropy import units as u
+    >>> from astropy.nddata import CCDData
     >>> import ccdproc
-    >>> image_1 = ccdproc.CCDData(np.ones((10, 10)), unit="adu")
+    >>> image_1 = CCDData(np.ones((10, 10)), unit="adu")
 
 An example of reading from a FITS file is
 ``image_2 = astropy.nddata.CCDData.read('my_image.fits', unit="electron")`` (the
@@ -50,7 +51,7 @@ See the documentation for `~astropy.nddata.CCDData` for a complete list of attri
 
 Most operations are performed by functions in `ccdproc`:
 
-    >>> dark = ccdproc.CCDData(np.random.normal(size=(10, 10)), unit="adu")
+    >>> dark = CCDData(np.random.normal(size=(10, 10)), unit="adu")
     >>> dark_sub = ccdproc.subtract_dark(image_1, dark,
     ...                                  dark_exposure=30*u.second,
     ...                                  data_exposure=15*u.second,
@@ -87,7 +88,7 @@ with `~ccdproc.gain_correct` that you do not get with multiplication:
 The same advantages apply to operations that are more complex, like flat
 correction, in which one image is divided by another:
 
-    >>> flat = ccdproc.CCDData(np.random.normal(1.0, scale=0.1, size=(10, 10)),
+    >>> flat = CCDData(np.random.normal(1.0, scale=0.1, size=(10, 10)),
     ...                        unit='adu')
     >>> image_1_flat = ccdproc.flat_correct(image_1, flat)
 
