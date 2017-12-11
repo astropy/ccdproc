@@ -7,6 +7,8 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Removed deprecated property ``summary_info`` of ``ImageFileCollection``.
+
 Bug Fixes
 ^^^^^^^^^
 
