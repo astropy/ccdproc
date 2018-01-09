@@ -360,12 +360,12 @@ class Combiner(object):
         mask = (masked_values == len(self.data_arr))
 
         # set the uncertainty
-        uncertainty = uncertainty_func(self.data_arr.data, axis=0)
+        uncertainty = uncertainty_func(self.data_arr, axis=0)
         # Divide uncertainty by the number of pixel (#309)
         # TODO: This should be np.sqrt(len(self.data_arr) - masked_values) but
         # median_absolute_deviation ignores the mask... so it
         # would yield inconsistent results.
-        uncertainty /= math.sqrt(len(self.data_arr))
+        uncertainty /= math.sqrt(len(self.data_arr) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
         # There is no need to care about potential masks because the
         # uncertainty was calculated based on the data so potential masked
