@@ -466,7 +466,7 @@ def test_combiner_uncertainty_average_mask():
     ref_uncertainty = np.ones((10, 10)) * np.std([1, 2, 3])
     # Correction because we combined two images.
     ref_uncertainty /= np.sqrt(3)
-    ref_uncertainty[5, 5] = np.std([2, 3]) / np.sqrt(2) 
+    ref_uncertainty[5, 5] = np.std([2, 3]) / np.sqrt(2)
     np.testing.assert_array_almost_equal(ccd.uncertainty.array,
                                          ref_uncertainty)
 
