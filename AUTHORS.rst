@@ -19,6 +19,7 @@ Alphabetical list of contributors
 * Yoonsoo P. Bach (@ysBach)
 * Kyle Barbary (@kbarbary)
 * Javier Blasco (@javierblasco)
+* Mihai Cara (@mcara)
 * Christoph Deil (@cdeil)
 * Carlos Gomez (@carlgogo)
 * Hans Moritz Günther (@hamogu)
