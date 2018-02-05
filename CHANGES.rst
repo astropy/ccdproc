@@ -7,7 +7,7 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- Improved handling of large flags in the `bitfield` module. [#610]
+- Improved handling of large flags in the ``bitfield`` module. [#610]
 
 Bug Fixes
 ^^^^^^^^^
