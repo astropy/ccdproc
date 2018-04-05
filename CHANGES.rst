@@ -9,9 +9,12 @@ Other Changes and Additions
 
 - Improved handling of large flags in the ``bitfield`` module. [#610]
 
+- Improved the performance of several ``ImageFileCollection`` methods. [#599]
+
 Bug Fixes
 ^^^^^^^^^
-
+- Function ``median_combine`` now correctly calculates the uncertainty for 
+  masked ``CCDData``. [#608]
 
 1.3.0 (2017-11-1)
 -----------------
