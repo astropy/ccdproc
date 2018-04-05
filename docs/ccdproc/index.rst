@@ -5,7 +5,7 @@ Introduction
 ------------
 
 .. note::
-    `ccdproc` works only with astropy version 1.0 or later.
+    `ccdproc` works only with astropy version 2.0 or later.
 
 The `ccdproc` package provides:
 
