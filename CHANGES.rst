@@ -7,6 +7,8 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Improved handling of large flags in the ``bitfield`` module. [#610]
+
 - Improved the performance of several ``ImageFileCollection`` methods. [#599]
 
 Bug Fixes
