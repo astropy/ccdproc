@@ -11,7 +11,8 @@ Other Changes and Additions
 
 Bug Fixes
 ^^^^^^^^^
-
+- Function ``median_combine`` now correctly calculates the uncertainty for 
+  masked ``CCDData``. [#608]
 
 1.3.0 (2017-11-1)
 -----------------
