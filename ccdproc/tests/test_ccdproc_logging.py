@@ -6,9 +6,10 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 
 from astropy.extern import six
+from astropy.nddata import CCDData
 import pytest
 
-from .. import subtract_bias, create_deviation, Keyword, CCDData
+from .. import subtract_bias, create_deviation, Keyword
 
 
 @pytest.mark.parametrize('key', [

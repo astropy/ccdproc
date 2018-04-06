@@ -10,9 +10,8 @@ from astropy.stats import median_absolute_deviation as mad
 
 import pytest
 from astropy.utils.data import get_pkg_data_filename
-from astropy.wcs import WCS
+from astropy.nddata import CCDData
 
-from ..ccddata import CCDData
 from ..combiner import Combiner, combine
 
 

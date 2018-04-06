@@ -15,8 +15,9 @@ subclass of `~astropy.nddata.NDData`.
 Creating a `~astropy.nddata.CCDData` object from any array-like data is easy:
 
     >>> import numpy as np
+    >>> from astropy.nddata import CCDData
     >>> import ccdproc
-    >>> ccd = ccdproc.CCDData(np.arange(10), unit="adu")
+    >>> ccd = CCDData(np.arange(10), unit="adu")
 
 Note that behind the scenes, `~astropy.nddata.NDData` creates references to
 (not copies of) your data when possible, so modifying the data in ``ccd`` will
@@ -28,19 +29,19 @@ can be set either by providing the string name of the unit (as in the example
 above) or from unit objects:
 
     >>> from astropy import units as u
-    >>> ccd_photon = ccdproc.CCDData([1, 2, 3], unit=u.photon)
-    >>> ccd_electron = ccdproc.CCDData([1, 2, 3], unit="electron")
+    >>> ccd_photon = CCDData([1, 2, 3], unit=u.photon)
+    >>> ccd_electron = CCDData([1, 2, 3], unit="electron")
 
 If you prefer *not* to use the unit functionality then use the special unit
 ``u.dimensionless_unscaled`` when you create your `~astropy.nddata.CCDData`
 images:
 
-    >>> ccd_unitless = ccdproc.CCDData(np.zeros((10, 10)),
-    ...                                unit=u.dimensionless_unscaled)
+    >>> ccd_unitless = CCDData(np.zeros((10, 10)),
+    ...                        unit=u.dimensionless_unscaled)
 
 A `~astropy.nddata.CCDData` object can also be initialized from a FITS file:
 
-    >>> ccd = ccdproc.CCDData.read('my_file.fits', unit="adu")  # doctest: +SKIP
+    >>> ccd = CCDData.read('my_file.fits', unit="adu")  # doctest: +SKIP
 
 If there is a unit in the FITS file (in the ``BUNIT`` keyword), that will be
 used, but a unit explicitly provided in ``read`` will override any unit in the
@@ -51,7 +52,7 @@ There is no restriction at all on what the unit can be -- any unit in
 
 In addition, the user can specify the extension in a FITS file to use:
 
-    >>> ccd = ccdproc.CCDData.read('my_file.fits', hdu=1, unit="adu")  # doctest: +SKIP
+    >>> ccd = CCDData.read('my_file.fits', hdu=1, unit="adu")  # doctest: +SKIP
 
 If ``hdu`` is not specified, it will assume the data is in the primary
 extension.  If there is no data in the primary extension, the first extension
@@ -65,7 +66,7 @@ When initializing from a FITS file, the ``header`` property is initialized using
 the header of the FITS file. Metadata is optional, and can be provided by any
 dictionary or dict-like object:
 
-    >>> ccd_simple = ccdproc.CCDData(np.arange(10), unit="adu")
+    >>> ccd_simple = CCDData(np.arange(10), unit="adu")
     >>> my_meta = {'observer': 'Edwin Hubble', 'exposure': 30.0}
     >>> ccd_simple.header = my_meta  # or use ccd_simple.meta = my_meta
 
@@ -80,7 +81,7 @@ A `~astropy.nddata.CCDData` object behaves like a numpy array (masked if the
 `~astropy.nddata.CCDData` mask is set) in expressions, and the underlying
 data (ignoring any mask) is accessed through ``data`` attribute:
 
-    >>> ccd_masked = ccdproc.CCDData([1, 2, 3], unit="adu", mask=[0, 0, 1])
+    >>> ccd_masked = CCDData([1, 2, 3], unit="adu", mask=[0, 0, 1])
     >>> res = 2 * np.ones(3) * ccd_masked
     >>> res.mask   # one return value will be masked
     array([False, False,  True]...)
@@ -137,7 +138,7 @@ Uncertainty
 Pixel-by-pixel uncertainty can be calculated for you:
 
     >>> data = np.random.normal(size=(10, 10), loc=1.0, scale=0.1)
-    >>> ccd = ccdproc.CCDData(data, unit="electron")
+    >>> ccd = CCDData(data, unit="electron")
     >>> ccd_new = ccdproc.create_deviation(ccd, readnoise=5 * u.electron)
 
 See :ref:`create_deviation` for more details.

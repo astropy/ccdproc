@@ -35,9 +35,10 @@ An uncertainty can be calculated from your data with
 
     >>> from astropy import units as u
     >>> import numpy as np
+    >>> from astropy.nddata import CCDData
     >>> import ccdproc
     >>> img = np.random.normal(loc=10, scale=0.5, size=(100, 232))
-    >>> data = ccdproc.CCDData(img, unit=u.adu)
+    >>> data = CCDData(img, unit=u.adu)
     >>> data_with_deviation = ccdproc.create_deviation(
     ...                           data, gain=1.5 * u.electron/u.adu,
     ...                           readnoise=5 * u.electron)
@@ -250,9 +251,8 @@ bias-subtracted* so that it can be scaled by exposure time if necessary.
 Subtract the bias with `~ccdproc.subtract_bias`:
 
     >>> fake_bias_data = np.random.normal(size=trimmed.shape)  # just for illustration
-    >>> master_bias = ccdproc.CCDData(fake_bias_data,
-    ...                               unit=u.electron,
-    ...                               mask=np.zeros(trimmed.shape))
+    >>> master_bias = CCDData(fake_bias_data, unit=u.electron,
+    ...                       mask=np.zeros(trimmed.shape))
     >>> bias_subtracted = ccdproc.subtract_bias(trimmed, master_bias)
 
 There are several ways you can specify the exposure times of the dark and
@@ -281,7 +281,7 @@ Given a flat frame called ``master_flat``, use `~ccdproc.flat_correct` to
 perform this calibration:
 
     >>> fake_flat_data = np.random.normal(loc=1.0, scale=0.05, size=trimmed.shape)
-    >>> master_flat = ccdproc.CCDData(fake_flat_data, unit=u.electron)
+    >>> master_flat = CCDData(fake_flat_data, unit=u.electron)
     >>> reduced_image = ccdproc.flat_correct(dark_subtracted, master_flat)
 
 As with the additive calibrations, uncertainty is propagated in the division.
@@ -306,7 +306,7 @@ frames must match that of the image *after* the gain, if any, is applied. In
 the example below, ``img`` has unit ``adu``, but the master frames have unit
 ``electron``. These can be run together as:
 
-     >>> ccd = ccdproc.CCDData(img, unit=u.adu)
+     >>> ccd = CCDData(img, unit=u.adu)
      >>> ccd.header['exposure'] = 30.0  # for dark subtraction
      >>> nccd = ccdproc.ccd_process(ccd, oscan='[201:232,1:100]',
      ...                            trim='[1:200, 1:100]',
@@ -383,6 +383,7 @@ which should be removed rather than propagated:
     :include-source:
 
     import ccdproc
+    from astropy.nddata import CCDData
     import numpy as np
     import matplotlib.pyplot as plt
     from astropy.modeling.functional_models import Gaussian2D
@@ -405,7 +406,7 @@ which should be removed rather than propagated:
         data += noise
 
     # create a CCD object based on the data
-    ccd = ccdproc.CCDData(data, unit='adu')
+    ccd = CCDData(data, unit='adu')
 
     # Create some plots
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
