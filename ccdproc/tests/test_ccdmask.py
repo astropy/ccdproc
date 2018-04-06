@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from ..core import ccdmask
-from ..ccddata import CCDData
+from astropy.nddata import CCDData
 
 
 def test_ccdmask_no_ccddata():

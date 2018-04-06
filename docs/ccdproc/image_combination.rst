@@ -13,7 +13,8 @@ The first step in combining a set of images is creating a
 `~ccdproc.Combiner` instance:
 
     >>> from astropy import units as u
-    >>> from ccdproc import CCDData, Combiner
+    >>> from astropy.nddata import CCDData
+    >>> from ccdproc import Combiner
     >>> import numpy as np
     >>> ccd1 = CCDData(np.random.normal(size=(10,10)),
     ...                unit=u.adu)

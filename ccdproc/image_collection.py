@@ -342,11 +342,10 @@ class ImageFileCollection(object):
         if keyword not in self.keywords:
             raise ValueError(
                 'keyword %s is not in the current summary' % keyword)
-
         if unique:
-            return list(set(self.summary[keyword]))
+            return list(set(self.summary[keyword].tolist()))
         else:
-            return list(self.summary[keyword])
+            return self.summary[keyword].tolist()
 
     def files_filtered(self, **kwd):
         """Determine files whose keywords have listed values.
@@ -390,7 +389,7 @@ class ImageFileCollection(object):
         Value comparison is case *insensitive* for strings.
         """
         # force a copy by explicitly converting to a list
-        current_file_mask = list(self.summary['file'].mask)
+        current_file_mask = self.summary['file'].mask.tolist()
 
         include_path = kwd.pop('include_path', False)
 
@@ -399,7 +398,7 @@ class ImageFileCollection(object):
         self.summary['file'].mask = current_file_mask
         if include_path:
             filtered_files = [path.join(self._location, f)
-                              for f in filtered_files]
+                              for f in filtered_files.tolist()]
         return filtered_files
 
     def refresh(self):
@@ -424,7 +423,7 @@ class ImageFileCollection(object):
         """
         if len(self._summary) > 0:
             self._summary.sort(keys)
-            self._files = list(self.summary['file'])
+            self._files = self.summary['file'].tolist()
 
     def _get_files(self):
         """ Helper method which checks whether ``files`` should be set
@@ -592,7 +591,7 @@ class ImageFileCollection(object):
         summary_dict = None
         missing_marker = None
 
-        for file_name in file_name_column:
+        for file_name in file_name_column.tolist():
             file_path = path.join(self.location, file_name)
             try:
                 # Note: summary_dict is an OrderedDict, so should preserve
@@ -608,8 +607,8 @@ class ImageFileCollection(object):
         summary_table = Table(summary_dict, masked=True)
 
         for column in summary_table.colnames:
-            summary_table[column].mask = [v is missing_marker
-                                          for v in summary_table[column]]
+            summary_table[column].mask = [
+                v is missing_marker for v in summary_table[column].tolist()]
 
         self._set_column_name_case_to_match_keywords(header_keys,
                                                      summary_table)
@@ -677,7 +676,7 @@ class ImageFileCollection(object):
                     # need to loop explicitly over array rather than using
                     # where to correctly do string comparison.
                     have_this_value = np.zeros(len(use_info), dtype=bool)
-                    for idx, file_key_value in enumerate(use_info[key]):
+                    for idx, file_key_value in enumerate(use_info[key].tolist()):
                         if value_not_missing[idx]:
                             try:
                                 value_matches = (
@@ -914,7 +913,7 @@ class ImageFileCollection(object):
         """
         Full path to each file.
         """
-        unmasked_files = self.summary['file'].compressed()
+        unmasked_files = self.summary['file'].compressed().tolist()
         return [path.join(self.location, file_) for file_ in unmasked_files]
 
     def headers(self, do_not_scale_image_data=True, **kwd):

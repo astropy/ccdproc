@@ -10,9 +10,8 @@ from astropy.stats import median_absolute_deviation as mad
 
 import pytest
 from astropy.utils.data import get_pkg_data_filename
-from astropy.wcs import WCS
+from astropy.nddata import CCDData
 
-from ..ccddata import CCDData
 from ..combiner import Combiner, combine
 
 
@@ -467,6 +466,25 @@ def test_combiner_uncertainty_average_mask():
     # Correction because we combined two images.
     ref_uncertainty /= np.sqrt(3)
     ref_uncertainty[5, 5] = np.std([2, 3]) / np.sqrt(2)
+    np.testing.assert_array_almost_equal(ccd.uncertainty.array,
+                                         ref_uncertainty)
+
+# test resulting uncertainty is corrected for the number of images (with mask)
+def test_combiner_uncertainty_median_mask():
+    mad_to_sigma = 1.482602218505602
+    mask = np.zeros((10, 10), dtype=np.bool_)
+    mask[5, 5] = True
+    ccd_with_mask = CCDData(np.ones((10, 10)), unit=u.adu, mask=mask)
+    ccd_list = [ccd_with_mask,
+                CCDData(np.ones((10, 10))*2, unit=u.adu),
+                CCDData(np.ones((10, 10))*3, unit=u.adu)]
+    c = Combiner(ccd_list)
+    ccd = c.median_combine()
+    # Just the standard deviation of ccd data.
+    ref_uncertainty = np.ones((10, 10)) * mad_to_sigma * mad([1, 2, 3])
+    # Correction because we combined two images.
+    ref_uncertainty /= np.sqrt(3)  # 0.855980789955
+    ref_uncertainty[5, 5] = mad_to_sigma * mad([2, 3]) / np.sqrt(2) # 0.524179041254
     np.testing.assert_array_almost_equal(ccd.uncertainty.array,
                                          ref_uncertainty)
 

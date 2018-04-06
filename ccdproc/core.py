@@ -15,14 +15,13 @@ from astropy import units as u
 from astropy.modeling import fitting
 from astropy import stats
 from astropy.nddata import utils as nddata_utils
-from astropy.nddata import StdDevUncertainty
+from astropy.nddata import StdDevUncertainty, CCDData
 from astropy.wcs.utils import proj_plane_pixel_area
 from astropy.utils import deprecated
 import astropy  # To get the version.
 
 from scipy import ndimage
 
-from .ccddata import CCDData
 from .utils.slices import slice_from_string
 from .log_meta import log_to_metadata
 from .extern.bitfield import bitfield_to_boolean_mask as _bitfield_to_boolean_mask
@@ -182,7 +181,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
         >>> import numpy as np
         >>> from astropy import units as u
-        >>> from ccdproc import CCDData
+        >>> from astropy.nddata import CCDData
         >>> from ccdproc import ccd_process
         >>> ccd = CCDData(np.ones([100, 100]), unit=u.adu)
         >>> nccd = ccd_process(ccd, oscan='[1:10,1:100]',

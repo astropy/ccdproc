@@ -5,11 +5,10 @@ from __future__ import (absolute_import, division, print_function,
 
 import numpy as np
 
-from astropy.nddata import StdDevUncertainty
+from astropy.nddata import StdDevUncertainty, CCDData
 
 from scipy import ndimage
 
-from ..ccddata import CCDData
 from .. import core
 
 

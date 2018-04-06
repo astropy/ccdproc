@@ -19,7 +19,7 @@ from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.extern import six
 
-from ccdproc import CCDData
+from astropy.nddata import CCDData
 
 from ..image_collection import ImageFileCollection
 

@@ -7,13 +7,10 @@ from __future__ import (absolute_import, division, print_function,
 
 import numpy as np
 from numpy import ma
-from .ccddata import CCDData
 from .core import sigma_func
 
-from astropy.nddata import StdDevUncertainty
+from astropy.nddata import CCDData, StdDevUncertainty
 from astropy import log
-
-import math
 
 __all__ = ['Combiner', 'combine']
 
@@ -49,7 +46,8 @@ class Combiner(object):
 
         >>> import numpy as np
         >>> import astropy.units as u
-        >>> from ccdproc import Combiner, CCDData
+        >>> from astropy.nddata import CCDData
+        >>> from ccdproc import Combiner
         >>> ccddata1 = CCDData(np.ones((4, 4)), unit=u.adu)
         >>> ccddata2 = CCDData(np.zeros((4, 4)), unit=u.adu)
         >>> ccddata3 = CCDData(np.ones((4, 4)), unit=u.adu)
@@ -360,12 +358,9 @@ class Combiner(object):
         mask = (masked_values == len(self.data_arr))
 
         # set the uncertainty
-        uncertainty = uncertainty_func(self.data_arr.data, axis=0)
+        uncertainty = uncertainty_func(self.data_arr, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        # TODO: This should be np.sqrt(len(self.data_arr) - masked_values) but
-        # median_absolute_deviation ignores the mask... so it
-        # would yield inconsistent results.
-        uncertainty /= math.sqrt(len(self.data_arr))
+        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
         # There is no need to care about potential masks because the
         # uncertainty was calculated based on the data so potential masked
