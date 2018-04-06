@@ -222,23 +222,6 @@ class ImageFileCollection(object):
         return self._summary
 
     @property
-    def summary_info(self):
-        """
-        `~astropy.table.Table` of values of FITS keywords for files in the
-        collection.
-
-        Each keyword is a column heading. In addition, there is a column
-        called 'file' that contains the name of the FITS file. The directory
-        is not included as part of that name.
-
-        .. deprecated:: 0.4
-        """
-        warnings.warn('"summary_info" is deprecated and will be removed in '
-                      'a future version. Use the "summary" attribute instead.',
-                      AstropyUserWarning)
-        return self._summary
-
-    @property
     def location(self):
         """
         str, Path name to directory containing FITS files.

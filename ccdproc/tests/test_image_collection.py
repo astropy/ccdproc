@@ -172,14 +172,6 @@ class TestImageFileCollection(object):
             # If the path munging has been done properly, this will succeed.
             assert os.path.basename(path_b) == plain_b
 
-    def test_summary_is_summary_info(self, triage_setup):
-        img_collection = ImageFileCollection(
-            location=triage_setup.test_dir, keywords=['imagetyp', 'filter'])
-        # summary_info is deprecated.
-        with catch_warnings(AstropyUserWarning) as w:
-            assert img_collection.summary is img_collection.summary_info
-        assert len(w)
-
     def test_filenames_are_set_properly(self, triage_setup):
         fn = ['filter_no_object_bias.fit', 'filter_object_light_foo.fit']
         img_collection = ImageFileCollection(
