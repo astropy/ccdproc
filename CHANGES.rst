@@ -7,6 +7,8 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Dropped support for Python 2.x and Astropy 1.x.
+
 - Removed deprecated property ``summary_info`` of ``ImageFileCollection``.
 
 - Improved handling of large flags in the ``bitfield`` module. [#610]

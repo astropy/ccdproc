@@ -1,13 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-from __future__ import (print_function, division, absolute_import,
-                        unicode_literals)
-
 import os
 from shutil import rmtree
 from tempfile import mkdtemp
 from glob import iglob
-import sys
 import logging
 import pytest
 
@@ -17,7 +13,6 @@ import numpy as np
 from astropy.tests.helper import catch_warnings
 from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.extern import six
 
 from astropy.nddata import CCDData
 
@@ -74,9 +69,9 @@ class TestImageFileCollectionRepresentation(object):
             filenames=['no_filter_no_object_light.fit',
                        'no_filter_no_object_bias.fit'])
         ref = ("ImageFileCollection(location={0!r}, "
-               "filenames=[{1}'no_filter_no_object_light.fit', "
-               "{1}'no_filter_no_object_bias.fit'])"
-               .format(triage_setup.test_dir, 'u' if six.PY2 else ''))
+               "filenames=['no_filter_no_object_light.fit', "
+               "'no_filter_no_object_bias.fit'])"
+               .format(triage_setup.test_dir))
         assert repr(ic) == ref
 
     def test_repr_ext(self, triage_setup):
@@ -90,9 +85,9 @@ class TestImageFileCollectionRepresentation(object):
             filenames=['mef.fits'],
             ext=1)
         ref = ("ImageFileCollection(location={0!r}, "
-               "filenames=[{1}'mef.fits'], "
+               "filenames=['mef.fits'], "
                "ext=1)"
-               .format(triage_setup.test_dir, 'u' if six.PY2 else ''))
+               .format(triage_setup.test_dir))
         assert repr(ic) == ref
 
     def test_repr_info(self, triage_setup):
@@ -823,9 +818,6 @@ class TestImageFileCollection(object):
         assert 'fun' in ic.summary['stupid']
         assert 'nofun' not in ic.summary['stupid']
 
-    @pytest.mark.skipif(
-        "sys.platform.startswith('win') and six.PY2",
-        reason="os.path.samefile isn't available on windows (python < 3.2).")
     def test_ccds_generator_in_different_directory(self, triage_setup, tmpdir):
         """
         Regression test for https://github.com/astropy/ccdproc/issues/421 in

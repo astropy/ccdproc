@@ -1,8 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-from __future__ import (print_function, division, absolute_import,
-                        unicode_literals)
-
 from collections import OrderedDict
 import fnmatch
 from os import listdir, path
@@ -13,7 +10,6 @@ import numpy.ma as ma
 
 from astropy.table import Table, MaskedColumn
 import astropy.io.fits as fits
-from astropy.extern import six
 from astropy.utils import minversion
 
 import warnings
@@ -436,7 +432,7 @@ class ImageFileCollection(object):
         """
         files = []
         if self._filenames:
-            if isinstance(self._filenames, six.string_types):
+            if isinstance(self._filenames, str):
                 files.append(self._filenames)
             else:
                 files = self._filenames
@@ -509,7 +505,7 @@ class ImageFileCollection(object):
                             'history': []}
 
         alreadyencountered = set()
-        for k, v in six.iteritems(h):
+        for k, v in h.items():
             if k == '':
                 continue
 
@@ -538,7 +534,7 @@ class ImageFileCollection(object):
 
             _add_val_to_dict(k, v, summary, n_previous, missing_marker)
 
-        for k, v in six.iteritems(multi_entry_keys):
+        for k, v in multi_entry_keys.items():
             if v:
                 joined = ','.join(v)
                 _add_val_to_dict(k, joined, summary, n_previous,
@@ -672,7 +668,7 @@ class ImageFileCollection(object):
             if value == '*':
                 have_this_value = value_not_missing
             elif value is not None:
-                if isinstance(value, six.string_types):
+                if isinstance(value, str):
                     # need to loop explicitly over array rather than using
                     # where to correctly do string comparison.
                     have_this_value = np.zeros(len(use_info), dtype=bool)

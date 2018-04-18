@@ -1,15 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 from functools import wraps
 import inspect
 from itertools import chain
 
 import numpy as np
 
-from astropy.extern import six
 from astropy.nddata import NDData
 from astropy import units as u
 from astropy.io import fits
@@ -104,8 +100,7 @@ def log_to_metadata(func):
             # Logging is not turned off, but user did not provide a value
             # so construct one.
             key = func.__name__
-            all_args = chain(zip(original_positional_args, args),
-                             six.iteritems(kwd))
+            all_args = chain(zip(original_positional_args, args), kwd.items())
             all_args = ["{0}={1}".format(name,
                                          _replace_array_with_placeholder(val))
                         for name, val in all_args]
@@ -113,7 +108,7 @@ def log_to_metadata(func):
             log_val = log_val.replace("\n", "")
             meta_dict = {key: log_val}
 
-        for k, v in six.iteritems(meta_dict):
+        for k, v in meta_dict.items():
             _insert_in_metadata_fits_safe(result, k, v)
         return result
 
@@ -121,7 +116,7 @@ def log_to_metadata(func):
 
 
 def _metadata_to_dict(arg):
-    if isinstance(arg, six.string_types):
+    if isinstance(arg, str):
         # add the key, no value
         return {arg: None}
     elif isinstance(arg, ccdproc.Keyword):

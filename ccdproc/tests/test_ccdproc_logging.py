@@ -1,11 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 import numpy as np
 
-from astropy.extern import six
 from astropy.nddata import CCDData
 import pytest
 
@@ -48,7 +44,7 @@ def test_log_dict(ccd_data):
     }
     new = create_deviation(ccd_data, readnoise=3 * ccd_data.unit,
                           add_keyword=keys_to_add)
-    for k, v in six.iteritems(keys_to_add):
+    for k, v in keys_to_add.items():
         # Were all dictionary items added?
         assert k in new.meta
         assert k not in ccd_data.meta
