@@ -15,6 +15,8 @@ Other Changes and Additions
 
 - Improved the performance of several ``ImageFileCollection`` methods. [#599]
 
+- Added auto_logging configuration paramenter [#90]
+
 Bug Fixes
 ^^^^^^^^^
 - Function ``median_combine`` now correctly calculates the uncertainty for 
