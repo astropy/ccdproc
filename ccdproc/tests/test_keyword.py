@@ -1,9 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
-from astropy.extern import six
 import pytest
 from astropy import units as u
 from astropy.io import fits
@@ -55,7 +51,7 @@ def test_value_setting(value, unit, expected):
             key = Keyword(name, unit=unit, value=value)
     else:
         key = Keyword(name, unit=unit, value=value)
-        if isinstance(expected, six.string_types):
+        if isinstance(expected, str):
             assert key.value == expected
         else:
             assert key.value == numerical_value * key.unit

@@ -2,14 +2,10 @@
 
 """This module implements the base CCDPROC functions"""
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 import numbers
 
 import numpy as np
 import math
-from astropy.extern import six
 from astropy.units.quantity import Quantity
 from astropy import units as u
 from astropy.modeling import fitting
@@ -196,7 +192,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         nccd = subtract_overscan(nccd, overscan=oscan,
                                  median=oscan_median,
                                  model=oscan_model)
-    elif isinstance(oscan, six.string_types):
+    elif isinstance(oscan, str):
         nccd = subtract_overscan(nccd, fits_section=oscan,
                                  median=oscan_median,
                                  model=oscan_model)
@@ -206,7 +202,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
         raise TypeError('oscan is not None, a string, or CCDData object.')
 
     # apply the trim correction
-    if isinstance(trim, six.string_types):
+    if isinstance(trim, str):
         nccd = trim_image(nccd, fits_section=trim)
     elif trim is None:
         pass
@@ -442,7 +438,7 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
         raise TypeError('overscan is not a CCDData object.')
 
     if (fits_section is not None and
-            not isinstance(fits_section, six.string_types)):
+            not isinstance(fits_section, str)):
         raise TypeError('overscan is not a string.')
 
     if fits_section is not None:
@@ -531,7 +527,7 @@ def trim_image(ccd, fits_section=None):
     ``arr1``, not a copy.
     """
     if (fits_section is not None and
-            not isinstance(fits_section, six.string_types)):
+            not isinstance(fits_section, str)):
         raise TypeError("fits_section must be a string.")
     trimmed = ccd.copy()
     if fits_section:
@@ -1729,8 +1725,8 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
     if byblocks:
         nlinesblock = int(math.ceil(nlines / nlsig))
         ncolsblock = int(math.ceil(ncols / ncsig))
-        for i in six.moves.range(nlinesblock):
-            for j in six.moves.range(ncolsblock):
+        for i in range(nlinesblock):
+            for j in range(ncolsblock):
                 l1 = i * nlsig
                 l2 = min((i + 1) * nlsig, nlines)
                 c1 = j * ncsig
@@ -1761,10 +1757,10 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         # Loop through columns and look for short segments (<ngood pixels long)
         # which are unmasked, but are surrounded by masked pixels and mask them
         # under the assumption that the column region is bad.
-        for col in six.moves.range(0, ncols):
-            for line in six.moves.range(0, nlines - ngood - 1):
+        for col in range(0, ncols):
+            for line in range(0, nlines - ngood - 1):
                 if mask[line, col]:
-                    for i in six.moves.range(2, ngood + 2):
+                    for i in range(2, ngood + 2):
                         lend = line + i
                         if (mask[lend, col] and
                                 not np.all(mask[line:lend + 1, col])):
@@ -1888,7 +1884,7 @@ class Keyword(object):
         elif isinstance(value, Quantity):
             self._unit = value.unit
             self._value = value
-        elif isinstance(value, six.string_types):
+        elif isinstance(value, str):
             if self.unit is not None:
                 raise ValueError("keyword with a unit cannot have a "
                                  "string value.")
