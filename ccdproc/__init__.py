@@ -23,13 +23,10 @@ if not _ASTROPY_SETUP_:
         """
         Configuration parameters for ccdproc.
         """
-
         auto_logging = _config.ConfigItem(
             True,
             'Whether to automatically log operations to metadata'
             'If set to False, there is no need to specify add_keyword=False'
             'when calling processing operations.'
             )
-
-
     conf = Conf()
