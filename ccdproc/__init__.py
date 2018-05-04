@@ -17,20 +17,19 @@ if not _ASTROPY_SETUP_:
     from .ccddata import *
     from .combiner import *
     from .image_collection import *
+    from astropy import config as _config
 
-from astropy import config as _config
+    class Conf(_config.ConfigNamespace):
+        """
+        Configuration parameters for ccdproc.
+        """
 
-class Conf(_config.ConfigNamespace):
-    """
-    Configuration parameters for `astropy.ccdproc`.
-    """
-
-    auto_logging = _config.ConfigItem(
-        True,
-        'Whether to automatically log operations to metadata'
-        'If set to False, there is no need to specify add_keyword=False'
-        'when calling processing operations.'
-    )
+        auto_logging = _config.ConfigItem(
+            True,
+            'Whether to automatically log operations to metadata'
+            'If set to False, there is no need to specify add_keyword=False'
+            'when calling processing operations.'
+            )
 
 
-conf = Conf()
+    conf = Conf()
