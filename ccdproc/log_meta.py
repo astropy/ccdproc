@@ -99,7 +99,7 @@ def log_to_metadata(func):
         else:
             # Logging is not turned off, but user did not provide a value
             # so construct one unless the config parameter auto_logging is set to False
-            if ccdproc.conf.auto_logging is True:
+            if ccdproc.conf.auto_logging:
                 key = func.__name__
                 all_args = chain(zip(original_positional_args, args), kwd.items())
                 all_args = ["{0}={1}".format(name,

@@ -15,7 +15,7 @@ Other Changes and Additions
 
 - Improved the performance of several ``ImageFileCollection`` methods. [#599]
 
-- Added auto_logging configuration paramenter [#90]
+- Added auto_logging configuration paramenter [#622, #90]
 
 Bug Fixes
 ^^^^^^^^^
