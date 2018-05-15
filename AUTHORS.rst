@@ -34,6 +34,7 @@ Alphabetical list of contributors
 * Joe Philip Ninan (@indiajoe)
 * Punyaslok Pattnaik (@Punyaslok)
 * Adrian Price-Whelan (@adrn)
+* Luca Rizzi (@lucarizzi)
 * Evert Rol (@evertrol)
 * William Schoenell (@wschoenell)
 * Sourav Singh (@souravsingh)
