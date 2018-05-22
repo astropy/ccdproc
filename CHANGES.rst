@@ -17,9 +17,11 @@ Other Changes and Additions
 
 - Added auto_logging configuration paramenter [#622, #90]
 
+- Added support for .bz2, .Z and .zip file formats in ``ImageFileCollection``.
+
 Bug Fixes
 ^^^^^^^^^
-- Function ``median_combine`` now correctly calculates the uncertainty for 
+- Function ``median_combine`` now correctly calculates the uncertainty for
   masked ``CCDData``. [#608]
 
 1.3.0 (2017-11-1)
