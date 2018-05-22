@@ -731,8 +731,9 @@ class ImageFileCollection(object):
         full_extensions = extensions or list(_recognized_fits_file_extensions)
 
         if compressed:
-            with_gz = [extension + '.gz' for extension in full_extensions]
-            full_extensions.extend(with_gz)
+            for comp in ['gz', 'bz2', 'Z', '.zip']:
+                with_comp = [extension + comp for extension in full_extensions]
+                full_extensions.extend(with_comp)
 
         all_files = listdir(self.location)
         files = []
