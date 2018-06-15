@@ -8,6 +8,7 @@ Here are some examples and different repositories using `ccdproc`.
 * `pyhrs`_
 * `reduceccd`_
 * `astrolib`_
+* `mont4k_reduction`_ *Processes multi-image-extension FITS files*
 
 
 .. _ipython notebook: http://nbviewer.ipython.org/gist/mwcraig/06060d789cc298bbb08e
@@ -15,5 +16,5 @@ Here are some examples and different repositories using `ccdproc`.
 .. _pyhrs: https://github.com/saltastro/pyhrs
 .. _reduceccd: https://github.com/rgbIAA/reduceccd
 .. _astrolib: https://github.com/yucelkilic/astrolib
-
+.. _mont4k_reduction: https://github.com/bjweiner/ARTN/tree/master/mont4k_pipeline
 
