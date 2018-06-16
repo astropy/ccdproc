@@ -2,9 +2,6 @@
 
 """This module implements the base CCDData class."""
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 from astropy.nddata import fits_ccddata_reader, fits_ccddata_writer, CCDData
 
 
