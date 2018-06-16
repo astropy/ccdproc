@@ -29,7 +29,11 @@ docs/_build
 # Pycharm editor project files
 .idea
 
+# VSCode editor files
+.vscode
+
 # Packages/installer info
+.eggs
 *.egg
 *.egg-info
 dist
@@ -59,4 +63,3 @@ nosetests.xml
 
 # Mr Developer
 .mr.developer.cfg
-
