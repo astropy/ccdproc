@@ -2,9 +2,6 @@
 
 """This module implements the combiner class."""
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 import numpy as np
 from numpy import ma
 from .core import sigma_func

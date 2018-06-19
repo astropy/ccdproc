@@ -100,7 +100,6 @@ The function `~ccdproc.wcs_project` allows you to reproject an image onto a diff
 To make applying the same operations to a set of files in a directory easier,
 use an `~ccdproc.image_collection.ImageFileCollection`. It constructs, given a directory, a `~astropy.table.Table` containing the values of user-selected keywords in the directory. It also provides methods for iterating over the files. The example below was used to find an image in which the sky background was high for use in a talk:
 
-    >>> from __future__ import division, print_function
     >>> from ccdproc import ImageFileCollection
     >>> import numpy as np
     >>> from glob import glob
