@@ -83,7 +83,7 @@ class Combiner(object):
                 default_unit = ccd.unit
             else:
                 if not (default_unit == ccd.unit):
-                    raise TypeError("CCDData objects don't the same unit.")
+                    raise TypeError("CCDData objects don't have the same unit.")
 
         self.ccd_list = ccd_list
         self.unit = default_unit
