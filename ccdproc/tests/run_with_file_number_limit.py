@@ -84,7 +84,7 @@ def open_files_ccdproc_combine_chunk(kind):
     task is broken into chunks.
     """
     global combo
-    paths = list(TMPPATH.glob('**/*.' + ALLOWED_EXTENSIONS[kind]))
+    paths = sorted(list(TMPPATH.glob('**/*.' + ALLOWED_EXTENSIONS[kind])))
     # We want to force combine to break the task into chunks even
     # if the task really would fit in memory; it is in that case that
     # we end up with too many open files. We'll open one file, determine
@@ -94,7 +94,7 @@ def open_files_ccdproc_combine_chunk(kind):
     with fits.open(paths[0]) as hdulist:
         array_size = hdulist[0].data.nbytes
 
-    combo = combine(list(paths), mem_limit=array_size)
+    combo = combine(paths, mem_limit=array_size)
 
 
 def open_files_ccdproc_combine_nochunk(kind):
@@ -103,7 +103,7 @@ def open_files_ccdproc_combine_nochunk(kind):
     task is not broken into chunks.
     """
     global combo
-    paths = list(TMPPATH.glob('**/*.' + ALLOWED_EXTENSIONS[kind]))
+    paths = sorted(list(TMPPATH.glob('**/*.' + ALLOWED_EXTENSIONS[kind])))
 
     # We ensure there are no chunks by setting a memory limit large
     # enough to hold everything.
@@ -113,7 +113,7 @@ def open_files_ccdproc_combine_nochunk(kind):
     # Why 2x the number of files? To make absolutely sure we don't
     # end up chunking the job.
     array_size *= 2 * len(paths)
-    combo = combine(list(paths))
+    combo = combine(paths)
 
 
 ALLOWED_OPENERS = {
