@@ -4,9 +4,14 @@ from pathlib import Path
 import resource
 import psutil
 import mmap
+import sys
 
 import numpy as np
 from astropy.io import fits
+
+# This bit of hackery ensures that we can see ccdproc from within
+# the test suite
+sys.path.append(str(Path().cwd()))
 from ccdproc import combine
 
 # Do not combine these into one statement. When all references are lost
