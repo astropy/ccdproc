@@ -43,7 +43,7 @@ def generate_fits_files(number, size=None):
 
 def generate_plain_files(number):
     for i in range(number):
-        file = TMPPATH / (f"{i:03d}." + ALLOWED_EXTENSIONS['plain'])
+        file = TMPPATH / ("{i:03d}.".format(i) + ALLOWED_EXTENSIONS['plain'])
         file.write_bytes(np.random.random(100))
 
 
