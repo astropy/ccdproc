@@ -24,6 +24,8 @@ Bug Fixes
 - Function ``median_combine`` now correctly calculates the uncertainty for
   masked ``CCDData``. [#608]
 
+- Function ``combine`` now avoids opening files unnecessarily. [#629, #630]
+
 1.3.0 (2017-11-1)
 -----------------
 
