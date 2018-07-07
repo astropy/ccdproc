@@ -8,6 +8,46 @@ from .core import sigma_func
 
 from astropy.nddata import CCDData, StdDevUncertainty
 from astropy import log
+from astropy.stats import median_absolute_deviation
+
+try:
+    import numba as nb
+except ImportError:
+    _HAS_NUMBA = False
+else:
+    _HAS_NUMBA = True
+
+    @nb.njit
+    def _median_clipping_3d(array, mask, low, high):
+        current_indices = np.empty(array.shape[0], dtype=np.int_)
+        current_numbers = np.empty(array.shape[0], dtype=array.dtype)
+        current_deviations = np.empty(array.shape[0], dtype=array.dtype)
+        for x_2 in range(array.shape[1]):
+            for x_3 in range(array.shape[2]):
+
+                valids = 0
+                for x_1 in range(array.shape[0]):
+                    if not mask[x_1, x_2, x_3]:
+                        current_numbers[valids] = array[x_1, x_2, x_3]
+                        current_indices[valids] = x_1
+                        valids += 1
+
+                median = np.median(current_numbers[:valids])
+
+                for i in range(valids):
+                    current_deviations[i] = abs(current_numbers[i] - median)
+
+                mad = np.median(current_deviations[:valids])
+                low_thres = -low * mad
+                high_thres = high * mad
+
+                for i in range(valids):
+                    value = current_numbers[i]
+                    diff = value - median
+                    if diff < low_thres:
+                        mask[current_indices[i], x_2, x_3] = True
+                    if diff > high_thres:
+                        mask[current_indices[i], x_2, x_3] = True
 
 __all__ = ['Combiner', 'combine']
 
@@ -288,6 +328,15 @@ class Combiner(object):
             `numpy.ma.MaskedArray` objects.
             Default is `numpy.ma.std`.
         """
+        if _HAS_NUMBA and func is np.ma.median and dev_func is median_absolute_deviation:
+            if low_thresh is None:
+                low_thresh = np.inf
+            else:
+                low_thresh = abs(low_thresh)
+            if high_thresh is None:
+                high_thresh = np.inf
+            _median_clipping_3d(self.data_arr.data, self.data_arr.mask, low_thresh, high_thresh)
+            return
         # setup baseline values
         baseline = func(self.data_arr, axis=0)
         dev = dev_func(self.data_arr, axis=0)

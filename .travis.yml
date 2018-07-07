@@ -24,7 +24,7 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy astroscrappy reproject scikit-image'
+        - CONDA_DEPENDENCIES='scipy astroscrappy reproject scikit-image numba'
         - PIP_DEPENDENCIES=''
         - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
