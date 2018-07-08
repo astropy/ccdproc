@@ -302,6 +302,13 @@ class Combiner(object):
             mask = (self.data_arr - baseline > high_thresh * dev)
             self.data_arr.mask[mask] = True
 
+    def _get_scaled_data(self, scale_arg):
+        if scale_arg is not None:
+            return self.data_arr * scale_arg
+        if self.scaling is not None:
+            return self.data_arr * self.scaling
+        return self.data_arr
+
     # set up the combining algorithms
     def median_combine(self, median_func=ma.median, scale_to=None,
                        uncertainty_func=sigma_func):
@@ -340,15 +347,8 @@ class Combiner(object):
         The uncertainty currently calculated using the median absolute
         deviation does not account for rejected pixels.
         """
-        if scale_to is not None:
-            scalings = scale_to
-        elif self.scaling is not None:
-            scalings = self.scaling
-        else:
-            scalings = 1.0
-
         # set the data
-        data = median_func(scalings * self.data_arr, axis=0)
+        data = median_func(self._get_scaled_data(scale_to), axis=0)
 
         # set the mask
         masked_values = self.data_arr.mask.sum(axis=0)
@@ -407,15 +407,8 @@ class Combiner(object):
         combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
-        if scale_to is not None:
-            scalings = scale_to
-        elif self.scaling is not None:
-            scalings = self.scaling
-        else:
-            scalings = 1.0
-
         # set up the data
-        data, wei = scale_func(scalings * self.data_arr,
+        data, wei = scale_func(self._get_scaled_data(scale_to),
                                axis=0, weights=self.weights,
                                returned=True)
 
@@ -475,15 +468,8 @@ class Combiner(object):
         combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
-        if scale_to is not None:
-            scalings = scale_to
-        elif self.scaling is not None:
-            scalings = self.scaling
-        else:
-            scalings = 1.0
-
         # set up the data
-        data = sum_func(scalings * self.data_arr, axis=0)
+        data = sum_func(self._get_scaled_data(scale_to), axis=0)
 
         # set up the mask
         masked_values = self.data_arr.mask.sum(axis=0)
