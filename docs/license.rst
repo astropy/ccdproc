@@ -1,8 +1,8 @@
 .. _license:
 
-********
-Licenses
-********
+*******
+License
+*******
 
 Ccdproc License
 ===============
