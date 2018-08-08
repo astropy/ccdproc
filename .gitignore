@@ -63,3 +63,4 @@ nosetests.xml
 
 # Mr Developer
 .mr.developer.cfg
+.pytest_cache
