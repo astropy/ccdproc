@@ -28,12 +28,15 @@ ALLOWED_EXTENSIONS = {
 
 def generate_fits_files(number, size=None):
     if size is None:
-        size = [250, 250]
+        use_size = [250, 250]
+    else:
+        int_size = int(size)
+        use_size = [int_size, int_size]
 
     base_name = 'test-combine-{num:03d}.' + ALLOWED_EXTENSIONS['fits']
 
     for num in range(number):
-        data = np.zeros(shape=size)
+        data = np.zeros(shape=use_size)
         hdu = fits.PrimaryHDU(data=data)
         hdu.header['bunit'] = 'adu'
         name = base_name.format(num=num)
