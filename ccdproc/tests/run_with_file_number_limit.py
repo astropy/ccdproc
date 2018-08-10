@@ -146,9 +146,10 @@ def run_with_limit(n, kind='fits', size=None, overhead=6,
         testing this script, while the FITS files are for testing
         ccdproc.combine.
 
-    size : int or tuple of ints, optional
-        Size of file to create. Should be a single number if kind is 'plain'
-        or a pair of numbers if kind is 'fits'.
+    size : int, optional
+        Size of file to create. If the kind is 'plain; this is the size
+        of the file, in bytes. If the kind is 'fits', this is the size
+        of one side of the image (the image is always square).
 
     overhead : int, optional
         Number of open files to assume the OS is using for this process. The
@@ -226,16 +227,22 @@ def run_with_limit(n, kind='fits', size=None, overhead=6,
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('number', type=int)
+    parser.add_argument('number', type=int,
+                        help='Limit on number of open files.')
     parser.add_argument('--kind', action='store', default='plain',
                         choices=ALLOWED_EXTENSIONS.keys(),
                         help='Kind of file to generate for test; '
                              'default is plain')
     parser.add_argument('--overhead', type=int, action='store',
-                        help='Number of files to assume the OS is using.')
+                        help='Number of files to assume the OS is using.',
+                        default=6)
     parser.add_argument('--open-by', action='store', default='mmap',
                         choices=ALLOWED_OPENERS.keys(),
                         help='How to open the files. Default is mmap')
+    parser.add_argument('--size', type=int, action='store',
+                        help='Size of one side of image to create. '
+                             'All images are square, so only give '
+                             'a single number for the size.')
     args = parser.parse_args()
     run_with_limit(args.number, kind=args.kind, overhead=args.overhead,
-                   open_method=args.open_by)
+                   open_method=args.open_by, size=args.size)
