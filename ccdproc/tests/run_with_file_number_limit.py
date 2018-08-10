@@ -196,7 +196,7 @@ def run_with_limit(n, kind='fits', size=None, overhead=6,
     proc = psutil.Process()
 
     print('Process ID is: ', proc.pid, flush=True)
-
+    print("Making {} files".format(n_files))
     if kind == 'plain':
         generate_plain_files(n_files)
     elif kind == 'fits':
