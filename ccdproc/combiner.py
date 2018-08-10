@@ -1,8 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """This module implements the combiner class."""
-from mmap import mmap
-
 import numpy as np
 from numpy import ma
 from .core import sigma_func
