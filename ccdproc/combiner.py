@@ -804,7 +804,9 @@ def combine(img_list, output_file=None,
             if ccd.uncertainty is not None:
                 ccd.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
             # Clean up any open files
-            del comb_tile, tile_combiner, ccd_list
+            del comb_tile
+            del tile_combiner
+            del ccd_list
 
     # Write fits file if filename was provided
     if output_file is not None:
