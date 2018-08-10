@@ -740,46 +740,24 @@ def combine(img_list, output_file=None,
             'func': sigma_clip_func,
             'dev_func': sigma_clip_dev_func}
 
-    # These set up for the case that all of the images we are opening
-    # can be memmapped. In that case we only need to open the images
-    # ONCE.
-    memmap_failed = False
-    memmapped_images = []
-
-    # Finally Run the input method on all the subsections of the image
+   # Finally Run the input method on all the subsections of the image
     # and write final stitched image to ccd
     for x in range(0, xs, xstep):
         for y in range(0, ys, ystep):
             xend, yend = min(xs, x + xstep), min(ys, y + ystep)
             ccd_list = []
-            if not memmapped_images:
-                # Either we haven't checked whether we can memmap
-                # or we tried and it failed.
-                for image in img_list:
-                    if isinstance(image, CCDData):
-                        imgccd = image
-                        # One of the images is already a CCDData object, no
-                        # point in trying to memmap the rest
-                        memmap_failed = True
-                    else:
-                        imgccd = CCDData.read(image, **ccdkwargs)
-                        if not memmap_failed:
-                            # Apparently we haven't check whether we  can
-                            # memmap.
-                            if isinstance(imgccd.data.base, mmap):
-                                memmapped_images.append(imgccd)
-                            else:
-                                # This image isn't a memmap, so we can't
-                                # take this shortcut. We'll just open files
-                                # each time.
-                                memmap_failed = True
-                                memmapped_images = []
-                    # Trim image
-                    ccd_list.append(imgccd[x:xend, y:yend])
-            else:
-                # We've already opened the images and can use the memmap
-                for image in memmapped_images:
-                    ccd_list.append(image[x:xend, y:yend])
+            for image in img_list:
+                if isinstance(image, CCDData):
+                    imgccd = image
+                else:
+                    imgccd = CCDData.read(image, **ccdkwargs)
+
+                # Trim image and copy
+                # The copy is *essential* to avoid having a bunch
+                # of unused file references around if the files
+                # are memory-mapped. See this PR for details
+                # https://github.com/astropy/ccdproc/pull/630
+                ccd_list.append(imgccd[x:xend, y:yend].copy())
 
             # Create Combiner for tile
             tile_combiner = Combiner(ccd_list, dtype=dtype)
