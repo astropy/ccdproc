@@ -5,6 +5,7 @@ import resource
 import psutil
 import mmap
 import sys
+import gc
 
 import numpy as np
 from astropy.io import fits
@@ -243,6 +244,12 @@ if __name__ == '__main__':
                         help='Size of one side of image to create. '
                              'All images are square, so only give '
                              'a single number for the size.')
+    parser.add_argument('--frequent-gc', action='store_true',
+                        help='If set, perform garbage collection '
+                             'much more frequently than the default.')
     args = parser.parse_args()
+    if args.frequent_gc:
+        gc.set_threshold(10, 10, 10)
+    print("Garbage collection thresholds: ", gc.get_threshold())
     run_with_limit(args.number, kind=args.kind, overhead=args.overhead,
                    open_method=args.open_by, size=args.size)
