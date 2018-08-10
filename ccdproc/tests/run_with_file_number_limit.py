@@ -2,10 +2,11 @@ from argparse import ArgumentParser
 from tempfile import TemporaryDirectory
 from pathlib import Path
 import resource
-import psutil
 import mmap
 import sys
 import gc
+
+import psutil
 
 import numpy as np
 from astropy.io import fits
