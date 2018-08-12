@@ -496,6 +496,23 @@ class Combiner(object):
         return combined_image
 
 
+def _calculate_step_sizes(x_size, y_size, num_chunks):
+    """
+    Calculate the strides in x and y to achieve at least
+    the ``num_chunks`` pieces.
+
+    Parameters
+    ----------
+    """
+    # First we try to split only along fast x axis
+    xstep = max(1, int(x_size / num_chunks))
+
+    # If more chunks need to be created we split in Y axis for remaining number
+    # of chunks
+    ystep = max(1, int(y_size / (1 + num_chunks - int(x_size / xstep))))
+    return xstep, ystep
+
+
 def combine(img_list, output_file=None,
             method='average', weights=None, scale=None, mem_limit=16e9,
             clip_extrema=False, nlow=1, nhigh=1,
@@ -677,11 +694,9 @@ def combine(img_list, output_file=None,
         log.info('splitting each image into {0} chunks to limit memory usage '
                  'to {1} bytes.'.format(no_chunks, mem_limit))
     xs, ys = ccd.data.shape
-    # First we try to split only along fast x axis
-    xstep = max(1, int(xs/no_chunks))
-    # If more chunks need to be created we split in Y axis for remaining number
-    # of chunks
-    ystep = max(1, int(ys / (1 + no_chunks - int(xs / xstep))))
+
+    # Calculate strides for loop
+    xstep, ystep = _calculate_step_sizes(xs, ys, no_chunks)
 
     # Dictionary of Combiner properties to set and methods to call before
     # combining
