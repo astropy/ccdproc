@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """This module implements the combiner class."""
+
 import numpy as np
 from numpy import ma
 from .core import sigma_func
@@ -738,7 +739,7 @@ def combine(img_list, output_file=None,
             'func': sigma_clip_func,
             'dev_func': sigma_clip_dev_func}
 
-   # Finally Run the input method on all the subsections of the image
+    # Finally Run the input method on all the subsections of the image
     # and write final stitched image to ccd
     for x in range(0, xs, xstep):
         for y in range(0, ys, ystep):
@@ -779,7 +780,7 @@ def combine(img_list, output_file=None,
                 ccd.mask[x:xend, y:yend] = comb_tile.mask
             if ccd.uncertainty is not None:
                 ccd.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
-            # Clean up any open files
+            # Free up memory to try to stay under user's limit
             del comb_tile
             del tile_combiner
             del ccd_list
