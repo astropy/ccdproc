@@ -507,9 +507,19 @@ def _calculate_step_sizes(x_size, y_size, num_chunks):
     # First we try to split only along fast x axis
     xstep = max(1, int(x_size / num_chunks))
 
-    # If more chunks need to be created we split in Y axis for remaining number
-    # of chunks
-    ystep = max(1, int(y_size / (1 + num_chunks - int(x_size / xstep))))
+    # More chunks are needed only if xstep gives us fewer chunks than
+    # requested.
+    x_chunks = int(x_size / xstep)
+
+    if x_chunks >= num_chunks:
+        ystep = y_size
+    else:
+        # The x and y loops are nested, so the number of chunks
+        # is multiplicative, not additive. Calculate the number
+        # of y chunks we need to get at num_chunks.
+        y_chunks = int(num_chunks / x_chunks) + 1
+        ystep = max(1, int(y_size / y_chunks))
+
     return xstep, ystep
 
 

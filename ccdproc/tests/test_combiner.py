@@ -632,9 +632,13 @@ def test_clip_extrema_with_other_rejection():
     np.testing.assert_array_equal(result, expected)
 
 
+# The expected values below assume an image that is 2000x2000
 @pytest.mark.parametrize('num_chunks, expected',
                          [(53, (37, 2000)),
-                          (1500, (1, 2000))]
+                          (1500, (1, 2000)),
+                          (2001, (1, 1000)),
+                          (2999, (1, 1000)),
+                          (10000, (1, 333))]
                          )
 def test_ystep_calculation(num_chunks, expected):
     # Regression test for
