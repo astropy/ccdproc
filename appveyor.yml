@@ -10,7 +10,7 @@ environment:
       PYTHON_ARCH: "64" # needs to be set for CMD_IN_ENV to succeed. If a mix
                         # of 32 bit and 64 bit builds are needed, move this
                         # to the matrix section.
-      CONDA_DEPENDENCIES: "scipy reproject cython astroscrappy"
+      CONDA_DEPENDENCIES: "scipy reproject cython astroscrappy scikit-image memory_profiler"
       # Need the latest scikit-image (0.14.2 or higher), which is not in
       # anaconda yet.
       PIP_DEPENDENCIES: "scikit-image"
