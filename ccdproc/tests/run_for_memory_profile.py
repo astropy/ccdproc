@@ -105,9 +105,11 @@ def run_with_limit(n_files, sampling_interval, size=None, sigma_clip=False,
         kwargs['mem_limit'] = memory_limit
 
     pre_mem_use = memory_usage(-1, interval=sampling_interval, timeout=1)
-    print(pre_mem_use)
+    baseline = np.mean(pre_mem_use)
+    print('Subtracting baseline memory before profile: {}'.format(baseline))
     mem_use = memory_usage((combine, (files,), kwargs),
                            interval=sampling_interval, timeout=None)
+    mem_use = [m - baseline for m in mem_use]
     return mem_use, expected_img_size
 
 
