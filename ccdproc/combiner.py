@@ -712,6 +712,8 @@ def combine(img_list, output_file=None,
     else:
         memory_factor = 2
 
+    memory_factor *= 1.5
+
     # determine the number of chunks to split the images into
     no_chunks = int((memory_factor * size_of_an_img * no_of_img) / mem_limit) + 1
     if no_chunks > 1:
