@@ -82,8 +82,8 @@ def generate_fits_files(n_images, size=None, seed=1523):
         hdu.writeto(path, overwrite=True)
 
 
-def run_with_limit(n_files, sampling_interval, size=None, sigma_clip=False,
-                   combine_method=None, memory_limit=None):
+def run_memory_profile(n_files, sampling_interval, size=None, sigma_clip=False,
+                       combine_method=None, memory_limit=None):
     """
     Try opening a bunch of files with a relatively low limit on the number
     of open files.
