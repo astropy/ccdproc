@@ -2,8 +2,21 @@
 
 import numpy as np
 
-from ..combiner import Combiner, combine
-from .run_for_memory_profile import run_memory_profile, generate_fits_files
+import pytest
+
+from .run_for_memory_profile import run_memory_profile, generate_fits_files, TMPPATH
+
+image_size = 2000   # Square image, so 4000 x 4000
+num_files = 10
+
+
+def setup_module():
+    generate_fits_files(num_files, size=image_size)
+
+
+def teardown_module():
+    for fil in TMPPATH.glob('*.fit'):
+        fil.unlink()
 
 
 @pytest.mark.parametrize('combine_method',
@@ -12,13 +25,8 @@ def test_memory_use_in_combine(combine_method):
     # This is essentially a regression test for
     # https://github.com/astropy/ccdproc/issues/638
     #
-    # Parameters are taken from profiling notebook
-    image_size = 2000   # Square image, so 4000 x 4000
-    num_files = 10
     sampling_interval = 0.01  # sec
     memory_limit = 500000000  # bytes, roughly 0.5GB
-
-    generate_fits_files(num_files, size=image_size)
 
     mem_use, _ = run_memory_profile(num_files, sampling_interval,
                                     size=image_size, memory_limit=memory_limit,
