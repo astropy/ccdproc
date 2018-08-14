@@ -706,8 +706,14 @@ def combine(img_list, output_file=None,
 
     no_of_img = len(img_list)
 
+    # Set a memory use factor based on profiling
+    if method == 'median':
+        memory_factor = 3
+    else:
+        memory_factor = 2
+
     # determine the number of chunks to split the images into
-    no_chunks = int((size_of_an_img * no_of_img) / mem_limit) + 1
+    no_chunks = int((memory_factor * size_of_an_img * no_of_img) / mem_limit) + 1
     if no_chunks > 1:
         log.info('splitting each image into {0} chunks to limit memory usage '
                  'to {1} bytes.'.format(no_chunks, mem_limit))
