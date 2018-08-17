@@ -204,9 +204,8 @@ def test_combiner_average(ccd_data):
     assert ccd.unit == u.adu
     assert ccd.meta['NCOMBINE'] == len(ccd_list)
 
+
 # test that the sum combination works and returns a ccddata object
-
-
 def test_combiner_sum(ccd_data):
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
