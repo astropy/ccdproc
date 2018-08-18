@@ -124,7 +124,8 @@ def run_memory_profile(n_files, sampling_interval, size=None, sigma_clip=False,
 
     if sigma_clip:
         kwargs.update(
-            {'sigma_clip_low_thresh': 5,
+            {'sigma_clip': True,
+             'sigma_clip_low_thresh': 5,
              'sigma_clip_high_thresh': 5,
              'sigma_clip_func': np.ma.median,
              'sigma_clip_dev_func': median_absolute_deviation}
