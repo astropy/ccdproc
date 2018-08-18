@@ -117,7 +117,7 @@ def run_memory_profile(n_files, sampling_interval, size=None, sigma_clip=False,
     proc = psutil.Process()
 
     print('Process ID is: ', proc.pid, flush=True)
-    ic = ImageFileCollection(TMPPATH)
+    ic = ImageFileCollection(str(TMPPATH))
     files = ic.files_filtered(for_prof='yes', include_path=True)
 
     kwargs = {'method': combine_method}
