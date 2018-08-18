@@ -36,7 +36,7 @@ def test_memory_use_in_combine(combine_method):
     # throughout the combination. The factor below allows for that.
     # It may need to be raised in the future...that is fine, there is a
     # separate test for average memory use.
-    overhead_allowance = 1.5
+    overhead_allowance = 1.75
 
     # memory_profile reports in MB (no, this is not the correct conversion)
     memory_limit_mb = memory_limit / 1e6
