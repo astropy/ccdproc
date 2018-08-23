@@ -82,7 +82,7 @@ def triage_setup(request):
     original_dir = os.getcwd()
     os.chdir(test_dir)
     img = np.uint16(np.arange(100))
-    
+
     no_filter_no_object = fits.PrimaryHDU(img)
     no_filter_no_object.header['imagetyp'] = 'light'.upper()
     no_filter_no_object.writeto('no_filter_no_object_light.fit')
