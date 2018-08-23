@@ -16,6 +16,7 @@ Project Coordinators
 Alphabetical list of contributors
 ---------------------------------
 
+* Jaime A. Alvarado-Montes (@seap-jaime)
 * Yoonsoo P. Bach (@ysBach)
 * Kyle Barbary (@kbarbary)
 * Javier Blasco (@javierblasco)
