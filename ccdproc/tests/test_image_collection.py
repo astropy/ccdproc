@@ -155,6 +155,13 @@ class TestImageFileCollection(object):
         filtered = ic.files_filtered(naxis='2')
         assert len(filtered) == 0
 
+    def test_filter_fz_files(self, triage_setup):
+        fn = 'test.fits.fz'
+        ic = ImageFileCollection(location=triage_setup.test_dir, filenames=fn)
+        # Get a subset of files with a specific header value
+        filtered = ic.files_filtered(EXPTIME=15.0)
+        assert len(filtered) == 1
+
     def test_filtered_files_have_proper_path(self, triage_setup):
         ic = ImageFileCollection(location=triage_setup.test_dir, keywords='*')
         # Get a subset of the files.

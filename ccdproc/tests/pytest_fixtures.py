@@ -82,7 +82,7 @@ def triage_setup(request):
     original_dir = os.getcwd()
     os.chdir(test_dir)
     img = np.uint16(np.arange(100))
-
+    
     no_filter_no_object = fits.PrimaryHDU(img)
     no_filter_no_object.header['imagetyp'] = 'light'.upper()
     no_filter_no_object.writeto('no_filter_no_object_light.fit')
@@ -135,6 +135,16 @@ def triage_setup(request):
     n_test['light'] += 1
     n_test['need_object'] += 1
 
+    fzfile = fits.PrimaryHDU(img)
+    fzfile.header['EXPTIME'] = 15.0
+    fzfile.header['imagetyp'] = 'light'.upper()
+    fzfile.header['filter'] = 'R'
+    fzfile.writeto('test.fits.fz')
+    n_test['files'] += 1
+    n_test['compressed'] += 1
+    n_test['light'] += 1
+    n_test['need_object'] += 1
+    
     def teardown():
         for key in n_test.keys():
             n_test[key] = 0
