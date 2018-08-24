@@ -730,7 +730,7 @@ class ImageFileCollection(object):
 
         full_extensions = extensions or list(_recognized_fits_file_extensions)
 
-        # The common compressed fits image .fz not supported.
+        # The common compressed fits image .fz is supported using ext=1 when calling ImageFileCollection
         if compressed:
             for comp in ['.gz', '.bz2', '.Z', '.zip', '.fz']:
                 with_comp = [extension + comp for extension in full_extensions]
