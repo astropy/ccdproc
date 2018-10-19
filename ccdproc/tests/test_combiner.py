@@ -9,7 +9,7 @@ import pytest
 from astropy.utils.data import get_pkg_data_filename
 from astropy.nddata import CCDData
 
-from ..combiner import Combiner, combine
+from ..combiner import Combiner, combine, _calculate_step_sizes
 
 
 # test that the Combiner raises error if empty
@@ -649,3 +649,21 @@ def test_clip_extrema_with_other_rejection():
                 [30., 30., 47.5, 30., 30.],
                 [47.5, 30., 30., 30., 30.]]
     np.testing.assert_array_equal(result, expected)
+
+
+# The expected values below assume an image that is 2000x2000
+@pytest.mark.parametrize('num_chunks, expected',
+                         [(53, (37, 2000)),
+                          (1500, (1, 2000)),
+                          (2001, (1, 1000)),
+                          (2999, (1, 1000)),
+                          (10000, (1, 333))]
+                         )
+def test_ystep_calculation(num_chunks, expected):
+    # Regression test for
+    # https://github.com/astropy/ccdproc/issues/639
+    # See that issue for the motivation for the choice of
+    # image size and number of chunks in the test below.
+
+    xstep, ystep = _calculate_step_sizes(2000, 2000, num_chunks)
+    assert xstep == expected[0] and ystep == expected[1]
