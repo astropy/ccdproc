@@ -737,11 +737,16 @@ def combine(img_list, output_file=None,
                 else:
                     imgccd = CCDData.read(image, **ccdkwargs)
 
-                # Trim image
-                ccd_list.append(imgccd[x:xend, y:yend])
+                # Trim image and copy
+                # The copy is *essential* to avoid having a bunch
+                # of unused file references around if the files
+                # are memory-mapped. See this PR for details
+                # https://github.com/astropy/ccdproc/pull/630
+                ccd_list.append(imgccd[x:xend, y:yend].copy())
 
             # Create Combiner for tile
             tile_combiner = Combiner(ccd_list, dtype=dtype)
+
             # Set all properties and call all methods
             for to_set in to_set_in_combiner:
                 setattr(tile_combiner, to_set, to_set_in_combiner[to_set])
@@ -761,6 +766,10 @@ def combine(img_list, output_file=None,
                 ccd.mask[x:xend, y:yend] = comb_tile.mask
             if ccd.uncertainty is not None:
                 ccd.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
+            # Free up memory to try to stay under user's limit
+            del comb_tile
+            del tile_combiner
+            del ccd_list
 
     # Write fits file if filename was provided
     if output_file is not None:
