@@ -59,10 +59,6 @@ matrix:
           env: ASTROPY_VERSION=2
                SETUP_CMD='test --coverage'
 
-        # Try older numpy, python versions
-        - python: 3.4
-          env: NUMPY_VERSION=1.12
-
         - python: 3.5
           env: NUMPY_VERSION=1.13
 
