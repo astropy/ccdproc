@@ -16,6 +16,7 @@ python:
     - 3.4
     - 3.5
     - 3.6
+    - 3.7
 
 env:
     global:
@@ -40,17 +41,17 @@ matrix:
 
         # Try Astropy/NumPy development versions. This requires them to be
         # compiled during setup which takes some time.
-        - python: 3.6
+        - python: 3.7
           env: ASTROPY_VERSION=development
                NUMPY_VERSION=dev
                SETUP_CMD='test --coverage'
 
         # Check for sphinx doc build warnings
-        - python: 3.6
+        - python: 3.7
           env: SETUP_CMD='build_docs -w'
 
         # Do coverage tests for both latest Python versions
-        - python: 3.6
+        - python: 3.7
           env: ASTROPY_VERSION=3
                SETUP_CMD='test --coverage'
 
@@ -71,11 +72,11 @@ matrix:
 
         # Try numpy pre-release version. This runs only when a pre-release
         # is available on pypi.
-        - python: 3.6
+        - python: 3.7
           env: NUMPY_VERSION=prerelease
 
         # pycodestyle test, see setup.cfg for tested pep8 warnings/errors
-        - python: 3.6
+        - python: 3.7
           env: MAIN_CMD='pycodestyle ccdproc --count  --show-source --show-pep8'
                SETUP_CMD=''
 
