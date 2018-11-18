@@ -24,8 +24,8 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy astroscrappy reproject scikit-image psutil'
-        - PIP_DEPENDENCIES=''
+        - CONDA_DEPENDENCIES='scipy reproject scikit-image psutil'
+        - PIP_DEPENDENCIES='git+https://github.com/astropy/astroscrappy.git'
         - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
         - CONDA_CHANNELS='astropy-ci-extras astropy'
