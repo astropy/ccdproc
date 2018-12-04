@@ -30,9 +30,9 @@ def test_linear_gain_correct(ccd_data, gain):
     except AttributeError:
         gain_value = gain
 
-    np.testing.assert_array_equal(ccd.data, gain_value * orig_data)
-    np.testing.assert_array_equal(ccd.uncertainty.array,
-                                  gain_value * ccd_data.uncertainty.array)
+    np.testing.assert_array_almost_equal_nulp(ccd.data, gain_value * orig_data)
+    np.testing.assert_array_almost_equal_nulp(
+        ccd.uncertainty.array, gain_value * ccd_data.uncertainty.array)
 
     if isinstance(gain, u.Quantity):
         assert ccd.unit == ccd_data.unit * gain.unit
@@ -52,7 +52,7 @@ def test_linear_gain_unit_keyword(ccd_data):
     gain = 3.0
     gain_unit = u.electron / u.adu
     ccd = gain_correct(ccd_data, gain, gain_unit=gain_unit)
-    np.testing.assert_array_equal(ccd.data, gain * orig_data)
-    np.testing.assert_array_equal(ccd.uncertainty.array,
-                                  gain * ccd_data.uncertainty.array)
+    np.testing.assert_array_almost_equal_nulp(ccd.data, gain * orig_data)
+    np.testing.assert_array_almost_equal_nulp(
+        ccd.uncertainty.array, gain * ccd_data.uncertainty.array)
     assert ccd.unit == ccd_data.unit * gain_unit
