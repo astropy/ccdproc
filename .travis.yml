@@ -56,7 +56,6 @@ matrix:
         # Check compatibility with the current astropy LTS release
         - python: 3.6
           env: ASTROPY_VERSION=2
-               SETUP_CMD='test --coverage'
 
         - python: 3.5
           env: NUMPY_VERSION=1.13
