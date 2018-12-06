@@ -13,7 +13,6 @@ addons:
             - dvipng
 
 python:
-    - 3.4
     - 3.5
     - 3.6
 
@@ -57,7 +56,7 @@ matrix:
         # Check compatibility with the current astropy LTS release
         - python: 3.6
           env: ASTROPY_VERSION=2
-               SETUP_CMD='test --coverage'
+               PYTEST_VERSION=3.6
 
         - python: 3.5
           env: NUMPY_VERSION=1.13
