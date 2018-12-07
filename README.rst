@@ -24,6 +24,8 @@ in this source distribution.
 Documentation is at `ccdproc.readthedocs.io
 <http://ccdproc.readthedocs.io/en/latest/>`_
 
+An extensive `tutorial`_ is currently in development.
+
 Contributing
 ------------
 
@@ -41,13 +43,18 @@ contribution.
 
 Feedback and feature requests?   Is there something missing you would like
 to see?  Please open an issue or send an email to  `@mwcraig`_,
-`@crawfordsm`_ or `@mseifert`_.
+`@crawfordsm`_ or `@mseifert`_.   Questions can also be opened on 
+stackoverflow, twitter, or the astropy email list.  
 
 Ccdproc follows the `Astropy Code of Conduct`_ and strives to provide a
 welcoming community to all of our users and contributors.
 
 Want more information about how to make a contribution?  Take a look at
 the astropy `contributing`_ and `developer`_ documentation.
+
+If you are interested finacial supporting the project, please consider
+donating to `NumFOCUS`_ that provides financial
+management for the Astropy Project. 
 
 Acknowledgements
 ----------------
@@ -69,3 +76,5 @@ Thanks to Kyle Barbary (`@kbarbary`_) for designing the `ccdproc` logo.
 .. _Astropy Code of Conduct:  http://www.astropy.org/about.html#codeofconduct
 .. _contributing: http://docs.astropy.org/en/stable/index.html#contributing
 .. _developer: http://docs.astropy.org/en/stable/index.html#developer-documentation
+.. _tutorial: https://github.com/mwcraig/ccd-reduction-and-photometry-guide
+.. _NumFOCUS: https://numfocus.org/
