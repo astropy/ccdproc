@@ -52,8 +52,8 @@ welcoming community to all of our users and contributors.
 Want more information about how to make a contribution?  Take a look at
 the astropy `contributing`_ and `developer`_ documentation.
 
-If you are interested finacial supporting the project, please consider
-donating to `NumFOCUS`_ that provides financial
+If you are interested in finacially supporting the project, please 
+consider donating to `NumFOCUS`_ that provides financial
 management for the Astropy Project. 
 
 Acknowledgements
