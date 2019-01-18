@@ -563,7 +563,6 @@ class SumCombiner(CombinerBase):
         # set up the data
         data = combine_func(self._get_scaled_data(scale_to), axis=0)
 
-
         # set up the mask
         masked_values = self.data_arr.mask.sum(axis=0)
         mask = (masked_values == len(self.data_arr))
