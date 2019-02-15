@@ -15,16 +15,19 @@ Documentation
 The documentation for this package is as follows:
 
 .. toctree::
+  :includehidden:
   :maxdepth: 2
 
   ccdproc/install.rst
 
 .. toctree::
+  :includehidden:
   :maxdepth: 3
 
   ccdproc/index.rst
 
 .. toctree::
+  :includehidden:
   :maxdepth: 1
 
   authors_for_sphinx
