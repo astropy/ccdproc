@@ -111,7 +111,8 @@ html_theme_options = {
     'logotext1': 'ccd',   # white, semi-bold
     'logotext2': 'proc',  # orange, light
     'logotext3': ':docs'   # white, light
-    "collapse_navigation" : False
+    'navigation_depth': 3,  # Testing this 
+    'collapse_navigation': False  # Testing this
 }
 
 
