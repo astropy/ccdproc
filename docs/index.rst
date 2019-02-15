@@ -15,16 +15,19 @@ Documentation
 The documentation for this package is here:
 
 .. toctree::
+  :collapse: False
   :maxdepth: 2
 
   ccdproc/install.rst
 
 .. toctree::
+  :collapse: False
   :maxdepth: 3
 
   ccdproc/index.rst
 
 .. toctree::
+  :collapse: False
   :maxdepth: 1
 
   authors_for_sphinx
