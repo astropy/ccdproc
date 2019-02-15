@@ -41,6 +41,7 @@ Alphabetical list of contributors
 * William Schoenell (@wschoenell)
 * Sourav Singh (@souravsingh)
 * Brigitta Sipocz (@bsipocz)
+* Kris Stern (@kakirastern)
 * Connor Stotts (@stottsco)
 * Ole Streicher (@olebole)
 * JVSN Reddy (@janga1997)
