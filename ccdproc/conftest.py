@@ -16,6 +16,14 @@ except ImportError:
                                               PYTEST_HEADER_MODULES,
                                               TESTED_VERSIONS)
 
+try:
+    # This is the way to get plugins in astropy 2.x
+    from astropy.tests.pytest_plugins import *
+except ImportError:
+    # Otherwise they are installed as separate packages that pytest
+    # automagically finds.
+    pass
+
 from .tests.pytest_fixtures import *
 
 # This is to figure out ccdproc version, rather than using Astropy's
