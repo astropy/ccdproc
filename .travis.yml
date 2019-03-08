@@ -24,8 +24,11 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy reproject scikit-image psutil cython'
-        - PIP_DEPENDENCIES='git+https://github.com/astropy/astroscrappy.git'
+        - CONDA_DEPENDENCIES='scipy reproject psutil cython astroscrappy'
+
+        # Need the latest scikit-image (0.14.2 or higher), which is not in
+        # anaconda yet.
+        - PIP_DEPENDENCIES='scikit-image'
         - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
         - CONDA_CHANNELS='astropy-ci-extras astropy'
