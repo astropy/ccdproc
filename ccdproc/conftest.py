@@ -6,7 +6,24 @@
 
 import os
 
-from astropy.tests.pytest_plugins import *
+try:
+    from astropy.tests.plugins.display import (pytest_report_header,
+                                               PYTEST_HEADER_MODULES,
+                                               TESTED_VERSIONS)
+except ImportError:
+    # When using astropy 2.0
+    from astropy.tests.pytest_plugins import (pytest_report_header,
+                                              PYTEST_HEADER_MODULES,
+                                              TESTED_VERSIONS)
+
+try:
+    # This is the way to get plugins in astropy 2.x
+    from astropy.tests.pytest_plugins import *
+except ImportError:
+    # Otherwise they are installed as separate packages that pytest
+    # automagically finds.
+    pass
+
 from .tests.pytest_fixtures import *
 
 # This is to figure out ccdproc version, rather than using Astropy's

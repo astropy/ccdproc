@@ -23,34 +23,38 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy astroscrappy reproject scikit-image psutil'
-        - PIP_DEPENDENCIES=''
+        - CONDA_DEPENDENCIES='scipy reproject psutil cython astroscrappy'
+
+        # Need the latest scikit-image (0.14.2 or higher), which is not in
+        # anaconda yet.
+        - PIP_DEPENDENCIES='scikit-image'
         - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
         - CONDA_CHANNELS='astropy-ci-extras astropy'
         - ASTROPY_USE_SYSTEM_PYTEST=1
 
     matrix:
-
         - SETUP_CMD='egg_info'
 
 matrix:
     include:
+        - env: PYTHON_VERSION=3.7
+               SETUP_CMD='egg_info'
 
         # Try Astropy/NumPy development versions. This requires them to be
         # compiled during setup which takes some time.
-        - python: 3.6
-          env: ASTROPY_VERSION=development
+        - env: PYTHON_VERSION=3.7
+               ASTROPY_VERSION=development
                NUMPY_VERSION=dev
                SETUP_CMD='test --coverage'
 
         # Check for sphinx doc build warnings
-        - python: 3.6
-          env: SETUP_CMD='build_docs -w'
+        - env: PYTHON_VERSION=3.7
+               SETUP_CMD='build_docs -w'
 
         # Do coverage tests for both latest Python versions
-        - python: 3.6
-          env: ASTROPY_VERSION=3
+        - env: PYTHON_VERSION=3.7
+               ASTROPY_VERSION=3
                SETUP_CMD='test --coverage'
 
         # Check compatibility with the current astropy LTS release
@@ -66,12 +70,12 @@ matrix:
 
         # Try numpy pre-release version. This runs only when a pre-release
         # is available on pypi.
-        - python: 3.6
-          env: NUMPY_VERSION=prerelease
+        - env: PYTHON_VERSION=3.7
+               NUMPY_VERSION=prerelease
 
         # pycodestyle test, see setup.cfg for tested pep8 warnings/errors
-        - python: 3.6
-          env: MAIN_CMD='pycodestyle ccdproc --count  --show-source --show-pep8'
+        - env: PYTHON_VERSION=3.7
+               MAIN_CMD='pycodestyle ccdproc --count  --show-source --show-pep8'
                SETUP_CMD=''
 
 install:
