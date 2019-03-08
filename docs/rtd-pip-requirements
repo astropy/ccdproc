@@ -2,4 +2,5 @@ numpy>=1.9
 scipy
 scikit-image
 numpydoc
-astropy>=2.0
+astropy>=3.0
+sphinx-astropy
