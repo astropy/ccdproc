@@ -2,6 +2,8 @@
 
 """This module implements the combiner class."""
 
+from abc import ABC, abstractmethod
+
 import numpy as np
 from numpy import ma
 from .core import sigma_func
@@ -9,12 +11,13 @@ from .core import sigma_func
 from astropy.nddata import CCDData, StdDevUncertainty
 from astropy import log
 
-__all__ = ['Combiner', 'combine']
+__all__ = ['MedianCombiner', 'SumCombiner', 'AverageCombiner', 'combine']
 
 
-class Combiner(object):
+class CombinerBase(ABC):
     """
-    A class for combining CCDData objects.
+
+    A class for base class combining CCDData objects.
 
     The Combiner class is used to combine together `~astropy.nddata.CCDData` objects
     including the method for combining the data, rejecting outlying data,
@@ -30,6 +33,14 @@ class Combiner(object):
         description. If ``None`` it uses ``np.float64``.
         Default is ``None``.
 
+    use_input_uncertainties : boolean
+        default value here is False, in which case the original uncertainty
+        calculations will be used. If True we can generate uncertainties using
+        the input CCDData uncertainties.
+
+    uncertainty_func : function, optional
+            Function to calculate uncertainty. Defaults to `numpy.ma.std`.
+
     Raises
     ------
     TypeError
@@ -44,19 +55,21 @@ class Combiner(object):
         >>> import numpy as np
         >>> import astropy.units as u
         >>> from astropy.nddata import CCDData
-        >>> from ccdproc import Combiner
+        >>> from ccdproc import AverageCombiner
         >>> ccddata1 = CCDData(np.ones((4, 4)), unit=u.adu)
         >>> ccddata2 = CCDData(np.zeros((4, 4)), unit=u.adu)
         >>> ccddata3 = CCDData(np.ones((4, 4)), unit=u.adu)
-        >>> c = Combiner([ccddata1, ccddata2, ccddata3])
-        >>> ccdall = c.average_combine()
-        >>> ccdall  # doctest: +FLOAT_CMP
+        >>> c = AverageCombiner([ccddata1, ccddata2, ccddata3])
+        >>> ccdall = c.combiner_method()
+        >>> ccdall
         CCDData([[ 0.66666667,  0.66666667,  0.66666667,  0.66666667],
                  [ 0.66666667,  0.66666667,  0.66666667,  0.66666667],
                  [ 0.66666667,  0.66666667,  0.66666667,  0.66666667],
                  [ 0.66666667,  0.66666667,  0.66666667,  0.66666667]])
     """
-    def __init__(self, ccd_list, dtype=None):
+    # TODO: add uncertainty_func setter?
+    def __init__(self, ccd_list, dtype=None, use_input_uncertainties=False,
+                 uncertainty_func=None):
         if ccd_list is None:
             raise TypeError("ccd_list should be a list of CCDData objects.")
 
@@ -89,6 +102,8 @@ class Combiner(object):
         self.unit = default_unit
         self.weights = None
         self._dtype = dtype
+        self.use_input_uncer = use_input_uncertainties
+        self.uncertainty_func = uncertainty_func
 
         # set up the data array
         new_shape = (len(ccd_list),) + default_shape
@@ -309,9 +324,37 @@ class Combiner(object):
             return self.data_arr * self.scaling
         return self.data_arr
 
+    @abstractmethod
+    def combiner_method(self, combine_func=None, scale_to=None):
+        """
+        Abstract container method for combiner's defined in subclasses. I
+        actually think it might be worthwile to re-tool this so we don't have
+        repeat code, but my initial solution to that might make the implementation
+        a little harder to understand for someone reading the code, as the
+        top level combiner fucntion in this abstrac base class would no longer
+        be the abstract method.
+        """
+
+        pass
+
+    @abstractmethod
+    def uncertainty_fresh(self, masked_values=None):
+        pass
+
+    @abstractmethod
+    def uncertainty_provided(self):
+        pass
+
+
+class MedianCombiner(CombinerBase):
+
+    def __init__(self, ccd_list, dtype=None, use_input_uncertainties=False,
+                 uncertainty_func=sigma_func):
+        super().__init__(ccd_list, dtype, use_input_uncertainties,
+                         uncertainty_func)
+
     # set up the combining algorithms
-    def median_combine(self, median_func=ma.median, scale_to=None,
-                       uncertainty_func=sigma_func):
+    def combiner_method(self, combine_func=ma.median, scale_to=None):
         """
         Median combine a set of arrays.
 
@@ -324,18 +367,13 @@ class Combiner(object):
 
         Parameters
         ----------
-        median_func : function, optional
+        combine_func : function, optional
             Function that calculates median of a `numpy.ma.MaskedArray`.
             Default is `numpy.ma.median`.
 
         scale_to : float or None, optional
-            Scaling factor used in the average combined image. If given,
-            it overrides `scaling`.
-            Defaults to None.
-
-        uncertainty_func : function, optional
-            Function to calculate uncertainty.
-            Defaults is `~ccdproc.sigma_func`.
+            Scaling factor used in the sum combined image. If given,
+            it overrides `scaling`. Defaults to ``None``.
 
         Returns
         -------
@@ -347,23 +385,19 @@ class Combiner(object):
         The uncertainty currently calculated using the median absolute
         deviation does not account for rejected pixels.
         """
+
         # set the data
-        data = median_func(self._get_scaled_data(scale_to), axis=0)
+        data = combine_func(self._get_scaled_data(scale_to), axis=0)
 
         # set the mask
         masked_values = self.data_arr.mask.sum(axis=0)
         mask = (masked_values == len(self.data_arr))
 
-        # set the uncertainty
-        uncertainty = uncertainty_func(self.data_arr, axis=0)
-        # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
-        # Convert uncertainty to plain numpy array (#351)
-        # There is no need to care about potential masks because the
-        # uncertainty was calculated based on the data so potential masked
-        # elements are also masked in the data. No need to keep two identical
-        # masks.
-        uncertainty = np.asarray(uncertainty)
+        # handle uncertainty, this may change
+        if self.use_input_uncer:
+            uncertainty = self.uncertainty_provided()
+        else:
+            uncertainty = self.uncertainty_fresh(masked_values)
 
         # create the combined image with a dtype matching the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
@@ -376,8 +410,43 @@ class Combiner(object):
         # return the combined image
         return combined_image
 
-    def average_combine(self, scale_func=ma.average, scale_to=None,
-                        uncertainty_func=ma.std):
+    def uncertainty_fresh(self, masked_values=None):
+        """
+
+        :return:
+        """
+        # set the uncertainty
+        uncertainty = self.uncertainty_func(self.data_arr, axis=0)
+        # Divide uncertainty by the number of pixel (#309)
+        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
+        # Convert uncertainty to plain numpy array (#351)
+        # There is no need to care about potential masks because the
+        # uncertainty was calculated based on the data so potential masked
+        # elements are also masked in the data. No need to keep two identical
+        # masks.
+        uncertainty = np.asarray(uncertainty)
+
+        return uncertainty
+
+    def uncertainty_provided(self):
+        """
+
+
+
+        """
+        # TODO: this function
+        return None
+
+
+class AverageCombiner(CombinerBase):
+    def __init__(self, ccd_list, dtype=None, use_input_uncertainties=False,
+                 uncertainty_func=ma.std):
+        super().__init__(ccd_list, dtype, use_input_uncertainties,
+                         uncertainty_func)
+
+    # set up the combining algorithms
+    def combiner_method(self, combine_func=ma.average, scale_to=None):
+
         """
         Average combine together a set of arrays.
 
@@ -391,37 +460,34 @@ class Combiner(object):
 
         Parameters
         ----------
-        scale_func : function, optional
+        combine_func : function, optional
             Function to calculate the average. Defaults to
             `numpy.ma.average`.
 
-        scale_to : float or None, optional
-            Scaling factor used in the average combined image. If given,
+         scale_to : float or None, optional
+            Scaling factor used in the sum combined image. If given,
             it overrides `scaling`. Defaults to ``None``.
-
-        uncertainty_func : function, optional
-            Function to calculate uncertainty. Defaults to `numpy.ma.std`.
 
         Returns
         -------
         combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
+
         # set up the data
-        data, wei = scale_func(self._get_scaled_data(scale_to),
-                               axis=0, weights=self.weights,
-                               returned=True)
+        data, wei = combine_func(self._get_scaled_data(scale_to),
+                                 axis=0, weights=self.weights,
+                                 returned=True)
 
         # set up the mask
         masked_values = self.data_arr.mask.sum(axis=0)
         mask = (masked_values == len(self.data_arr))
 
-        # set up the deviation
-        uncertainty = uncertainty_func(self.data_arr, axis=0)
-        # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
-        # Convert uncertainty to plain numpy array (#351)
-        uncertainty = np.asarray(uncertainty)
+        # handle uncertainty, this may change
+        if self.use_input_uncer:
+            uncertainty = self.uncertainty_provided()
+        else:
+            uncertainty = self.uncertainty_fresh(masked_values)
 
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
@@ -434,8 +500,36 @@ class Combiner(object):
         # return the combined image
         return combined_image
 
-    def sum_combine(self, sum_func=ma.sum, scale_to=None,
-                    uncertainty_func=ma.std):
+    def uncertainty_fresh(self, masked_values=None):
+        """
+
+        :return:
+        """
+        # set up the deviation
+        uncertainty = self.uncertainty_func(self.data_arr, axis=0)
+        # Divide uncertainty by the number of pixel (#309)
+        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
+        # Convert uncertainty to plain numpy array (#351)
+        uncertainty = np.asarray(uncertainty)
+
+        return uncertainty
+
+    def uncertainty_provided(self):
+        """
+
+        """
+        # TODO: this function
+        return None
+
+
+class SumCombiner(CombinerBase):
+    def __init__(self, ccd_list, dtype=None, use_input_uncertainties=False,
+                 uncertainty_func=ma.std):
+        super().__init__(ccd_list, dtype, use_input_uncertainties,
+                         uncertainty_func)
+
+    # set up the combining algorithms
+    def combiner_method(self, combine_func=ma.sum, scale_to=None):
         """
         Sum combine together a set of arrays.
 
@@ -452,7 +546,7 @@ class Combiner(object):
 
         Parameters
         ----------
-        sum_func : function, optional
+        combine_func : function, optional
             Function to calculate the sum. Defaults to
             `numpy.ma.sum`.
 
@@ -460,29 +554,24 @@ class Combiner(object):
             Scaling factor used in the sum combined image. If given,
             it overrides `scaling`. Defaults to ``None``.
 
-        uncertainty_func : function, optional
-            Function to calculate uncertainty. Defaults to `numpy.ma.std`.
-
         Returns
         -------
         combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
+
         # set up the data
-        data = sum_func(self._get_scaled_data(scale_to), axis=0)
+        data = combine_func(self._get_scaled_data(scale_to), axis=0)
 
         # set up the mask
         masked_values = self.data_arr.mask.sum(axis=0)
         mask = (masked_values == len(self.data_arr))
 
-        # set up the deviation
-        uncertainty = uncertainty_func(self.data_arr, axis=0)
-        # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
-        # Convert uncertainty to plain numpy array (#351)
-        uncertainty = np.asarray(uncertainty)
-        # Multiply uncertainty by square root of the number of images
-        uncertainty *= len(self.data_arr) - masked_values
+        # handle uncertainty, this may change
+        if self.use_input_uncer:
+            uncertainty = self.uncertainty_provided()
+        else:
+            uncertainty = self.uncertainty_fresh(masked_values)
 
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
@@ -494,6 +583,30 @@ class Combiner(object):
 
         # return the combined image
         return combined_image
+
+    def uncertainty_fresh(self, masked_values=None):
+        """
+
+        :return:
+        """
+        # set up the deviation
+        uncertainty = self.uncertainty_func(self.data_arr, axis=0)
+        # Divide uncertainty by the number of pixel (#309)
+        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
+        # Convert uncertainty to plain numpy array (#351)
+        uncertainty = np.asarray(uncertainty)
+        # Multiply uncertainty by square root of the number of images
+        uncertainty *= len(self.data_arr) - masked_values
+
+        return uncertainty
+
+    def uncertainty_provided(self):
+        """
+
+
+        """
+        # TODO: this function
+        return None
 
 
 def _calculate_step_sizes(x_size, y_size, num_chunks):
@@ -530,7 +643,8 @@ def combine(img_list, output_file=None,
             sigma_clip=False,
             sigma_clip_low_thresh=3, sigma_clip_high_thresh=3,
             sigma_clip_func=ma.mean, sigma_clip_dev_func=ma.std,
-            dtype=None, combine_uncertainty_function=None, **ccdkwargs):
+            dtype=None, use_input_uncertainties=False, combine_uncertainty_function=None,
+            **ccdkwargs):
     """
     Convenience function for combining multiple images.
 
@@ -647,11 +761,11 @@ def combine(img_list, output_file=None,
 
     # Select Combine function to call in Combiner
     if method == 'average':
-        combine_function = 'average_combine'
+        Combine_class = AverageCombiner
     elif method == 'median':
-        combine_function = 'median_combine'
+        Combine_class = MedianCombiner
     elif method == 'sum':
-        combine_function = 'sum_combine'
+        Combine_class = SumCombiner
     else:
         raise ValueError("unrecognised combine method : {0}.".format(method))
 
@@ -769,8 +883,15 @@ def combine(img_list, output_file=None,
                 # https://github.com/astropy/ccdproc/pull/630
                 ccd_list.append(imgccd[x:xend, y:yend].copy())
 
+            # if uncertainty function is provided, use that function
+            combine_kwds_class = {}
+            if combine_uncertainty_function is not None:
+                combine_kwds_class['uncertainty_func'] = combine_uncertainty_function
+
             # Create Combiner for tile
-            tile_combiner = Combiner(ccd_list, dtype=dtype)
+            tile_combiner = Combine_class(ccd_list, dtype=dtype,
+                                          use_input_uncertainties=use_input_uncertainties,
+                                          **combine_kwds_class)
 
             # Set all properties and call all methods
             for to_set in to_set_in_combiner:
@@ -778,12 +899,9 @@ def combine(img_list, output_file=None,
             for to_call in to_call_in_combiner:
                 getattr(tile_combiner, to_call)(**to_call_in_combiner[to_call])
 
-            # Finally call the combine algorithm
-            combine_kwds = {}
-            if combine_uncertainty_function is not None:
-                combine_kwds['uncertainty_func'] = combine_uncertainty_function
-
-            comb_tile = getattr(tile_combiner, combine_function)(**combine_kwds)
+            # Finally call the combine method
+            #comb_tile = getattr(tile_combiner, combine_function)(**combine_kwds)
+            comb_tile = tile_combiner.combiner_method()
 
             # add it back into the master image
             ccd.data[x:xend, y:yend] = comb_tile.data
