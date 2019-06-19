@@ -130,9 +130,9 @@ class Combiner(object):
                 if value.shape != self.data_arr.data.shape:
                     if value.ndim != 1:
                         raise ValueError("1D weights expected when shapes of the data and weights differ.")
-                    if value.shape[0] != a.shape[axis]:
+                    if value.shape[0] != self.data_arr.data.shape[axis]:
                         raise ValueError("Length of weights not compatible with specified axis.")
-                self._weights = (np.broadcast_to(value, (self.data_arr.data.ndim-1)*(1,) + value.shape).swapaxes(-1, axis)
+                self._weights = value
             else:
                 raise TypeError("weights must be a numpy.ndarray.")
         else:

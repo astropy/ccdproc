@@ -100,6 +100,16 @@ def test_weights_shape(ccd_data):
     with pytest.raises(ValueError):
         c.weights = ccd_data.data
 
+def test_1Dweights():
+    ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
+                CCDData(np.zeros((10, 10)) - 1000, unit=u.adu),
+                CCDData(np.zeros((10, 10)) + 1000, unit=u.adu)]
+        
+    c = Combiner(ccd_list)
+    c.weights = np.array([1, 5, 10])
+    ccd = c.average_combine()
+
+
 
 # test the min-max rejection
 def test_combiner_minmax():
