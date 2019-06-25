@@ -23,14 +23,11 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy reproject psutil cython astroscrappy'
-
-        # Need the latest scikit-image (0.14.2 or higher), which is not in
-        # anaconda yet.
-        - PIP_DEPENDENCIES='scikit-image'
+        - CONDA_DEPENDENCIES='scipy reproject psutil cython astroscrappy scikit-image'
+        - PIP_DEPENDENCIES=''
         - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
-        - CONDA_CHANNELS='astropy-ci-extras astropy'
+        - CONDA_CHANNELS='astropy'
         - ASTROPY_USE_SYSTEM_PYTEST=1
 
     matrix:
@@ -51,6 +48,7 @@ matrix:
         # Check for sphinx doc build warnings
         - env: PYTHON_VERSION=3.7
                SETUP_CMD='build_docs -w'
+               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES sphinx-astropy"
 
         # Do coverage tests for both latest Python versions
         - env: PYTHON_VERSION=3.7
