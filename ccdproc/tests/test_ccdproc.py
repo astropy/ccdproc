@@ -424,7 +424,7 @@ def test_unit_mismatch_behaves_as_expected(ccd_data):
         ccd_data.subtract(bad_unit)
 
     # Was the error message as expected?
-    assert expected_message in str(e)
+    assert expected_message in str(e.value)
 
 # test for flat correction
 @pytest.mark.data_scale(10)
@@ -511,7 +511,7 @@ def test_flat_correct_norm_value_bad_value(ccd_data):
     flat = CCDData(data, meta=fits.Header(), unit=ccd_data.unit)
     with pytest.raises(ValueError) as e:
         flat_correct(ccd_data, flat, add_keyword=None, norm_value=-7)
-    assert "norm_value must be" in str(e)
+    assert "norm_value must be" in str(e.value)
 
 
 # test for deviation and for flat correction
