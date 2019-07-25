@@ -4,21 +4,30 @@ import numpy as np
 
 import pytest
 
-from .run_for_memory_profile import run_memory_profile, generate_fits_files, TMPPATH
+try:
+    from .run_for_memory_profile import run_memory_profile, generate_fits_files, TMPPATH
+except ImportError:
+    memory_profile_present = False
+else:
+    memory_profile_present = True
 
 image_size = 2000   # Square image, so 4000 x 4000
 num_files = 10
 
 
 def setup_module():
-    generate_fits_files(num_files, size=image_size)
+    if memory_profile_present:
+        generate_fits_files(num_files, size=image_size)
 
 
 def teardown_module():
-    for fil in TMPPATH.glob('*.fit'):
-        fil.unlink()
+    if memory_profile_present:
+        for fil in TMPPATH.glob('*.fit'):
+            fil.unlink()
 
 
+@pytest.mark.skipif(not memory_profile_present,
+                    reason='memory_profiler not installed')
 @pytest.mark.parametrize('combine_method',
                          ['average', 'sum', 'median'])
 def test_memory_use_in_combine(combine_method):
@@ -56,5 +65,5 @@ def test_memory_use_in_combine(combine_method):
     assert np.max(mem_use) >= 0.95 * memory_limit_mb
 
     # If the average is really low perhaps we should look at reducing peak
-    # usage. Nothing special, really, about the factor 0.5 below.
-    assert np.mean(mem_use) > 0.5 * memory_limit_mb
+    # usage. Nothing special, really, about the factor 0.4 below.
+    assert np.mean(mem_use) > 0.4 * memory_limit_mb
