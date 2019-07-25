@@ -26,6 +26,9 @@ Bug Fixes
 
 - Function ``combine`` avoids keeping files open unnecessarily. [#629, #630]
 
+- Function ``combine`` more accurately estimates memory use
+  when deciding how to chunk files. [#638, #642]
+
 1.3.0 (2017-11-1)
 -----------------
 
