@@ -951,3 +951,41 @@ class TestImageFileCollection(object):
             n_heads += 1
 
         assert n_heads == expected_heads
+
+    def test_less_strict_verify_option(self, triage_setup):
+        # Tests for feature request
+        #
+        #    https://github.com/astropy/ccdproc/issues/607
+        #
+        # which would allow reading of otherwise invalid FITS headers.
+
+        bad_header = """
+            NAXIS1  =                   10 / length of data axis 1
+            NAXIS2  =                   10 / length of data axis 2
+            TESTVERI= '2017/02/13-16:51:38 / Test VerifyWarning
+        """
+
+        testh = fits.Header.fromstring(bad_header)
+        print(testh)
+        testfits = fits.PrimaryHDU(data=np.ones((10, 10)), header=testh)
+
+        path = Path(triage_setup.test_dir)
+        bad_fits_name = 'test_warnA.fits'
+        testfits.writeto(path / bad_fits_name,
+                         output_verify='warn',
+                         overwrite=True)
+
+        ic = ImageFileCollection(location=str(path))
+        print(ic.summary.colnames)
+        assert bad_fits_name in ic.files
+
+        # Turns out this sample header is so messed up that TESTVERI does not
+        # end up as a keyword.
+        assert 'TESTVERI' not in ic.summary.colnames
+
+        # This does end up as a key some how *shrug*.
+        assert '17/02/13' in ic.summary.colnames
+
+        # Try making the summary as in the original bug report
+        ic = ImageFileCollection(location=str(path),
+                                 glob_include='*warnA*')
