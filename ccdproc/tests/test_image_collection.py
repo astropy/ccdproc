@@ -890,10 +890,15 @@ class TestImageFileCollection(object):
 
             # Spot check a couple of dtypes as a test for
             #   https://github.com/astropy/ccdproc/issues/662
-
             assert ic.summary['extend'].dtype == 'bool'
-            assert ic.summary['naxis1'].dtype == 'int64'
-            assert ic.summary['exptime'].dtype == 'float64'
+
+            # Of course, default dtypes on Windows are different. So instead
+            # of comparing to something sensible like int64, compare to the
+            # default int dtype.
+            assert ic.summary['naxis1'].dtype == np.array([5]).dtype
+
+            # and the default float dtype
+            assert ic.summary['exptime'].dtype == np.array([5.0]).dtype
 
             expected_heads = (actual['imagetyp'] == 'LIGHT').sum()
 
