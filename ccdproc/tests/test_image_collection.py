@@ -92,24 +92,6 @@ class TestImageFileCollectionRepresentation(object):
                .format(triage_setup.test_dir))
         assert repr(ic) == ref
 
-    def test_repr_info(self, triage_setup):
-        summary_file_path = os.path.join(triage_setup.test_dir, 'info.csv')
-        ic = ImageFileCollection(
-            location=triage_setup.test_dir, keywords=['naxis'])
-        ic.summary.write(summary_file_path)
-        with catch_warnings() as w:
-            ic2 = ImageFileCollection(info_file=summary_file_path)
-        # ImageFileCollections from info_files contain no files. That issues
-        # a Warning that we'll ignore here.
-        assert len(w) == 2
-        assert "'info_file' argument is deprecated" in str(w[0].message)
-        assert 'no FITS files in the collection' in str(w[1].message)
-
-        ref = ("ImageFileCollection(keywords=['naxis'], info_file={0!r})"
-               .format(summary_file_path))
-        assert repr(ic2) == ref
-
-
 # This should work mark all test methods as using the triage_setup
 # fixture, but it doesn't, so the fixture is given explicitly as an
 # argument to each method.
@@ -585,86 +567,6 @@ class TestImageFileCollection(object):
         with pytest.raises(IOError):
             for hdr in ic.headers(save_location=bad_directory.strpath):
                 pass
-
-    def test_initializing_from_table(self, triage_setup):
-        keys = ['imagetyp', 'filter']
-        ic = ImageFileCollection(triage_setup.test_dir, keywords=keys)
-        table = ic.summary
-        table_path = os.path.join(triage_setup.test_dir, 'input_tbl.csv')
-        nonsense = 'forks'
-        table['imagetyp'][0] = nonsense
-        table.write(table_path, format='ascii', delimiter=',')
-        with catch_warnings() as w:
-            ic = ImageFileCollection(location=None, info_file=table_path)
-        # By using location=None we don't have actual files in the collection.
-        assert len(w) == 2
-        assert "'info_file' argument is deprecated" in str(w[0].message)
-        assert str(w[1].message) == "no FITS files in the collection."
-
-        # keywords can only have been set from saved table
-        for key in keys:
-            assert key in ic.keywords
-        # no location, so should be no files
-        assert len(ic.files) == 0
-        # no location, so no way to iterate over files
-        with pytest.raises((AttributeError, TypeError)):
-            for h in ic.headers():
-                pass
-        with catch_warnings() as w:
-            ic = ImageFileCollection(location=triage_setup.test_dir,
-                                     info_file=table_path)
-        assert len(w) == 1
-        assert "'info_file' argument is deprecated" in str(w[0].message)
-        # we now have a location, so did we get files?
-        assert len(ic.files) == len(table)
-        # Is the summary table masked?
-        assert ic.summary.masked
-        # can I loop over headers?
-        for h in ic.headers():
-            assert isinstance(h, fits.Header)
-        # Does ImageFileCollection summary contain values from table?
-        assert nonsense in ic.summary['imagetyp']
-
-    def test_initializing_from_table_file_that_does_not_exist(
-            self, triage_setup, tmpdir):
-        log = tmpdir.join('tmp.log')
-
-        self._setup_logger(log.strpath)
-
-        # Do we get a warning if we try reading a file that doesn't exist,
-        # but where we can initialize from a directory?
-        with catch_warnings() as w:
-            ic = ImageFileCollection(
-                location=triage_setup.test_dir,
-                info_file='iufadsdhfasdifre')
-        assert len(w) == 1
-        assert "'info_file' argument is deprecated" in str(w[0].message)
-
-        with open(log.strpath) as f:
-            warnings = f.readlines()
-
-        assert (len(warnings) == 1)
-        is_in = ['unable to open table file' in w for w in warnings]
-        assert all(is_in)
-        # Do we raise an error if the table name is bad AND the location
-        # is None?
-        with pytest.raises(IOError):
-            # Because the location is None we get a Warning about "no files in
-            # the collection".
-            with catch_warnings() as w:
-                ImageFileCollection(location=None, info_file='iufadsdhfasdifre')
-        assert len(w) == 2
-        assert "'info_file' argument is deprecated" in str(w[0].message)
-        assert str(w[1].message) == "no FITS files in the collection."
-
-        # Do we raise an error if the table name is bad AND
-        # the location is given but is bad?
-        with pytest.raises(OSError):
-            with catch_warnings() as w:
-                ic = ImageFileCollection(location='dasifjoaurun',
-                                         info_file='iufadsdhfasdifre')
-        assert len(w) == 1
-        assert "'info_file' argument is deprecated" in str(w[0].message)
 
     def test_no_fits_files_in_collection(self):
         with catch_warnings(AstropyUserWarning) as warning_lines:

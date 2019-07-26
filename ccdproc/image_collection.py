@@ -48,15 +48,6 @@ class ImageFileCollection(object):
         columns. Default value is '*' unless ``info_file`` is specified.
         Default is ``None``.
 
-    info_file : str or None, optional
-        Path to file that contains a table of information about FITS files.
-        In this case the keywords are set to the names of the columns of the
-        ``info_file`` unless ``keywords`` is explicitly set to a different
-        list.
-        Default is ``None``.
-
-        .. deprecated:: 1.3
-
     filenames: str, list of str, or None, optional
         List of the names of FITS files which will be added to the collection.
         The filenames are assumed to be in ``location``.
@@ -84,13 +75,8 @@ class ImageFileCollection(object):
         Raised if keywords are set to a combination of '*' and any other
         value.
     """
-    def __init__(self, location=None, keywords=None, info_file=None,
+    def __init__(self, location=None, keywords=None,
                  filenames=None, glob_include=None, glob_exclude=None, ext=0):
-
-        if info_file is not None:
-            warnings.warn("The 'info_file' argument is deprecated and will be "
-                          "removed in a future version", DeprecationWarning)
-
         # Include or exclude files from the collection based on glob pattern
         # matching - has to go above call to _get_files()
         if glob_exclude is not None:
@@ -104,7 +90,6 @@ class ImageFileCollection(object):
         self._location = location
         self._filenames = filenames
         self._files = []
-        self._info_file = info_file
         if location:
             self._files = self._get_files()
 
@@ -113,29 +98,8 @@ class ImageFileCollection(object):
                           AstropyUserWarning)
         self._summary = {}
         if keywords is None:
-            if info_file is not None:
-                # Default to empty list so that keywords will be populated
-                # from table columns names.
-                keywords = []
-            else:
-                # Otherwise use all keywords.
-                keywords = '*'
-        if info_file is not None:
-            try:
-                info_path = path.join(self.location, info_file)
-            except (AttributeError, TypeError):
-                info_path = info_file
-            try:
-                self._summary = Table.read(info_path, format='ascii',
-                                           delimiter=',')
-                self._summary = Table(self._summary, masked=True)
-            except IOError:
-                if location:
-                    logger.warning('unable to open table file %s, will try '
-                                   'initializing from location instead.',
-                                   info_path)
-                else:
-                    raise
+            # Use all keywords.
+            keywords = '*'
 
         # Used internally to keep track of whether the user asked for all
         # keywords or a specific list. The keywords setter takes care of
@@ -158,11 +122,6 @@ class ImageFileCollection(object):
             kw = ""
         else:
             kw = "keywords={!r}".format(self.keywords[1:])
-
-        if self._info_file is None:
-            infofile = ''
-        else:
-            infofile = "info_file={!r}".format(self._info_file)
 
         if self.glob_exclude is None:
             glob_exclude = ''
