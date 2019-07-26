@@ -50,7 +50,8 @@ class ImageFileCollection(object):
 
     filenames: str, list of str, or None, optional
         List of the names of FITS files which will be added to the collection.
-        The filenames are assumed to be in ``location``.
+        The filenames may either be in ``location`` or the name can be a
+        relative or absolute path to the file.
         Default is ``None``.
 
     glob_include: str or None, optional
