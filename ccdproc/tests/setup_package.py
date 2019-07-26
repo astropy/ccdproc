@@ -3,4 +3,5 @@ def get_package_data():
     return {
         _ASTROPY_PACKAGE_NAME_ + '.tests': ['coveragerc',
                                             'data/a8280271.fits',
-                                            'data/sip-wcs.fit']}
+                                            'data/sip-wcs.fit',
+                                            'data/expected_ifc_file_properties.csv']}
