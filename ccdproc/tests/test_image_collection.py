@@ -8,9 +8,11 @@ import logging
 import pytest
 
 import astropy.io.fits as fits
+from astropy.table import Table
 import numpy as np
 
 from astropy.tests.helper import catch_warnings
+from astropy.utils.data import get_pkg_data_filename
 from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -159,7 +161,7 @@ class TestImageFileCollection(object):
         fn = 'test.fits.fz'
         ic = ImageFileCollection(location=triage_setup.test_dir, filenames=fn)
         # Get a subset of files with a specific header value
-        filtered = ic.files_filtered(EXPTIME=15.0)
+        filtered = ic.files_filtered(exptime=15.0)
         assert len(filtered) == 1
 
     def test_filtered_files_have_proper_path(self, triage_setup):
@@ -332,7 +334,7 @@ class TestImageFileCollection(object):
             assert header['filter'].lower() == 'r'
             cnt += 1
         assert cnt == (triage_setup.n_test['light'] -
-                       triage_setup.n_test['need_filter'])
+                       triage_setup.n_test['missing_filter_value'])
 
     def test_headers_with_filter_wildcard(self, triage_setup):
         collection = ImageFileCollection(location=triage_setup.test_dir,
@@ -392,7 +394,7 @@ class TestImageFileCollection(object):
         some_files_should_match = collection.files_filtered(object=None,
                                                             imagetyp='light')
         assert(len(some_files_should_match) ==
-               triage_setup.n_test['need_object'])
+               triage_setup.n_test['light'])
 
     def test_filter_does_not_not_permanently_change_file_mask(self,
                                                               triage_setup):
@@ -882,3 +884,26 @@ class TestImageFileCollection(object):
             coll.glob_exclude = '*stuff*'
         with pytest.raises(AttributeError):
             coll.glob_include = '*stuff*'
+
+    def test_that_test_files_have_expected_properties(self, triage_setup):
+        expected_name = \
+            get_pkg_data_filename('data/expected_ifc_file_properties.csv')
+        expected = Table.read(expected_name)
+
+        # Make the comparison more reliable by sorting
+        expected.sort('file')
+        ic = ImageFileCollection(triage_setup.test_dir)
+        actual = ic.summary
+        # Write the actual IFC summary out to disk to turn bool into strings of
+        # "True" and "False", and any other non-essential differences between
+        # the tables.
+        tmp_file = 'actual.csv'
+        actual.write(tmp_file)
+        actual = Table.read(tmp_file)
+
+        # Make the comparison more reliable by sorting
+        actual.sort('file')
+        assert len(ic.summary) == len(expected)
+
+        for column in expected.colnames:
+            assert np.all(actual[column] == expected[column])
