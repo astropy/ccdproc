@@ -401,6 +401,12 @@ def test_subtract_dark_fails(ccd_data):
                       exposure_unit=u.second)
     assert "uncalibrated image" in str(e.value)
 
+    # fail when the arrays are not the same size
+    with pytest.raises(ValueError):
+        small_master = CCDData(ccd_data)
+        small_master.data = np.zeros((1, 1))
+        subtract_dark(ccd_data, small_master)
+
 
 def test_unit_mismatch_behaves_as_expected(ccd_data):
     """
