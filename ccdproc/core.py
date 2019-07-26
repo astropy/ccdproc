@@ -617,6 +617,10 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
     result : `~astropy.nddata.CCDData`
         Dark-subtracted image.
     """
+    if ccd.shape != master.shape:
+        err_str = "operands could not be subtracted with shapes {} {}".format(ccd.shape, master.shape)
+        raise ValueError(err_str)
+
     if not (isinstance(ccd, CCDData) and isinstance(master, CCDData)):
         raise TypeError("ccd and master must both be CCDData objects.")
 
