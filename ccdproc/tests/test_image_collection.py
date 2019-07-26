@@ -816,14 +816,18 @@ class TestImageFileCollection(object):
         #
         #     https://github.com/astropy/ccdproc/issues/374
         #
+        # and fix the bug reported in
+        #
+        #     https://github.com/astropy/ccdproc/issues/662
+        #
         # Create a collection from a list of file names (which can include
         # path as needed)
 
         source_path = Path(triage_setup.test_dir)
 
         # Put the first three files in source_path into temp_path below
-        # then create the image collection out of the three in temp_path and the
-        # rest in source_path.
+        # then create the image collection out of the three in temp_path and
+        # the rest in source_path.
         source_files = [p for p in source_path.iterdir()]
 
         move_to_temp = source_files[:3]
@@ -883,3 +887,10 @@ class TestImageFileCollection(object):
             assert set(file_paths) == set(ic.summary['file'])
             assert set(file_paths) == set(ic.files)
             assert set(file_paths) == set(ic.files_filtered(include_path=True))
+
+            # Spot check a couple of dtypes as a test for
+            #   https://github.com/astropy/ccdproc/issues/662
+
+            assert ic.summary['extend'].dtype == 'bool'
+            assert ic.summary['naxis1'].dtype == 'int64'
+            assert ic.summary['exptime'].dtype == 'float64'
