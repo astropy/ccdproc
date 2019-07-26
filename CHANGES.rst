@@ -26,6 +26,9 @@ Bug Fixes
 
 - Function ``combine`` avoids keeping files open unnecessarily. [#629, #630]
 
+- Raise ``ValueError`` error in ``subtract_dark`` for when the errors have
+  different shapes [#674, #677]
+
 1.3.0 (2017-11-1)
 -----------------
 
