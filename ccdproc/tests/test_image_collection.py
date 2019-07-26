@@ -894,3 +894,60 @@ class TestImageFileCollection(object):
             assert ic.summary['extend'].dtype == 'bool'
             assert ic.summary['naxis1'].dtype == 'int64'
             assert ic.summary['exptime'].dtype == 'float64'
+
+            expected_heads = (actual['imagetyp'] == 'LIGHT').sum()
+
+            n_heads = 0
+            # Try one of the generators
+            for h in ic.headers(imagetyp='light'):
+                assert h['imagetyp'].lower() == 'light'
+                n_heads += 1
+
+            assert n_heads == expected_heads
+
+    def test_force_detect_fits_files_finds_fits_files(self, triage_setup):
+        # Tests for new feature
+        #
+        #     https://github.com/astropy/ccdproc/issues/620
+        #
+        # which supports adding all of the FITS files in a location based on
+        # their *contents* instead of their *extension*.
+
+        # Grab files from the default collection and make a copy with a new name
+        # (and with no fits-like extension)
+        #
+        # Making a copy of *every* file means we can just double the expected
+        # number of files as part of the tests.
+        path = Path(triage_setup.test_dir)
+        for idx, p in enumerate(path.iterdir()):
+            new_name = 'no_extension{}'.format(idx)
+            (path / new_name).write_bytes(p.read_bytes())
+
+        ic = ImageFileCollection(location=str(path),
+                                 find_fits_by_reading=True)
+
+        # Compressed files won't be automagically detected by reading the
+        # first few bytes.
+        expected_number = (2 * triage_setup.n_test['files'] -
+                           triage_setup.n_test['compressed'])
+
+        assert len(ic.summary) == expected_number
+
+        n_bias = (ic.summary['imagetyp'] == 'BIAS').sum()
+        assert n_bias == 2 * triage_setup.n_test['bias']
+
+        # Only one file in the original set of test files has exposure time
+        # 15, so there should be two now.
+        assert len(ic.files_filtered(exptime=15.0)) == 2
+
+        # Try one of the generators
+        expected_heads = (2 * triage_setup.n_test['light'] -
+                          triage_setup.n_test['compressed'])
+
+        n_heads = 0
+
+        for h in ic.headers(imagetyp='light'):
+            assert h['imagetyp'].lower() == 'light'
+            n_heads += 1
+
+        assert n_heads == expected_heads

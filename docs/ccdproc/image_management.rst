@@ -31,12 +31,25 @@ collection to use all keywords in the headers::
 
     >>> ic_all = ImageFileCollection('.', keywords='*')
 
+Normally identification of FITS files is done by looking at the file extension
+and including all files with the correct extension.
+
+If the files are not compressed (e.g. not gzipped) then you can force the image
+collection to open each file and check from its contents whether it is FITS by
+using the ``find_fits_by_reading`` argument::
+
+    >> ic_from_content = ImageFileCollection('.', find_fits_by_reading=True)
+
 You can indicate filename patterns to include or exclude using Unix shell-style
 expressions. For example, to include all filenames that begin with ``1d_`` but
 not ones that include the word ``bad``, you could do::
 
     >>> ic_all = ImageFileCollection('.', glob_include='1d_*',
     ...                              glob_exclude='*bad*')
+
+Alternatively, you can create the collection with an explicit list of file names::
+
+    >>> ic_names = ImageFileCollection(filenames=['a.fits', 'b.fits.gz'])
 
 Most of the useful interaction with the image collection is via its
 ``.summary`` property, a :class:`~astropy.table.Table` of the value of each keyword for each

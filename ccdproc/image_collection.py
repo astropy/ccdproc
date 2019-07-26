@@ -48,6 +48,12 @@ class ImageFileCollection(object):
         columns. Default value is '*' unless ``info_file`` is specified.
         Default is ``None``.
 
+    find_fits_by_reading: bool, optional
+        If ``True``, read each file in location to check whether the file is a
+        FITS file and include it in the collection based on that, rather than
+        by file name. Compressed files, e.g. image.fits.gz, will **NOT** be
+        properly detected. *Will be ignored if `filenames` is not ``None``.*
+
     filenames: str, list of str, or None, optional
         List of the names of FITS files which will be added to the collection.
         The filenames may either be in ``location`` or the name can be a
@@ -66,9 +72,9 @@ class ImageFileCollection(object):
         easily select subsets of files in the target directory.
         Default is ``None``.
 
-     ext: str or int, optional
-         The extension from which the header and data will be read in all files.
-         Default is ``0``.
+    ext: str or int, optional
+        The extension from which the header and data will be read in all
+        files.Default is ``0``.
 
     Raises
     ------
@@ -76,7 +82,9 @@ class ImageFileCollection(object):
         Raised if keywords are set to a combination of '*' and any other
         value.
     """
+
     def __init__(self, location=None, keywords=None,
+                 find_fits_by_reading=False,
                  filenames=None, glob_include=None, glob_exclude=None, ext=0):
         # Include or exclude files from the collection based on glob pattern
         # matching - has to go above call to _get_files()
@@ -92,6 +100,8 @@ class ImageFileCollection(object):
             self._location = location
         else:
             self._location = ''
+
+        self._find_fits_by_reading = find_fits_by_reading
 
         self._filenames = filenames
         self._files = []
@@ -708,8 +718,16 @@ class ImageFileCollection(object):
 
         all_files = listdir(self.location)
         files = []
-        for extension in full_extensions:
-            files.extend(fnmatch.filter(all_files, '*' + extension))
+        if not self._find_fits_by_reading:
+            for extension in full_extensions:
+                files.extend(fnmatch.filter(all_files, '*' + extension))
+        else:
+            for file in all_files:
+                with open(file, 'rb') as fp:
+                    # Hmm, first argument to is_fits is not actually used in
+                    # that function. *shrug*
+                    if fits.connect.is_fits('just some junk', file, fp):
+                        files.append(file)
 
         files.sort()
         return files
