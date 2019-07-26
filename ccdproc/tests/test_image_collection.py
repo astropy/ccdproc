@@ -989,3 +989,27 @@ class TestImageFileCollection(object):
         # Try making the summary as in the original bug report
         ic = ImageFileCollection(location=str(path),
                                  glob_include='*warnA*')
+
+    def test_type_of_empty_collection(self, triage_setup):
+        # Test for implementation of the suggestion in
+        #
+        #    https://github.com/astropy/ccdproc/issues/601
+        #
+        # in which an empty collection with no keys has but with files
+        # returns a summary table with one column, but an empty collection
+        # with no keys and no files returns None.
+
+        # Make a dummy keyword that we then delete.
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=['fafa'])
+        ic.keywords = []
+        assert set(ic.summary.colnames) == set(['file'])
+
+        # Remove all of the fits files
+        path = Path(triage_setup.test_dir)
+        for p in path.iterdir():
+            p.unlink()
+
+        # Now the summary should be none
+        ic = ImageFileCollection(triage_setup.test_dir)
+        assert ic.summary is None
+        assert ic.keywords == []
