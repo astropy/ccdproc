@@ -882,3 +882,26 @@ class TestImageFileCollection(object):
             coll.glob_exclude = '*stuff*'
         with pytest.raises(AttributeError):
             coll.glob_include = '*stuff*'
+
+    def test_that_test_files_have_expected_properties(self, triage_setup):
+        expected_name = \
+            get_pkg_data_filename('data/expected_ifc_file_properties.csv')
+        expected = Table.read(expected_name)
+
+        # Make the comparison more reliable by sorting
+        expected.sort('file')
+        ic = ImageFileCollection(triage_setup.test_dir)
+        actual = ic.summary
+        # Write the actual IFC summary out to disk to turn bool into strings of
+        # "True" and "False", and any other non-essential differences between
+        # the tables.
+        tmp_file = 'actual.csv'
+        actual.write(tmp_file)
+        actual = Table.read(tmp_file)
+
+        # Make the comparison more reliable by sorting
+        actual.sort('file')
+        assert len(ic.summary) == len(expected)
+
+        for column in expected.colnames:
+            assert np.all(actual[column] == expected[column])
