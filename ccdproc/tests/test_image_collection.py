@@ -8,9 +8,11 @@ import logging
 import pytest
 
 import astropy.io.fits as fits
+from astropy.table import Table
 import numpy as np
 
 from astropy.tests.helper import catch_warnings
+from astropy.utils.data import get_pkg_data_filename
 from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -159,7 +161,7 @@ class TestImageFileCollection(object):
         fn = 'test.fits.fz'
         ic = ImageFileCollection(location=triage_setup.test_dir, filenames=fn)
         # Get a subset of files with a specific header value
-        filtered = ic.files_filtered(EXPTIME=15.0)
+        filtered = ic.files_filtered(exptime=15.0)
         assert len(filtered) == 1
 
     def test_filtered_files_have_proper_path(self, triage_setup):
@@ -332,7 +334,7 @@ class TestImageFileCollection(object):
             assert header['filter'].lower() == 'r'
             cnt += 1
         assert cnt == (triage_setup.n_test['light'] -
-                       triage_setup.n_test['need_filter'])
+                       triage_setup.n_test['missing_filter_value'])
 
     def test_headers_with_filter_wildcard(self, triage_setup):
         collection = ImageFileCollection(location=triage_setup.test_dir,
@@ -392,7 +394,7 @@ class TestImageFileCollection(object):
         some_files_should_match = collection.files_filtered(object=None,
                                                             imagetyp='light')
         assert(len(some_files_should_match) ==
-               triage_setup.n_test['need_object'])
+               triage_setup.n_test['light'])
 
     def test_filter_does_not_not_permanently_change_file_mask(self,
                                                               triage_setup):
