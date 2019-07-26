@@ -124,7 +124,7 @@ class Combiner(object):
         return self._weights
 
     @weights.setter
-    def weights(self, value, axis = 0):
+    def weights(self, value, axis=0):
         if value is not None:
             if isinstance(value, np.ndarray):
                 if value.shape != self.data_arr.data.shape:

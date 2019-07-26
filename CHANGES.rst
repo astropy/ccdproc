@@ -19,6 +19,8 @@ Other Changes and Additions
 
 - Added support for .bz2, .Z and .zip file formats in ``ImageFileCollection``.
 
+- Modified weights function to also accept 1D array in ``Combiner``. [#634, #670]
+
 Bug Fixes
 ^^^^^^^^^
 - Function ``median_combine`` now correctly calculates the uncertainty for
