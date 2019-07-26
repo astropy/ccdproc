@@ -722,12 +722,12 @@ class ImageFileCollection(object):
             for extension in full_extensions:
                 files.extend(fnmatch.filter(all_files, '*' + extension))
         else:
-            for file in all_files:
-                with open(file, 'rb') as fp:
+            for infile in all_files:
+                with open(infile, 'rb') as fp:
                     # Hmm, first argument to is_fits is not actually used in
                     # that function. *shrug*
-                    if fits.connect.is_fits('just some junk', file, fp):
-                        files.append(file)
+                    if fits.connect.is_fits('just some junk', infile, fp):
+                        files.append(infile)
 
         files.sort()
         return files

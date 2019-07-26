@@ -49,7 +49,7 @@ not ones that include the word ``bad``, you could do::
 
 Alternatively, you can create the collection with an explicit list of file names::
 
-    >>> ic_names = ImageFileCollection(filenames=['a.fits', 'b.fits.gz'])
+    >>> ic_names = ImageFileCollection(filenames=['a.fits', '/some/path/b.fits.gz'])
 
 Most of the useful interaction with the image collection is via its
 ``.summary`` property, a :class:`~astropy.table.Table` of the value of each keyword for each
