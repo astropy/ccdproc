@@ -87,11 +87,14 @@ class ImageFileCollection(object):
             glob_include = str(glob_include)
         self._glob_include = glob_include
 
-        self._location = location
+        if location is not None:
+            self._location = location
+        else:
+            self._location = ''
+
         self._filenames = filenames
         self._files = []
-        if location:
-            self._files = self._get_files()
+        self._files = self._get_files()
 
         if self._files == []:
             warnings.warn("no FITS files in the collection.",
@@ -143,7 +146,7 @@ class ImageFileCollection(object):
         else:
             filenames = "filenames={}".format(self._filenames)
 
-        params = [location, kw, infofile, filenames, glob_include, glob_exclude, ext]
+        params = [location, kw, filenames, glob_include, glob_exclude, ext]
         params = ', '.join([p for p in params if p])
 
         str_repr = "{self.__class__.__name__}({params})".format(
@@ -450,12 +453,19 @@ class ImageFileCollection(object):
 
         assert 'file' not in h
 
+        if self.location:
+            # We have a location and can reconstruct the path using it
+            name_for_file_column = path.basename(file_name)
+        else:
+            # No location, so use whatever path the user passed in
+            name_for_file_column = file_name
+
         # Try opening header before this so that file name is only added if
         # file is valid FITS
         try:
-            summary['file'].append(path.basename(file_name))
+            summary['file'].append(name_for_file_column)
         except KeyError:
-            summary['file'] = [path.basename(file_name)]
+            summary['file'] = [name_for_file_column]
 
         missing_in_this_file = [k for k in summary if (k not in h and
                                                        k != 'file')]

@@ -2,8 +2,9 @@
 
 import os
 from shutil import rmtree
-from tempfile import mkdtemp
+from tempfile import mkdtemp, TemporaryDirectory
 from glob import iglob
+from pathlib import Path
 import logging
 import pytest
 
@@ -809,3 +810,76 @@ class TestImageFileCollection(object):
 
         for column in expected.colnames:
             assert np.all(actual[column] == expected[column])
+
+    def test_image_collection_with_no_location(self, triage_setup):
+        # Test for a feature requested in
+        #
+        #     https://github.com/astropy/ccdproc/issues/374
+        #
+        # Create a collection from a list of file names (which can include
+        # path as needed)
+
+        source_path = Path(triage_setup.test_dir)
+
+        # Put the first three files in source_path into temp_path below
+        # then create the image collection out of the three in temp_path and the
+        # rest in source_path.
+        source_files = [p for p in source_path.iterdir()]
+
+        move_to_temp = source_files[:3]
+        keep_in_source = source_files[3:]
+
+        with TemporaryDirectory() as td:
+            temp_dir = Path(td)
+            file_paths = []
+            for source in move_to_temp:
+                temp_path = temp_dir / source.name
+                temp_path.write_bytes(source.read_bytes())
+                file_paths.append(str(temp_path))
+            file_paths.extend(str(p) for p in keep_in_source)
+
+            # Move up a level to make sure we are not accidentally
+            # pulling in files from the current working directory,
+            # which includes everythin in source.
+            os.chdir('..')
+
+            ic = ImageFileCollection(filenames=file_paths)
+            assert len(ic.summary) == len(file_paths)
+
+            expected_name = \
+                get_pkg_data_filename('data/expected_ifc_file_properties.csv')
+            expected = Table.read(expected_name)
+
+            # Make the comparison more reliable by sorting
+            expected.sort('file')
+
+            actual = ic.summary
+
+            # Write the actual IFC summary out to disk to turn bool into strings
+            # of"True" and "False", and any other non-essential differences
+            # between the tables.
+            tmp_file = 'actual.csv'
+            actual.write(tmp_file)
+            actual = Table.read(tmp_file)
+            # Make the comparison more reliable by sorting...but the actual
+            # in this case includes paths, so we really want to sort by the
+            # base name of the file.
+            bases = np.array([Path(f).name for f in actual['file']])
+            sort_order = np.argsort(bases)
+            actual = actual[sort_order]
+            bases = bases[sort_order]
+
+            assert all(Path(f).exists() for f in actual['file'])
+
+            for column in expected.colnames:
+                if column == 'file':
+                    assert np.all(bases == expected[column])
+                else:
+                    assert np.all(actual[column] == expected[column])
+
+            # Set comparisons don't care about order :)
+            # Check several of the ways we can get file names from the
+            # collection and ensure all of them include the path.
+            assert set(file_paths) == set(ic.summary['file'])
+            assert set(file_paths) == set(ic.files)
+            assert set(file_paths) == set(ic.files_filtered(include_path=True))
