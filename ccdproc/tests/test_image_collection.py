@@ -1069,4 +1069,3 @@ class TestImageFileCollection(object):
             n_light += 1
 
         assert n_light == triage_setup.n_test['light']
-
