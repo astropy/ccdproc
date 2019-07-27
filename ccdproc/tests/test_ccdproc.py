@@ -401,6 +401,12 @@ def test_subtract_dark_fails(ccd_data):
                       exposure_unit=u.second)
     assert "uncalibrated image" in str(e.value)
 
+    # fail when the arrays are not the same size
+    with pytest.raises(ValueError):
+        small_master = CCDData(ccd_data)
+        small_master.data = np.zeros((1, 1))
+        subtract_dark(ccd_data, small_master)
+
 
 def test_unit_mismatch_behaves_as_expected(ccd_data):
     """
@@ -424,7 +430,7 @@ def test_unit_mismatch_behaves_as_expected(ccd_data):
         ccd_data.subtract(bad_unit)
 
     # Was the error message as expected?
-    assert expected_message in str(e)
+    assert expected_message in str(e.value)
 
 # test for flat correction
 @pytest.mark.data_scale(10)
@@ -511,7 +517,7 @@ def test_flat_correct_norm_value_bad_value(ccd_data):
     flat = CCDData(data, meta=fits.Header(), unit=ccd_data.unit)
     with pytest.raises(ValueError) as e:
         flat_correct(ccd_data, flat, add_keyword=None, norm_value=-7)
-    assert "norm_value must be" in str(e)
+    assert "norm_value must be" in str(e.value)
 
 
 # test for deviation and for flat correction
