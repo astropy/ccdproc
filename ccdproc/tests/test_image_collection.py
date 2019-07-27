@@ -43,7 +43,7 @@ def test_fits_summary(triage_setup):
     assert summary['filter'][no_filter_no_object_row].mask
 
 
-class TestImageFileCollectionRepresentation(object):
+class TestImageFileCollectionRepresentation:
     def test_repr_location(self, triage_setup):
         ic = ImageFileCollection(location=triage_setup.test_dir)
         assert repr(ic) == "ImageFileCollection(location={0!r})".format(
@@ -93,11 +93,12 @@ class TestImageFileCollectionRepresentation(object):
                .format(triage_setup.test_dir))
         assert repr(ic) == ref
 
+
 # This should work mark all test methods as using the triage_setup
 # fixture, but it doesn't, so the fixture is given explicitly as an
 # argument to each method.
 # @pytest.mark.usefixtures("triage_setup")
-class TestImageFileCollection(object):
+class TestImageFileCollection:
     def _setup_logger(self, path, level=logging.WARN):
         """
         Set up file logger at the path.

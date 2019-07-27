@@ -12,7 +12,7 @@ from astropy import log
 __all__ = ['Combiner', 'combine']
 
 
-class Combiner(object):
+class Combiner:
     """
     A class for combining CCDData objects.
 
