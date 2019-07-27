@@ -1018,3 +1018,54 @@ class TestImageFileCollection(object):
         ic = ImageFileCollection(triage_setup.test_dir)
         assert ic.summary is None
         assert ic.keywords == []
+
+    def test_regex_match_for_search(self, triage_setup):
+        # Test regex matching in searches
+
+        ic = ImageFileCollection(triage_setup.test_dir)
+
+        files = ic.files_filtered(regex_match=True, imagetyp='b.*s')
+        assert len(files) == triage_setup.n_test['bias']
+
+        # This should return all of the files in the test set
+        all_files = ic.files_filtered(regex_match=True, imagetyp='bias|light')
+        assert len(all_files) == triage_setup.n_test['files']
+
+        # Add a column with more interesting content and see whether we
+        # match that.
+        ic.summary['match_me'] = [
+            'hello',
+            'goodbye',
+            'bye',
+            'byte',
+            'good bye hello',
+            'dog'
+        ]
+
+        hello_anywhere = ic.files_filtered(regex_match=True,
+                                           match_me='hello')
+        assert len(hello_anywhere) == 2
+
+        hello_start = ic.files_filtered(regex_match=True,
+                                        match_me='^hello')
+        assert len(hello_start) == 1
+
+        # Is it really a case-insensitive match?
+        hello_start = ic.files_filtered(regex_match=True,
+                                        match_me='^HeLlo')
+        assert len(hello_start) == 1
+
+        any_bye = ic.files_filtered(regex_match=True,
+                                    match_me='by.*e')
+        assert len(any_bye) == 4
+
+    def test_generator_with_regex(self, triage_setup):
+        ic = ImageFileCollection(triage_setup.test_dir)
+
+        n_light = 0
+
+        for h in ic.headers(regex_match=True, imagetyp='li.*t'):
+            assert h['imagetyp'].lower() == 'light'
+            n_light += 1
+
+        assert n_light == triage_setup.n_test['light']

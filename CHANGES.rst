@@ -10,6 +10,9 @@ New Features
 - Allow identification of FITS files in ``ImageFileCollection`` based on content
   of the files instead of file name extension. [#620, #680]
 
+- Add option to use regular expression matching when filtering items in
+  ``ImageFileCollection``. [#480, #595, #682]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
