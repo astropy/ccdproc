@@ -2,8 +2,9 @@
 
 import os
 from shutil import rmtree
-from tempfile import mkdtemp
+from tempfile import mkdtemp, TemporaryDirectory
 from glob import iglob
+from pathlib import Path
 import logging
 import pytest
 
@@ -91,24 +92,6 @@ class TestImageFileCollectionRepresentation(object):
                "ext=1)"
                .format(triage_setup.test_dir))
         assert repr(ic) == ref
-
-    def test_repr_info(self, triage_setup):
-        summary_file_path = os.path.join(triage_setup.test_dir, 'info.csv')
-        ic = ImageFileCollection(
-            location=triage_setup.test_dir, keywords=['naxis'])
-        ic.summary.write(summary_file_path)
-        with catch_warnings() as w:
-            ic2 = ImageFileCollection(info_file=summary_file_path)
-        # ImageFileCollections from info_files contain no files. That issues
-        # a Warning that we'll ignore here.
-        assert len(w) == 2
-        assert "'info_file' argument is deprecated" in str(w[0].message)
-        assert 'no FITS files in the collection' in str(w[1].message)
-
-        ref = ("ImageFileCollection(keywords=['naxis'], info_file={0!r})"
-               .format(summary_file_path))
-        assert repr(ic2) == ref
-
 
 # This should work mark all test methods as using the triage_setup
 # fixture, but it doesn't, so the fixture is given explicitly as an
@@ -586,86 +569,6 @@ class TestImageFileCollection(object):
             for hdr in ic.headers(save_location=bad_directory.strpath):
                 pass
 
-    def test_initializing_from_table(self, triage_setup):
-        keys = ['imagetyp', 'filter']
-        ic = ImageFileCollection(triage_setup.test_dir, keywords=keys)
-        table = ic.summary
-        table_path = os.path.join(triage_setup.test_dir, 'input_tbl.csv')
-        nonsense = 'forks'
-        table['imagetyp'][0] = nonsense
-        table.write(table_path, format='ascii', delimiter=',')
-        with catch_warnings() as w:
-            ic = ImageFileCollection(location=None, info_file=table_path)
-        # By using location=None we don't have actual files in the collection.
-        assert len(w) == 2
-        assert "'info_file' argument is deprecated" in str(w[0].message)
-        assert str(w[1].message) == "no FITS files in the collection."
-
-        # keywords can only have been set from saved table
-        for key in keys:
-            assert key in ic.keywords
-        # no location, so should be no files
-        assert len(ic.files) == 0
-        # no location, so no way to iterate over files
-        with pytest.raises((AttributeError, TypeError)):
-            for h in ic.headers():
-                pass
-        with catch_warnings() as w:
-            ic = ImageFileCollection(location=triage_setup.test_dir,
-                                     info_file=table_path)
-        assert len(w) == 1
-        assert "'info_file' argument is deprecated" in str(w[0].message)
-        # we now have a location, so did we get files?
-        assert len(ic.files) == len(table)
-        # Is the summary table masked?
-        assert ic.summary.masked
-        # can I loop over headers?
-        for h in ic.headers():
-            assert isinstance(h, fits.Header)
-        # Does ImageFileCollection summary contain values from table?
-        assert nonsense in ic.summary['imagetyp']
-
-    def test_initializing_from_table_file_that_does_not_exist(
-            self, triage_setup, tmpdir):
-        log = tmpdir.join('tmp.log')
-
-        self._setup_logger(log.strpath)
-
-        # Do we get a warning if we try reading a file that doesn't exist,
-        # but where we can initialize from a directory?
-        with catch_warnings() as w:
-            ic = ImageFileCollection(
-                location=triage_setup.test_dir,
-                info_file='iufadsdhfasdifre')
-        assert len(w) == 1
-        assert "'info_file' argument is deprecated" in str(w[0].message)
-
-        with open(log.strpath) as f:
-            warnings = f.readlines()
-
-        assert (len(warnings) == 1)
-        is_in = ['unable to open table file' in w for w in warnings]
-        assert all(is_in)
-        # Do we raise an error if the table name is bad AND the location
-        # is None?
-        with pytest.raises(IOError):
-            # Because the location is None we get a Warning about "no files in
-            # the collection".
-            with catch_warnings() as w:
-                ImageFileCollection(location=None, info_file='iufadsdhfasdifre')
-        assert len(w) == 2
-        assert "'info_file' argument is deprecated" in str(w[0].message)
-        assert str(w[1].message) == "no FITS files in the collection."
-
-        # Do we raise an error if the table name is bad AND
-        # the location is given but is bad?
-        with pytest.raises(OSError):
-            with catch_warnings() as w:
-                ic = ImageFileCollection(location='dasifjoaurun',
-                                         info_file='iufadsdhfasdifre')
-        assert len(w) == 1
-        assert "'info_file' argument is deprecated" in str(w[0].message)
-
     def test_no_fits_files_in_collection(self):
         with catch_warnings(AstropyUserWarning) as warning_lines:
             # FIXME: What exactly does this assert?
@@ -907,3 +810,211 @@ class TestImageFileCollection(object):
 
         for column in expected.colnames:
             assert np.all(actual[column] == expected[column])
+
+    def test_image_collection_with_no_location(self, triage_setup):
+        # Test for a feature requested in
+        #
+        #     https://github.com/astropy/ccdproc/issues/374
+        #
+        # and fix the bug reported in
+        #
+        #     https://github.com/astropy/ccdproc/issues/662
+        #
+        # Create a collection from a list of file names (which can include
+        # path as needed)
+
+        source_path = Path(triage_setup.test_dir)
+
+        # Put the first three files in source_path into temp_path below
+        # then create the image collection out of the three in temp_path and
+        # the rest in source_path.
+        source_files = [p for p in source_path.iterdir()]
+
+        move_to_temp = source_files[:3]
+        keep_in_source = source_files[3:]
+
+        with TemporaryDirectory() as td:
+            temp_dir = Path(td)
+            file_paths = []
+            for source in move_to_temp:
+                temp_path = temp_dir / source.name
+                temp_path.write_bytes(source.read_bytes())
+                file_paths.append(str(temp_path))
+            file_paths.extend(str(p) for p in keep_in_source)
+
+            # Move up a level to make sure we are not accidentally
+            # pulling in files from the current working directory,
+            # which includes everythin in source.
+            os.chdir('..')
+
+            ic = ImageFileCollection(filenames=file_paths)
+            assert len(ic.summary) == len(file_paths)
+
+            expected_name = \
+                get_pkg_data_filename('data/expected_ifc_file_properties.csv')
+            expected = Table.read(expected_name)
+
+            # Make the comparison more reliable by sorting
+            expected.sort('file')
+
+            actual = ic.summary
+
+            # Write the actual IFC summary out to disk to turn bool into strings
+            # of"True" and "False", and any other non-essential differences
+            # between the tables.
+            tmp_file = 'actual.csv'
+            actual.write(tmp_file)
+            actual = Table.read(tmp_file)
+            # Make the comparison more reliable by sorting...but the actual
+            # in this case includes paths, so we really want to sort by the
+            # base name of the file.
+            bases = np.array([Path(f).name for f in actual['file']])
+            sort_order = np.argsort(bases)
+            actual = actual[sort_order]
+            bases = bases[sort_order]
+
+            assert all(Path(f).exists() for f in actual['file'])
+
+            for column in expected.colnames:
+                if column == 'file':
+                    assert np.all(bases == expected[column])
+                else:
+                    assert np.all(actual[column] == expected[column])
+
+            # Set comparisons don't care about order :)
+            # Check several of the ways we can get file names from the
+            # collection and ensure all of them include the path.
+            assert set(file_paths) == set(ic.summary['file'])
+            assert set(file_paths) == set(ic.files)
+            assert set(file_paths) == set(ic.files_filtered(include_path=True))
+
+            # Spot check a couple of dtypes as a test for
+            #   https://github.com/astropy/ccdproc/issues/662
+            assert ic.summary['extend'].dtype == 'bool'
+
+            # Of course, default dtypes on Windows are different. So instead
+            # of comparing to something sensible like int64, compare to the
+            # default int dtype.
+            assert ic.summary['naxis1'].dtype == np.array([5]).dtype
+
+            # and the default float dtype
+            assert ic.summary['exptime'].dtype == np.array([5.0]).dtype
+
+            expected_heads = (actual['imagetyp'] == 'LIGHT').sum()
+
+            n_heads = 0
+            # Try one of the generators
+            for h in ic.headers(imagetyp='light'):
+                assert h['imagetyp'].lower() == 'light'
+                n_heads += 1
+
+            assert n_heads == expected_heads
+
+    def test_force_detect_fits_files_finds_fits_files(self, triage_setup):
+        # Tests for new feature
+        #
+        #     https://github.com/astropy/ccdproc/issues/620
+        #
+        # which supports adding all of the FITS files in a location based on
+        # their *contents* instead of their *extension*.
+
+        # Grab files from the default collection and make a copy with a new name
+        # (and with no fits-like extension)
+        #
+        # Making a copy of *every* file means we can just double the expected
+        # number of files as part of the tests.
+        path = Path(triage_setup.test_dir)
+        for idx, p in enumerate(path.iterdir()):
+            new_name = 'no_extension{}'.format(idx)
+            (path / new_name).write_bytes(p.read_bytes())
+
+        ic = ImageFileCollection(location=str(path),
+                                 find_fits_by_reading=True)
+
+        # Compressed files won't be automagically detected by reading the
+        # first few bytes.
+        expected_number = (2 * triage_setup.n_test['files'] -
+                           triage_setup.n_test['compressed'])
+
+        assert len(ic.summary) == expected_number
+
+        n_bias = (ic.summary['imagetyp'] == 'BIAS').sum()
+        assert n_bias == 2 * triage_setup.n_test['bias']
+
+        # Only one file in the original set of test files has exposure time
+        # 15, so there should be two now.
+        assert len(ic.files_filtered(exptime=15.0)) == 2
+
+        # Try one of the generators
+        expected_heads = (2 * triage_setup.n_test['light'] -
+                          triage_setup.n_test['compressed'])
+
+        n_heads = 0
+
+        for h in ic.headers(imagetyp='light'):
+            assert h['imagetyp'].lower() == 'light'
+            n_heads += 1
+
+        assert n_heads == expected_heads
+
+    def test_less_strict_verify_option(self, triage_setup):
+        # Tests for feature request
+        #
+        #    https://github.com/astropy/ccdproc/issues/607
+        #
+        # which would allow reading of otherwise invalid FITS headers.
+
+        bad_header = """
+            NAXIS1  =                   10 / length of data axis 1
+            NAXIS2  =                   10 / length of data axis 2
+            TESTVERI= '2017/02/13-16:51:38 / Test VerifyWarning
+        """
+
+        testh = fits.Header.fromstring(bad_header)
+        print(testh)
+        testfits = fits.PrimaryHDU(data=np.ones((10, 10)), header=testh)
+
+        path = Path(triage_setup.test_dir)
+        bad_fits_name = 'test_warnA.fits'
+        testfits.writeto(path / bad_fits_name,
+                         output_verify='warn',
+                         overwrite=True)
+
+        ic = ImageFileCollection(location=str(path))
+        print(ic.summary.colnames)
+        assert bad_fits_name in ic.files
+
+        # Turns out this sample header is so messed up that TESTVERI does not
+        # end up as a keyword.
+        assert 'TESTVERI' not in ic.summary.colnames
+
+        # This does end up as a key some how *shrug*.
+        assert '17/02/13' in ic.summary.colnames
+
+        # Try making the summary as in the original bug report
+        ic = ImageFileCollection(location=str(path),
+                                 glob_include='*warnA*')
+
+    def test_type_of_empty_collection(self, triage_setup):
+        # Test for implementation of the suggestion in
+        #
+        #    https://github.com/astropy/ccdproc/issues/601
+        #
+        # in which an empty collection with no keys has but with files
+        # returns a summary table with one column, but an empty collection
+        # with no keys and no files returns None.
+
+        # Make a dummy keyword that we then delete.
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=['fafa'])
+        ic.keywords = []
+        assert set(ic.summary.colnames) == set(['file'])
+
+        # Remove all of the fits files
+        path = Path(triage_setup.test_dir)
+        for p in path.iterdir():
+            p.unlink()
+
+        # Now the summary should be none
+        ic = ImageFileCollection(triage_setup.test_dir)
+        assert ic.summary is None
+        assert ic.keywords == []
