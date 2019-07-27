@@ -361,7 +361,7 @@ pixels have a value of one.   This task follows the same algorithm used in the
 iraf ccdmask task. 
 
      >>> ccd.mask =  ccdmask(ccd, ncmed=7, nlmed=7, ncsig=15, nlsig=15, lsigma=9, 
-     ...                     lsigma=9, hsigma=9, ngood=5)
+     ...                     hsigma=9, ngood=5)
   
 
 Filter and Convolution
