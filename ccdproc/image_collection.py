@@ -3,6 +3,8 @@
 from collections import OrderedDict
 import fnmatch
 from os import listdir, path
+import re
+
 import logging
 
 import numpy as np
@@ -326,6 +328,12 @@ class ImageFileCollection(object):
             contains not just the filename, but the full path to each file.
             Default is ``False``.
 
+        regex_match : bool, keyword-only
+            If ``True``, then string values in the ``**kwd`` dictionary are
+            treated as regular expression patterns and matching is done by
+            regular expression search. The search is always
+            **case insensitive**.
+
         **kwd :
             ``**kwd`` is dict of keywords and values the files must have.
             The value '*' represents any value.
@@ -355,7 +363,8 @@ class ImageFileCollection(object):
 
         Notes
         -----
-        Value comparison is case *insensitive* for strings.
+        Value comparison is case *insensitive* for strings, whether matching
+        exactly or matching with regular expressions.
         """
         # force a copy by explicitly converting to a list
         current_file_mask = self.summary['file'].mask.tolist()
@@ -614,6 +623,16 @@ class ImageFileCollection(object):
         """
         Find files whose keywords have given values.
 
+        Parameters
+        ----------
+
+        match_regex : bool, optional
+            If ``True`` match string values by using a regular expression
+            search instead of equality. Default value is ``False``.
+
+        The remaining arguments are keyword/value pairs specifying the
+        values to match.
+
         `**kwd` is list of keywords and values the files must have.
 
         The value '*' represents any value.
@@ -625,9 +644,11 @@ class ImageFileCollection(object):
             >>> collection = ImageFileCollection('test/data', keywords=keys)
             >>> collection.files_filtered(imagetyp='LIGHT', filter='R')
             >>> collection.files_filtered(imagetyp='*', filter='')
+            >>> collection.files_filtered(imagetyp='bias|filter', regex_match=True)
 
         NOTE: Value comparison is case *insensitive* for strings.
         """
+        regex_match = kwd.pop('regex_match', False)
         keywords = kwd.keys()
         values = kwd.values()
 
@@ -652,15 +673,25 @@ class ImageFileCollection(object):
                     # need to loop explicitly over array rather than using
                     # where to correctly do string comparison.
                     have_this_value = np.zeros(len(use_info), dtype=bool)
+
+                    # We are going to do a regex match no matter what.
+                    if regex_match:
+                        pattern = re.compile(value,
+                                             flags=re.IGNORECASE)
+                    else:
+                        # This pattern matches the prior behavior.
+                        pattern = re.compile('^' + value + '$',
+                                             flags=re.IGNORECASE)
+
                     for idx, file_key_value in enumerate(use_info[key].tolist()):
                         if value_not_missing[idx]:
                             try:
                                 value_matches = (
-                                    file_key_value.lower() == value.lower())
-                            except AttributeError:
+                                    pattern.search(file_key_value) is not None)
+                            except TypeError:
                                 # In case we're dealing with an object column
                                 # there could be values other than strings in it
-                                # so it could fail with an AttributeError.
+                                # so it could fail with an TypeError.
                                 value_matches = False
                         else:
                             value_matches = False
@@ -792,6 +823,13 @@ class ImageFileCollection(object):
             the default unit.
             See `~astropy.nddata.fits_ccddata_reader` for a complete list of
             parameters that can be passed through ``ccd_kwargs``.
+
+
+        regex_match : bool, keyword-only
+            If ``True``, then string values in the ``**kwd`` dictionary are
+            treated as regular expression patterns and matching is done by
+            regular expression search. The search is always
+            **case insensitive**.
 
         **kwd :
             Any additional keywords are used to filter the items returned; see
