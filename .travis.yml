@@ -23,7 +23,7 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy reproject psutil cython astroscrappy scikit-image'
+        - CONDA_DEPENDENCIES='scipy reproject psutil cython astroscrappy scikit-image memory_profiler'
         - PIP_DEPENDENCIES=''
         - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'

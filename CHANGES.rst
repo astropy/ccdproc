@@ -39,6 +39,9 @@ Bug Fixes
 
 - Function ``combine`` avoids keeping files open unnecessarily. [#629, #630]
 
+- Function ``combine`` more accurately estimates memory use
+  when deciding how to chunk files. [#638, #642]
+
 - Raise ``ValueError`` error in ``subtract_dark`` for when the errors have
   different shapes [#674, #677]
 
