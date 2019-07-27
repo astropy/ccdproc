@@ -25,7 +25,7 @@ __doctest_skip__ = ['*']
 _ASTROPY_LT_1_3 = not minversion("astropy", "1.3")
 
 
-class ImageFileCollection(object):
+class ImageFileCollection:
     """
     Representation of a collection of image files.
 

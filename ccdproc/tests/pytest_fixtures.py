@@ -164,7 +164,7 @@ def triage_setup(request):
 
     request.addfinalizer(teardown)
 
-    class Result(object):
+    class Result:
         def __init__(self, n, directory):
             self.n_test = n
             self.test_dir = directory
