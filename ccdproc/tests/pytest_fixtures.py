@@ -77,12 +77,11 @@ def _make_file_for_testing(file_name='', **kwd):
     hdu.writeto(file_name)
 
 
-@pytest.fixture
-def triage_setup(request):
+def directory_for_testing():
     """
     Set up directory with these contents:
 
-    One file with imagetyp BIAS. It has an the keyword EXPTIME in
+    One file with imagetyp BIAS. It has an the keyword EXPOSURE in
     the header, but no others beyond IMAGETYP and the bare minimum
     created with the FITS file.
 
@@ -154,19 +153,24 @@ def triage_setup(request):
                            exptime=15.0,
                            filter='R')
 
+    os.chdir(original_dir)
+
+    return n_test, test_dir
+
+
+@pytest.fixture
+def triage_setup(request):
+
+    n_test, test_dir = directory_for_testing()
+
     def teardown():
-        os.chdir(original_dir)
         try:
             rmtree(test_dir)
         except OSError:
             # If we cannot clean up just keep going.
             pass
 
-    try:
-        request.addfinalizer(teardown)
-    except AttributeError:
-        # Apparently this is not really a pytest test, just ignore it.
-        pass
+    request.addfinalizer(teardown)
 
     class Result:
         def __init__(self, n, directory):
