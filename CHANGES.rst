@@ -28,7 +28,11 @@ Other Changes and Additions
 
 - Added support for .bz2, .Z and .zip file formats in ``ImageFileCollection``.
 
-- Added warning that ``transform_image`` does not apply the transformation to the WCS [#684]
+- Added warning that ``transform_image`` does not apply the transformation to
+  the WCS [#684]
+
+- When creating a new object in ``wcs_transform``, WCS keywords in the header
+  are removed so that they are only stored in the WCS object [#685]
 
 - Removed support for initializing ``ImageFileCollection`` from a table instead
   of files. [#680]
