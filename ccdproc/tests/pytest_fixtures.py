@@ -162,7 +162,11 @@ def triage_setup(request):
             # If we cannot clean up just keep going.
             pass
 
-    request.addfinalizer(teardown)
+    try:
+        request.addfinalizer(teardown)
+    except AttributeError:
+        # Apparently this is not really a pytest test, just ignore it.
+        pass
 
     class Result:
         def __init__(self, n, directory):
