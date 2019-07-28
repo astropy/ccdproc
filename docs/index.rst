@@ -29,6 +29,13 @@ throughout the reduction process.
     whether directly or as a dependency of another package, please
     include an :doc:`acknowledgment and/or citation <citation>`.
 
+Detailed, step-by-step guide
+----------------------------
+
+In addition to the documentation here, a detailed guide to the topic of CCD
+data reduction using ``ccdproc`` and other `astropy`_ tools is available here:
+https://mwcraig.github.io/ccd-as-book/00-00-Preface
+
 Getting started
 ---------------
 
@@ -38,6 +45,7 @@ Getting started
     install
     overview
     getting_started
+    detailed_tutorial
     citation
     contributing
     conduct

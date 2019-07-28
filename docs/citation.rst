@@ -1,3 +1,3 @@
-.. _photutils_citation:
+.. _ccdproc_citation:
 
 .. include:: ../CITATION.rst
