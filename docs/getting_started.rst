@@ -1,9 +1,5 @@
-CCD Data reduction (`ccdproc`)
-==============================
-
-
 Getting Started
----------------
+===============
 
 A ``CCDData`` object can be created from a numpy array (masked or not) or from
 a FITS file:
@@ -90,24 +86,3 @@ use an `~ccdproc.image_collection.ImageFileCollection`. It constructs, given a d
     ...     for data, fname in ic.data(imagetyp='LIGHT', return_fname=True):
     ...         if data.mean() > 4000.:
     ...             print(fname)
-
-Using `ccdproc`
----------------
-
-.. toctree::
-    :maxdepth: 1
-
-    ccddata.rst
-    image_combination.rst
-    reduction_toolbox.rst
-    image_management.rst
-    reduction_examples.rst
-
-.. automodapi:: ccdproc
-   :skip: CCDData
-   :skip: fits_ccddata_writer
-   :skip: fits_ccddata_reader
-
-.. automodapi:: ccdproc.utils.slices
-
-.. _GitHub repo: https://github.com/astropy/ccdproc

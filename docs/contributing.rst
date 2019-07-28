@@ -1,5 +1,5 @@
-Reporting Issues and Contributing
-=================================
+Reporting Issues and contributing code
+======================================
 
 Reporting Issues
 ----------------
@@ -17,8 +17,8 @@ trace.  The developers will walk you through obtaining a stack trace if it is
 necessary.
 
 
-Contributing
-------------
+Contributing code
+-----------------
 
 Like the `Astropy`_ project, `ccdproc <https://ccdproc.rtfd.io>`_ is made both by and for its
 users.  We accept contributions at all levels, spanning the gamut from

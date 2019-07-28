@@ -35,21 +35,30 @@ Getting started
 .. toctree::
     :maxdepth: 1
 
-    install.rst
-    overview.rst
-    citation.rst
-    contributing.rst
-    conduct.rst
+    install
+    overview
+    getting_started
+    citation
+    contributing
+    conduct
+    authors_for_sphinx
+    changelog
+    license
 
-
-.. toctree::
-    :maxdepth: 3
-
-    ccdproc.rst
+Using `ccdproc`
+---------------
 
 .. toctree::
     :maxdepth: 1
 
-    authors_for_sphinx
-    changelog
-    license
+    ccddata
+    image_combination
+    reduction_toolbox
+    image_management
+    reduction_examples
+
+.. toctree::
+    :maxdepth: 1
+
+    api
+
