@@ -1868,7 +1868,7 @@ def bitfield_to_boolean_mask(bitfield, ignore_bits=0, flip_bits=None):
         good_mask_value=False, dtype=bool)
 
 
-class Keyword(object):
+class Keyword:
     """
     """
     def __init__(self, name, unit=None, value=None):

@@ -3,6 +3,8 @@
 from collections import OrderedDict
 import fnmatch
 from os import listdir, path
+import re
+
 import logging
 
 import numpy as np
@@ -25,7 +27,7 @@ __doctest_skip__ = ['*']
 _ASTROPY_LT_1_3 = not minversion("astropy", "1.3")
 
 
-class ImageFileCollection(object):
+class ImageFileCollection:
     """
     Representation of a collection of image files.
 
@@ -48,18 +50,16 @@ class ImageFileCollection(object):
         columns. Default value is '*' unless ``info_file`` is specified.
         Default is ``None``.
 
-    info_file : str or None, optional
-        Path to file that contains a table of information about FITS files.
-        In this case the keywords are set to the names of the columns of the
-        ``info_file`` unless ``keywords`` is explicitly set to a different
-        list.
-        Default is ``None``.
-
-        .. deprecated:: 1.3
+    find_fits_by_reading: bool, optional
+        If ``True``, read each file in location to check whether the file is a
+        FITS file and include it in the collection based on that, rather than
+        by file name. Compressed files, e.g. image.fits.gz, will **NOT** be
+        properly detected. *Will be ignored if `filenames` is not ``None``.*
 
     filenames: str, list of str, or None, optional
         List of the names of FITS files which will be added to the collection.
-        The filenames are assumed to be in ``location``.
+        The filenames may either be in ``location`` or the name can be a
+        relative or absolute path to the file.
         Default is ``None``.
 
     glob_include: str or None, optional
@@ -74,9 +74,9 @@ class ImageFileCollection(object):
         easily select subsets of files in the target directory.
         Default is ``None``.
 
-     ext: str or int, optional
-         The extension from which the header and data will be read in all files.
-         Default is ``0``.
+    ext: str or int, optional
+        The extension from which the header and data will be read in all
+        files.Default is ``0``.
 
     Raises
     ------
@@ -84,13 +84,10 @@ class ImageFileCollection(object):
         Raised if keywords are set to a combination of '*' and any other
         value.
     """
-    def __init__(self, location=None, keywords=None, info_file=None,
+
+    def __init__(self, location=None, keywords=None,
+                 find_fits_by_reading=False,
                  filenames=None, glob_include=None, glob_exclude=None, ext=0):
-
-        if info_file is not None:
-            warnings.warn("The 'info_file' argument is deprecated and will be "
-                          "removed in a future version", DeprecationWarning)
-
         # Include or exclude files from the collection based on glob pattern
         # matching - has to go above call to _get_files()
         if glob_exclude is not None:
@@ -101,41 +98,24 @@ class ImageFileCollection(object):
             glob_include = str(glob_include)
         self._glob_include = glob_include
 
-        self._location = location
+        if location is not None:
+            self._location = location
+        else:
+            self._location = ''
+
+        self._find_fits_by_reading = find_fits_by_reading
+
         self._filenames = filenames
         self._files = []
-        self._info_file = info_file
-        if location:
-            self._files = self._get_files()
+        self._files = self._get_files()
 
         if self._files == []:
             warnings.warn("no FITS files in the collection.",
                           AstropyUserWarning)
         self._summary = {}
         if keywords is None:
-            if info_file is not None:
-                # Default to empty list so that keywords will be populated
-                # from table columns names.
-                keywords = []
-            else:
-                # Otherwise use all keywords.
-                keywords = '*'
-        if info_file is not None:
-            try:
-                info_path = path.join(self.location, info_file)
-            except (AttributeError, TypeError):
-                info_path = info_file
-            try:
-                self._summary = Table.read(info_path, format='ascii',
-                                           delimiter=',')
-                self._summary = Table(self._summary, masked=True)
-            except IOError:
-                if location:
-                    logger.warning('unable to open table file %s, will try '
-                                   'initializing from location instead.',
-                                   info_path)
-                else:
-                    raise
+            # Use all keywords.
+            keywords = '*'
 
         # Used internally to keep track of whether the user asked for all
         # keywords or a specific list. The keywords setter takes care of
@@ -159,11 +139,6 @@ class ImageFileCollection(object):
         else:
             kw = "keywords={!r}".format(self.keywords[1:])
 
-        if self._info_file is None:
-            infofile = ''
-        else:
-            infofile = "info_file={!r}".format(self._info_file)
-
         if self.glob_exclude is None:
             glob_exclude = ''
         else:
@@ -184,7 +159,7 @@ class ImageFileCollection(object):
         else:
             filenames = "filenames={}".format(self._filenames)
 
-        params = [location, kw, infofile, filenames, glob_include, glob_exclude, ext]
+        params = [location, kw, filenames, glob_include, glob_exclude, ext]
         params = ', '.join([p for p in params if p])
 
         str_repr = "{self.__class__.__name__}({params})".format(
@@ -353,6 +328,12 @@ class ImageFileCollection(object):
             contains not just the filename, but the full path to each file.
             Default is ``False``.
 
+        regex_match : bool, keyword-only
+            If ``True``, then string values in the ``**kwd`` dictionary are
+            treated as regular expression patterns and matching is done by
+            regular expression search. The search is always
+            **case insensitive**.
+
         **kwd :
             ``**kwd`` is dict of keywords and values the files must have.
             The value '*' represents any value.
@@ -382,7 +363,8 @@ class ImageFileCollection(object):
 
         Notes
         -----
-        Value comparison is case *insensitive* for strings.
+        Value comparison is case *insensitive* for strings, whether matching
+        exactly or matching with regular expressions.
         """
         # force a copy by explicitly converting to a list
         current_file_mask = self.summary['file'].mask.tolist()
@@ -491,12 +473,19 @@ class ImageFileCollection(object):
 
         assert 'file' not in h
 
+        if self.location:
+            # We have a location and can reconstruct the path using it
+            name_for_file_column = path.basename(file_name)
+        else:
+            # No location, so use whatever path the user passed in
+            name_for_file_column = file_name
+
         # Try opening header before this so that file name is only added if
         # file is valid FITS
         try:
-            summary['file'].append(path.basename(file_name))
+            summary['file'].append(name_for_file_column)
         except KeyError:
-            summary['file'] = [path.basename(file_name)]
+            summary['file'] = [name_for_file_column]
 
         missing_in_this_file = [k for k in summary if (k not in h and
                                                        k != 'file')]
@@ -634,6 +623,16 @@ class ImageFileCollection(object):
         """
         Find files whose keywords have given values.
 
+        Parameters
+        ----------
+
+        match_regex : bool, optional
+            If ``True`` match string values by using a regular expression
+            search instead of equality. Default value is ``False``.
+
+        The remaining arguments are keyword/value pairs specifying the
+        values to match.
+
         `**kwd` is list of keywords and values the files must have.
 
         The value '*' represents any value.
@@ -645,9 +644,11 @@ class ImageFileCollection(object):
             >>> collection = ImageFileCollection('test/data', keywords=keys)
             >>> collection.files_filtered(imagetyp='LIGHT', filter='R')
             >>> collection.files_filtered(imagetyp='*', filter='')
+            >>> collection.files_filtered(imagetyp='bias|filter', regex_match=True)
 
         NOTE: Value comparison is case *insensitive* for strings.
         """
+        regex_match = kwd.pop('regex_match', False)
         keywords = kwd.keys()
         values = kwd.values()
 
@@ -672,15 +673,25 @@ class ImageFileCollection(object):
                     # need to loop explicitly over array rather than using
                     # where to correctly do string comparison.
                     have_this_value = np.zeros(len(use_info), dtype=bool)
+
+                    # We are going to do a regex match no matter what.
+                    if regex_match:
+                        pattern = re.compile(value,
+                                             flags=re.IGNORECASE)
+                    else:
+                        # This pattern matches the prior behavior.
+                        pattern = re.compile('^' + value + '$',
+                                             flags=re.IGNORECASE)
+
                     for idx, file_key_value in enumerate(use_info[key].tolist()):
                         if value_not_missing[idx]:
                             try:
                                 value_matches = (
-                                    file_key_value.lower() == value.lower())
-                            except AttributeError:
+                                    pattern.search(file_key_value) is not None)
+                            except TypeError:
                                 # In case we're dealing with an object column
                                 # there could be values other than strings in it
-                                # so it could fail with an AttributeError.
+                                # so it could fail with an TypeError.
                                 value_matches = False
                         else:
                             value_matches = False
@@ -738,8 +749,16 @@ class ImageFileCollection(object):
 
         all_files = listdir(self.location)
         files = []
-        for extension in full_extensions:
-            files.extend(fnmatch.filter(all_files, '*' + extension))
+        if not self._find_fits_by_reading:
+            for extension in full_extensions:
+                files.extend(fnmatch.filter(all_files, '*' + extension))
+        else:
+            for infile in all_files:
+                with open(infile, 'rb') as fp:
+                    # Hmm, first argument to is_fits is not actually used in
+                    # that function. *shrug*
+                    if fits.connect.is_fits('just some junk', infile, fp):
+                        files.append(infile)
 
         files.sort()
         return files
@@ -804,6 +823,13 @@ class ImageFileCollection(object):
             the default unit.
             See `~astropy.nddata.fits_ccddata_reader` for a complete list of
             parameters that can be passed through ``ccd_kwargs``.
+
+
+        regex_match : bool, keyword-only
+            If ``True``, then string values in the ``**kwd`` dictionary are
+            treated as regular expression patterns and matching is done by
+            regular expression search. The search is always
+            **case insensitive**.
 
         **kwd :
             Any additional keywords are used to filter the items returned; see

@@ -31,12 +31,25 @@ collection to use all keywords in the headers::
 
     >>> ic_all = ImageFileCollection('.', keywords='*')
 
+Normally identification of FITS files is done by looking at the file extension
+and including all files with the correct extension.
+
+If the files are not compressed (e.g. not gzipped) then you can force the image
+collection to open each file and check from its contents whether it is FITS by
+using the ``find_fits_by_reading`` argument::
+
+    >> ic_from_content = ImageFileCollection('.', find_fits_by_reading=True)
+
 You can indicate filename patterns to include or exclude using Unix shell-style
 expressions. For example, to include all filenames that begin with ``1d_`` but
 not ones that include the word ``bad``, you could do::
 
     >>> ic_all = ImageFileCollection('.', glob_include='1d_*',
     ...                              glob_exclude='*bad*')
+
+Alternatively, you can create the collection with an explicit list of file names::
+
+    >>> ic_names = ImageFileCollection(filenames=['a.fits', '/some/path/b.fits.gz'])
 
 Most of the useful interaction with the image collection is via its
 ``.summary`` property, a :class:`~astropy.table.Table` of the value of each keyword for each
@@ -70,8 +83,26 @@ seconds, there is a convenience method ``.files_filtered``::
 The optional arguments to ``files_filtered`` are used to filter the list of
 files.
 
+Python regular expression patterns can also be used as the value if the
+``regex_match`` flag is set. For example, to find all of the images whose
+object is in the Kelt exoplanet survey, you might do::
+
+    >>> my_files = ic1.files_filtered(regex_match=True, object='kelt.*')
+
+To get all of the images that have image type ``BIAS`` or ``LIGHT`` you
+can also use a regular expression pattern::
+
+    >>> my_files = ic1.files_filtered(regex_match=True,
+    ...                               imagetyp='bias|light')
+
+Note that regular expression is different, and much more flexible than,
+file name matching (or "globbing") at the command line. The
+`Python documentation on the re module <https://docs.python.org/3.7/library/re.html#module-re>`_
+is useful for learning about regular expressions.
+
 Sorting files
 -------------
+
 Sometimes it is useful to bring the files into a specific order, e.g. if you
 make a plot for each object you probably want all images of the same object
 next to each other. To do this, the images in a collection can be sorted with
