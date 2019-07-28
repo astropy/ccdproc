@@ -944,7 +944,6 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
 
     # If there are any wcs keywords in the header, remove them
     hdr, _ = _generate_wcs_and_update_header(ccd.header)
-    print(hdr)
 
     nccd = CCDData(area_ratio * projected_image_raw, wcs=target_wcs,
                    mask=output_mask,
