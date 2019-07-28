@@ -1,32 +1,71 @@
+.. the "raw" directive below is used to hide the title in favor of
+   just the logo being visible
+.. raw:: html
 
-================
- CCDPROC
-================
+    <style media="screen" type="text/css">
+      h1 {display:none;}
+    </style>
 
-Welcome to the ccdproc documentation!   Ccdproc is is an affiliated package for
-the AstroPy package for basic data reductions of CCD images.   The ccdproc
-package provides many of the necessary tools for processing of ccd images built
-on a framework to provide error propagation and bad pixel tracking throughout
-the reduction process.
+=======
+ccdproc
+=======
 
-Documentation
-=============
+.. raw:: html
 
-The documentation for this package is here:
+   <img src="_static/ccdproc_banner.svg" onerror="this.src='_static/ccdproc_banner.png'; this.onerror=null;" width="495"/>
+
+.. only:: latex
+
+    .. image:: _static/ccdproc_banner.pdf
+
+**Ccdproc** is is an `Astropy`_ `affiliated package
+<https://www.astropy.org/affiliated/index.html>`_  for basic data reductions
+of CCD images. It provides the essential tools for processing of CCD images
+in a framework that provides error propagation and bad pixel tracking
+throughout the reduction process.
+
+.. Important::
+    If you use `ccdproc`_ for a project that leads to a publication,
+    whether directly or as a dependency of another package, please
+    include an :doc:`acknowledgment and/or citation <citation>`.
+
+Detailed, step-by-step guide
+----------------------------
+
+In addition to the documentation here, a detailed guide to the topic of CCD
+data reduction using ``ccdproc`` and other `astropy`_ tools is available here:
+https://mwcraig.github.io/ccd-as-book/00-00-Preface
+
+Getting started
+---------------
 
 .. toctree::
-  :maxdepth: 2
+    :maxdepth: 1
 
-  ccdproc/install.rst
+    install
+    overview
+    getting_started
+    citation
+    contributing
+    conduct
+    authors_for_sphinx
+    changelog
+    license
+
+Using `ccdproc`
+---------------
 
 .. toctree::
-  :maxdepth: 3
+    :maxdepth: 1
 
-  ccdproc/index.rst
+    ccddata
+    image_combination
+    reduction_toolbox
+    image_management
+    reduction_examples
 
 .. toctree::
-  :maxdepth: 1
+    :maxdepth: 1
 
-  authors_for_sphinx
-  changelog
-  license
+    api
+
