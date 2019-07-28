@@ -902,6 +902,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     ccd : `~astropy.nddata.CCDData`
         A transformed CCDData object.
     """
+    from astropy.nddata.ccddata import _generate_wcs_and_update_header
     from reproject import reproject_interp
 
     if not (ccd.wcs.is_celestial and target_wcs.is_celestial):
@@ -941,9 +942,13 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     if not output_mask.any():
         output_mask = None
 
+    # If there are any wcs keywords in the header, remove them
+    hdr, _ = _generate_wcs_and_update_header(ccd.header)
+    print(hdr)
+
     nccd = CCDData(area_ratio * projected_image_raw, wcs=target_wcs,
                    mask=output_mask,
-                   header=ccd.header, unit=ccd.unit)
+                   header=hdr, unit=ccd.unit)
 
     return nccd
 
