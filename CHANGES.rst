@@ -19,6 +19,9 @@ Other Changes and Additions
 
 - Added support for .bz2, .Z and .zip file formats in ``ImageFileCollection``.
 
+- Added warning that ``transform_image`` does not apply the transformation to the WCS [#684]
+
+
 Bug Fixes
 ^^^^^^^^^
 - Function ``median_combine`` now correctly calculates the uncertainty for

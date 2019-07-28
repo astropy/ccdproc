@@ -2,10 +2,13 @@
 
 """This module implements the base CCDPROC functions"""
 
+import math
 import numbers
+import logging
 
 import numpy as np
-import math
+from scipy import ndimage
+
 from astropy.units.quantity import Quantity
 from astropy import units as u
 from astropy.modeling import fitting
@@ -16,11 +19,11 @@ from astropy.wcs.utils import proj_plane_pixel_area
 from astropy.utils import deprecated
 import astropy  # To get the version.
 
-from scipy import ndimage
-
 from .utils.slices import slice_from_string
 from .log_meta import log_to_metadata
 from .extern.bitfield import bitfield_to_boolean_mask as _bitfield_to_boolean_mask
+
+logger = logging.getLogger(__name__)
 
 __all__ = ['background_deviation_box', 'background_deviation_filter',
            'ccd_process', 'cosmicray_median', 'cosmicray_lacosmic',
@@ -852,6 +855,10 @@ def transform_image(ccd, transform_func, **kwargs):
     if nccd.mask is not None:
         mask = transform_func(nccd.mask, **kwargs)
         nccd.mask = mask > 0
+
+    if nccd.wcs is not None:
+        warn = 'WCS information may be incorrect as no transformation was applied to it'
+        logging.warning(warn)
 
     return nccd
 
