@@ -186,7 +186,7 @@ preserves no backup. The example below replaces each of the I band images
 with 30 second exposure with a file that has had the mean subtracted::
 
     >>> for hdu in ic1.hdus(overwrite=True,
-    ...                     imagetyp='LiGhT', filter='R', exposure=15):
+    ...                     imagetyp='LiGhT', filter='R', exposure=15): # doctest: +SKIP
     ...    hdu.header['meansub'] = True
     ...    hdu.data = hdu.data - hdu.data.mean()
 
