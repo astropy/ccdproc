@@ -13,6 +13,9 @@ New Features
 - Add option to use regular expression matching when filtering items in
   ``ImageFileCollection``. [#480, #595, #682]
 
+- Added an option to disregard negative values passed to ``create_deviation``
+  and assume the error is represented by the read noise [#688]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -33,6 +36,9 @@ Other Changes and Additions
 
 - When creating a new object in ``wcs_transform``, WCS keywords in the header
   are removed so that they are only stored in the WCS object [#685]
+
+- Improved warning for negative values in the array passed to
+  ``create_deviation`` [#688]
 
 - Removed support for initializing ``ImageFileCollection`` from a table instead
   of files. [#680]

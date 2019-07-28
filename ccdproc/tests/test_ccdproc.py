@@ -41,6 +41,7 @@ except ImportError:
                          (u.adu, u.photon / u.adu, u.electron, False),
                          ])
 @pytest.mark.data_size(10)
+@pytest.mark.data_mean(100)
 def test_create_deviation(ccd_data, u_image, u_gain, u_readnoise,
                           expect_success):
     ccd_data.unit = u_image
@@ -67,6 +68,31 @@ def test_create_deviation(ccd_data, u_image, u_gain, u_readnoise,
     else:
         with pytest.raises(u.UnitsError):
             ccd_var = create_deviation(ccd_data, gain=gain, readnoise=readnoise)
+
+
+@pytest.mark.data_mean(0)
+@pytest.mark.data_scale(10)
+def test_create_deviation_from_negative(ccd_data):
+    ccd_data.unit = u.electron
+    readnoise = 5 * u.electron
+    ccd_var = create_deviation(ccd_data, gain=None, readnoise=readnoise,
+                               disregard_nan=False)
+    np.testing.assert_array_equal(ccd_data.data < 0,
+                                  np.isnan(ccd_var.uncertainty.array))
+
+
+@pytest.mark.data_mean(0)
+@pytest.mark.data_scale(10)
+def test_create_deviation_from_negative(ccd_data):
+    ccd_data.unit = u.electron
+    readnoise = 5 * u.electron
+    ccd_var = create_deviation(ccd_data, gain=None, readnoise=readnoise,
+                               disregard_nan=True)
+    mask = (ccd_data.data < 0)
+    ccd_data.data[mask] = 0
+    expected_var = np.sqrt(ccd_data.data + readnoise.value**2)
+    np.testing.assert_array_equal(ccd_var.uncertainty.array,
+                                  expected_var)
 
 
 def test_create_deviation_keywords_must_have_unit(ccd_data):
