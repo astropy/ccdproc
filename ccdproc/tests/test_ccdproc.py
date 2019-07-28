@@ -580,7 +580,7 @@ def test_catch_transform_wcs_warning(ccd_data):
         return 10 * arr
 
     with catch_warnings() as w:
-         tran = transform_image(ccd_data, tran)
+        tran = transform_image(ccd_data, tran)
 
 
 @pytest.mark.parametrize('mask_data, uncertainty', [
