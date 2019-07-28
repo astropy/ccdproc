@@ -94,9 +94,9 @@ def directory_for_testing():
     files.
 
     + One file for each compression type, currently .gz and .fz.
-    + ALL of the files will have the keyword EXPTIME
+    + ALL of the files will have the keyword EXPOSURE
       in the header.
-    + Only ONE of them will have the value EXPTIME=15.0.
+    + Only ONE of them will have the value EXPOSURE=15.0.
     + All of the files EXCEPT ONE will have the keyword
       FILTER with the value 'R'.
     + NONE of the files have the keyword OBJECT
@@ -126,20 +126,20 @@ def directory_for_testing():
 
     _make_file_for_testing(file_name='no_filter_no_object_bias.fit',
                            imagetyp='BIAS',
-                           exptime=0.0)
+                           EXPOSURE=0.0)
 
     _make_file_for_testing(file_name='no_filter_no_object_light.fit',
                            imagetyp='LIGHT',
-                           exptime=1.0)
+                           EXPOSURE=1.0)
 
     _make_file_for_testing(file_name='filter_no_object_light.fit',
                            imagetyp='LIGHT',
-                           exptime=1.0,
+                           EXPOSURE=1.0,
                            filter='R')
 
     _make_file_for_testing(file_name='filter_object_light.fit',
                            imagetyp='LIGHT',
-                           exptime=1.0,
+                           EXPOSURE=1.0,
                            filter='R')
 
     with open('filter_object_light.fit', 'rb') as f_in:
@@ -150,7 +150,7 @@ def directory_for_testing():
 
     _make_file_for_testing(file_name='test.fits.fz',
                            imagetyp='LIGHT',
-                           exptime=15.0,
+                           EXPOSURE=15.0,
                            filter='R')
 
     os.chdir(original_dir)

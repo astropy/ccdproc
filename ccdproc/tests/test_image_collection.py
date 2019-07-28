@@ -145,7 +145,7 @@ class TestImageFileCollection:
         fn = 'test.fits.fz'
         ic = ImageFileCollection(location=triage_setup.test_dir, filenames=fn)
         # Get a subset of files with a specific header value
-        filtered = ic.files_filtered(exptime=15.0)
+        filtered = ic.files_filtered(exposure=15.0)
         assert len(filtered) == 1
 
     def test_filtered_files_have_proper_path(self, triage_setup):
@@ -471,7 +471,7 @@ class TestImageFileCollection:
         but the latter is not a subset of the former.
         """
         ic = ImageFileCollection(triage_setup.test_dir,
-                                 keywords=['imagetyp', 'exptime'])
+                                 keywords=['imagetyp', 'exposure'])
         n_files = len(ic.files)
         files_missing_this_key = ic.files_filtered(imagetyp='*',
                                                    monkeys=None)
@@ -899,7 +899,7 @@ class TestImageFileCollection:
             assert ic.summary['naxis1'].dtype == np.array([5]).dtype
 
             # and the default float dtype
-            assert ic.summary['exptime'].dtype == np.array([5.0]).dtype
+            assert ic.summary['exposure'].dtype == np.array([5.0]).dtype
 
             expected_heads = (actual['imagetyp'] == 'LIGHT').sum()
 
@@ -925,9 +925,11 @@ class TestImageFileCollection:
         # Making a copy of *every* file means we can just double the expected
         # number of files as part of the tests.
         path = Path(triage_setup.test_dir)
+
         for idx, p in enumerate(path.iterdir()):
             new_name = 'no_extension{}'.format(idx)
-            (path / new_name).write_bytes(p.read_bytes())
+            new_path = path / new_name
+            new_path.write_bytes(p.read_bytes())
 
         ic = ImageFileCollection(location=str(path),
                                  find_fits_by_reading=True)
@@ -944,7 +946,7 @@ class TestImageFileCollection:
 
         # Only one file in the original set of test files has exposure time
         # 15, so there should be two now.
-        assert len(ic.files_filtered(exptime=15.0)) == 2
+        assert len(ic.files_filtered(exposure=15.0)) == 2
 
         # Try one of the generators
         expected_heads = (2 * triage_setup.n_test['light'] -
