@@ -15,7 +15,7 @@ Ccdproc has the following requirements:
 - `reproject  <https://github.com/astrofrog/reproject>`_
 
 One easy way to get these dependencies is to install a python distribution
-like `anaconda <https://continuum.io/>`_.
+like `anaconda`_.
 
 Installing ccdproc
 ==================
@@ -23,23 +23,16 @@ Installing ccdproc
 Using pip
 -------------
 
-To install ccdproc with `pip <http://www.pip-installer.org/en/latest/>`_, simply run::
+To install ccdproc with `pip <https://pip.pypa.io/en/latest/>`_, simply run::
 
-    pip install --no-deps ccdproc
-
-.. note::
-
-    The ``--no-deps`` flag is optional, but highly recommended if you already
-    have Numpy installed, since otherwise pip will sometimes try to "help" you
-    by upgrading your Numpy installation, which may not always be desired.
+    pip install ccdproc
 
 Using conda
 -------------
 
-To install ccdproc with `anaconda <https://continuum.io/>`_, simply run::
+To install ccdproc with `anaconda`_, run::
 
     conda install -c astropy ccdproc
-
 
 
 Building from source
@@ -52,7 +45,7 @@ Source packages
 ^^^^^^^^^^^^^^^
 
 The latest stable source package for ccdproc can be `downloaded here
-<https://pypi.python.org/pypi/ccdproc>`_.
+<https://pypi.org/project/ccdproc/#files>`_.
 
 Development repository
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -71,7 +64,12 @@ To build ccdproc (from the root of the source tree)::
 
 To install ccdproc (from the root of the source tree)::
 
-    python setup.py install
+    pip install .
+
+To set up a development install in which changes to the source are immediately
+reflected in the installed package (from the root of the source tree)::
+
+    pip install -e .
 
 Testing a source code build of ccdproc
 --------------------------------------
@@ -81,3 +79,4 @@ installing ccdproc) is to run this from the root of the source tree::
 
     python setup.py test
 
+.. _anaconda: https://anaconda.com/
