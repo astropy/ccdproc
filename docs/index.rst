@@ -45,7 +45,6 @@ Getting started
     install
     overview
     getting_started
-    detailed_tutorial
     citation
     contributing
     conduct
