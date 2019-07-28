@@ -6,9 +6,9 @@
       h1 {display:none;}
     </style>
 
-========
- CCDPROC
-========
+=======
+ccdproc
+=======
 
 .. raw:: html
 
@@ -24,19 +24,32 @@ of CCD images. It provides the essential tools for processing of CCD images
 in a framework that provides error propagation and bad pixel tracking
 throughout the reduction process.
 
-.. toctree::
-  :maxdepth: 2
+.. Important::
+    If you use `ccdproc`_ for a project that leads to a publication,
+    whether directly or as a dependency of another package, please
+    include an :doc:`acknowledgment and/or citation <citation>`.
 
-  ccdproc/install.rst
-
-.. toctree::
-  :maxdepth: 3
-
-  ccdproc/index.rst
+Getting started
+---------------
 
 .. toctree::
-  :maxdepth: 1
+    :maxdepth: 1
 
-  authors_for_sphinx
-  changelog
-  license
+    install.rst
+    overview.rst
+    citation.rst
+    contributing.rst
+    conduct.rst
+
+
+.. toctree::
+    :maxdepth: 3
+
+    ccdproc.rst
+
+.. toctree::
+    :maxdepth: 1
+
+    authors_for_sphinx
+    changelog
+    license
