@@ -573,6 +573,15 @@ def test_transform_isfunc(ccd_data):
     with pytest.raises(TypeError):
         transform_image(ccd_data, 1)
 
+#test warning is issue if WCS information is available
+def test_catch_transform_wcs_warning(ccd_data):
+
+    def tran(arr):
+        return 10 * arr
+
+    with catch_warnings() as w:
+        tran = transform_image(ccd_data, tran)
+
 
 @pytest.mark.parametrize('mask_data, uncertainty', [
                          (False, False),
