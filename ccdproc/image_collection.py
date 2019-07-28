@@ -754,7 +754,8 @@ class ImageFileCollection:
                 files.extend(fnmatch.filter(all_files, '*' + extension))
         else:
             for infile in all_files:
-                with open(infile, 'rb') as fp:
+                inpath = path.join(self.location, infile)
+                with open(inpath, 'rb') as fp:
                     # Hmm, first argument to is_fits is not actually used in
                     # that function. *shrug*
                     if fits.connect.is_fits('just some junk', infile, fp):
