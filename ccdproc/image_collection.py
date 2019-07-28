@@ -18,6 +18,7 @@ import warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .ccddata import fits_ccddata_reader, _recognized_fits_file_extensions
+from .tests.pytest_fixtures import directory_for_testing
 
 logger = logging.getLogger(__name__)
 
@@ -754,7 +755,8 @@ class ImageFileCollection:
                 files.extend(fnmatch.filter(all_files, '*' + extension))
         else:
             for infile in all_files:
-                with open(infile, 'rb') as fp:
+                inpath = path.join(self.location, infile)
+                with open(inpath, 'rb') as fp:
                     # Hmm, first argument to is_fits is not actually used in
                     # that function. *shrug*
                     if fits.connect.is_fits('just some junk', infile, fp):
@@ -970,3 +972,14 @@ class ImageFileCollection:
         return self._generator('ccd', ccd_kwargs=ccd_kwargs, **kwd)
     ccds.__doc__ = _generator.__doc__.format(
         name='CCDData', default_scaling='True', return_type='astropy.nddata.CCDData')
+
+
+def sample_directory_with_files():
+    """
+    Returns the path to the small sample directory used
+    in the tests of ``ImageFileCollection``. Primarily intended
+    for use in the doctests.
+    """
+
+    n_test, tmpdir = directory_for_testing()
+    return tmpdir

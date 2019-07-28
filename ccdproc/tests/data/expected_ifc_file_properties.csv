@@ -1,4 +1,4 @@
-file,simple,bitpix,naxis,naxis1,extend,bscale,bzero,imagetyp,filter,exptime
+file,simple,bitpix,naxis,naxis1,extend,bscale,bzero,imagetyp,filter,exposure
 filter_no_object_light.fit,True,16,1,100,True,1,32768,LIGHT,R,1.0
 filter_object_light.fit,True,16,1,100,True,1,32768,LIGHT,R,1.0
 filter_object_light.fit.gz,True,16,1,100,True,1,32768,LIGHT,R,1.0
