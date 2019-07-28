@@ -432,6 +432,7 @@ def test_unit_mismatch_behaves_as_expected(ccd_data):
     # Was the error message as expected?
     assert expected_message in str(e.value)
 
+
 # test for flat correction
 @pytest.mark.data_scale(10)
 def test_flat_correct(ccd_data):
@@ -443,7 +444,7 @@ def test_flat_correct(ccd_data):
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat_data = flat_correct(ccd_data, flat, add_keyword=None)
 
-    #check that the flat was normalized
+    # check that the flat was normalized
     # Should be the case that flat * flat_data = ccd_data * flat.data.mean
     # if the normalization was done correctly.
     np.testing.assert_almost_equal((flat_data.data * flat.data).mean(),
@@ -545,6 +546,7 @@ def test_flat_correct_data_uncertainty():
     assert (res.data == dat.data).all()
     assert (res.uncertainty.array == dat.uncertainty.array).all()
 
+
 # tests for gain correction
 def test_gain_correct(ccd_data):
     init_data = ccd_data.data
@@ -562,18 +564,19 @@ def test_gain_correct_quantity(ccd_data):
     assert ccd_data.unit == u.electron
 
 
-#test transform is ccd
+# test transform is ccd
 def test_transform_isccd():
     with pytest.raises(TypeError):
         transform_image(1, 1)
 
 
-#test function is callable
+# test function is callable
 def test_transform_isfunc(ccd_data):
     with pytest.raises(TypeError):
         transform_image(ccd_data, 1)
 
-#test warning is issue if WCS information is available
+
+# test warning is issue if WCS information is available
 def test_catch_transform_wcs_warning(ccd_data):
 
     def tran(arr):
@@ -700,20 +703,20 @@ def test_block_replicate():
     assert 'testkw2' not in ccd.meta
 
 
-#test blockaveraging ndarray
+# test blockaveraging ndarray
 def test__blkavg_ndarray():
     with pytest.raises(TypeError):
         _blkavg(1, (5, 5))
 
 
-#test rebinning dimensions
+# test rebinning dimensions
 @pytest.mark.data_size(10)
 def test__blkavg_dimensions(ccd_data):
     with pytest.raises(ValueError):
         _blkavg(ccd_data.data, (5,))
 
 
-#test blkavg works
+# test blkavg works
 @pytest.mark.data_size(20)
 def test__blkavg_larger(ccd_data):
     a = ccd_data.data
@@ -723,10 +726,10 @@ def test__blkavg_larger(ccd_data):
     np.testing.assert_almost_equal(b.sum(), 0.25 * a.sum())
 
 
-#test overscan changes
+# test overscan changes
 def test__overscan_schange(ccd_data):
     old_data = ccd_data.copy()
-    new_data = subtract_overscan(ccd_data, overscan=ccd_data[:,1], overscan_axis=0)
+    new_data = subtract_overscan(ccd_data, overscan=ccd_data[:, 1], overscan_axis=0)
     assert not np.allclose(old_data.data, new_data.data)
     np.testing.assert_array_equal(old_data.data, ccd_data.data)
 
@@ -737,12 +740,14 @@ def test_create_deviation_does_not_change_input(ccd_data):
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
+
 def test_cosmicray_median_does_not_change_input(ccd_data):
     original = ccd_data.copy()
     error = np.zeros_like(ccd_data)
-    ccd = cosmicray_median(ccd_data,error_image=error, thresh=5, mbox=11, gbox=0, rbox=0)
-    np.testing.assert_array_equal(original.data,ccd_data.data)
+    ccd = cosmicray_median(ccd_data, error_image=error, thresh=5, mbox=11, gbox=0, rbox=0)
+    np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
+
 
 def test_cosmicray_lacosmic_does_not_change_input(ccd_data):
     original = ccd_data.copy()
@@ -751,12 +756,14 @@ def test_cosmicray_lacosmic_does_not_change_input(ccd_data):
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
+
 def test_flat_correct_does_not_change_input(ccd_data):
     original = ccd_data.copy()
     flat = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
-    ccd = flat_correct(ccd_data,flat=flat)
+    ccd = flat_correct(ccd_data, flat=flat)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
+
 
 def test_gain_correct_does_not_change_input(ccd_data):
     original = ccd_data.copy()
@@ -764,12 +771,14 @@ def test_gain_correct_does_not_change_input(ccd_data):
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
+
 def test_subtract_bias_does_not_change_input(ccd_data):
     original = ccd_data.copy()
     master_frame = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
     ccd = subtract_bias(ccd_data, master=master_frame)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
+
 
 def test_trim_image_does_not_change_input(ccd_data):
     original = ccd_data.copy()
@@ -816,6 +825,19 @@ def test_wcs_project_onto_same_wcs(ccd_data):
 
     # Make sure data matches within some reasonable tolerance.
     np.testing.assert_allclose(ccd_data.data, new_ccd.data, rtol=1e-5)
+
+
+def test_wcs_project_onto_same_wcs_remove_headers(ccd_data):
+    # Remove an example WCS keyword from the header
+    target_wcs = wcs_for_testing(ccd_data.shape)
+    ccd_data.wcs = wcs_for_testing(ccd_data.shape)
+    print(ccd_data.header)
+    ccd_data.header = ccd_data.wcs.to_header()
+
+    new_ccd = wcs_project(ccd_data, target_wcs)
+
+    for k in ccd_data.wcs.to_header():
+        assert k not in new_ccd.header
 
 
 def test_wcs_project_onto_shifted_wcs(ccd_data):
@@ -983,11 +1005,12 @@ def test_ccd_process():
 
     np.testing.assert_array_equal(2.0 * np.ones((100, 90)), occd.data)
     np.testing.assert_almost_equal(3.0 * np.ones((100, 90)),
-                                  occd.uncertainty.array)
+                                   occd.uncertainty.array)
     np.testing.assert_array_equal(mask, occd.mask)
     assert(occd.unit == u.electron)
     # Make sure the original keyword is still present. Regression test for #401
     assert occd.meta['testkw'] == 100
+
 
 def test_ccd_process_gain_corrected():
     # test the through ccd_process with gain_corrected as False
@@ -1019,7 +1042,7 @@ def test_ccd_process_gain_corrected():
 
     np.testing.assert_array_equal(2.0 * np.ones((100, 90)), occd.data)
     np.testing.assert_almost_equal(3.0 * np.ones((100, 90)),
-                                  occd.uncertainty.array)
+                                   occd.uncertainty.array)
     np.testing.assert_array_equal(mask, occd.mask)
     assert(occd.unit == u.electron)
     # Make sure the original keyword is still present. Regression test for #401
