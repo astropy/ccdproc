@@ -339,10 +339,10 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
     data = gain_value * ccd_data.data
     mask = (data < 0)
     if disregard_nan:
-       data[mask] = 0
+        data[mask] = 0
     else:
-       data[mask] = np.nan
-       logging.warning('Negative values in array will be replaced with nan')
+        data[mask] = np.nan
+        logging.warning('Negative values in array will be replaced with nan')
 
     # calculate the deviation
     var = (data + readnoise_value ** 2) ** 0.5
