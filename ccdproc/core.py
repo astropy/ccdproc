@@ -273,7 +273,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
 
 @log_to_metadata
-def create_deviation(ccd_data, gain=None, readnoise=None):
+def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
     """
     Create a uncertainty frame. The function will update the uncertainty
     plane which gives the standard deviation for the data. Gain is used in
@@ -295,6 +295,10 @@ def create_deviation(ccd_data, gain=None, readnoise=None):
     readnoise : `~astropy.units.Quantity` or None, optional
         Read noise per pixel.
         Default is ``None``.
+
+    disregard_nan: boolean
+        If ``True``, any value of nan in the output array will be replaced by
+        the readnoise.
 
     {log}
 
@@ -331,9 +335,20 @@ def create_deviation(ccd_data, gain=None, readnoise=None):
     gain_value = float(gain / gain.unit)
     readnoise_value = float(readnoise / readnoise.unit)
 
-    var = (gain_value * ccd_data.data + readnoise_value ** 2) ** 0.5
-    ccd = ccd_data.copy()
+    # remove values that might be negative or treat as nan
+    data = gain_value * ccd_data.data
+    mask = (data < 0)
+    if disregard_nan:
+        data[mask] = 0
+    else:
+        data[mask] = np.nan
+        logging.warning('Negative values in array will be replaced with nan')
+
+    # calculate the deviation
+    var = (data + readnoise_value ** 2) ** 0.5
+
     # ensure uncertainty and image data have same unit
+    ccd = ccd_data.copy()
     var /= gain_value
     ccd.uncertainty = StdDevUncertainty(var)
     return ccd
