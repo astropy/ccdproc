@@ -107,7 +107,7 @@ a list of keywords. The example below makes a new collection containing the
 files whose ``imagetyp`` is ``BIAS`` or ``LIGHT``::
 
     >>> new_ic = ic1.filter(regex_match=True,
-    ...                     imagetyp='bias|light'))
+    ...                     imagetyp='bias|light')
 
 Sorting files
 -------------
