@@ -1072,3 +1072,17 @@ class TestImageFileCollection:
             n_light += 1
 
         assert n_light == triage_setup.n_test['light']
+
+    def test_make_collection_by_filtering(self, triage_setup):
+        # Test for implementation of feature at
+        #
+        #    https://github.com/astropy/ccdproc/issues/596
+        #
+        # which adds the ability to create a new collection by filtering
+        # an existing ImageFileCollection.
+
+        ic = ImageFileCollection(location=triage_setup.test_dir)
+        new_ic = ic.filter(imagetyp='light')
+        assert len(new_ic.summary) == triage_setup.n_test['light']
+        for header in new_ic.headers():
+            assert header['imagetyp'].lower() == 'light'

@@ -404,6 +404,35 @@ class ImageFileCollection:
             self._summary.sort(keys)
             self._files = self.summary['file'].tolist()
 
+    def filter(self, **kwd):
+        """
+        Create a new collection by filtering the current collection.
+
+        Parameters
+        ----------
+
+        regex_match : bool, keyword-only
+            If ``True``, then string values in the ``**kwd`` dictionary are
+            treated as regular expression patterns and matching is done by
+            regular expression search. The search is always
+            **case insensitive**.
+
+        **kwd :
+            ``**kwd`` is dict of keywords and values the files must have.
+            The value '*' represents any value.
+            A missing keyword is indicated by value ''.
+
+        Returns
+        -------
+
+        `ImageFileCollection`
+            A new collection with the files matched by the arguments
+            to filter.
+        """
+        files = self.files_filtered(include_path=True, **kwd)
+        return ImageFileCollection(filenames=files,
+                                   keywords=self.keywords)
+
     def _get_files(self):
         """ Helper method which checks whether ``files`` should be set
         to a subset of file names or to all file names in a directory.

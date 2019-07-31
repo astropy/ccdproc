@@ -102,6 +102,13 @@ file name matching (or "globbing") at the command line. The
 `Python documentation on the re module <https://docs.python.org/3.7/library/re.html#module-re>`_
 is useful for learning about regular expressions.
 
+Finally, a new `~ccdproc.ImageFileCollection` can be created with by providing
+a list of keywords. The example below makes a new collection containing the
+files whose ``imagetyp`` is ``BIAS`` or ``LIGHT``::
+
+    >>> new_ic = ic1.filter(regex_match=True,
+    ...                     imagetyp='bias|light'))
+
 Sorting files
 -------------
 
