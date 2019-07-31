@@ -16,6 +16,9 @@ New Features
 - Added an option to disregard negative values passed to ``create_deviation``
   and assume the error is represented by the read noise [#688]
 
+- Add ``filter`` method to ``ImageFileCollection`` that creates a new
+  collection by filtering based on header keywords. [#596, #690]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
