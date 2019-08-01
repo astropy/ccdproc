@@ -1,4 +1,4 @@
-language: python
+language: c
 
 # Setting sudo to false opts in to Travis-CI container-based builds.
 sudo: false
@@ -11,10 +11,6 @@ addons:
             - graphviz
             - texlive-latex-extra
             - dvipng
-
-python:
-    - 3.5
-    - 3.6
 
 env:
     global:
