@@ -9,6 +9,7 @@ from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from ..core import rebin
+from .pytest_fixtures import ccd_data as ccd_data_func
 
 
 # test rebinning ndarray
@@ -18,22 +19,24 @@ def test_rebin_ndarray():
 
 
 # test rebinning dimensions
-@pytest.mark.data_size(10)
-def test_rebin_dimensions(ccd_data):
+def test_rebin_dimensions():
+    ccd_data = ccd_data_func(data_size=10)
     with pytest.raises(ValueError), catch_warnings(AstropyDeprecationWarning):
             rebin(ccd_data.data, (5,))
 
 
 # test rebinning dimensions
 @pytest.mark.data_size(10)
-def test_rebin_ccddata_dimensions(ccd_data):
+def test_rebin_ccddata_dimensions():
+    ccd_data = ccd_data_func(data_size=10)
     with pytest.raises(ValueError), catch_warnings(AstropyDeprecationWarning):
         rebin(ccd_data, (5,))
 
 
 # test rebinning works
 @pytest.mark.data_size(10)
-def test_rebin_larger(ccd_data):
+def test_rebin_larger():
+    ccd_data = ccd_data_func(data_size=10)
     a = ccd_data.data
     with catch_warnings(AstropyDeprecationWarning) as w:
         b = rebin(a, (20, 20))
@@ -44,8 +47,8 @@ def test_rebin_larger(ccd_data):
 
 
 # test rebinning is invariant
-@pytest.mark.data_size(10)
-def test_rebin_smaller(ccd_data):
+def test_rebin_smaller():
+    ccd_data = ccd_data_func(data_size=10)
     a = ccd_data.data
     with catch_warnings(AstropyDeprecationWarning) as w:
         b = rebin(a, (20, 20))
@@ -53,7 +56,7 @@ def test_rebin_smaller(ccd_data):
     assert len(w) >= 1
 
     assert c.shape == (10, 10)
-    assert (c-a).sum() == 0
+    assert (c - a).sum() == 0
 
 
 # test rebinning with ccddata object
@@ -61,7 +64,8 @@ def test_rebin_smaller(ccd_data):
                          (False, False),
                          (True, True)])
 @pytest.mark.data_size(10)
-def test_rebin_ccddata(ccd_data, mask_data, uncertainty):
+def test_rebin_ccddata(mask_data, uncertainty):
+    ccd_data = ccd_data_func(data_size=10)
     if mask_data:
         ccd_data.mask = np.zeros_like(ccd_data)
     if uncertainty:
@@ -79,10 +83,11 @@ def test_rebin_ccddata(ccd_data, mask_data, uncertainty):
         assert b.uncertainty.array.shape == (20, 20)
 
 
-def test_rebin_does_not_change_input(ccd_data):
+def test_rebin_does_not_change_input():
+    ccd_data = ccd_data_func()
     original = ccd_data.copy()
     with catch_warnings(AstropyDeprecationWarning) as w:
-        ccd = rebin(ccd_data, (20,20))
+        _ = rebin(ccd_data, (20, 20))
     assert len(w) >= 1
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
