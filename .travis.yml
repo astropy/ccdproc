@@ -38,6 +38,12 @@ matrix:
         - env: PYTHON_VERSION=3.7
                SETUP_CMD='egg_info'
 
+        # Do a windows run
+        - os: windows
+          env: PYTHON_VERSION=3.7
+               ASTROPY_VERSION=stable
+               NUMPY_VERSION=stable
+
         # Try Astropy/NumPy development versions. This requires them to be
         # compiled during setup which takes some time.
         - env: PYTHON_VERSION=3.7
