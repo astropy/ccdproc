@@ -10,6 +10,8 @@ from astropy.nddata import StdDevUncertainty
 
 from ..core import (cosmicray_lacosmic, cosmicray_median,
                     background_deviation_box, background_deviation_filter)
+from .pytest_fixtures import ccd_data as ccd_data_func
+
 
 DATA_SCALE = 5.3
 NCRAYS = 30
@@ -28,8 +30,8 @@ def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
             data.data[y, x] = crflux[i]
 
 
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_lacosmic(ccd_data):
+def test_cosmicray_lacosmic():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * np.ones_like(ccd_data.data)
@@ -41,8 +43,8 @@ def test_cosmicray_lacosmic(ccd_data):
     # assert crarr.sum() == NCRAYS
 
 
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_lacosmic_ccddata(ccd_data):
+def test_cosmicray_lacosmic_ccddata():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * np.ones_like(ccd_data.data)
@@ -55,22 +57,21 @@ def test_cosmicray_lacosmic_ccddata(ccd_data):
     # assert nccd_data.mask.sum() == NCRAYS
 
 
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_lacosmic_check_data(ccd_data):
+def test_cosmicray_lacosmic_check_data():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     with pytest.raises(TypeError):
         noise = DATA_SCALE * np.ones_like(ccd_data.data)
         cosmicray_lacosmic(10, noise)
 
 
-@pytest.mark.data_scale(DATA_SCALE)
 def test_cosmicray_median_check_data():
     with pytest.raises(TypeError):
         ndata, crarr = cosmicray_median(10, thresh=5, mbox=11,
                                         error_image=DATA_SCALE)
 
 
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_median(ccd_data):
+def test_cosmicray_median():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     ndata, crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11,
@@ -80,8 +81,8 @@ def test_cosmicray_median(ccd_data):
     assert crarr.sum() == NCRAYS
 
 
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_median_ccddata(ccd_data):
+def test_cosmicray_median_ccddata():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     ccd_data.uncertainty = ccd_data.data*0.0+DATA_SCALE
@@ -92,8 +93,8 @@ def test_cosmicray_median_ccddata(ccd_data):
     assert nccd.mask.sum() == NCRAYS
 
 
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_median_masked(ccd_data):
+def test_cosmicray_median_masked():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     data = np.ma.masked_array(ccd_data.data, (ccd_data.data > -1e6))
@@ -104,8 +105,8 @@ def test_cosmicray_median_masked(ccd_data):
     assert crarr.sum() == NCRAYS
 
 
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_median_background_None(ccd_data):
+def test_cosmicray_median_background_None():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     data, crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11,
@@ -115,8 +116,8 @@ def test_cosmicray_median_background_None(ccd_data):
     assert crarr.sum() == NCRAYS
 
 
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_median_gbox(ccd_data):
+def test_cosmicray_median_gbox():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
     threshold = 5
     add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
@@ -128,8 +129,8 @@ def test_cosmicray_median_gbox(ccd_data):
     assert abs(data.std() - scale) < 0.1
 
 
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_median_rbox(ccd_data):
+def test_cosmicray_median_rbox():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
     threshold = 5
     add_cosmicrays(ccd_data, scale, threshold, ncrays=NCRAYS)
@@ -140,8 +141,8 @@ def test_cosmicray_median_rbox(ccd_data):
     assert crarr.sum() > NCRAYS
 
 
-@pytest.mark.data_scale(DATA_SCALE)
-def test_cosmicray_median_background_deviation(ccd_data):
+def test_cosmicray_median_background_deviation():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     with pytest.raises(TypeError):
         cosmicray_median(ccd_data.data, thresh=5, mbox=11,
                          error_image='blank')

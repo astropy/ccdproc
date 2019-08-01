@@ -25,6 +25,7 @@ DEFAULTS = {
 DEFAULT_SEED = 123
 DEFAULT_DATA_SIZE = 100
 DEFAULT_DATA_SCALE = 1.0
+DEFAULT_DATA_MEAN = 0.0
 
 
 def value_from_markers(key, request):
@@ -35,8 +36,9 @@ def value_from_markers(key, request):
         return DEFAULTS[key]
 
 
-@pytest.fixture
-def ccd_data(request):
+def ccd_data(data_size=DEFAULT_DATA_SIZE,
+             data_scale=DEFAULT_DATA_SCALE,
+             data_mean=DEFAULT_DATA_MEAN):
     """
     Return a CCDData object with units of ADU.
 
@@ -53,9 +55,9 @@ def ccd_data(request):
     The mean can be changed with the marker @pytest.marker.scale(m) on the
     test function, where m is the desired mean.
     """
-    size = value_from_markers('data_size', request)
-    scale = value_from_markers('data_scale', request)
-    mean = value_from_markers('data_mean', request)
+    size = data_size
+    scale = data_scale
+    mean = data_mean
 
     with NumpyRNGContext(DEFAULTS['seed']):
         data = np.random.normal(loc=mean, size=[size, size], scale=scale)

@@ -6,6 +6,7 @@ import pytest
 import astropy.units as u
 
 from ..core import create_deviation, gain_correct, Keyword
+from .pytest_fixtures import ccd_data as ccd_data_func
 
 
 # tests for gain
@@ -14,8 +15,8 @@ from ..core import create_deviation, gain_correct, Keyword
                          3.0 * u.photon / u.adu,
                          3.0 * u.electron / u.adu,
                          Keyword('gainval', unit=u.electron / u.adu)])
-@pytest.mark.data_unit(u.adu)
-def test_linear_gain_correct(ccd_data, gain):
+def test_linear_gain_correct(gain):
+    ccd_data = ccd_data_func()
     # The data values should be positive, so the poisson noise calculation
     # works without throwing warnings
     ccd_data.data = np.absolute(ccd_data.data)
@@ -41,8 +42,8 @@ def test_linear_gain_correct(ccd_data, gain):
 
 
 # test gain with gain_unit
-@pytest.mark.data_unit(u.adu)
-def test_linear_gain_unit_keyword(ccd_data):
+def test_linear_gain_unit_keyword():
+    ccd_data = ccd_data_func()
     # The data values should be positive, so the poisson noise calculation
     # works without throwing warnings
     ccd_data.data = np.absolute(ccd_data.data)
