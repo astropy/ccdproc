@@ -26,7 +26,6 @@ def test_rebin_dimensions():
 
 
 # test rebinning dimensions
-@pytest.mark.data_size(10)
 def test_rebin_ccddata_dimensions():
     ccd_data = ccd_data_func(data_size=10)
     with pytest.raises(ValueError), catch_warnings(AstropyDeprecationWarning):
@@ -34,7 +33,6 @@ def test_rebin_ccddata_dimensions():
 
 
 # test rebinning works
-@pytest.mark.data_size(10)
 def test_rebin_larger():
     ccd_data = ccd_data_func(data_size=10)
     a = ccd_data.data
@@ -63,7 +61,6 @@ def test_rebin_smaller():
 @pytest.mark.parametrize('mask_data, uncertainty', [
                          (False, False),
                          (True, True)])
-@pytest.mark.data_size(10)
 def test_rebin_ccddata(mask_data, uncertainty):
     ccd_data = ccd_data_func(data_size=10)
     if mask_data:
