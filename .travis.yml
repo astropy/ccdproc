@@ -40,11 +40,14 @@ matrix:
                ASTROPY_VERSION=stable
                NUMPY_VERSION=stable
 
-        # Try Astropy/NumPy development versions. This requires them to be
+        # Try Astropy development versions. This requires them to be
         # compiled during setup which takes some time.
+        # Building against numpy dev was removed because it was causing
+        # failures due to numpy dev/astropy dev conflicts unresolvable
+        # in ccdproc.
         - env: PYTHON_VERSION=3.7
                ASTROPY_VERSION=development
-               NUMPY_VERSION=dev
+               NUMPY_VERSION=stable
                SETUP_CMD='test --coverage'
 
         # Check for sphinx doc build warnings
