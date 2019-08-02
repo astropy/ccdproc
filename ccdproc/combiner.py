@@ -124,13 +124,13 @@ class Combiner:
         return self._weights
 
     @weights.setter
-    def weights(self, value, axis=0):
+    def weights(self, value):
         if value is not None:
             if isinstance(value, np.ndarray):
                 if value.shape != self.data_arr.data.shape:
                     if value.ndim != 1:
                         raise ValueError("1D weights expected when shapes of the data and weights differ.")
-                    if value.shape[0] != self.data_arr.data.shape[axis]:
+                    if value.shape[0] != self.data_arr.data.shape[0]:
                         raise ValueError("Length of weights not compatible with specified axis.")
                 self._weights = value
             else:
