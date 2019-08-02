@@ -1,4 +1,4 @@
-language: python
+language: c
 
 # Setting sudo to false opts in to Travis-CI container-based builds.
 sudo: false
@@ -12,10 +12,6 @@ addons:
             - texlive-latex-extra
             - dvipng
 
-python:
-    - 3.5
-    - 3.6
-
 env:
     global:
         # The following versions are the 'default' for tests, unless
@@ -23,14 +19,11 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy reproject psutil cython astroscrappy'
-
-        # Need the latest scikit-image (0.14.2 or higher), which is not in
-        # anaconda yet.
-        - PIP_DEPENDENCIES='scikit-image'
+        - CONDA_DEPENDENCIES='scipy reproject psutil cython astroscrappy scikit-image memory_profiler'
+        - PIP_DEPENDENCIES=''
         - MAIN_CMD='python setup.py'
         - SETUP_CMD='test'
-        - CONDA_CHANNELS='astropy-ci-extras astropy'
+        - CONDA_CHANNELS='astropy'
         - ASTROPY_USE_SYSTEM_PYTEST=1
 
     matrix:
@@ -41,16 +34,26 @@ matrix:
         - env: PYTHON_VERSION=3.7
                SETUP_CMD='egg_info'
 
-        # Try Astropy/NumPy development versions. This requires them to be
+        # Do a windows run
+        - os: windows
+          env: PYTHON_VERSION=3.7
+               ASTROPY_VERSION=stable
+               NUMPY_VERSION=stable
+
+        # Try Astropy development versions. This requires them to be
         # compiled during setup which takes some time.
+        # Building against numpy dev was removed because it was causing
+        # failures due to numpy dev/astropy dev conflicts unresolvable
+        # in ccdproc.
         - env: PYTHON_VERSION=3.7
                ASTROPY_VERSION=development
-               NUMPY_VERSION=dev
+               NUMPY_VERSION=stable
                SETUP_CMD='test --coverage'
 
         # Check for sphinx doc build warnings
         - env: PYTHON_VERSION=3.7
                SETUP_CMD='build_docs -w'
+               CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES sphinx-astropy"
 
         # Do coverage tests for both latest Python versions
         - env: PYTHON_VERSION=3.7

@@ -1,30 +1,5 @@
-CCD Data reduction (`ccdproc`)
-==============================
-
-Introduction
-------------
-
-.. note::
-    `ccdproc` works only with astropy version 2.0 or later.
-
-The `ccdproc` package provides:
-
-+ An image class, `~astropy.nddata.CCDData`, that includes an uncertainty for the
-  data, units and methods for performing arithmetic with images including the
-  propagation of uncertainties.
-+ A set of functions performing common CCD data reduction steps (e.g. dark
-  subtraction, flat field correction) with a flexible mechanism for logging
-  reduction steps in the image metadata.
-+ A function for reprojecting an image onto another WCS, useful for stacking
-  science images. The actual reprojection is done by the
-  `reproject package <http://reproject.readthedocs.io/en/stable/>`_.
-+ A class for combining and/or clipping images, `~ccdproc.Combiner`, and
-  associated functions.
-+ A class, `~ccdproc.ImageFileCollection`, for working with a directory of
-  images.
-
 Getting Started
----------------
+===============
 
 A ``CCDData`` object can be created from a numpy array (masked or not) or from
 a FITS file:
@@ -111,24 +86,3 @@ use an `~ccdproc.image_collection.ImageFileCollection`. It constructs, given a d
     ...     for data, fname in ic.data(imagetyp='LIGHT', return_fname=True):
     ...         if data.mean() > 4000.:
     ...             print(fname)
-
-Using `ccdproc`
----------------
-
-.. toctree::
-    :maxdepth: 1
-
-    ccddata.rst
-    image_combination.rst
-    reduction_toolbox.rst
-    image_management.rst
-    reduction_examples.rst
-
-.. automodapi:: ccdproc
-   :skip: CCDData
-   :skip: fits_ccddata_writer
-   :skip: fits_ccddata_reader
-
-.. automodapi:: ccdproc.utils.slices
-
-.. _GitHub repo: https://github.com/astropy/ccdproc

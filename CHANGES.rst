@@ -4,6 +4,21 @@
 New Features
 ^^^^^^^^^^^^
 
+- Allow initialization of ``ImageFileCollection`` from a list of files with no
+  location set. [#374, #661, #680]
+
+- Allow identification of FITS files in ``ImageFileCollection`` based on content
+  of the files instead of file name extension. [#620, #680]
+
+- Add option to use regular expression matching when filtering items in
+  ``ImageFileCollection``. [#480, #595, #682]
+
+- Added an option to disregard negative values passed to ``create_deviation``
+  and assume the error is represented by the read noise [#688]
+
+- Add ``filter`` method to ``ImageFileCollection`` that creates a new
+  collection by filtering based on header keywords. [#596, #690]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -21,12 +36,37 @@ Other Changes and Additions
 
 - Modified weights function to also accept 1D array in ``Combiner``. [#634, #670]
 
+- Added warning that ``transform_image`` does not apply the transformation to
+  the WCS [#684]
+
+- When creating a new object in ``wcs_transform``, WCS keywords in the header
+  are removed so that they are only stored in the WCS object [#685]
+
+- Improved warning for negative values in the array passed to
+  ``create_deviation`` [#688]
+
+- Removed support for initializing ``ImageFileCollection`` from a table instead
+  of files. [#680]
+
+- More consistent typing of ``ImageFileCollection.summary`` when the collection
+  is empty. [#601, #680]
+
 Bug Fixes
 ^^^^^^^^^
+
 - Function ``median_combine`` now correctly calculates the uncertainty for
   masked ``CCDData``. [#608]
 
 - Function ``combine`` avoids keeping files open unnecessarily. [#629, #630]
+
+- Function ``combine`` more accurately estimates memory use
+  when deciding how to chunk files. [#638, #642]
+
+- Raise ``ValueError`` error in ``subtract_dark`` for when the errors have
+  different shapes [#674, #677]
+
+- Fix problem with column dtypes when initializing ``ImageFileCollection`` from
+  a list of file names. [#662, #680]
 
 1.3.0 (2017-11-1)
 -----------------

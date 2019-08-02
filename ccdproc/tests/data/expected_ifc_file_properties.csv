@@ -1,0 +1,7 @@
+file,simple,bitpix,naxis,naxis1,extend,bscale,bzero,imagetyp,filter,exposure
+filter_no_object_light.fit,True,16,1,100,True,1,32768,LIGHT,R,1.0
+filter_object_light.fit,True,16,1,100,True,1,32768,LIGHT,R,1.0
+filter_object_light.fit.gz,True,16,1,100,True,1,32768,LIGHT,R,1.0
+no_filter_no_object_bias.fit,True,16,1,100,True,1,32768,BIAS,,0.0
+no_filter_no_object_light.fit,True,16,1,100,True,1,32768,LIGHT,,1.0
+test.fits.fz,True,16,1,100,True,1,32768,LIGHT,R,15.0

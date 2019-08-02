@@ -12,7 +12,7 @@ from astropy import log
 __all__ = ['Combiner', 'combine']
 
 
-class Combiner(object):
+class Combiner:
     """
     A class for combining CCDData objects.
 
@@ -524,6 +524,36 @@ def _calculate_step_sizes(x_size, y_size, num_chunks):
     return xstep, ystep
 
 
+def _calculate_size_of_image(ccd,
+                             combine_uncertainty_function):
+    # If uncertainty_func is given for combine this will create an uncertainty
+    # even if the originals did not have one. In that case we need to create
+    # an empty placeholder.
+    if ccd.uncertainty is None and combine_uncertainty_function is not None:
+        ccd.uncertainty = StdDevUncertainty(np.zeros(ccd.data.shape))
+
+    size_of_an_img = ccd.data.nbytes
+    try:
+        size_of_an_img += ccd.uncertainty.array.nbytes
+    # In case uncertainty is None it has no "array" and in case the "array" is
+    # not a numpy array:
+    except AttributeError:
+        pass
+    # Mask is enforced to be a numpy.array across astropy versions
+    if ccd.mask is not None:
+        size_of_an_img += ccd.mask.nbytes
+    # flags is not necessarily a numpy array so do not fail with an
+    # AttributeError in case something was set!
+    # TODO: Flags are not taken into account in Combiner. This number is added
+    #       nevertheless for future compatibility.
+    try:
+        size_of_an_img += ccd.flags.nbytes
+    except AttributeError:
+        pass
+
+    return size_of_an_img
+
+
 def combine(img_list, output_file=None,
             method='average', weights=None, scale=None, mem_limit=16e9,
             clip_extrema=False, nlow=1, nhigh=1,
@@ -663,12 +693,6 @@ def combine(img_list, output_file=None,
         # User has provided fits filenames to read from
         ccd = CCDData.read(img_list[0], **ccdkwargs)
 
-    # If uncertainty_func is given for combine this will create an uncertainty
-    # even if the originals did not have one. In that case we need to create
-    # an empty placeholder.
-    if ccd.uncertainty is None and combine_uncertainty_function is not None:
-        ccd.uncertainty = StdDevUncertainty(np.zeros(ccd.data.shape))
-
     if dtype is None:
         dtype = np.float64
 
@@ -678,29 +702,21 @@ def combine(img_list, output_file=None,
     if ccd.data.dtype != dtype:
         ccd.data = ccd.data.astype(dtype)
 
-    size_of_an_img = ccd.data.nbytes
-    try:
-        size_of_an_img += ccd.uncertainty.array.nbytes
-    # In case uncertainty is None it has no "array" and in case the "array" is
-    # not a numpy array:
-    except AttributeError:
-        pass
-    # Mask is enforced to be a numpy.array across astropy versions
-    if ccd.mask is not None:
-        size_of_an_img += ccd.mask.nbytes
-    # flags is not necessarily a numpy array so do not fail with an
-    # AttributeError in case something was set!
-    # TODO: Flags are not taken into account in Combiner. This number is added
-    #       nevertheless for future compatibility.
-    try:
-        size_of_an_img += ccd.flags.nbytes
-    except AttributeError:
-        pass
+    size_of_an_img = _calculate_size_of_image(ccd,
+                                              combine_uncertainty_function)
 
     no_of_img = len(img_list)
 
+    # Set a memory use factor based on profiling
+    if method == 'median':
+        memory_factor = 3
+    else:
+        memory_factor = 2
+
+    memory_factor *= 1.5
+
     # determine the number of chunks to split the images into
-    no_chunks = int((size_of_an_img * no_of_img) / mem_limit) + 1
+    no_chunks = int((memory_factor * size_of_an_img * no_of_img) / mem_limit) + 1
     if no_chunks > 1:
         log.info('splitting each image into {0} chunks to limit memory usage '
                  'to {1} bytes.'.format(no_chunks, mem_limit))

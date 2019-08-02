@@ -10,6 +10,7 @@ from astropy.utils.data import get_pkg_data_filename
 from astropy.nddata import CCDData
 
 from ..combiner import Combiner, combine, _calculate_step_sizes
+from .pytest_fixtures import ccd_data as ccd_data_func
 
 
 # test that the Combiner raises error if empty
@@ -26,7 +27,8 @@ def test_combiner_init_with_none():
 
 # test that Combiner throws an error if input
 # objects are not ccddata objects
-def test_ccddata_combiner_objects(ccd_data):
+def test_ccddata_combiner_objects():
+    ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, None]
     with pytest.raises(TypeError):
         Combiner(ccd_list)  # different objects should fail
@@ -34,7 +36,8 @@ def test_ccddata_combiner_objects(ccd_data):
 
 # test that Combiner throws an error if input
 # objects do not have the same size
-def test_ccddata_combiner_size(ccd_data):
+def test_ccddata_combiner_size():
+    ccd_data = ccd_data_func()
     ccd_large = CCDData(np.zeros((200, 100)), unit=u.adu)
     ccd_list = [ccd_data, ccd_data, ccd_large]
     with pytest.raises(TypeError):
@@ -43,7 +46,8 @@ def test_ccddata_combiner_size(ccd_data):
 
 # test that Combiner throws an error if input
 # objects do not have the same units
-def test_ccddata_combiner_units(ccd_data):
+def test_ccddata_combiner_units():
+    ccd_data = ccd_data_func()
     ccd_large = CCDData(np.zeros((100, 100)), unit=u.second)
     ccd_list = [ccd_data, ccd_data, ccd_large]
     with pytest.raises(TypeError):
@@ -51,7 +55,8 @@ def test_ccddata_combiner_units(ccd_data):
 
 
 # test if mask and data array are created
-def test_combiner_create(ccd_data):
+def test_combiner_create():
+    ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     assert c.data_arr.shape == (3, 100, 100)
@@ -59,7 +64,8 @@ def test_combiner_create(ccd_data):
 
 
 # test if dtype matches the value that is passed
-def test_combiner_dtype(ccd_data):
+def test_combiner_dtype():
+    ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list, dtype=np.float32)
     assert c.data_arr.dtype == np.float32
@@ -87,14 +93,16 @@ def test_combiner_mask():
     assert not c.data_arr.mask[0, 5, 5]
 
 
-def test_weights(ccd_data):
+def test_weights():
+    ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     with pytest.raises(TypeError):
         c.weights = 1
 
 
-def test_weights_shape(ccd_data):
+def test_weights_shape():
+    ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     with pytest.raises(ValueError):
@@ -195,7 +203,8 @@ def test_combiner_sigmaclip_low():
 
 
 # test that the median combination works and returns a ccddata object
-def test_combiner_median(ccd_data):
+def test_combiner_median():
+    ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.median_combine()
@@ -206,7 +215,8 @@ def test_combiner_median(ccd_data):
 
 
 # test that the average combination works and returns a ccddata object
-def test_combiner_average(ccd_data):
+def test_combiner_average():
+    ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.average_combine()
@@ -217,7 +227,8 @@ def test_combiner_average(ccd_data):
 
 
 # test that the sum combination works and returns a ccddata object
-def test_combiner_sum(ccd_data):
+def test_combiner_sum():
+    ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.sum_combine()
@@ -242,14 +253,15 @@ def test_combiner_mask_average():
     assert not ccd.mask[5, 5]
 
 
-def test_combiner_with_scaling(ccd_data):
+def test_combiner_with_scaling():
+    ccd_data = ccd_data_func()
     # The factors below are not particularly important; just avoid anything
     # whose average is 1.
     ccd_data_lower = ccd_data.multiply(3)
     ccd_data_higher = ccd_data.multiply(0.9)
     combiner = Combiner([ccd_data, ccd_data_higher, ccd_data_lower])
     # scale each array to the mean of the first image
-    scale_by_mean = lambda x: ccd_data.data.mean()/np.ma.average(x)
+    scale_by_mean = lambda x: ccd_data.data.mean() / np.ma.average(x)
     combiner.scaling = scale_by_mean
     avg_ccd = combiner.average_combine()
     # Does the mean of the scaled arrays match the value to which it was
@@ -270,7 +282,8 @@ def test_combiner_with_scaling(ccd_data):
     assert avg_ccd.shape == ccd_data.shape
 
 
-def test_combiner_scaling_fails(ccd_data):
+def test_combiner_scaling_fails():
+    ccd_data = ccd_data_func()
     combiner = Combiner([ccd_data, ccd_data.copy()])
     # Should fail unless scaling is set to a function or list-like
     with pytest.raises(TypeError):
@@ -397,7 +410,7 @@ def test_combine_limitedmem_scale_fitsimages():
     ccd_list = [ccd] * 5
     c = Combiner(ccd_list)
     # scale each array to the mean of the first image
-    scale_by_mean = lambda x: ccd.data.mean()/np.ma.average(x)
+    scale_by_mean = lambda x: ccd.data.mean() / np.ma.average(x)
     c.scaling = scale_by_mean
     ccd_by_combiner = c.average_combine()
 
@@ -410,7 +423,8 @@ def test_combine_limitedmem_scale_fitsimages():
 
 
 # test the optional uncertainty function in average_combine
-def test_average_combine_uncertainty(ccd_data):
+def test_average_combine_uncertainty():
+    ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.average_combine(uncertainty_func=np.sum)
@@ -426,7 +440,8 @@ def test_average_combine_uncertainty(ccd_data):
 
 
 # test the optional uncertainty function in median_combine
-def test_median_combine_uncertainty(ccd_data):
+def test_median_combine_uncertainty():
+    ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.median_combine(uncertainty_func=np.sum)
@@ -442,7 +457,8 @@ def test_median_combine_uncertainty(ccd_data):
 
 
 # test the optional uncertainty function in sum_combine
-def test_sum_combine_uncertainty(ccd_data):
+def test_sum_combine_uncertainty():
+    ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.sum_combine(uncertainty_func=np.sum)
@@ -544,7 +560,8 @@ def test_combiner_3d():
     np.testing.assert_array_almost_equal(ccd.data, data1, decimal=4)
 
 
-def test_3d_combiner_with_scaling(ccd_data):
+def test_3d_combiner_with_scaling():
+    ccd_data = ccd_data_func()
     # The factors below are not particularly important; just avoid anything
     # whose average is 1.
     ccd_data = CCDData(np.ones((5, 5, 5)), unit=u.adu)
@@ -552,7 +569,7 @@ def test_3d_combiner_with_scaling(ccd_data):
     ccd_data_higher = CCDData(0.9 * np.ones((5, 5, 5)), unit=u.adu)
     combiner = Combiner([ccd_data, ccd_data_higher, ccd_data_lower])
     # scale each array to the mean of the first image
-    scale_by_mean = lambda x: ccd_data.data.mean()/np.ma.average(x)
+    scale_by_mean = lambda x: ccd_data.data.mean() / np.ma.average(x)
     combiner.scaling = scale_by_mean
     avg_ccd = combiner.average_combine()
     # Does the mean of the scaled arrays match the value to which it was
@@ -590,7 +607,8 @@ def test_clip_extrema_3d():
 
 @pytest.mark.parametrize('comb_func',
                          ['average_combine', 'median_combine', 'sum_combine'])
-def test_writeable_after_combine(ccd_data, tmpdir, comb_func):
+def test_writeable_after_combine(tmpdir, comb_func):
+    ccd_data = ccd_data_func()
     tmp_file = tmpdir.join('tmp.fits')
     from ..combiner import Combiner
     combined = Combiner([ccd_data for _ in range(3)])

@@ -25,6 +25,7 @@ DEFAULTS = {
 DEFAULT_SEED = 123
 DEFAULT_DATA_SIZE = 100
 DEFAULT_DATA_SCALE = 1.0
+DEFAULT_DATA_MEAN = 0.0
 
 
 def value_from_markers(key, request):
@@ -35,8 +36,9 @@ def value_from_markers(key, request):
         return DEFAULTS[key]
 
 
-@pytest.fixture
-def ccd_data(request):
+def ccd_data(data_size=DEFAULT_DATA_SIZE,
+             data_scale=DEFAULT_DATA_SCALE,
+             data_mean=DEFAULT_DATA_MEAN):
     """
     Return a CCDData object with units of ADU.
 
@@ -53,9 +55,9 @@ def ccd_data(request):
     The mean can be changed with the marker @pytest.marker.scale(m) on the
     test function, where m is the desired mean.
     """
-    size = value_from_markers('data_size', request)
-    scale = value_from_markers('data_scale', request)
-    mean = value_from_markers('data_mean', request)
+    size = data_size
+    scale = data_scale
+    mean = data_mean
 
     with NumpyRNGContext(DEFAULTS['seed']):
         data = np.random.normal(loc=mean, size=[size, size], scale=scale)
@@ -66,97 +68,113 @@ def ccd_data(request):
     return ccd
 
 
-@pytest.fixture
-def triage_setup(request):
-    n_test = {'files': 0, 'need_object': 0,
-              'need_filter': 0, 'bias': 0,
-              'compressed': 0, 'light': 0,
-              'need_pointing': 0}
-
-    test_dir = ''
-
-    for key in n_test.keys():
-        n_test[key] = 0
-
-    test_dir = mkdtemp()
-    original_dir = os.getcwd()
-    os.chdir(test_dir)
+def _make_file_for_testing(file_name='', **kwd):
     img = np.uint16(np.arange(100))
 
-    no_filter_no_object = fits.PrimaryHDU(img)
-    no_filter_no_object.header['imagetyp'] = 'light'.upper()
-    no_filter_no_object.writeto('no_filter_no_object_light.fit')
-    n_test['files'] += 1
-    n_test['need_object'] += 1
-    n_test['need_filter'] += 1
-    n_test['light'] += 1
-    n_test['need_pointing'] += 1
+    hdu = fits.PrimaryHDU(img)
 
-    no_filter_no_object.header['imagetyp'] = 'bias'.upper()
-    no_filter_no_object.writeto('no_filter_no_object_bias.fit')
-    n_test['files'] += 1
-    n_test['bias'] += 1
+    for k, v in kwd.items():
+        hdu.header[k] = v
 
-    filter_no_object = fits.PrimaryHDU(img)
-    filter_no_object.header['imagetyp'] = 'light'.upper()
-    filter_no_object.header['filter'] = 'R'
-    filter_no_object.writeto('filter_no_object_light.fit')
-    n_test['files'] += 1
-    n_test['need_object'] += 1
-    n_test['light'] += 1
-    n_test['need_pointing'] += 1
+    hdu.writeto(file_name)
 
-    filter_no_object.header['imagetyp'] = 'bias'.upper()
-    filter_no_object.writeto('filter_no_object_bias.fit')
-    n_test['files'] += 1
-    n_test['bias'] += 1
 
-    filter_object = fits.PrimaryHDU(img)
-    filter_object.header['imagetyp'] = 'light'.upper()
-    filter_object.header['filter'] = 'R'
-    filter_object.header['OBJCTRA'] = '00:00:00'
-    filter_object.header['OBJCTDEC'] = '00:00:00'
-    filter_object.writeto('filter_object_light.fit')
-    n_test['files'] += 1
-    n_test['light'] += 1
-    n_test['need_object'] += 1
+def directory_for_testing():
+    """
+    Set up directory with these contents:
+
+    One file with imagetyp BIAS. It has an the keyword EXPOSURE in
+    the header, but no others beyond IMAGETYP and the bare minimum
+    created with the FITS file.
+
+    File name(s)
+    ------------
+
+    no_filter_no_object_bias.fit
+
+    Five (5) files with imagetyp LIGHT, including two compressed
+    files.
+
+    + One file for each compression type, currently .gz and .fz.
+    + ALL of the files will have the keyword EXPOSURE
+      in the header.
+    + Only ONE of them will have the value EXPOSURE=15.0.
+    + All of the files EXCEPT ONE will have the keyword
+      FILTER with the value 'R'.
+    + NONE of the files have the keyword OBJECT
+
+    File names
+    ----------
+
+    test.fits.fz
+    filter_no_object_light.fit
+    filter_object_light.fit.gz
+    filter_object_light.fit
+    no_filter_no_object_light.fit    <---- this one has no filter
+    """
+    n_test = {
+        'files': 6,
+        'missing_filter_value': 1,
+        'bias': 1,
+        'compressed': 2,
+        'light': 5
+    }
+
+    test_dir = mkdtemp()
+
+    # Directory is reset on teardown.
+    original_dir = os.getcwd()
+    os.chdir(test_dir)
+
+    _make_file_for_testing(file_name='no_filter_no_object_bias.fit',
+                           imagetyp='BIAS',
+                           EXPOSURE=0.0)
+
+    _make_file_for_testing(file_name='no_filter_no_object_light.fit',
+                           imagetyp='LIGHT',
+                           EXPOSURE=1.0)
+
+    _make_file_for_testing(file_name='filter_no_object_light.fit',
+                           imagetyp='LIGHT',
+                           EXPOSURE=1.0,
+                           filter='R')
+
+    _make_file_for_testing(file_name='filter_object_light.fit',
+                           imagetyp='LIGHT',
+                           EXPOSURE=1.0,
+                           filter='R')
+
     with open('filter_object_light.fit', 'rb') as f_in:
         with gzip.open('filter_object_light.fit.gz', 'wb') as f_out:
             f_out.write(f_in.read())
-    n_test['files'] += 1
-    n_test['compressed'] += 1
-    n_test['light'] += 1
-    n_test['need_object'] += 1
 
-    filter_object.header['RA'] = filter_object.header['OBJCTRA']
-    filter_object.header['Dec'] = filter_object.header['OBJCTDEC']
-    filter_object.writeto('filter_object_RA_keyword_light.fit')
-    n_test['files'] += 1
-    n_test['light'] += 1
-    n_test['need_object'] += 1
+    # filter_object.writeto('filter_object_RA_keyword_light.fit')
 
-    fzfile = fits.PrimaryHDU(img)
-    fzfile.header['EXPTIME'] = 15.0
-    fzfile.header['imagetyp'] = 'light'.upper()
-    fzfile.header['filter'] = 'R'
-    fzfile.writeto('test.fits.fz')
-    n_test['files'] += 1
-    n_test['compressed'] += 1
-    n_test['light'] += 1
-    n_test['need_object'] += 1
+    _make_file_for_testing(file_name='test.fits.fz',
+                           imagetyp='LIGHT',
+                           EXPOSURE=15.0,
+                           filter='R')
+
+    os.chdir(original_dir)
+
+    return n_test, test_dir
+
+
+@pytest.fixture
+def triage_setup(request):
+
+    n_test, test_dir = directory_for_testing()
 
     def teardown():
-        for key in n_test.keys():
-            n_test[key] = 0
         try:
             rmtree(test_dir)
         except OSError:
             # If we cannot clean up just keep going.
             pass
-        os.chdir(original_dir)
+
     request.addfinalizer(teardown)
 
-    class Result(object):
+    class Result:
         def __init__(self, n, directory):
             self.n_test = n
             self.test_dir = directory
