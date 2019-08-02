@@ -27,6 +27,7 @@ Alphabetical list of contributors
 * Hans Moritz Günther (@hamogu)
 * Forrest Gasdia (@EP-Guy)
 * Nathan Heidt (@heidtha)
+* Michael Hlabathe (@hlabathems)
 * Elias Holte (@Sondanaa)
 * Anthony Horton (@AnthonyHorton)
 * Jennifer Karr (@JenniferKarr)

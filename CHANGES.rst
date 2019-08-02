@@ -34,6 +34,8 @@ Other Changes and Additions
 
 - Added support for .bz2, .Z and .zip file formats in ``ImageFileCollection``.
 
+- Modified weights function to also accept 1D array in ``Combiner``. [#634, #670]
+
 - Added warning that ``transform_image`` does not apply the transformation to
   the WCS [#684]
 
