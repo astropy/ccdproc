@@ -1,10 +1,10 @@
 .. _ccddata:
 
-CCDData class
-=============
+Using the ``CCDData`` image class: I/O, properties and arithmetic
+=================================================================
 
-Getting started
----------------
+Input and output
+----------------
 
 Getting data in
 +++++++++++++++
@@ -58,22 +58,6 @@ If ``hdu`` is not specified, it will assume the data is in the primary
 extension.  If there is no data in the primary extension, the first extension
 with data will be used.
 
-
-Metadata
-++++++++
-
-When initializing from a FITS file, the ``header`` property is initialized using
-the header of the FITS file. Metadata is optional, and can be provided by any
-dictionary or dict-like object:
-
-    >>> ccd_simple = CCDData(np.arange(10), unit="adu")
-    >>> my_meta = {'observer': 'Edwin Hubble', 'exposure': 30.0}
-    >>> ccd_simple.header = my_meta  # or use ccd_simple.meta = my_meta
-
-Whether the metadata is case sensitive or not depends on how it is
-initialized. A FITS header, for example, is not case sensitive, but a python
-dictionary is.
-
 Getting data out
 ++++++++++++++++
 
@@ -102,6 +86,24 @@ is also available. It converts the metadata to a FITS header:
 You can also write directly to a FITS file:
 
     >>> ccd_masked.write('my_image.fits')
+
+Essential properties
+--------------------
+
+Metadata
+++++++++
+
+When initializing from a FITS file, the ``header`` property is initialized using
+the header of the FITS file. Metadata is optional, and can be provided by any
+dictionary or dict-like object:
+
+    >>> ccd_simple = CCDData(np.arange(10), unit="adu")
+    >>> my_meta = {'observer': 'Edwin Hubble', 'exposure': 30.0}
+    >>> ccd_simple.header = my_meta  # or use ccd_simple.meta = my_meta
+
+Whether the metadata is case sensitive or not depends on how it is
+initialized. A FITS header, for example, is not case sensitive, but a python
+dictionary is.
 
 Masks and flags
 +++++++++++++++
@@ -133,7 +135,7 @@ Either way, the ``wcs`` attribute is kept up to date if the
 `~astropy.nddata.CCDData` image is trimmed.
 
 Uncertainty
------------
++++++++++++
 
 Pixel-by-pixel uncertainty can be calculated for you:
 

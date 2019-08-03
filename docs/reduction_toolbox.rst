@@ -9,6 +9,9 @@ Reduction toolbox
     performing the steps presented here may be the correct way to reduce data
     in some cases, it is not correct in all cases.
 
+    A much more detailed guide to CCD data reduction is
+    `available <https://mwcraig.github.io/ccd-as-book/00-00-Preface>`_
+
 Logging in `ccdproc`
 --------------------
 
@@ -115,21 +118,8 @@ centered on a outlying pixel, in which pixel should be grown.  The argument
 ``rbox`` specifies the size of the box used to calculate a median value if
 values for bad pixels should be replaced.
 
-Subtract overscan and trim images
----------------------------------
-
-.. note::
-
-    + Images reduced with `ccdproc` do **NOT** have to come from FITS files. The
-      discussion below is intended to ease the transition from the indexing
-      conventions used in FITS and IRAF to python indexing.
-    + No bounds checking is done when trimming arrays, so indexes that are too
-      large are silently set to the upper bound of the array. This is because
-      `numpy`, which provides the infrastructure for the arrays in `ccdproc`
-      has this behavior.
-
 Indexing: python and FITS
-+++++++++++++++++++++++++
+-------------------------
 
 Overscan subtraction and image trimming are done with two separate functions.
 Both are straightforward to use once you are familiar with python's rules for
@@ -163,6 +153,20 @@ Those transitioning from IRAF to ccdproc do not need to worry about this too
 much because the functions for overscan subtraction and image trimming both
 allow you to use the familiar ``BIASSEC`` and ``TRIMSEC`` conventions for
 specifying the overscan and region to be retained in a trim.
+
+Subtract overscan and trim images
+---------------------------------
+
+.. note::
+
+    + Images reduced with `ccdproc` do **NOT** have to come from FITS files. The
+      discussion below is intended to ease the transition from the indexing
+      conventions used in FITS and IRAF to python indexing.
+    + No bounds checking is done when trimming arrays, so indexes that are too
+      large are silently set to the upper bound of the array. This is because
+      `numpy`, which provides the infrastructure for the arrays in `ccdproc`
+      has this behavior.
+
 
 Overscan subtraction
 ++++++++++++++++++++
@@ -295,8 +299,8 @@ are replaced with ``min_value``):
     >>> reduced_image = ccdproc.flat_correct(dark_subtracted, master_flat,
     ...                                      min_value=0.9)
 
-Basic Processing
-----------------
+Basic Processing with a single command
+--------------------------------------
 
 All of the basic processing steps can be accomplished in a single step using
 `~ccdproc.ccd_process`. This step will call overscan correct, trim, gain
@@ -358,11 +362,11 @@ operations in `ccdproc`.
 Another method for creating a mask is using the `~ccdproc.ccdmask` task.  This
 task will produced a data aray where good pixels have a value of zero and bad
 pixels have a value of one.   This task follows the same algorithm used in the
-iraf ccdmask task. 
+iraf ccdmask task.
 
      >>> ccd.mask =  ccdproc.ccdmask(ccd, ncmed=7, nlmed=7, ncsig=15, nlsig=15,
      ...                             lsigma=9, hsigma=9, ngood=5)
-  
+
 
 Filter and Convolution
 ----------------------
