@@ -432,6 +432,112 @@ which should be removed rather than propagated:
     plt.show()
 
 
+Working with multi-extension FITS image files
+---------------------------------------------
+
+Multi-extension FITS (MEF) image files cannot be processed natively in ``ccdproc``. The example below illustrates how to `~ccdproc.flat_correct` all of the extensions in a MEF and write out the calibrated file as a MEF. Applying other reduction steps would be similar.
+
+The example begins by creating small MEF "science" image and a sample flat:
+
+    >>> import numpy as np
+    >>>
+    >>> from astropy.utils.misc import NumpyRNGContext
+    >>> from astropy.io import fits
+    >>> from astropy.nddata import CCDData
+    >>>
+    >>> from ccdproc import flat_correct
+    >>>
+    >>>
+    >>> def make_sample_mef(science_name, flat_name):
+    ...     """
+    ...     Make a multi-extension FITS image with random data
+    ...     and a MEF flat.
+    ...
+    ...     Parameters
+    ...     ----------
+    ...
+    ...     science_name : str
+    ...         Name of the science image created by this function.
+    ...
+    ...     flat_name : str
+    ...         Name of the flat image created by this function.
+    ...     """
+    ...     with NumpyRNGContext(1234):
+    ...         number_of_image_extensions = 3
+    ...         science_image = [fits.PrimaryHDU()]
+    ...         flat_image = [fits.PrimaryHDU()]
+    ...         for _ in range(number_of_image_extensions):
+    ...             # Simulate a cloudy night, average pixel
+    ...             # value of 100 with a read_noise of 1 electron.
+    ...             # Image size is 150 × 150.
+    ...             data = np.random.normal(100., 1.0, [150, 150])
+    ...             hdu = fits.ImageHDU(data=data)
+    ...             # Make a header that is at least somewhat realistic
+    ...             hdu.header['unit'] = 'electron'
+    ...             hdu.header['object'] = 'clouds'
+    ...             hdu.header['exptime'] = 30.0
+    ...             hdu.header['date-obs'] = '1928-07-23T21:03:27'
+    ...             hdu.header['filter'] = 'B'
+    ...             hdu.header['imagetyp'] = 'LIGHT'
+    ...             science_image.append(hdu)
+    ...
+    ...             # Make a perfect flat
+    ...             flat = np.ones_like(data)
+    ...             flat_hdu = fits.ImageHDU(data=flat)
+    ...             flat_hdu.header['unit'] = 'electron'
+    ...             flat_hdu.header['filter'] = 'B'
+    ...             flat_hdu.header['imagetyp'] = 'FLAT'
+    ...             flat_hdu.header['date-obs'] = '1928-07-23T21:03:27'
+    ...             flat_image.append(flat_hdu)
+    ...
+    ...     science_image = fits.HDUList(science_image)
+    ...     science_image.writeto(science_mef)
+    ...
+    ...     flat_image = fits.HDUList(flat_image)
+    ...     flat_image.writeto(flat_mef)
+    >>>
+    >>> science_mef = 'science.fits'
+    >>> flat_mef = 'flat.fits'
+    >>>
+    >>> make_sample_mef(science_mef, flat_mef)
+    >>>
+    >>> # CALIBRATION EXAMPLE STARTS HERE
+    >>> # (everything above this was to make sample files)
+    >>>
+    >>> # Read our sample images
+    >>> science = fits.open(science_mef)
+    >>> flat = fits.open(flat_mef)
+    >>>
+    >>> new = []
+    >>>
+    >>> # This assumes the primary header just has metadata
+    >>> new.append(science[0])
+    >>>
+    >>> # The code below will preserve each image's header
+    >>> for science_hdu, flat_hdu in zip(science[1:], flat[1:]):
+    ...     # Make a CCDData from this science image extension
+    ...     science = CCDData(data=science_hdu.data,
+    ...                       header=science_hdu.header,
+    ...                       unit=science_hdu.header['unit'])
+    ...
+    ...     # Make a CCDData from this flat image extension
+    ...     flat = CCDData(data=flat_hdu.data,
+    ...                    header=flat_hdu.header,
+    ...                    unit=science_hdu.header['unit'])
+    ...
+    ...     # Calibrate the science image
+    ...     science_cal = flat_correct(science, flat)
+    ...
+    ...     # Turn the calibrated image into an image HDU
+    ...     as_hdu = fits.ImageHDU(data=science_cal.data,
+    ...                            header=science_cal.header)
+    ...
+    ...     # Add this hdu to the list of calibrated HDUs
+    ...     new.append(as_hdu)
+    >>> # Write out the new MEF
+    >>> as_hdulist = fits.HDUList(new)
+    >>> as_hdulist.writeto('science_cal.fits')
+
 .. [1] van Dokkum, P; 2001, "Cosmic-Ray Rejection by Laplacian Edge
        Detection". The Publications of the Astronomical Society of the
        Pacific, Volume 113, Issue 789, pp. 1420-1427.
