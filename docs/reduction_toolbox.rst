@@ -435,7 +435,10 @@ which should be removed rather than propagated:
 Working with multi-extension FITS image files
 ---------------------------------------------
 
-Multi-extension FITS (MEF) image files cannot be processed natively in ``ccdproc``. The example below illustrates how to `~ccdproc.flat_correct` all of the extensions in a MEF and write out the calibrated file as a MEF. Applying other reduction steps would be similar.
+Multi-extension FITS (MEF) image files cannot be processed natively in
+``ccdproc``. The example below illustrates how to `~ccdproc.flat_correct` all
+of the extensions in a MEF and write out the calibrated file as a MEF.
+Applying other reduction steps would be similar.
 
     >>> from astropy.utils.data import get_pkg_data_filename
     >>> from astropy.io import fits
