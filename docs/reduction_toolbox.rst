@@ -437,74 +437,16 @@ Working with multi-extension FITS image files
 
 Multi-extension FITS (MEF) image files cannot be processed natively in ``ccdproc``. The example below illustrates how to `~ccdproc.flat_correct` all of the extensions in a MEF and write out the calibrated file as a MEF. Applying other reduction steps would be similar.
 
-The example begins by creating small MEF "science" image and a sample flat:
-
-    >>> import numpy as np
-    >>>
-    >>> from astropy.utils.misc import NumpyRNGContext
+    >>> from astropy.utils.data import get_pkg_data_filename
     >>> from astropy.io import fits
     >>> from astropy.nddata import CCDData
-    >>>
     >>> from ccdproc import flat_correct
     >>>
-    >>>
-    >>> def make_sample_mef(science_name, flat_name):
-    ...     """
-    ...     Make a multi-extension FITS image with random data
-    ...     and a MEF flat.
-    ...
-    ...     Parameters
-    ...     ----------
-    ...
-    ...     science_name : str
-    ...         Name of the science image created by this function.
-    ...
-    ...     flat_name : str
-    ...         Name of the flat image created by this function.
-    ...     """
-    ...     with NumpyRNGContext(1234):
-    ...         number_of_image_extensions = 3
-    ...         science_image = [fits.PrimaryHDU()]
-    ...         flat_image = [fits.PrimaryHDU()]
-    ...         for _ in range(number_of_image_extensions):
-    ...             # Simulate a cloudy night, average pixel
-    ...             # value of 100 with a read_noise of 1 electron.
-    ...             # Image size is 150 × 150.
-    ...             data = np.random.normal(100., 1.0, [150, 150])
-    ...             hdu = fits.ImageHDU(data=data)
-    ...             # Make a header that is at least somewhat realistic
-    ...             hdu.header['unit'] = 'electron'
-    ...             hdu.header['object'] = 'clouds'
-    ...             hdu.header['exptime'] = 30.0
-    ...             hdu.header['date-obs'] = '1928-07-23T21:03:27'
-    ...             hdu.header['filter'] = 'B'
-    ...             hdu.header['imagetyp'] = 'LIGHT'
-    ...             science_image.append(hdu)
-    ...
-    ...             # Make a perfect flat
-    ...             flat = np.ones_like(data)
-    ...             flat_hdu = fits.ImageHDU(data=flat)
-    ...             flat_hdu.header['unit'] = 'electron'
-    ...             flat_hdu.header['filter'] = 'B'
-    ...             flat_hdu.header['imagetyp'] = 'FLAT'
-    ...             flat_hdu.header['date-obs'] = '1928-07-23T21:03:27'
-    ...             flat_image.append(flat_hdu)
-    ...
-    ...     science_image = fits.HDUList(science_image)
-    ...     science_image.writeto(science_mef)
-    ...
-    ...     flat_image = fits.HDUList(flat_image)
-    ...     flat_image.writeto(flat_mef)
-    >>>
-    >>> science_mef = 'science.fits'
-    >>> flat_mef = 'flat.fits'
-    >>>
-    >>> make_sample_mef(science_mef, flat_mef)
-    >>>
-    >>> # CALIBRATION EXAMPLE STARTS HERE
-    >>> # (everything above this was to make sample files)
-    >>>
-    >>> # Read our sample images
+    >>> # Read sample images included in ccdproc
+    >>> science_mef = get_pkg_data_filename('data/science-mef.fits',
+    ...                                     package='ccdproc.tests')
+    >>> flat_mef = get_pkg_data_filename('data/flat-mef.fits',
+    ...                                  package='ccdproc.tests')
     >>> science = fits.open(science_mef)
     >>> flat = fits.open(flat_mef)
     >>>
