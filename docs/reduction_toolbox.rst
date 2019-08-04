@@ -443,20 +443,20 @@ Multi-extension FITS (MEF) image files cannot be processed natively in ``ccdproc
     >>> from ccdproc import flat_correct
     >>>
     >>> # Read sample images included in ccdproc
-    >>> science_mef = get_pkg_data_filename('data/science-mef.fits',
+    >>> science_name = get_pkg_data_filename('data/science-mef.fits',
     ...                                     package='ccdproc.tests')
-    >>> flat_mef = get_pkg_data_filename('data/flat-mef.fits',
+    >>> flat_name = get_pkg_data_filename('data/flat-mef.fits',
     ...                                  package='ccdproc.tests')
-    >>> science = fits.open(science_mef)
-    >>> flat = fits.open(flat_mef)
+    >>> science_mef = fits.open(science_name)
+    >>> flat_mef = fits.open(flat_name)
     >>>
     >>> new = []
     >>>
     >>> # This assumes the primary header just has metadata
-    >>> new.append(science[0])
+    >>> new.append(science_mef[0])
     >>>
     >>> # The code below will preserve each image's header
-    >>> for science_hdu, flat_hdu in zip(science[1:], flat[1:]):
+    >>> for science_hdu, flat_hdu in zip(science_mef[1:], flat_mef[1:]):
     ...     # Make a CCDData from this science image extension
     ...     science = CCDData(data=science_hdu.data,
     ...                       header=science_hdu.header,
@@ -479,6 +479,9 @@ Multi-extension FITS (MEF) image files cannot be processed natively in ``ccdproc
     >>> # Write out the new MEF
     >>> as_hdulist = fits.HDUList(new)
     >>> as_hdulist.writeto('science_cal.fits')
+    >>> # Close the input files
+    >>> science_mef.close()
+    >>> flat_mef.close()
 
 .. [1] van Dokkum, P; 2001, "Cosmic-Ray Rejection by Laplacian Edge
        Detection". The Publications of the Astronomical Society of the
