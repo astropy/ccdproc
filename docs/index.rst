@@ -56,7 +56,7 @@ Using `ccdproc`
 ---------------
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
 
     ccddata
     image_combination

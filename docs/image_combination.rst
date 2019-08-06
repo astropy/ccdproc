@@ -27,8 +27,8 @@ individual images via several clipping techniques and combination of images.
 
 .. _clipping:
 
-Image masks/clipping
---------------------
+Image masks and clipping
+------------------------
 
 There are currently three methods of clipping. None affect the data
 directly; instead each constructs a mask that is applied when images are
@@ -117,8 +117,8 @@ Performing a median combination is also straightforward,
 
 
 
-With image scaling
-------------------
+Combination with image scaling
+++++++++++++++++++++++++++++++
 
 In some circumstances it may be convenient to scale all images to some value
 before combining them. Do so by setting `~ccdproc.Combiner.scaling`:
@@ -135,8 +135,8 @@ using `~ccdproc.Combiner.average_combine` or
 
 .. _reprojection:
 
-With image transformation
--------------------------
+Combination with image transformation and alignment
+---------------------------------------------------
 
 .. note::
 
