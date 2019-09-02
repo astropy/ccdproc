@@ -26,13 +26,13 @@ Other Changes and Additions
 
 - Removed deprecated property ``summary_info`` of ``ImageFileCollection``.
 
-- Improved handling of large flags in the ``bitfield`` module. [#610]
+- Improved handling of large flags in the ``bitfield`` module. [#610, #611]
 
 - Improved the performance of several ``ImageFileCollection`` methods. [#599]
 
 - Added auto_logging configuration paramenter [#622, #90]
 
-- Added support for .bz2, .Z and .zip file formats in ``ImageFileCollection``.
+- Added support for .fz,.bz2, .Z and .zip file formats in ``ImageFileCollection``. [#623, #644]
 
 - Modified weights function to also accept 1D array in ``Combiner``. [#634, #670]
 
