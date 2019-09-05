@@ -18,7 +18,6 @@ import warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .ccddata import fits_ccddata_reader, _recognized_fits_file_extensions
-from .tests.pytest_fixtures import directory_for_testing
 
 logger = logging.getLogger(__name__)
 
