@@ -23,7 +23,7 @@ list of FITS keywords you want the
 example initialization looks like::
 
     >>> from ccdproc import ImageFileCollection
-    >>> from ccdproc.image_collection import sample_directory_with_files
+    >>> from ccdproc.utils.sample_directory import sample_directory_with_files
     >>> keys = ['imagetyp', 'object', 'filter', 'exposure']
     >>> dir = sample_directory_with_files()
     >>> ic1 = ImageFileCollection(dir, keywords=keys) # only keep track of keys

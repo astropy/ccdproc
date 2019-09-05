@@ -1001,14 +1001,3 @@ class ImageFileCollection:
         return self._generator('ccd', ccd_kwargs=ccd_kwargs, **kwd)
     ccds.__doc__ = _generator.__doc__.format(
         name='CCDData', default_scaling='True', return_type='astropy.nddata.CCDData')
-
-
-def sample_directory_with_files():
-    """
-    Returns the path to the small sample directory used
-    in the tests of ``ImageFileCollection``. Primarily intended
-    for use in the doctests.
-    """
-
-    n_test, tmpdir = directory_for_testing()
-    return tmpdir
