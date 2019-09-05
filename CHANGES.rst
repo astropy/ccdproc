@@ -10,6 +10,18 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+2.0.1 (Unreleased)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Bug Fixes
+^^^^^^^^^
+
 - Move generation of sample directory of images to avoid importing pytest in
   user installation. [#699, #700]
 
