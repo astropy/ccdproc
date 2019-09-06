@@ -10,7 +10,7 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
-2.0.1 (Unreleased)
+2.0.1 (2019-09-05)
 ------------------
 
 New Features
