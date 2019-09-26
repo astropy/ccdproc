@@ -22,6 +22,7 @@ Alphabetical list of contributors
 * Javier Blasco (@javierblasco)
 * Julio C. N. Campagnolo (@juliotux)
 * Mihai Cara (@mcara)
+* James Davenport (@jradavenport)
 * Christoph Deil (@cdeil)
 * Carlos Gomez (@carlgogo)
 * Hans Moritz Günther (@hamogu)

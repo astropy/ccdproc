@@ -18,6 +18,7 @@ New Features
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+- Clarified ``sepmed`` default in ``cosmicray_lacosmic`` docs. [#631]
 
 Bug Fixes
 ^^^^^^^^^

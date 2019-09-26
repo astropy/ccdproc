@@ -1308,9 +1308,9 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                        psfmodel='gauss', psffwhm=2.5, psfsize=7,
                        psfk=None, psfbeta=4.765, verbose=False):
     r"""
-    Identify cosmic rays through the lacosmic technique. The lacosmic technique
-    identifies cosmic rays by identifying pixels based on a variation of the
-    Laplacian edge detection. The algorithm is an implementation of the
+    Identify cosmic rays through the L.A. Cosmic technique. The L.A. Cosmic
+    technique identifies cosmic rays by identifying pixels based on a variation
+    of the Laplacian edge detection. The algorithm is an implementation of the
     code describe in van Dokkum (2001) [1]_ as implemented by McCully (2014)
     [2]_. If you use this algorithm, please cite these two works.
 
@@ -1357,8 +1357,10 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     sepmed : bool, optional
         Use the separable median filter instead of the full median filter.
         The separable median is not identical to the full median filter, but
-        they are approximately the same and the separable median filter is
-        significantly faster and still detects cosmic rays well. Default: True
+        they are approximately the same, the separable median filter is
+        significantly faster, and still detects cosmic rays well. Note, this is
+        a performance feature, and not part of the original L.A. Cosmic.
+        Default: True
 
     cleantype : str, optional
         Set which clean algorithm is used:
