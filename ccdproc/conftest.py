@@ -6,15 +6,11 @@
 
 import os
 
-try:
-    from astropy.tests.plugins.display import (pytest_report_header,
-                                               PYTEST_HEADER_MODULES,
-                                               TESTED_VERSIONS)
-except ImportError:
-    # When using astropy 2.0
-    from astropy.tests.pytest_plugins import (pytest_report_header,
-                                              PYTEST_HEADER_MODULES,
-                                              TESTED_VERSIONS)
+from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
+                                           TESTED_VERSIONS)
+
+def pytest_configure(config):
+    config.option.astropy_header = True
 
 try:
     # This is the way to get plugins in astropy 2.x
