@@ -6,13 +6,30 @@
 
 import os
 
-from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
-                                           TESTED_VERSIONS)
+try:
+    # When the pytest_astropy_header package is installed
+    from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
+                                               TESTED_VERSIONS)
 
-def pytest_configure(config):
-    config.option.astropy_header = True
+    def pytest_configure(config):
+        config.option.astropy_header = True
+except ImportError:
+    # TODO: Remove this when astropy 2.x and 3.x support is dropped.
+    # Probably an old pytest-astropy package where the pytest_astropy_header
+    # is not a dependency.
+    try:
+        from astropy.tests.plugins.display import (pytest_report_header,
+                                                   PYTEST_HEADER_MODULES,
+                                                   TESTED_VERSIONS)
+    except ImportError:
+        # TODO: Remove this when astropy 2.x support is dropped.
+        # If that also did not work we're probably using astropy 2.0
+        from astropy.tests.pytest_plugins import (pytest_report_header,
+                                                  PYTEST_HEADER_MODULES,
+                                                  TESTED_VERSIONS)
 
 try:
+    # TODO: Remove this when astropy 2.x support is dropped.
     # This is the way to get plugins in astropy 2.x
     from astropy.tests.pytest_plugins import *
 except ImportError:
