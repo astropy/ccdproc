@@ -61,15 +61,15 @@ matrix:
                SETUP_CMD='test --coverage'
 
         # Check compatibility with the current astropy LTS release
-        - python: 3.6
-          env: ASTROPY_VERSION=2
+        - env: ASTROPY_VERSION=2
                PYTEST_VERSION=3.6
+               PYTHON_VERSION=3.6
 
-        - python: 3.5
-          env: NUMPY_VERSION=1.13
+        - env: NUMPY_VERSION=1.14
+               PYTHON_VERSION=3.5
 
-        - python: 3.6
-          env: NUMPY_VERSION=1.14
+        - env: NUMPY_VERSION=1.15
+               PYTHON_VERSION=3.6
 
         # Try numpy pre-release version. This runs only when a pre-release
         # is available on pypi.
