@@ -43,7 +43,6 @@ def test_medianfilter_unusued():
     ccd = CCDData(np.ones((3, 3)), unit='adu',
                   mask=np.ones((3, 3)),
                   uncertainty=StdDevUncertainty(np.ones((3, 3))),
-                  wcs=np.ones((3, 3)),
                   flags=np.ones((3, 3)))
     result = core.median_filter(ccd, 3)
     assert isinstance(result, CCDData)
