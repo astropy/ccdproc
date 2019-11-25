@@ -22,7 +22,7 @@ in this source distribution.
 
 
 Documentation is at `ccdproc.readthedocs.io
-<http://ccdproc.readthedocs.io/en/latest/>`_
+<https://ccdproc.readthedocs.io/en/latest/>`_
 
 An extensive `tutorial`_ is currently in development.
 
@@ -43,8 +43,8 @@ contribution.
 
 Feedback and feature requests?   Is there something missing you would like
 to see?  Please open an issue or send an email to  `@mwcraig`_,
-`@crawfordsm`_ or `@mseifert`_.   Questions can also be opened on 
-stackoverflow, twitter, or the astropy email list.  
+`@crawfordsm`_ or `@mseifert`_.   Questions can also be opened on
+stackoverflow, twitter, or the astropy email list.
 
 Ccdproc follows the `Astropy Code of Conduct`_ and strives to provide a
 welcoming community to all of our users and contributors.
@@ -52,29 +52,29 @@ welcoming community to all of our users and contributors.
 Want more information about how to make a contribution?  Take a look at
 the astropy `contributing`_ and `developer`_ documentation.
 
-If you are interested in finacially supporting the project, please 
+If you are interested in finacially supporting the project, please
 consider donating to `NumFOCUS`_ that provides financial
-management for the Astropy Project. 
+management for the Astropy Project.
 
 Acknowledgements
 ----------------
 
 If you have found ccdproc useful to your research, please considering adding a
-citation to `ccdproc contributors;  Craig, M. W.; Crawford, S. M.; Deil, Christoph; Gasdia, Forrest; Gomez, Carlos;  Günther, Hans Moritz;  Heidt, Nathan; Horton,  Anthony;  Karr, Jennifer;  Nelson, Stefan; Ninan, Joe Phillip;  Pattnaik, Punyaslok; Rol, Evert; Schoenell, William; Seifert, Michael; Singh, Sourav; Sipocz, Brigitta; Stotts, Connor; Streicher, Ole;  Tollerud, Erik; and Walker, Nathan, 2015,  Astrophysics Source Code Library, 1510.007, DOI: 10.5281/zenodo.47652 <http://adsabs.harvard.edu/abs/2015ascl.soft10007C>`_
+citation to `ccdproc contributors;  Craig, M. W.; Crawford, S. M.; Deil, Christoph; Gasdia, Forrest; Gomez, Carlos;  Günther, Hans Moritz;  Heidt, Nathan; Horton,  Anthony;  Karr, Jennifer;  Nelson, Stefan; Ninan, Joe Phillip;  Pattnaik, Punyaslok; Rol, Evert; Schoenell, William; Seifert, Michael; Singh, Sourav; Sipocz, Brigitta; Stotts, Connor; Streicher, Ole;  Tollerud, Erik; and Walker, Nathan, 2015,  Astrophysics Source Code Library, 1510.007, DOI: 10.5281/zenodo.47652 <https://ui.adsabs.harvard.edu/abs/2015ascl.soft10007C>`_
 
 Thanks to Kyle Barbary (`@kbarbary`_) for designing the `ccdproc` logo.
 
-.. _Astropy: http://www.astropy.org/
-.. _git: http://git-scm.com/
-.. _github: http://github.com
-.. _Cython: http://cython.org/
-.. _online documentation: http://ccdproc.readthedocs.io/en/latest/ccdproc/install.html
+.. _Astropy: https://www.astropy.org/
+.. _git: https://git-scm.com/
+.. _github: https://github.com
+.. _Cython: https://cython.org/
+.. _online documentation: https://ccdproc.readthedocs.io/en/latest/install.html
 .. _@kbarbary: https://github.com/kbarbary
 .. _@crawfordsm: https://github.com/crawfordsm
 .. _@mwcraig: https://github.com/mwcraig
 .. _@mseifert: https://github.com/MSeifert04
-.. _Astropy Code of Conduct:  http://www.astropy.org/about.html#codeofconduct
-.. _contributing: http://docs.astropy.org/en/stable/index.html#contributing
-.. _developer: http://docs.astropy.org/en/stable/index.html#developer-documentation
+.. _Astropy Code of Conduct:  https://www.astropy.org/about.html#codeofconduct
+.. _contributing: https://docs.astropy.org/en/stable/index.html#contributing
+.. _developer: https://docs.astropy.org/en/stable/index.html#developer-documentation
 .. _tutorial: https://github.com/mwcraig/ccd-reduction-and-photometry-guide
 .. _NumFOCUS: https://numfocus.org/
