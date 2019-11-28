@@ -659,8 +659,8 @@ def test_transform_image(mask_data, uncertainty):
 def test_block_reduce():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),
-                  uncertainty=StdDevUncertainty(np.ones((4, 4))),
-                  wcs=np.zeros((4, 4)))
+                  uncertainty=StdDevUncertainty(np.ones((4, 4)))
+                  )
     with catch_warnings(AstropyUserWarning) as w:
         ccd_summed = block_reduce(ccd, (2, 2))
     assert len(w) == 1
@@ -673,7 +673,6 @@ def test_block_reduce():
     # work on these attributes correctly those tests need to be updated!
     assert ccd_summed.meta == {'testkw': 1}
     assert ccd_summed.mask is None
-    assert ccd_summed.wcs is None
     assert ccd_summed.uncertainty is None
 
     # Make sure meta is copied
@@ -689,8 +688,7 @@ def test_block_reduce():
 def test_block_average():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),
-                  uncertainty=StdDevUncertainty(np.ones((4, 4))),
-                  wcs=np.zeros((4, 4)))
+                  uncertainty=StdDevUncertainty(np.ones((4, 4))))
     ccd.data[::2, ::2] = 2
     with catch_warnings(AstropyUserWarning) as w:
         ccd_avgd = block_average(ccd, (2, 2))
@@ -717,8 +715,7 @@ def test_block_average():
 def test_block_replicate():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),
-                  uncertainty=StdDevUncertainty(np.ones((4, 4))),
-                  wcs=np.zeros((4, 4)))
+                  uncertainty=StdDevUncertainty(np.ones((4, 4))))
     with catch_warnings(AstropyUserWarning) as w:
         ccd_repl = block_replicate(ccd, (2, 2))
     assert len(w) == 1
