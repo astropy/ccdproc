@@ -1,4 +1,4 @@
-2.1.0 (Unreleased)
+2.0.2 (Unreleased)
 ------------------
 
 New Features
@@ -9,6 +9,8 @@ Other Changes and Additions
 
 Bug Fixes
 ^^^^^^^^^
+
+- Do not apply gain when using LACOSMIC to detect cosmic rays. [#712, #705]
 
 2.0.1 (2019-09-05)
 ------------------
