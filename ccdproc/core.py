@@ -1472,7 +1472,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
             psfsize=psfsize, psfk=psfk, psfbeta=psfbeta,
             verbose=verbose)
 
-        return cleanarr, crmask
+        return cleanarr / gain, crmask
 
     elif isinstance(ccd, CCDData):
 
@@ -1486,7 +1486,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
         # create the new ccd data object
         nccd = ccd.copy()
-        nccd.data = cleanarr
+        nccd.data = cleanarr / gain
         if nccd.mask is None:
             nccd.mask = crmask
         else:
