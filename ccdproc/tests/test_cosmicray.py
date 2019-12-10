@@ -64,6 +64,31 @@ def test_cosmicray_lacosmic_check_data():
         cosmicray_lacosmic(10, noise)
 
 
+@pytest.mark.parametrize('array_input', [True, False])
+def test_cosmicray_does_not_gain_correct_ndarray_input(array_input):
+    # Add regression check for #705.
+    # The issue is that cosmicray_lacosmic gain-corrects the
+    # data and returns that corrected data. That is not the
+    # intent...
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    threshold = 5
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    noise = DATA_SCALE * np.ones_like(ccd_data.data)
+    ccd_data.uncertainty = noise
+    gain = 2.0
+    if array_input:
+        new_data, cr_mask = cosmicray_lacosmic(ccd_data.data, gain=gain)
+    else:
+        new_ccd = cosmicray_lacosmic(ccd_data, gain=gain)
+        new_data = new_ccd.data
+        cr_mask = new_ccd.mask
+    # Fill masked locations with 0 since there is no simple relationship
+    # between the original value and the corrected value.
+    orig_data = np.ma.array(ccd_data.data, mask=cr_mask).filled(0)
+    new_data = np.ma.array(new_data, mask=cr_mask).filled(0)
+    np.testing.assert_allclose(orig_data, new_data)
+
+
 def test_cosmicray_median_check_data():
     with pytest.raises(TypeError):
         ndata, crarr = cosmicray_median(10, thresh=5, mbox=11,
