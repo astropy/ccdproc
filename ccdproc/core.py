@@ -1471,13 +1471,17 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     # dimensionless.
     if not isinstance(gain, u.Quantity):
         gain = gain * u.one
+
+    if not isinstance(readnoise, u.Quantity):
+        readnoise = readnoise * u.one
+
     if isinstance(ccd, np.ndarray):
         data = ccd
 
         crmask, cleanarr = detect_cosmics(
             data, inmask=None, sigclip=sigclip,
-            readnoise=readnoise, satlevel=satlevel, pssl=pssl,
             sigfrac=sigfrac, objlim=objlim, gain=gain.value,
+            readnoise=readnoise.value, satlevel=satlevel, pssl=pssl,
             niter=niter, sepmed=sepmed, cleantype=cleantype,
             fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
             psfsize=psfsize, psfk=psfk, psfbeta=psfbeta,
@@ -1491,8 +1495,8 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
         crmask, cleanarr = detect_cosmics(
             ccd.data, inmask=ccd.mask,
-            readnoise=readnoise, satlevel=satlevel, pssl=pssl,
             sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain.value,
+            readnoise=readnoise.value, satlevel=satlevel, pssl=pssl,
             niter=niter, sepmed=sepmed, cleantype=cleantype,
             fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
             psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, verbose=verbose)
