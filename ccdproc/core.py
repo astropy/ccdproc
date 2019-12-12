@@ -1306,7 +1306,8 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                        satlevel=65535.0, pssl=0.0, niter=4,
                        sepmed=True, cleantype='meanmask', fsmode='median',
                        psfmodel='gauss', psffwhm=2.5, psfsize=7,
-                       psfk=None, psfbeta=4.765, verbose=False):
+                       psfk=None, psfbeta=4.765, verbose=False,
+                       gain_apply=True):
     r"""
     Identify cosmic rays through the L.A. Cosmic technique. The L.A. Cosmic
     technique identifies cosmic rays by identifying pixels based on a variation
@@ -1341,6 +1342,10 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     gain : float, optional
         Gain of the image (electrons / ADU). We always need to work in
         electrons for cosmic ray detection. Default: 1.0
+
+    gain_apply : bool, optional
+        If ``True``, return gain-corrected data, otherwise do not gain-correct
+        the data. Default is ``True`` to preserve backwards compatibility.
 
     readnoise : float, optional
         Read noise of the image (electrons). Used to generate the noise model
@@ -1472,6 +1477,8 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
             psfsize=psfsize, psfk=psfk, psfbeta=psfbeta,
             verbose=verbose)
 
+        if not gain_apply and gain != 1.0:
+            cleanarr = cleanarr / gain
         return cleanarr, crmask
 
     elif isinstance(ccd, CCDData):
@@ -1486,6 +1493,9 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
         # create the new ccd data object
         nccd = ccd.copy()
+        if not gain_apply and gain != 1.0:
+            cleanarr = cleanarr / gain
+
         nccd.data = cleanarr
         if nccd.mask is None:
             nccd.mask = crmask
