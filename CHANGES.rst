@@ -7,6 +7,8 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Remove astropy_helpers from the package infrastructure [#717]
+
 Bug Fixes
 ^^^^^^^^^
 
