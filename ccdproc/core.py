@@ -1339,13 +1339,14 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         electrons for cosmic ray detection, so we need to know the sky level
         that has been subtracted so we can add it back in. Default: 0.0.
 
-    gain : float, optional
+    gain : float or `~astropy.units.Quantity`, optional
         Gain of the image (electrons / ADU). We always need to work in
         electrons for cosmic ray detection. Default: 1.0
 
     gain_apply : bool, optional
-        If ``True``, return gain-corrected data, otherwise do not gain-correct
-        the data. Default is ``True`` to preserve backwards compatibility.
+        If ``True``, return gain-corrected data, with correct units, otherwise
+        do not gain-correct the data. Default is ``True`` to preserve
+        backwards compatibility.
 
     readnoise : float, optional
         Read noise of the image (electrons). Used to generate the noise model
@@ -1465,13 +1466,18 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
        updated with the detected cosmic rays.
     """
     from astroscrappy import detect_cosmics
+
+    # If we didn't get a quantity, turn the gain into one that is
+    # dimensionless.
+    if not isinstance(gain, u.Quantity):
+        gain = gain * u.one
     if isinstance(ccd, np.ndarray):
         data = ccd
 
         crmask, cleanarr = detect_cosmics(
             data, inmask=None, sigclip=sigclip,
-            sigfrac=sigfrac, objlim=objlim, gain=gain,
             readnoise=readnoise, satlevel=satlevel, pssl=pssl,
+            sigfrac=sigfrac, objlim=objlim, gain=gain.value,
             niter=niter, sepmed=sepmed, cleantype=cleantype,
             fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
             psfsize=psfsize, psfk=psfk, psfbeta=psfbeta,
@@ -1485,16 +1491,21 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
         crmask, cleanarr = detect_cosmics(
             ccd.data, inmask=ccd.mask,
-            sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain,
             readnoise=readnoise, satlevel=satlevel, pssl=pssl,
+            sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain.value,
             niter=niter, sepmed=sepmed, cleantype=cleantype,
             fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
             psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, verbose=verbose)
 
         # create the new ccd data object
         nccd = ccd.copy()
+
+        # Remove the gain scaling if it wasn't desired
         if not gain_apply and gain != 1.0:
-            cleanarr = cleanarr / gain
+            cleanarr = cleanarr / gain.value
+
+        # Fix the units if the gain is being applied.
+        nccd.unit = ccd.unit * gain.unit
 
         nccd.data = cleanarr
         if nccd.mask is None:
