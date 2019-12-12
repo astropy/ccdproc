@@ -11,6 +11,15 @@ stand-alone processing or as part of a pipeline.
 from ._astropy_init import *
 # ----------------------------------------------------------------------------
 
+#set up the version
+from pkg_resources import get_distribution, DistributionNotFound
+
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    __version__ = 'unknown'
+
 # set up namespace, unless we are in setup...
 if not _ASTROPY_SETUP_:
     from .core import *
@@ -30,3 +39,8 @@ if not _ASTROPY_SETUP_:
             'when calling processing operations.'
             )
     conf = Conf()
+
+
+# NOTE: the test runner is defined in _astropy_init
+__all__ = ['test', 'get_distribution', 'DistributionNotFound']
+
