@@ -13,6 +13,5 @@ except (ImportError, AssertionError):
 from setuptools import setup
 
 from setup_commands import cmdclass
-from setup_extensions import ext_modules
 
-setup(use_scm_version=True, ext_modules=ext_modules, cmdclass=cmdclass)
+setup(use_scm_version=True, cmdclass=cmdclass)
