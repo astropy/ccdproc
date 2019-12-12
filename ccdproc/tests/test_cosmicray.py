@@ -100,17 +100,32 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
     np.testing.assert_allclose(gain_for_test * orig_data, new_data)
 
 
-def test_cormicray_lacosmic_accepts_quantity():
+def test_cosmicray_lacosmic_accepts_quantity():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * np.ones_like(ccd_data.data)
     ccd_data.uncertainty = noise
-    # This may need units at some point.
+    # The units below are the point of the test
     gain = 2.0 * u.electron / u.adu
     new_ccd = cosmicray_lacosmic(ccd_data,
                                  gain=gain,
                                  gain_apply=True)
+
+
+def test_cosmicray_lacosmic_accepts_quantity_readnoise():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    threshold = 5
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    noise = DATA_SCALE * np.ones_like(ccd_data.data)
+    ccd_data.uncertainty = noise
+    gain = 2.0
+    # The units below are the point of this test
+    readnoise = 6.5 * u.electron
+    new_ccd = cosmicray_lacosmic(ccd_data,
+                                 gain=gain,
+                                 gain_apply=True,
+                                 readnoise=readnoise)
 
 
 def test_cosmicray_median_check_data():
