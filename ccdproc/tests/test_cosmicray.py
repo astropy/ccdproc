@@ -6,7 +6,7 @@ from numpy.testing import assert_allclose
 import pytest
 from astropy.utils import NumpyRNGContext
 from astropy.nddata import StdDevUncertainty
-
+from astropy import units as u
 
 from ..core import (cosmicray_lacosmic, cosmicray_median,
                     background_deviation_box, background_deviation_filter)
@@ -98,6 +98,19 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
     else:
         gain_for_test = 1.0
     np.testing.assert_allclose(gain_for_test * orig_data, new_data)
+
+
+def test_cormicray_lacosmic_accepts_quantity():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    threshold = 5
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    noise = DATA_SCALE * np.ones_like(ccd_data.data)
+    ccd_data.uncertainty = noise
+    # This may need units at some point.
+    gain = 2.0 * u.electron / u.adu
+    new_ccd = cosmicray_lacosmic(ccd_data,
+                                 gain=gain,
+                                 gain_apply=True)
 
 
 def test_cosmicray_median_check_data():
