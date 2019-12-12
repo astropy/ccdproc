@@ -1,7 +1,10 @@
 include LICENSE.rst
 include README.rst
-include ccdproc/tests/coveragerc
 include CHANGES.rst
+include CODE_OF_CONDUCT.rst
+include CITATION.rst
+
+include ccdproc/tests/coveragerc
 
 include ez_setup.py
 include ah_bootstrap.py
