@@ -19,8 +19,6 @@ env:
         # to repeat them for all configurations.
         - NUMPY_VERSION=stable
         - ASTROPY_VERSION=stable
-        - CONDA_DEPENDENCIES='scipy reproject psutil cython astroscrappy scikit-image memory_profiler'
-        - PIP_DEPENDENCIES=''
         - MAIN_CMD='pytest'
         - SETUP_CMD='ccdproc'
         - CONDA_CHANNELS='astropy'
@@ -32,7 +30,6 @@ env:
 matrix:
     include:
         - env: PYTHON_VERSION=3.7
-               SETUP_CMD='egg_info'
 
         # Do a windows run
         #- os: windows
@@ -88,6 +85,8 @@ install:
 
 
 script:
+   - pip install tox tox-pypi-filter --upgrade
+   - pip install -e .
    - $MAIN_CMD $SETUP_CMD
 
 after_success:
