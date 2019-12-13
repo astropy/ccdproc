@@ -1467,13 +1467,15 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     """
     from astroscrappy import detect_cosmics
 
-    # If we didn't get a quantity, turn the gain into one that is
-    # dimensionless.
+    # If we didn't get a quantity, put them in, with unit specified by the
+    # documentation above.
     if not isinstance(gain, u.Quantity):
-        gain = gain * u.one
+        gain = gain * u.electron / u.adu
 
+    # Set the units of readnoise to electrons, as specified in the
+    # documentation, if no unit is present.
     if not isinstance(readnoise, u.Quantity):
-        readnoise = readnoise * u.one
+        readnoise = readnoise * u.electron
 
     if isinstance(ccd, np.ndarray):
         data = ccd
@@ -1492,7 +1494,12 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         return cleanarr, crmask
 
     elif isinstance(ccd, CCDData):
-
+        # Check unit consistency before taking the time to check for
+        # cosmic rays.
+        if not (gain * ccd).unit.is_equivalent(readnoise.unit):
+            raise ValueError('Inconsistent units for gain ({}) '.format(gain.unit) +
+                             ' ccd ({}) and readnoise ({}).'.format(ccd.unit,
+                                                                    readnoise.unit))
         crmask, cleanarr = detect_cosmics(
             ccd.data, inmask=ccd.mask,
             sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain.value,

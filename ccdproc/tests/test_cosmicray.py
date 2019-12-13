@@ -77,8 +77,11 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * np.ones_like(ccd_data.data)
     ccd_data.uncertainty = noise
-    # This may need units at some point.
+    # No units here on purpose.
     gain = 2.0
+    # Don't really need to set this (6.5 is the default value) but want to
+    # make lack of units explicit.
+    readnoise = 6.5
     if array_input:
         new_data, cr_mask = cosmicray_lacosmic(ccd_data.data,
                                                gain=gain,
@@ -92,15 +95,16 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
     # Fill masked locations with 0 since there is no simple relationship
     # between the original value and the corrected value.
     orig_data = np.ma.array(ccd_data.data, mask=cr_mask).filled(0)
-    new_data = np.ma.array(new_data, mask=cr_mask).filled(0)
+    new_data = np.ma.array(new_data.data, mask=cr_mask).filled(0)
     if gain_correct_data:
         gain_for_test = gain
     else:
         gain_for_test = 1.0
+
     np.testing.assert_allclose(gain_for_test * orig_data, new_data)
 
 
-def test_cosmicray_lacosmic_accepts_quantity():
+def test_cosmicray_lacosmic_accepts_quantity_gain():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
@@ -108,6 +112,9 @@ def test_cosmicray_lacosmic_accepts_quantity():
     ccd_data.uncertainty = noise
     # The units below are the point of the test
     gain = 2.0 * u.electron / u.adu
+
+    # Since gain and ccd_data have units, the readnoise should too.
+    readnoise = 6.5 * u.electron
     new_ccd = cosmicray_lacosmic(ccd_data,
                                  gain=gain,
                                  gain_apply=True)
@@ -119,7 +126,7 @@ def test_cosmicray_lacosmic_accepts_quantity_readnoise():
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * np.ones_like(ccd_data.data)
     ccd_data.uncertainty = noise
-    gain = 2.0
+    gain = 2.0 * u.electron / u.adu
     # The units below are the point of this test
     readnoise = 6.5 * u.electron
     new_ccd = cosmicray_lacosmic(ccd_data,
