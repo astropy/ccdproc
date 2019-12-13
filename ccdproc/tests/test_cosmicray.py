@@ -128,6 +128,28 @@ def test_cosmicray_lacosmic_accepts_quantity_readnoise():
                                  readnoise=readnoise)
 
 
+def test_cosmicray_lacosmic_detects_inconsistent_units():
+    # This is intended to detect cases like a ccd with units
+    # of adu, a readnoise in electrons and a gain in adu / electron.
+    # That is not internally inconsistent.
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    ccd_data.unit='adu'
+    threshold = 5
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    noise = DATA_SCALE * np.ones_like(ccd_data.data)
+    ccd_data.uncertainty = noise
+    readnoise = 6.5 * u.electron
+
+    # The units below are deliberately incorrect.
+    gain = 2.0 * u.adu / u.electron
+    with pytest.raises(ValueError) as e:
+        cosmicray_lacosmic(ccd_data,
+                           gain=gain,
+                           gain_apply=True,
+                           readnoise=readnoise)
+    assert 'Inconsistent units' in str(e.value)
+
+
 def test_cosmicray_median_check_data():
     with pytest.raises(TypeError):
         ndata, crarr = cosmicray_median(10, thresh=5, mbox=11,
