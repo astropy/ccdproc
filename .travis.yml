@@ -45,17 +45,11 @@ matrix:
         - env: PYTHON_VERSION=3.7
                ASTROPY_VERSION=development
                NUMPY_VERSION=stable
-               SETUP_CMD='test --coverage'
 
         # Check for sphinx doc build warnings
         - env: PYTHON_VERSION=3.7
                MAIN_CMD='tox -e'
                SETUP_CMD='build_docs -w'
-
-        # Do coverage tests for both latest Python versions
-        - env: PYTHON_VERSION=3.7
-               ASTROPY_VERSION=3
-               SETUP_CMD='test --coverage'
 
         # Check compatibility with the current astropy LTS release
         - env: ASTROPY_VERSION=2
