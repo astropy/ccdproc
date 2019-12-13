@@ -5,6 +5,7 @@
 import math
 import numbers
 import logging
+import warnings
 
 import numpy as np
 from scipy import ndimage
@@ -1494,12 +1495,21 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         return cleanarr, crmask
 
     elif isinstance(ccd, CCDData):
-        # Check unit consistency before taking the time to check for
-        # cosmic rays.
-        if not (gain * ccd).unit.is_equivalent(readnoise.unit):
-            raise ValueError('Inconsistent units for gain ({}) '.format(gain.unit) +
-                             ' ccd ({}) and readnoise ({}).'.format(ccd.unit,
-                                                                    readnoise.unit))
+        # Start with a check for a special case: ccd is in electron, and
+        # gain and readnoise have no units. In that case we issue a warning
+        # instead of raising an error to avoid crashing user's pipelines.
+        if ccd.unit.is_equivalent(u.electron) and gain.value != 1.0:
+            warnings.warn("Image unit is electron but gain value "
+                          "is not 1.0. Data maybe end up being gain "
+                          "corrected twice.")
+        else:
+            # Check unit consistency before taking the time to check for
+            # cosmic rays.
+            if not (gain * ccd).unit.is_equivalent(readnoise.unit):
+                raise ValueError('Inconsistent units for gain ({}) '.format(gain.unit) +
+                                 ' ccd ({}) and readnoise ({}).'.format(ccd.unit,
+                                                                        readnoise.unit))
+
         crmask, cleanarr = detect_cosmics(
             ccd.data, inmask=ccd.mask,
             sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain.value,

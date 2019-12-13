@@ -157,6 +157,29 @@ def test_cosmicray_lacosmic_detects_inconsistent_units():
     assert 'Inconsistent units' in str(e.value)
 
 
+def test_cosmicray_lacosmic_warns_on_ccd_in_electrons(recwarn):
+    # Check that an input ccd in electrons raises a warning.
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    # The unit below is important for the test; this unit on
+    # input is supposed to raise an error.
+    ccd_data.unit = u.electron
+    threshold = 5
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    noise = DATA_SCALE * np.ones_like(ccd_data.data)
+    ccd_data.uncertainty = noise
+    # No units here on purpose.
+    gain = 2.0
+    # Don't really need to set this (6.5 is the default value) but want to
+    # make lack of units explicit.
+    readnoise = 6.5
+    new_ccd = cosmicray_lacosmic(ccd_data,
+                                 gain=gain,
+                                 gain_apply=True,
+                                 readnoise=readnoise)
+    assert len(recwarn) == 1
+    assert "Image unit is electron" in str(recwarn.pop())
+
+
 def test_cosmicray_median_check_data():
     with pytest.raises(TypeError):
         ndata, crarr = cosmicray_median(10, thresh=5, mbox=11,
