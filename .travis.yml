@@ -49,17 +49,9 @@ matrix:
         # Check for sphinx doc build warnings
         - env: PYTHON_VERSION=3.7
                MAIN_CMD='tox -e'
-               SETUP_CMD='build_docs -w'
+               SETUP_CMD='build_docs'
 
-        # Check compatibility with the current astropy LTS release
-        - env: ASTROPY_VERSION=2
-               PYTEST_VERSION=3.6
-               PYTHON_VERSION=3.6
-
-        - env: NUMPY_VERSION=1.14
-               PYTHON_VERSION=3.5
-
-        - env: NUMPY_VERSION=1.15
+        - env: NUMPY_VERSION=1.16
                PYTHON_VERSION=3.6
 
         # Try numpy pre-release version. This runs only when a pre-release
