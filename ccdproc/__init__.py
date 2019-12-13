@@ -11,7 +11,7 @@ stand-alone processing or as part of a pipeline.
 from ._astropy_init import *
 # ----------------------------------------------------------------------------
 
-#set up the version
+# set up the version
 from pkg_resources import get_distribution, DistributionNotFound
 
 try:
@@ -43,4 +43,3 @@ if not _ASTROPY_SETUP_:
 
 # NOTE: the test runner is defined in _astropy_init
 __all__ = ['test', 'get_distribution', 'DistributionNotFound']
-
