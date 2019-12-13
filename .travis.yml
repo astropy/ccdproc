@@ -32,46 +32,46 @@ matrix:
         - env: PYTHON_VERSION=3.7
 
         # Do a windows run
-        #- os: windows
-        #  env: PYTHON_VERSION=3.7
-        #       ASTROPY_VERSION=stable
-        #       NUMPY_VERSION=stable
+        - os: windows
+          env: PYTHON_VERSION=3.7
+               ASTROPY_VERSION=stable
+               NUMPY_VERSION=stable
 
         # Try Astropy development versions. This requires them to be
         # compiled during setup which takes some time.
         # Building against numpy dev was removed because it was causing
         # failures due to numpy dev/astropy dev conflicts unresolvable
         # in ccdproc.
-        #- env: PYTHON_VERSION=3.7
-               #ASTROPY_VERSION=development
-               #NUMPY_VERSION=stable
-               #SETUP_CMD='test --coverage'
+        - env: PYTHON_VERSION=3.7
+               ASTROPY_VERSION=development
+               NUMPY_VERSION=stable
+               SETUP_CMD='test --coverage'
 
         # Check for sphinx doc build warnings
-        #- env: PYTHON_VERSION=3.7
-               #SETUP_CMD='build_docs -w'
-               #CONDA_DEPENDENCIES="$CONDA_DEPENDENCIES sphinx-astropy"
+        - env: PYTHON_VERSION=3.7
+               MAIN_CMD='tox -e'
+               SETUP_CMD='build_docs -w'
 
         # Do coverage tests for both latest Python versions
-        #- env: PYTHON_VERSION=3.7
-               #ASTROPY_VERSION=3
-               #SETUP_CMD='test --coverage'
+        - env: PYTHON_VERSION=3.7
+               ASTROPY_VERSION=3
+               SETUP_CMD='test --coverage'
 
         # Check compatibility with the current astropy LTS release
-        #- env: ASTROPY_VERSION=2
-        #       PYTEST_VERSION=3.6
-        #       PYTHON_VERSION=3.6
+        - env: ASTROPY_VERSION=2
+               PYTEST_VERSION=3.6
+               PYTHON_VERSION=3.6
 
-        #- env: NUMPY_VERSION=1.14
-        #       PYTHON_VERSION=3.5
+        - env: NUMPY_VERSION=1.14
+               PYTHON_VERSION=3.5
 
-        #- env: NUMPY_VERSION=1.15
-        #       PYTHON_VERSION=3.6
+        - env: NUMPY_VERSION=1.15
+               PYTHON_VERSION=3.6
 
         # Try numpy pre-release version. This runs only when a pre-release
         # is available on pypi.
-        #- env: PYTHON_VERSION=3.7
-        #       NUMPY_VERSION=prerelease
+        - env: PYTHON_VERSION=3.7
+               NUMPY_VERSION=prerelease
 
         # pycodestyle test, see setup.cfg for tested pep8 warnings/errors
         - env: PYTHON_VERSION=3.7
