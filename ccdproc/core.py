@@ -1474,7 +1474,6 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         # Gain will change the value, so use the proper units
         gain = gain * u.electron / u.adu
 
-
     # Set the units of readnoise to electrons, as specified in the
     # documentation, if no unit is present.
     if not isinstance(readnoise, u.Quantity):

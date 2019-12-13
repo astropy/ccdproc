@@ -140,7 +140,7 @@ def test_cosmicray_lacosmic_detects_inconsistent_units():
     # of adu, a readnoise in electrons and a gain in adu / electron.
     # That is not internally inconsistent.
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    ccd_data.unit='adu'
+    ccd_data.unit = 'adu'
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * np.ones_like(ccd_data.data)
