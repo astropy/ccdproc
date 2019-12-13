@@ -13,6 +13,8 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- Update units if gain is applied in `cosmicray_lacosmic`. [#716, #705]
+
 2.0.1 (2019-09-05)
 ------------------
 
