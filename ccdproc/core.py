@@ -1471,7 +1471,9 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     # If we didn't get a quantity, put them in, with unit specified by the
     # documentation above.
     if not isinstance(gain, u.Quantity):
+        # Gain will change the value, so use the proper units
         gain = gain * u.electron / u.adu
+
 
     # Set the units of readnoise to electrons, as specified in the
     # documentation, if no unit is present.
@@ -1502,7 +1504,12 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
             warnings.warn("Image unit is electron but gain value "
                           "is not 1.0. Data maybe end up being gain "
                           "corrected twice.")
+
         else:
+            if ((readnoise.unit == u.electron)
+                and (ccd.unit == u.electron)
+                and (gain.value == 1.0)):
+                gain = gain.value * u.one
             # Check unit consistency before taking the time to check for
             # cosmic rays.
             if not (gain * ccd).unit.is_equivalent(readnoise.unit):
