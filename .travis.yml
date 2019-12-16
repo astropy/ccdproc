@@ -30,7 +30,7 @@ env:
 matrix:
     include:
         - env: PYTHON_VERSION=3.7
-               TOXPOSARGS='--cov=ccdproc'
+               SETUP_CMD='--cov ccdproc'
 
         # Do a windows run
         - os: windows
