@@ -1316,10 +1316,17 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     code describe in van Dokkum (2001) [1]_ as implemented by McCully (2014)
     [2]_. If you use this algorithm, please cite these two works.
 
+
+
     Parameters
     ----------
     ccd : `~astropy.nddata.CCDData` or `numpy.ndarray`
         Data to have cosmic ray cleaned.
+
+    gain_apply : bool, optional
+        If ``True``, **return gain-corrected data**, with correct units,
+        otherwise do not gain-correct the data. Default is ``True`` to
+        preserve backwards compatibility.
 
     sigclip : float, optional
         Laplacian-to-noise limit for cosmic ray detection. Lower values will
@@ -1343,11 +1350,6 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     gain : float or `~astropy.units.Quantity`, optional
         Gain of the image (electrons / ADU). We always need to work in
         electrons for cosmic ray detection. Default: 1.0
-
-    gain_apply : bool, optional
-        If ``True``, return gain-corrected data, with correct units, otherwise
-        do not gain-correct the data. Default is ``True`` to preserve
-        backwards compatibility.
 
     readnoise : float, optional
         Read noise of the image (electrons). Used to generate the noise model
@@ -1429,7 +1431,9 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     nccd : `~astropy.nddata.CCDData` or `numpy.ndarray`
         An object of the same type as ccd is returned. If it is a
         `~astropy.nddata.CCDData`, the mask attribute will also be updated with
-        areas identified with cosmic rays masked.
+        areas identified with cosmic rays masked. **By default, the image is
+        multiplied by the gain.** You can control this behavior with the
+        ``gain_apply`` argument.
 
     crmask : `numpy.ndarray`
         If an `numpy.ndarray` is provided as ccd, a boolean ndarray with the
