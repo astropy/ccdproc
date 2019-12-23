@@ -3,6 +3,7 @@
 
 import sys
 from setuptools import setup
+from pathlib import Path
 
 # First provide helpful messages if contributors try and run legacy commands
 # for tests or docs.
@@ -44,4 +45,8 @@ if 'build_docs' in sys.argv or 'build_sphinx' in sys.argv:
 # setup_requires and install_requires since these are determined
 # programmatically.
 
-setup(use_scm_version=True) #ext_modules=get_extensions())
+setup(use_scm_version={'write_to': Path('ccdproc') / 'version.py'})
+
+# If compiled extensions are added to the package, add the argument below
+# to setup:
+# ext_modules=get_extensions())
