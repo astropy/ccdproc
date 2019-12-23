@@ -39,4 +39,3 @@ if not _ASTROPY_SETUP_:
             'when calling processing operations.'
             )
     conf = Conf()
-
