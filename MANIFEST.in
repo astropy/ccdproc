@@ -3,6 +3,7 @@ include CHANGES.rst
 include CODE_OF_CONDUCT.rst
 include LICENSE.rst
 include README.rst
+include pyproject.toml
 
 include ccdproc/tests/coveragerc
 

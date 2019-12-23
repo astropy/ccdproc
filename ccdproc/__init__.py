@@ -40,6 +40,3 @@ if not _ASTROPY_SETUP_:
             )
     conf = Conf()
 
-
-# NOTE: the test runner is defined in _astropy_init
-__all__ = ['test', 'get_distribution', 'DistributionNotFound']
