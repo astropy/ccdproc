@@ -5,6 +5,7 @@
 import math
 import numbers
 import logging
+import warnings
 
 import numpy as np
 from scipy import ndimage
@@ -1306,7 +1307,8 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                        satlevel=65535.0, pssl=0.0, niter=4,
                        sepmed=True, cleantype='meanmask', fsmode='median',
                        psfmodel='gauss', psffwhm=2.5, psfsize=7,
-                       psfk=None, psfbeta=4.765, verbose=False):
+                       psfk=None, psfbeta=4.765, verbose=False,
+                       gain_apply=True):
     r"""
     Identify cosmic rays through the L.A. Cosmic technique. The L.A. Cosmic
     technique identifies cosmic rays by identifying pixels based on a variation
@@ -1314,10 +1316,17 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     code describe in van Dokkum (2001) [1]_ as implemented by McCully (2014)
     [2]_. If you use this algorithm, please cite these two works.
 
+
+
     Parameters
     ----------
     ccd : `~astropy.nddata.CCDData` or `numpy.ndarray`
         Data to have cosmic ray cleaned.
+
+    gain_apply : bool, optional
+        If ``True``, **return gain-corrected data**, with correct units,
+        otherwise do not gain-correct the data. Default is ``True`` to
+        preserve backwards compatibility.
 
     sigclip : float, optional
         Laplacian-to-noise limit for cosmic ray detection. Lower values will
@@ -1338,7 +1347,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         electrons for cosmic ray detection, so we need to know the sky level
         that has been subtracted so we can add it back in. Default: 0.0.
 
-    gain : float, optional
+    gain : float or `~astropy.units.Quantity`, optional
         Gain of the image (electrons / ADU). We always need to work in
         electrons for cosmic ray detection. Default: 1.0
 
@@ -1422,7 +1431,9 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     nccd : `~astropy.nddata.CCDData` or `numpy.ndarray`
         An object of the same type as ccd is returned. If it is a
         `~astropy.nddata.CCDData`, the mask attribute will also be updated with
-        areas identified with cosmic rays masked.
+        areas identified with cosmic rays masked. **By default, the image is
+        multiplied by the gain.** You can control this behavior with the
+        ``gain_apply`` argument.
 
     crmask : `numpy.ndarray`
         If an `numpy.ndarray` is provided as ccd, a boolean ndarray with the
@@ -1460,32 +1471,73 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
        updated with the detected cosmic rays.
     """
     from astroscrappy import detect_cosmics
+
+    # If we didn't get a quantity, put them in, with unit specified by the
+    # documentation above.
+    if not isinstance(gain, u.Quantity):
+        # Gain will change the value, so use the proper units
+        gain = gain * u.electron / u.adu
+
+    # Set the units of readnoise to electrons, as specified in the
+    # documentation, if no unit is present.
+    if not isinstance(readnoise, u.Quantity):
+        readnoise = readnoise * u.electron
+
     if isinstance(ccd, np.ndarray):
         data = ccd
 
         crmask, cleanarr = detect_cosmics(
             data, inmask=None, sigclip=sigclip,
-            sigfrac=sigfrac, objlim=objlim, gain=gain,
-            readnoise=readnoise, satlevel=satlevel, pssl=pssl,
+            sigfrac=sigfrac, objlim=objlim, gain=gain.value,
+            readnoise=readnoise.value, satlevel=satlevel, pssl=pssl,
             niter=niter, sepmed=sepmed, cleantype=cleantype,
             fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
             psfsize=psfsize, psfk=psfk, psfbeta=psfbeta,
             verbose=verbose)
 
+        if not gain_apply and gain != 1.0:
+            cleanarr = cleanarr / gain
         return cleanarr, crmask
 
     elif isinstance(ccd, CCDData):
+        # Start with a check for a special case: ccd is in electron, and
+        # gain and readnoise have no units. In that case we issue a warning
+        # instead of raising an error to avoid crashing user's pipelines.
+        if ccd.unit.is_equivalent(u.electron) and gain.value != 1.0:
+            warnings.warn("Image unit is electron but gain value "
+                          "is not 1.0. Data maybe end up being gain "
+                          "corrected twice.")
+
+        else:
+            if ((readnoise.unit == u.electron)
+                and (ccd.unit == u.electron)
+                and (gain.value == 1.0)):
+                gain = gain.value * u.one
+            # Check unit consistency before taking the time to check for
+            # cosmic rays.
+            if not (gain * ccd).unit.is_equivalent(readnoise.unit):
+                raise ValueError('Inconsistent units for gain ({}) '.format(gain.unit) +
+                                 ' ccd ({}) and readnoise ({}).'.format(ccd.unit,
+                                                                        readnoise.unit))
 
         crmask, cleanarr = detect_cosmics(
             ccd.data, inmask=ccd.mask,
-            sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain,
-            readnoise=readnoise, satlevel=satlevel, pssl=pssl,
+            sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain.value,
+            readnoise=readnoise.value, satlevel=satlevel, pssl=pssl,
             niter=niter, sepmed=sepmed, cleantype=cleantype,
             fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
             psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, verbose=verbose)
 
         # create the new ccd data object
         nccd = ccd.copy()
+
+        # Remove the gain scaling if it wasn't desired
+        if not gain_apply and gain != 1.0:
+            cleanarr = cleanarr / gain.value
+
+        # Fix the units if the gain is being applied.
+        nccd.unit = ccd.unit * gain.unit
+
         nccd.data = cleanarr
         if nccd.mask is None:
             nccd.mask = crmask

@@ -99,6 +99,21 @@ Use this technique with `~ccdproc.cosmicray_lacosmic`:
 
     >>> cr_cleaned = ccdproc.cosmicray_lacosmic(gain_corrected, sigclip=5)
 
+.. note::
+
+    By default, `~ccdproc.cosmicray_lacosmic` multiplies the image by
+    the gain; prior to version 2.1 it did so without changing the units of
+    the image which could result in incorrect results.
+
+    There are two ways to correctly invoke `~ccdproc.cosmicray_lacosmic`:
+
+    + Supply a gain-corrected image, in units of ``electron``, and set ``gain=1.0``
+      (the default value) in `~ccdproc.cosmicray_lacosmic`.
+    + Supply an image in ``adu`` and set the ``gain`` argument of
+      `~ccdproc.cosmicray_lacosmic` to the appropriate value for your
+      instrument. Ideally, pass in a ``gain`` with units, but if units are
+      omitted the will be assumed to be ``electron/adu``.
+
 median
 ++++++
 
