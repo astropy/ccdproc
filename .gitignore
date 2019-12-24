@@ -47,6 +47,7 @@ develop-eggs
 .installed.cfg
 lib
 distribute-*.tar.gz
+pip-wheel-metadata
 
 # Other
 .cache

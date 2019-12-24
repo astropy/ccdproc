@@ -7,6 +7,9 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Remove astropy_helpers from the package infrastructure, which also changes
+  how the tests are run and how the documentation is built. [#717]
+
 Bug Fixes
 ^^^^^^^^^
 
