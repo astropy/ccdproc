@@ -101,10 +101,9 @@ Use this technique with `~ccdproc.cosmicray_lacosmic`:
 
 .. note::
 
-    A significant error in `~ccdproc.cosmicray_lacosmic` in version 2.1 of
-    ccdproc. By default, `~ccdproc.cosmicray_lacosmic` multiplies the image by
+    By default, `~ccdproc.cosmicray_lacosmic` multiplies the image by
     the gain; prior to version 2.1 it did so without changing the units of
-    the image.
+    the image which could result in incorrect results.
 
     There are two ways to correctly invoke `~ccdproc.cosmicray_lacosmic`:
 
