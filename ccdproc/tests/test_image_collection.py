@@ -789,6 +789,7 @@ class TestImageFileCollection:
         with pytest.raises(AttributeError):
             coll.glob_include = '*stuff*'
 
+    @pytest.mark.remote_data
     def test_that_test_files_have_expected_properties(self, triage_setup):
         expected_name = \
             get_pkg_data_filename('data/expected_ifc_file_properties.csv')
@@ -812,6 +813,7 @@ class TestImageFileCollection:
         for column in expected.colnames:
             assert np.all(actual[column] == expected[column])
 
+    @pytest.mark.remote_data
     def test_image_collection_with_no_location(self, triage_setup):
         # Test for a feature requested in
         #

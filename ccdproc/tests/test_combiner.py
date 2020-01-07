@@ -321,6 +321,7 @@ def test_combiner_mask_sum():
 
 
 # test combiner convenience function reads fits file and combine as expected
+@pytest.mark.remote_data
 def test_combine_average_fitsimages():
     fitsfile = get_pkg_data_filename('data/a8280271.fits')
     ccd = CCDData.read(fitsfile, unit=u.adu)
@@ -335,6 +336,7 @@ def test_combine_average_fitsimages():
     np.testing.assert_array_almost_equal(avgccd.data, ccd_by_combiner.data)
 
 
+@pytest.mark.remote_data
 def test_combine_numpyndarray():
     """ Test of numpy ndarray implementation: #493
 
@@ -374,6 +376,7 @@ def test_combiner_result_dtype():
 
 
 # test combiner convenience function works with list of ccddata objects
+@pytest.mark.remote_data
 def test_combine_average_ccddata():
     fitsfile = get_pkg_data_filename('data/a8280271.fits')
     ccd = CCDData.read(fitsfile, unit=u.adu)
@@ -388,6 +391,7 @@ def test_combine_average_ccddata():
 
 # test combiner convenience function reads fits file and
 # and combine as expected when asked to run in limited memory
+@pytest.mark.remote_data
 def test_combine_limitedmem_fitsimages():
     fitsfile = get_pkg_data_filename('data/a8280271.fits')
     ccd = CCDData.read(fitsfile, unit=u.adu)
@@ -404,6 +408,7 @@ def test_combine_limitedmem_fitsimages():
 
 # test combiner convenience function reads fits file and
 # and combine as expected when asked to run in limited memory with scaling
+@pytest.mark.remote_data
 def test_combine_limitedmem_scale_fitsimages():
     fitsfile = get_pkg_data_filename('data/a8280271.fits')
     ccd = CCDData.read(fitsfile, unit=u.adu)
