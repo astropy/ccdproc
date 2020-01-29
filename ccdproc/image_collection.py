@@ -78,6 +78,10 @@ class ImageFileCollection:
         The extension from which the header and data will be read in all
         files.Default is ``0``.
 
+    extensions: list
+        A list of FITS extensions to search for.  The default is ``['fit',
+        'fits', 'fts']``.
+
     Raises
     ------
     ValueError
@@ -87,7 +91,8 @@ class ImageFileCollection:
 
     def __init__(self, location=None, keywords=None,
                  find_fits_by_reading=False,
-                 filenames=None, glob_include=None, glob_exclude=None, ext=0):
+                 filenames=None, glob_include=None, glob_exclude=None, ext=0,
+                 extensions=None):
         # Include or exclude files from the collection based on glob pattern
         # matching - has to go above call to _get_files()
         if glob_exclude is not None:
@@ -107,7 +112,7 @@ class ImageFileCollection:
 
         self._filenames = filenames
         self._files = []
-        self._files = self._get_files()
+        self._files = self._get_files(extensions=extensions)
 
         if self._files == []:
             warnings.warn("no FITS files in the collection.",
@@ -432,7 +437,7 @@ class ImageFileCollection:
         return ImageFileCollection(filenames=files,
                                    keywords=self.keywords)
 
-    def _get_files(self):
+    def _get_files(self, extensions=None):
         """ Helper method which checks whether ``files`` should be set
         to a subset of file names or to all file names in a directory.
 
