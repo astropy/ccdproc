@@ -22,6 +22,7 @@ env:
         - MAIN_CMD='pytest'
         - SETUP_CMD='ccdproc'
         - CONDA_CHANNELS='astropy'
+        - PIP_DEPENDENCIES='memory-profiler resource'
         - ASTROPY_USE_SYSTEM_PYTEST=1
 
     matrix:
