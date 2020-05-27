@@ -18,7 +18,7 @@ env:
         # overridden underneath. They are defined here in order to save having
         # to repeat them for all configurations.
         - NUMPY_VERSION=stable
-        - ASTROPY_VERSION=stable
+        - ASTROPY_VERSION=4.1rc1
         - MAIN_CMD='pytest'
         - SETUP_CMD='ccdproc'
         - CONDA_CHANNELS='astropy'
@@ -35,16 +35,7 @@ matrix:
         # Do a windows run
         - os: windows
           env: PYTHON_VERSION=3.7
-               ASTROPY_VERSION=stable
-               NUMPY_VERSION=stable
-
-        # Try Astropy development versions. This requires them to be
-        # compiled during setup which takes some time.
-        # Building against numpy dev was removed because it was causing
-        # failures due to numpy dev/astropy dev conflicts unresolvable
-        # in ccdproc.
-        - env: PYTHON_VERSION=3.7
-               ASTROPY_VERSION=development
+               ASTROPY_VERSION=4.1rc1
                NUMPY_VERSION=stable
 
         # Check for sphinx doc build warnings
@@ -59,11 +50,6 @@ matrix:
         # is available on pypi.
         - env: PYTHON_VERSION=3.7
                NUMPY_VERSION=prerelease
-
-        # pycodestyle test, see setup.cfg for tested pep8 warnings/errors
-        - env: PYTHON_VERSION=3.7
-               MAIN_CMD='pycodestyle ccdproc --count  --show-source --show-pep8'
-               SETUP_CMD=''
 
 install:
     - git clone git://github.com/astropy/ci-helpers.git
