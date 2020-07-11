@@ -7,6 +7,8 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Updated test suite to use absolute, not relative imports [#735]
+
 Bug Fixes
 ^^^^^^^^^
 

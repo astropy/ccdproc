@@ -19,7 +19,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from astropy.nddata import CCDData
 
-from ..image_collection import ImageFileCollection
+from ccdproc.image_collection import ImageFileCollection
 
 _filters = []
 _original_dir = ''

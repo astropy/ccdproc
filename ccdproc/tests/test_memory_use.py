@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 try:
-    from .run_for_memory_profile import run_memory_profile, generate_fits_files, TMPPATH
+    from ccdproc.tests.run_for_memory_profile import run_memory_profile, generate_fits_files, TMPPATH
 except ImportError:
     memory_profile_present = False
 else:
