@@ -8,9 +8,9 @@ from astropy.utils import NumpyRNGContext
 from astropy.nddata import StdDevUncertainty
 from astropy import units as u
 
-from ..core import (cosmicray_lacosmic, cosmicray_median,
+from ccdproc.core import (cosmicray_lacosmic, cosmicray_median,
                     background_deviation_box, background_deviation_filter)
-from .pytest_fixtures import ccd_data as ccd_data_func
+from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
 
 DATA_SCALE = 5.3

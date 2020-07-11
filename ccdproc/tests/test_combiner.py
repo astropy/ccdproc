@@ -9,8 +9,8 @@ import pytest
 from astropy.utils.data import get_pkg_data_filename
 from astropy.nddata import CCDData
 
-from ..combiner import Combiner, combine, _calculate_step_sizes
-from .pytest_fixtures import ccd_data as ccd_data_func
+from ccdproc.combiner import Combiner, combine, _calculate_step_sizes
+from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
 
 # test that the Combiner raises error if empty

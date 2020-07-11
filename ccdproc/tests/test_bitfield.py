@@ -5,7 +5,7 @@ import pytest
 
 from astropy.tests.helper import catch_warnings
 
-from ..core import bitfield_to_boolean_mask
+from ccdproc.core import bitfield_to_boolean_mask
 
 
 def test_bitfield_not_integer():
