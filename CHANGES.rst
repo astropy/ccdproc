@@ -6,7 +6,7 @@ New Features
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-- Add memory_profiler as a test requirement [#730]
+- Add memory_profiler as a test requirement [#739]
 
 Bug Fixes
 ^^^^^^^^^
