@@ -33,6 +33,7 @@ Alphabetical list of contributors
 * Anthony Horton (@AnthonyHorton)
 * Jennifer Karr (@JenniferKarr)
 * Yücel Kılıç (@yucelkilic)
+* Kelvin Lee (@laserkelvin)
 * James McCormac (@jmccormac01)
 * Stefan Nelson (@stefannelson)
 * Joe Philip Ninan (@indiajoe)
