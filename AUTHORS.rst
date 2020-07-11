@@ -46,6 +46,7 @@ Alphabetical list of contributors
 * Connor Stotts (@stottsco)
 * Ole Streicher (@olebole)
 * JVSN Reddy (@janga1997)
+* Jenna Ryon (@jryon)
 * Brigitta Sipocz (@bsipocz)
 * Erik Tollerud (@eteq)
 * Simon Torres (@simontorres)
