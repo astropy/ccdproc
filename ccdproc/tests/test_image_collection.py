@@ -634,6 +634,8 @@ class TestImageFileCollection:
         ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
         assert 'col0' not in ic.summary.colnames
 
+    @pytest.mark.skipif("os.environ.get('APPVEYOR') or os.sys.platform == 'win32'",
+                        reason="fails on Windows because of file permissions.")
     def test_header_with_long_history_roundtrips_to_disk(self, triage_setup):
         # I tried combing several history comments into one table entry with
         # '\n'.join(history), which resulted in a table that couldn't
