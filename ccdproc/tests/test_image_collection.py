@@ -2,7 +2,7 @@
 
 import os
 from shutil import rmtree
-from tempfile import mkdtemp, TemporaryDirectory
+from tempfile import mkdtemp, TemporaryDirectory, NamedTemporaryFile
 from glob import iglob
 from pathlib import Path
 import logging
@@ -634,6 +634,8 @@ class TestImageFileCollection:
         ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
         assert 'col0' not in ic.summary.colnames
 
+    @pytest.mark.skipif("os.environ.get('APPVEYOR') or os.sys.platform == 'win32'",
+                        reason="fails on Windows because of file permissions.")
     def test_header_with_long_history_roundtrips_to_disk(self, triage_setup):
         # I tried combing several history comments into one table entry with
         # '\n'.join(history), which resulted in a table that couldn't
@@ -650,8 +652,9 @@ class TestImageFileCollection:
         path_history = os.path.join(triage_setup.test_dir, 'long_history.fit')
         long_history.writeto(path_history)
         ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
-        ic.summary.write('test_table.txt', format='ascii.csv')
-        table_disk = Table.read('test_table.txt', format='ascii.csv')
+        with NamedTemporaryFile() as test_table:
+            ic.summary.write(test_table.name, format='ascii.csv')
+            table_disk = Table.read(test_table.name, format='ascii.csv')
         assert len(table_disk) == len(ic.summary)
 
     @pytest.mark.skipif("os.environ.get('APPVEYOR') or os.sys.platform == 'win32'",
