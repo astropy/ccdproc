@@ -26,7 +26,7 @@ env:
 
         # List runtime dependencies for the package that are available as conda
         # packages here.
-        - CONDA_DEPENDENCIES='memory-profiler'
+        - CONDA_DEPENDENCIES='memory_profiler'
 
     matrix:
         - SETUP_CMD='egg_info'
