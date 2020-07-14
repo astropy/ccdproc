@@ -24,6 +24,10 @@ env:
         - CONDA_CHANNELS='astropy'
         - ASTROPY_USE_SYSTEM_PYTEST=1
 
+        # List runtime dependencies for the package that are available as conda
+        # packages here.
+        - CONDA_DEPENDENCIES='memory-profiler'
+
     matrix:
         - SETUP_CMD='egg_info'
 
