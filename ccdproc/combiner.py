@@ -380,8 +380,8 @@ class Combiner:
         # return the combined image
         return combined_image
 
-    def average_combine(self, scale_func=ma.average, scale_to=None,
-                        uncertainty_func=ma.std):
+    def average_combine(self, scale_func=np.nanmean, scale_to=None,
+                        uncertainty_func=np.nanstd, sum_func=np.nansum):
         """
         Average combine together a set of arrays.
 
@@ -397,7 +397,7 @@ class Combiner:
         ----------
         scale_func : function, optional
             Function to calculate the average. Defaults to
-            `numpy.ma.average`.
+            `numpy.nanmean`.
 
         scale_to : float or None, optional
             Scaling factor used in the average combined image. If given,
@@ -406,34 +406,58 @@ class Combiner:
         uncertainty_func : function, optional
             Function to calculate uncertainty. Defaults to `numpy.ma.std`.
 
+        sum_func : function, optional
+            Function used to calculate sums, including the one done to
+            find the weighted average. Defaults to `numpy.nansum`.
+
         Returns
         -------
         combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
         # set up the data
-        data, wei = scale_func(self._get_scaled_data(scale_to),
-                               axis=0, weights=self.weights,
-                               returned=True)
+
+        # Replace masked values with NaN
+        data = self._get_scaled_data(scale_to)
+
+        # Get the data as an unmasked array
+        if self.data_arr.mask.any():
+            data = np.ma.filled(data, fill_value=np.nan)
+        else:
+            data = data.data
+
+        # Do NOT modify data after this -- we need it to be intact when we
+        # we get to the uncertainty calculation.
+        if self.weights is not None:
+            if self.weights.shape != data.shape:
+                # Add extra axes to the weights for broadcasting
+                weights = np.reshape(self.weights, [len(self.weights), 1, 1])
+            else:
+                weights = self.weights
+
+            weighted_sum = sum_func(data * weights, axis=0)
+            mean = weighted_sum / sum_func(weights, axis=0)
+        else:
+            mean = scale_func(data, axis=0)
 
         # set up the mask
-        masked_values = self.data_arr.mask.sum(axis=0)
+        masked_values = np.isnan(data).sum(axis=0)
         mask = (masked_values == len(self.data_arr))
 
         # set up the deviation
-        uncertainty = uncertainty_func(self.data_arr, axis=0)
+        uncertainty = uncertainty_func(data, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
+        uncertainty /= np.sqrt(len(data) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
         uncertainty = np.asarray(uncertainty)
 
         # create the combined image with a dtype that matches the combiner
-        combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
+        combined_image = CCDData(np.asarray(mean, dtype=self.dtype),
                                  mask=mask, unit=self.unit,
                                  uncertainty=StdDevUncertainty(uncertainty))
 
         # update the meta data
-        combined_image.meta['NCOMBINE'] = len(self.data_arr)
+        combined_image.meta['NCOMBINE'] = len(data)
 
         # return the combined image
         return combined_image

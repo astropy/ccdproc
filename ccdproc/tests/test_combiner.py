@@ -260,7 +260,9 @@ def test_combiner_mask_average():
     ccd_list = [ccd, ccd, ccd]
     c = Combiner(ccd_list)
     ccd = c.average_combine()
-    assert ccd.data[0, 0] == 0
+    # How can we assert anything about the data if all values
+    # are masked?!
+    # assert ccd.data[0, 0] == 0
     assert ccd.data[5, 5] == 1
     assert ccd.mask[0, 0]
     assert not ccd.mask[5, 5]
