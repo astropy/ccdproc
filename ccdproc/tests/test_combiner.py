@@ -121,6 +121,18 @@ def test_1Dweights():
     np.testing.assert_almost_equal(ccd.data, 312.5)
 
 
+def test_pixelwise_weights():
+    ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
+                CCDData(np.zeros((10, 10)) - 1000, unit=u.adu),
+                CCDData(np.zeros((10, 10)) + 1000, unit=u.adu)]
+    c = Combiner(ccd_list)
+    c.weights = np.ones_like(c.data_arr)
+    c.weights[:, 5, 5] = [1, 5, 10]
+    ccd = c.average_combine()
+    np.testing.assert_almost_equal(ccd.data[5, 5], 312.5)
+    np.testing.assert_almost_equal(ccd.data[0, 0], 0)
+
+
 # test the min-max rejection
 def test_combiner_minmax():
     ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
