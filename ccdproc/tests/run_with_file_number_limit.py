@@ -1,7 +1,6 @@
 from argparse import ArgumentParser
 from tempfile import TemporaryDirectory
 from pathlib import Path
-import resource
 import mmap
 import sys
 import gc
@@ -170,6 +169,9 @@ def run_with_limit(n, kind='fits', size=None, overhead=6,
         **entire python process** which will almost certainly lead to nasty
         side effects.
     """
+    # Keep the resource import here so that it is skipped on windows
+    import resource
+
     # Do a little input validation
     if n <= 0:
         raise ValueError("Argument 'n' must be a positive integer")
