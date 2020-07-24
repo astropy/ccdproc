@@ -6,6 +6,7 @@ New Features
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+- Add memory_profiler as a test requirement [#739]
 
 - Updated test suite to use absolute, not relative imports [#735]
 
