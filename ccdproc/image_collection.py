@@ -618,6 +618,14 @@ class ImageFileCollection:
                                file_path, e)
                 continue
 
+        ## Bugfix: Unfixable header keywords sometimes yield duplicate
+        # entries (probably arises the `_dict_from_fits_header` above)
+        # For now just check if there are more values than files and
+        # if so, fill with None for now.
+        for key in summary_dict.keys():
+            if len(summary_dict[key]) > len(summary_dict['file']):
+                summary_dict[key]= [None]*len(summary_dict['file'])
+
         summary_table = Table(summary_dict, masked=True)
 
         for column in summary_table.colnames:
