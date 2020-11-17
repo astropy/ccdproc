@@ -56,6 +56,7 @@ Alphabetical list of contributors
 * Nathan Walker (@walkerna22)
 * Benjamin Weiner (@bjweiner)
 * Jiyong Youn (@hletrd)
+* Michael Gully-Santiago (@gully)
 
 (If you have contributed to the ccdproc project and your name is missing,
 please send an email to the coordinators, or
