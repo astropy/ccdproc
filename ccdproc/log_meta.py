@@ -10,6 +10,9 @@ from astropy.nddata import NDData
 from astropy import units as u
 from astropy.io import fits
 
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
+
 import ccdproc  # really only need Keyword from ccdproc
 
 __all__ = []
