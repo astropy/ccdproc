@@ -322,7 +322,7 @@ def test_combiner_mask_sum():
 
 # test combiner convenience function reads fits file and combine as expected
 def test_combine_average_fitsimages():
-    fitsfile = get_pkg_data_filename('data/a8280271.fits')
+    fitsfile = get_pkg_data_filename('data/a8280271.fits', package='ccdproc.tests')
     ccd = CCDData.read(fitsfile, unit=u.adu)
     ccd_list = [ccd] * 3
     c = Combiner(ccd_list)

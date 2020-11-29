@@ -653,7 +653,8 @@ class TestImageFileCollection:
         long_history.writeto(path_history)
         ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
         with NamedTemporaryFile() as test_table:
-            ic.summary.write(test_table.name, format='ascii.csv')
+            ic.summary.write(test_table.name, format='ascii.csv',
+                             overwrite=True)
             table_disk = Table.read(test_table.name, format='ascii.csv')
         assert len(table_disk) == len(ic.summary)
 
