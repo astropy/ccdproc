@@ -20,12 +20,13 @@ jobs:
       matrix:
         name: [
           'ubuntu-py37',
-          # 'ubuntu-py38',
+          'ubuntu-py38',
+          'ubuntu-py39',
           # 'macos-py38',
-          # 'windows-py38',
+          'windows-py38',
           # 'ubuntu-py38-test',
-          # 'ubuntu-codestyle',
-          # 'ubuntu-build_docs',
+          'ubuntu-codestyle',
+          'ubuntu-build_docs',
           # 'ubuntu-linkcheck',
           # 'ubuntu-bandit',
           # 'ubuntu-py36-test-alldeps-astropylts-numpy117',
@@ -37,32 +38,35 @@ jobs:
           - name: 'ubuntu-py37'
             os: ubuntu-latest
             python: '3.7'
-            tox_env: 'py37-test-alldeps-cov'
-          # - name: 'ubuntu-py38'
-          #   os: ubuntu-latest
-          #   python: '3.8'
-          #   tox_env: 'py38-test-alldeps-cov'
-          #   use_remote_data: true
+            tox_env: 'py37-test-alldeps-nump117'
+          - name: 'ubuntu-py38'
+            os: ubuntu-latest
+            python: '3.8'
+            tox_env: 'py38-test-alldeps-cov-numpy118'
+          - name: 'ubuntu-py39'
+            os: ubuntu-latest
+            python: '3.9'
+            tox_env: 'py38-test-alldeps-numpy119'
           # - name: 'macos-py38'
           #   os: macos-latest
           #   python: '3.8'
           #   tox_env: 'py38-test-alldeps'
-          # - name: 'windows-py38'
-          #   os: windows-latest
-          #   python: '3.8'
-          #   tox_env: 'py38-test-alldeps'
+          - name: 'windows-py38'
+            os: windows-latest
+            python: '3.8'
+            tox_env: 'py38-test-alldeps'
           # - name: 'ubuntu-py38-test'
           #   os: ubuntu-latest
           #   python: '3.8'
           #   tox_env: 'py38-test'
           # - name: 'ubuntu-codestyle'
-          #   os: ubuntu-latest
-          #   python: '3.8'
-          #   tox_env: 'codestyle'
-          # - name: 'ubuntu-build_docs'
-          #   os: ubuntu-latest
-          #   python: '3.8'
-          #   tox_env: 'build_docs'
+            os: ubuntu-latest
+            python: '3.9'
+            tox_env: 'pycodestyle'
+          - name: 'ubuntu-build_docs'
+            os: ubuntu-latest
+            python: '3.8'
+            tox_env: 'build_docs'
           # - name: 'ubuntu-linkcheck'
           #   os: ubuntu-latest
           #   python: '3.8'
