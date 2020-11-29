@@ -1,4 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+from sys import platform
 
 import numpy as np
 
@@ -26,6 +27,8 @@ def teardown_module():
             fil.unlink()
 
 
+@pytest.mark.skipif(not platform.startswith('linux'),
+                    reason='memory tests only work on linux')
 @pytest.mark.skipif(not memory_profile_present,
                     reason='memory_profiler not installed')
 @pytest.mark.parametrize('combine_method',
