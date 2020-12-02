@@ -314,9 +314,10 @@ def test_combiner_mask_median():
     ccd_list = [ccd, ccd, ccd]
     c = Combiner(ccd_list)
     ccd = c.median_combine()
-    assert ccd.data[0, 0] == 0
-    assert ccd.data[5, 5] == 1
+    # We should not check the data value for masked entries.
+    # Instead, just check that entries are masked appropriately.
     assert ccd.mask[0, 0]
+    assert ccd.data[5, 5] == 1
     assert not ccd.mask[5, 5]
 
 
