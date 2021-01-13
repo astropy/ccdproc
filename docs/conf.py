@@ -80,8 +80,9 @@ copyright = '{0}, {1}'.format(
 __import__(project)
 package = sys.modules[project]
 
-version = package.__version__
-release = package.__version__
+ver = package.__version__
+version = '.'.join(ver.split('.'))[:5]
+release = ver
 
 # -- Options for HTML output --------------------------------------------------
 
