@@ -77,15 +77,12 @@ copyright = '{0}, {1}'.format(
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
+__import__(project)
+package = sys.modules[project]
 
-from pkg_resources import get_distribution, DistributionNotFound
-try:
-    __version__ = get_distribution(__name__)
-except DistributionNotFound:
-    __version__ = 'unknown'
-
-version = __version__
-release = __version__
+ver = package.__version__
+version = '.'.join(ver.split('.'))[:5]
+release = ver
 
 # -- Options for HTML output --------------------------------------------------
 
