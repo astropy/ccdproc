@@ -16,6 +16,8 @@ Bug Fixes
 - ``test_image_collection.py`` in the test suite no longer produces
  permanent files on disk and cleans up after itself. [#738]
 
+- Change ``Combiner`` to allow accepting either a list or a generator [#757]
+
 2.1.0 (2019-12-24)
 ------------------
 
