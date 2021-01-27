@@ -22,8 +22,8 @@ class Combiner:
 
     Parameters
     -----------
-    ccd_list : list
-        A list of CCDData objects that will be combined together.
+    ccd_iter : list or generator
+        A list or generator of CCDData objects that will be combined together.
 
     dtype : str or `numpy.dtype` or None, optional
         Allows user to set dtype. See `numpy.array` ``dtype`` parameter
@@ -33,7 +33,7 @@ class Combiner:
     Raises
     ------
     TypeError
-        If the ``ccd_list`` are not `~astropy.nddata.CCDData` objects, have different
+        If the ``ccd_iter`` are not `~astropy.nddata.CCDData` objects, have different
         units, or are different shapes.
 
     Examples
@@ -56,15 +56,18 @@ class Combiner:
                  [ 0.66666667,  0.66666667,  0.66666667,  0.66666667],
                  [ 0.66666667,  0.66666667,  0.66666667,  0.66666667]])
     """
-    def __init__(self, ccd_list, dtype=None):
-        if ccd_list is None:
-            raise TypeError("ccd_list should be a list of CCDData objects.")
+    def __init__(self, ccd_iter, dtype=None):
+        if ccd_iter is None:
+            raise TypeError("ccd_iter should be a list or a generator of CCDData objects.")
 
         if dtype is None:
             dtype = np.float64
 
         default_shape = None
         default_unit = None
+
+        ccd_list = list(ccd_iter)
+
         for ccd in ccd_list:
             # raise an error if the objects aren't CCDData objects
             if not isinstance(ccd, CCDData):
