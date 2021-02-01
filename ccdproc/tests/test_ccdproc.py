@@ -30,8 +30,8 @@ except ImportError:
     HAS_BLOCK_X_FUNCS = False
 
 
-# test creating deviation
-# success expected if u_image * u_gain = u_readnoise
+# Test creating deviation
+# Success expected if u_image * u_gain = u_readnoise
 @pytest.mark.parametrize('u_image,u_gain,u_readnoise,expect_success', [
                          (u.electron, None, u.electron, True),
                          (u.electron, u.electron, u.electron, False),
@@ -62,7 +62,7 @@ def test_create_deviation(u_image, u_gain, u_readnoise,
         np.testing.assert_array_equal(ccd_var.uncertainty.array,
                                       expected_var)
         assert ccd_var.unit == ccd_data.unit
-        # uncertainty should *not* have any units -- does it?
+        # Uncertainty should *not* have any units -- does it?
         with pytest.raises(AttributeError):
             ccd_var.uncertainty.array.unit
     else:
@@ -95,18 +95,18 @@ def test_create_deviation_from_negative():
 
 def test_create_deviation_keywords_must_have_unit():
     ccd_data = ccd_data_func()
-    # gain must have units if provided
+    # Gain must have units if provided
     with pytest.raises(TypeError):
         create_deviation(ccd_data, gain=3)
-    # readnoise must have units
+    # Readnoise must have units
     with pytest.raises(TypeError):
         create_deviation(ccd_data, readnoise=5)
-    # readnoise must be provided
+    # Readnoise must be provided
     with pytest.raises(ValueError):
         create_deviation(ccd_data)
 
 
-# tests for overscan
+# Tests for overscan
 @pytest.mark.parametrize('data_rectangle', [False, True])
 @pytest.mark.parametrize('median,transpose', [
                          (False, False),
@@ -118,9 +118,9 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     if data_rectangle:
         ccd_data.data = ccd_data.data[:, :-30]
 
-    # create the overscan region
+    # Create the overscan region
     oscan = 300.
-    oscan_region = (slice(None), slice(0, 10))  # indices 0 through 9
+    oscan_region = (slice(None), slice(0, 10))  # Indices 0 through 9
     fits_section = '[1:10, :]'
     science_region = (slice(None), slice(10, None))
 
@@ -184,7 +184,7 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     np.testing.assert_almost_equal(
         ccd_data_fits_section_overscan_auto.data[science_region].mean(),
         sky + original_mean)
-    # overscan_axis should be 1 for a square overscan region
+    # Overscan_axis should be 1 for a square overscan region
     # This test only works for a non-square data region, but the
     # default has the wrong axis.
     if data_rectangle:
@@ -207,7 +207,7 @@ def test_subtract_overscan(median, transpose, data_rectangle):
                          False])
 def test_subtract_overscan_model(transpose):
     ccd_data = ccd_data_func()
-    # create the overscan region
+    # Create the overscan region
     size = ccd_data.shape[0]
 
     oscan_region = (slice(None), slice(0, 10))
@@ -226,7 +226,7 @@ def test_subtract_overscan_model(transpose):
 
     original_mean = ccd_data.data[science_region].mean()
 
-    ccd_data.data[oscan_region] = 0.  # only want overscan in that region
+    ccd_data.data[oscan_region] = 0.  # Only want overscan in that region
     ccd_data.data = ccd_data.data + scan
 
     ccd_data = subtract_overscan(ccd_data, overscan=ccd_data[oscan_region],
@@ -245,17 +245,17 @@ def test_subtract_overscan_model(transpose):
 
 def test_subtract_overscan_fails():
     ccd_data = ccd_data_func()
-    # do we get an error if the *image* is neither CCDData nor an array?
+    # Do we get an error if the *image* is neither CCDData nor an array?
     with pytest.raises(TypeError):
         subtract_overscan(3, np.zeros((5, 5)))
-    # do we get an error if the *overscan* is not an image or an array?
+    # Do we get an error if the *overscan* is not an image or an array?
     with pytest.raises(TypeError):
         subtract_overscan(np.zeros((10, 10)), 3, median=False, model=None)
     # Do we get an error if we specify both overscan and fits_section?
     with pytest.raises(TypeError):
         subtract_overscan(ccd_data, overscan=ccd_data[0:10],
                           fits_section='[1:10]')
-    # do we raise an error if we specify neither overscan nor fits_section?
+    # Do we raise an error if we specify neither overscan nor fits_section?
     with pytest.raises(TypeError):
         subtract_overscan(ccd_data)
     # Does a fits_section which is not a string raise an error?
@@ -338,7 +338,7 @@ def test_subtract_bias_fails():
     bias = CCDData(np.array([200, 200]), unit=u.adu)
     with pytest.raises(ValueError):
         subtract_bias(ccd_data, bias)
-    # should fail because units don't match
+    # Should fail because units don't match
     bias = CCDData(np.zeros_like(ccd_data), unit=u.meter)
     with pytest.raises(u.UnitsError):
         subtract_bias(ccd_data, bias)
@@ -360,7 +360,7 @@ def test_subtract_dark(explicit_times, scale, exposure_keyword):
     ccd_data.header[exptime_key] = exptime
     dark_exposure_unit = exposure_unit
     if explicit_times:
-        # test case when units of dark and data exposures are different
+        # Test case when units of dark and data exposures are different
         dark_exposure_unit = u.minute
         dark_sub = subtract_dark(ccd_data, master_dark,
                                  dark_exposure=dark_exptime * dark_exposure_unit,
@@ -434,7 +434,7 @@ def test_subtract_dark_fails():
                       exposure_unit=u.second)
     assert "uncalibrated image" in str(e.value)
 
-    # fail when the arrays are not the same size
+    # Fail when the arrays are not the same size
     with pytest.raises(ValueError):
         small_master = CCDData(ccd_data)
         small_master.data = np.zeros((1, 1))
@@ -467,10 +467,10 @@ def test_unit_mismatch_behaves_as_expected():
     assert expected_message in str(e.value)
 
 
-# test for flat correction
+# Test for flat correction
 def test_flat_correct():
     ccd_data = ccd_data_func(data_scale=10)
-    # add metadata to header for a test below...
+    # Add metadata to header for a test below...
     ccd_data.header['my_key'] = 42
     size = ccd_data.shape[0]
     # create the flat, with some scatter
@@ -478,7 +478,7 @@ def test_flat_correct():
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat_data = flat_correct(ccd_data, flat, add_keyword=None)
 
-    # check that the flat was normalized
+    # Check that the flat was normalized
     # Should be the case that flat * flat_data = ccd_data * flat.data.mean
     # if the normalization was done correctly.
     np.testing.assert_almost_equal((flat_data.data * flat.data).mean(),
@@ -486,20 +486,20 @@ def test_flat_correct():
     np.testing.assert_allclose(ccd_data.data / flat_data.data,
                                flat.data / flat.data.mean())
 
-    # check that metadata is unchanged (since logging is turned off)
+    # Check that metadata is unchanged (since logging is turned off)
     assert flat_data.header == ccd_data.header
 
 
-# test for flat correction with min_value
+# Test for flat correction with min_value
 def test_flat_correct_min_value(data_scale=1, data_mean=5):
     ccd_data = ccd_data_func()
     size = ccd_data.shape[0]
 
-    # create the flat
+    # Create the flat
     data = 2 * np.random.normal(loc=1.0, scale=0.05, size=(size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat_orig_data = flat.data.copy()
-    min_value = 2.1  # should replace some, but not all, values
+    min_value = 2.1  # Should replace some, but not all, values
     flat_corrected_data = flat_correct(ccd_data, flat, min_value=min_value)
     flat_with_min = flat.copy()
     flat_with_min.data[flat_with_min.data < min_value] = min_value
@@ -524,7 +524,7 @@ def test_flat_correct_norm_value():
     # Test flat correction with mean value that is different than
     # the mean of the flat frame.
 
-    # create the flat, with some scatter
+    # Create the flat, with some scatter
     # Note that mean value of flat is set below and is different than
     # the mean of the flat data.
     flat_mean = 5.0
@@ -533,7 +533,7 @@ def test_flat_correct_norm_value():
     flat_data = flat_correct(ccd_data, flat, add_keyword=None,
                              norm_value=flat_mean)
 
-    # check that the flat was normalized
+    # Check that the flat was normalized
     # Should be the case that flat * flat_data = ccd_data * flat_mean
     # if the normalization was done correctly.
     np.testing.assert_almost_equal((flat_data.data * flat.data).mean(),
@@ -547,7 +547,7 @@ def test_flat_correct_norm_value_bad_value():
     # Test that flat_correct raises the appropriate error if
     # it is given a bad norm_value. Bad means <=0.
 
-    # create the flat, with some scatter
+    # Create the flat, with some scatter
     data = np.random.normal(loc=1.0, scale=0.05, size=ccd_data.shape)
     flat = CCDData(data, meta=fits.Header(), unit=ccd_data.unit)
     with pytest.raises(ValueError) as e:
@@ -555,20 +555,20 @@ def test_flat_correct_norm_value_bad_value():
     assert "norm_value must be" in str(e.value)
 
 
-# test for deviation and for flat correction
+# Test for deviation and for flat correction
 def test_flat_correct_deviation():
     ccd_data = ccd_data_func(data_scale=10, data_mean=300)
     size = ccd_data.shape[0]
     ccd_data.unit = u.electron
     ccd_data = create_deviation(ccd_data, readnoise=5 * u.electron)
-    # create the flat
+    # Create the flat
     data = 2 * np.ones((size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat = create_deviation(flat, readnoise=0.5 * u.electron)
     ccd_data = flat_correct(ccd_data, flat)
 
 
-# test the uncertainty on the data after flat correction
+# Test the uncertainty on the data after flat correction
 def test_flat_correct_data_uncertainty():
     # Regression test for #345
     dat = CCDData(np.ones([100, 100]), unit='adu',
@@ -580,7 +580,7 @@ def test_flat_correct_data_uncertainty():
     assert (res.uncertainty.array == dat.uncertainty.array).all()
 
 
-# tests for gain correction
+# Tests for gain correction
 def test_gain_correct():
     ccd_data = ccd_data_func()
     init_data = ccd_data.data
@@ -599,20 +599,20 @@ def test_gain_correct_quantity():
     assert ccd_data.unit == u.electron
 
 
-# test transform is ccd
+# Test transform is ccd
 def test_transform_isccd():
     with pytest.raises(TypeError):
         transform_image(1, 1)
 
 
-# test function is callable
+# Test function is callable
 def test_transform_isfunc():
     ccd_data = ccd_data_func()
     with pytest.raises(TypeError):
         transform_image(ccd_data, 1)
 
 
-# test warning is issue if WCS information is available
+# Test warning is issue if WCS information is available
 def test_catch_transform_wcs_warning():
     ccd_data = ccd_data_func()
 
@@ -650,7 +650,7 @@ def test_transform_image(mask_data, uncertainty):
                            tran.uncertainty.array)
 
 
-# test block_reduce and block_replicate wrapper
+# Test block_reduce and block_replicate wrapper
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
 @pytest.mark.skipif((skimage.__version__ < '0.14.2') and
                     ('dev' in np.__version__),
@@ -737,20 +737,20 @@ def test_block_replicate():
     assert 'testkw2' not in ccd.meta
 
 
-# test blockaveraging ndarray
+# Test blockaveraging ndarray
 def test__blkavg_ndarray():
     with pytest.raises(TypeError):
         _blkavg(1, (5, 5))
 
 
-# test rebinning dimensions
+# Test rebinning dimensions
 def test__blkavg_dimensions():
     ccd_data = ccd_data_func(data_size=10)
     with pytest.raises(ValueError):
         _blkavg(ccd_data.data, (5,))
 
 
-# test blkavg works
+# Test blkavg works
 def test__blkavg_larger():
     ccd_data = ccd_data_func(data_size=20)
     a = ccd_data.data
@@ -760,7 +760,7 @@ def test__blkavg_larger():
     np.testing.assert_almost_equal(b.sum(), 0.25 * a.sum())
 
 
-# test overscan changes
+# Test overscan changes
 def test__overscan_schange():
     ccd_data = ccd_data_func()
     old_data = ccd_data.copy()
@@ -1000,11 +1000,11 @@ def test_ccd_process_parameters_are_appropriate():
     with pytest.raises(TypeError):
         ccd_process(ccd_data, oscan=True)
 
-    # trim section check
+    # Trim section check
     with pytest.raises(TypeError):
         ccd_process(ccd_data, trim=True)
 
-    # error frame check
+    # Error frame check
     # gain and readnoise must be specified
     with pytest.raises(ValueError):
         ccd_process(ccd_data, error=True)
@@ -1013,7 +1013,7 @@ def test_ccd_process_parameters_are_appropriate():
     with pytest.raises(ValueError):
         ccd_process(ccd_data, error=True, gain=None, readnoise=5)
 
-    # mask check
+    # Mask check
     with pytest.raises(TypeError):
         ccd_process(ccd_data, bad_pixel_mask=3)
 
@@ -1021,13 +1021,13 @@ def test_ccd_process_parameters_are_appropriate():
     with pytest.raises(TypeError):
         ccd_process(ccd_data, master_bias=3)
 
-    # master flat check
+    # Master flat check
     with pytest.raises(TypeError):
         ccd_process(ccd_data, master_flat=3)
 
 
 def test_ccd_process():
-    # test the through ccd_process
+    # Test the through ccd_process
     ccd_data = CCDData(10.0 * np.ones((100, 100)), unit=u.adu)
     ccd_data.data[:, -10:] = 2
     ccd_data.meta['testkw'] = 100
@@ -1051,8 +1051,8 @@ def test_ccd_process():
                        dark_scale=False, dark_exposure=1.*u.s,
                        data_exposure=1.*u.s)
 
-    # final results should be (10 - 2) / 2.0 - 2 = 2
-    # error should be (4 + 5)**0.5 / 0.5  = 3.0
+    # Final results should be (10 - 2) / 2.0 - 2 = 2
+    # Error should be (4 + 5)**0.5 / 0.5  = 3.0
 
     np.testing.assert_array_equal(2.0 * np.ones((100, 90)), occd.data)
     np.testing.assert_almost_equal(3.0 * np.ones((100, 90)),
@@ -1064,7 +1064,7 @@ def test_ccd_process():
 
 
 def test_ccd_process_gain_corrected():
-    # test the through ccd_process with gain_corrected as False
+    # Test the through ccd_process with gain_corrected as False
     ccd_data = CCDData(10.0 * np.ones((100, 100)), unit=u.adu)
     ccd_data.data[:, -10:] = 2
     ccd_data.meta['testkw'] = 100
@@ -1088,8 +1088,8 @@ def test_ccd_process_gain_corrected():
                        dark_scale=False, dark_exposure=1.*u.s,
                        data_exposure=1.*u.s, gain_corrected=False)
 
-    # final results should be (10 - 2) / 2.0 - 2 = 2
-    # error should be (4 + 5)**0.5 / 0.5  = 3.0
+    # Final results should be (10 - 2) / 2.0 - 2 = 2
+    # Error should be (4 + 5)**0.5 / 0.5  = 3.0
 
     np.testing.assert_array_equal(2.0 * np.ones((100, 90)), occd.data)
     np.testing.assert_almost_equal(3.0 * np.ones((100, 90)),

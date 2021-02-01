@@ -10,7 +10,7 @@ from astropy.nddata import NDData
 from astropy import units as u
 from astropy.io import fits
 
-import ccdproc  # really only need Keyword from ccdproc
+import ccdproc  # Really only need Keyword from ccdproc
 
 __all__ = []
 
@@ -69,7 +69,7 @@ def log_to_metadata(func):
     keywords = argspec.varkw
     defaults = argspec.defaults
 
-    # grab the names of positional arguments for use in automatic logging
+    # Grab the names of positional arguments for use in automatic logging
     try:
         original_positional_args = original_args[:-len(defaults)]
     except TypeError:
@@ -139,7 +139,7 @@ def _replace_array_with_placeholder(value):
         try:
             length = len(value)
         except TypeError:
-            # value has no length...
+            # Value has no length...
             try:
                 # ...but if it is NDData its .data will have a length
                 length = len(value.data)
