@@ -572,8 +572,7 @@ class TestImageFileCollection:
 
     def test_no_fits_files_in_collection(self):
         with catch_warnings(AstropyUserWarning) as warning_lines:
-            # FIXME: What exactly does this assert?
-            assert "no fits files in the collection."
+            assert "no FITS files in the collection."
 
     def test_initialization_with_no_keywords(self, triage_setup):
         # This test is primarily historical -- the old default for
@@ -1012,7 +1011,9 @@ class TestImageFileCollection:
         # with no keys and no files returns None.
 
         # Make a dummy keyword that we then delete.
-        ic = ImageFileCollection(triage_setup.test_dir, keywords=['fafa'])
+        with catch_warnings(AstropyUserWarning) as warning_lines:
+            ic = ImageFileCollection(triage_setup.test_dir, keywords=['fafa'])
+            assert "no FITS files in the collection."
         ic.keywords = []
         assert set(ic.summary.colnames) == set(['file'])
 

@@ -781,7 +781,8 @@ def test_cosmicray_median_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     error = np.zeros_like(ccd_data)
-    ccd = cosmicray_median(ccd_data, error_image=error, thresh=5, mbox=11, gbox=0, rbox=0)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        _ = cosmicray_median(ccd_data, error_image=error, thresh=5, mbox=11, gbox=0, rbox=0)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
@@ -799,7 +800,8 @@ def test_flat_correct_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     flat = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
-    ccd = flat_correct(ccd_data, flat=flat)
+    with np.errstate(invalid="ignore"):
+        ccd = flat_correct(ccd_data, flat=flat)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
@@ -832,16 +834,17 @@ def test_trim_image_does_not_change_input():
 def test_transform_image_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    ccd = transform_image(ccd_data, np.sqrt)
+    with np.errstate(invalid="ignore"):
+        ccd = transform_image(ccd_data, np.sqrt)
     np.testing.assert_array_equal(original.data, ccd_data)
     assert original.unit == ccd_data.unit
 
 
 def wcs_for_testing(shape):
-    # Set up a simply WCS, details are cut/pasted from astropy WCS docs,
+    # Set up a simple WCS, details are cut/pasted from astropy WCS docs,
     # mostly. CRPIX is set to the center of shape, rounded down.
 
-    # Create a new WCS object.  The number of axes must be set
+    # Create a new WCS object. The number of axes must be set
     # from the start
     w = WCS(naxis=2)
 
