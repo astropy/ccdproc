@@ -801,7 +801,7 @@ def test_flat_correct_does_not_change_input():
     original = ccd_data.copy()
     flat = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
     with np.errstate(invalid="ignore"):
-        ccd = flat_correct(ccd_data, flat=flat)
+        _ = flat_correct(ccd_data, flat=flat)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
@@ -835,7 +835,7 @@ def test_transform_image_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     with np.errstate(invalid="ignore"):
-        ccd = transform_image(ccd_data, np.sqrt)
+        _ = transform_image(ccd_data, np.sqrt)
     np.testing.assert_array_equal(original.data, ccd_data)
     assert original.unit == ccd_data.unit
 

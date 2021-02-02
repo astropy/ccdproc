@@ -64,10 +64,12 @@ def log_to_metadata(func):
     func.__doc__ = func.__doc__.format(log=_LOG_ARG_HELP)
 
     argspec = inspect.getfullargspec(func)
-    original_args = argspec.args
-    varargs = argspec.varargs
-    keywords = argspec.varkw
-    defaults = argspec.defaults
+    original_args, varargs, keywords, defaults = (argspec.args, argspec.varargs,
+                                                  argspec.varkw, argspec.defaults)
+    # original_args = argspec.args
+    # varargs = argspec.varargs
+    # keywords = argspec.varkw
+    # defaults = argspec.defaults
 
     # Grab the names of positional arguments for use in automatic logging
     try:

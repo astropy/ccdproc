@@ -1013,7 +1013,7 @@ class TestImageFileCollection:
         # Make a dummy keyword that we then delete.
         with catch_warnings(AstropyUserWarning) as warning_lines:
             ic = ImageFileCollection(triage_setup.test_dir, keywords=['fafa'])
-            assert "no FITS files in the collection."
+        assert "no FITS files in the collection."
         ic.keywords = []
         assert set(ic.summary.colnames) == set(['file'])
 
