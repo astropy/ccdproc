@@ -16,6 +16,7 @@ from astropy.tests.helper import catch_warnings
 from astropy.utils.data import get_pkg_data_filename
 from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.io.fits.verify import VerifyWarning
 
 from astropy.nddata import CCDData
 
@@ -976,18 +977,21 @@ class TestImageFileCollection:
             TESTVERI= '2017/02/13-16:51:38 / Test VerifyWarning
         """
 
-        testh = fits.Header.fromstring(bad_header)
-        print(testh)
-        testfits = fits.PrimaryHDU(data=np.ones((10, 10)), header=testh)
+        with catch_warnings(VerifyWarning) as warning_lines:
+            testh = fits.Header.fromstring(bad_header)
+            print(testh)
 
-        path = Path(triage_setup.test_dir)
-        bad_fits_name = 'test_warnA.fits'
-        testfits.writeto(path / bad_fits_name,
-                         output_verify='warn',
-                         overwrite=True)
+            testfits = fits.PrimaryHDU(data=np.ones((10, 10)), header=testh)
 
-        ic = ImageFileCollection(location=str(path))
-        print(ic.summary.colnames)
+            path = Path(triage_setup.test_dir)
+            bad_fits_name = 'test_warnA.fits'
+            testfits.writeto(path / bad_fits_name,
+                             output_verify='warn',
+                             overwrite=True)
+
+            ic = ImageFileCollection(location=str(path))
+            print(ic.summary.colnames)
+
         assert bad_fits_name in ic.files
 
         # Turns out this sample header is so messed up that TESTVERI does not
