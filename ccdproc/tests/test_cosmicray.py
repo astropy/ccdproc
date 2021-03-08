@@ -176,7 +176,7 @@ def test_cosmicray_lacosmic_warns_on_ccd_in_electrons(recwarn):
                                  gain=gain,
                                  gain_apply=True,
                                  readnoise=readnoise)
-                                 
+
     assert "Image unit is electron" in str(recwarn.pop())
 
 
