@@ -4,6 +4,9 @@
 New Features
 ^^^^^^^^^^^^
 
+- Improve integration of ``ImageFileCollection`` with image combination
+  and document that integration [#762]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 - Add memory_profiler as a test requirement [#739]
