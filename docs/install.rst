@@ -32,7 +32,7 @@ Using conda
 
 To install ccdproc with `anaconda`_, run::
 
-    conda install -c astropy ccdproc
+    conda install -c conda-forge ccdproc
 
 
 Building from source

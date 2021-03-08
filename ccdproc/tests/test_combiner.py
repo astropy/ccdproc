@@ -696,3 +696,13 @@ def test_ystep_calculation(num_chunks, expected):
 
     xstep, ystep = _calculate_step_sizes(2000, 2000, num_chunks)
     assert xstep == expected[0] and ystep == expected[1]
+
+def test_combiner_gen():
+    ccd_data = ccd_data_func()
+    def create_gen():
+        yield ccd_data
+        yield ccd_data
+        yield ccd_data
+    c = Combiner(create_gen())
+    assert c.data_arr.shape == (3, 100, 100)
+    assert c.data_arr.mask.shape == (3, 100, 100)
