@@ -16,6 +16,10 @@ Bug Fixes
 - ``test_image_collection.py`` in the test suite no longer produces
  permanent files on disk and cleans up after itself. [#738]
 
+- ``ImageFileCollection`` now correctly returns an empty collection when
+  an existing collection is filtered restrictively enough to remove all
+  files.  [#750]
+
 2.1.0 (2019-12-24)
 ------------------
 

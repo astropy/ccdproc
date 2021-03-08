@@ -24,6 +24,7 @@ Alphabetical list of contributors
 * Mihai Cara (@mcara)
 * James Davenport (@jradavenport)
 * Christoph Deil (@cdeil)
+* Timothy P. Ellsworth-Bowers (@tbowers7)
 * Carlos Gomez (@carlgogo)
 * Hans Moritz Günther (@hamogu)
 * Forrest Gasdia (@EP-Guy)
