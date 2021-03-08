@@ -676,8 +676,12 @@ def combine(img_list, output_file=None,
         elif isinstance(img_list, str) and (',' in img_list):
             img_list = img_list.split(',')
         else:
-            raise ValueError(
-                "unrecognised input for list of images to combine.")
+            try:
+                # Maybe the input can be made into a list, so try that
+                img_list = list(img_list)
+            except TypeError:
+                raise ValueError(
+                    "unrecognised input for list of images to combine.")
 
     # Select Combine function to call in Combiner
     if method == 'average':
