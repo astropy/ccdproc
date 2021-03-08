@@ -161,7 +161,7 @@ def test_ccdmask_pixels():
         19971, 20063, 19936, 19941, 19928, 19937, 19970, 19931, 20036,
         19965, 19855, 19949, 19965, 19821]]), unit='adu')
 
-    target_mask = np.zeros(flat1.shape, dtype=np.bool)
+    target_mask = np.zeros(flat1.shape, dtype=bool)
 
     # No bad pixels in this scenario
     ratio = flat1.divide(flat2)
