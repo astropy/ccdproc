@@ -4,9 +4,13 @@ Combining images and generating masks from clipping
 ===================================================
 
 .. note::
-    No attempt has been made yet to optimize memory usage in
-    `~ccdproc.Combiner`. A copy is made, and a mask array
-    constructed, for each input image.
+    There are currently two interfaces to image combination. One is through
+    the `~ccdproc.Combiner` class, the other through the `~ccdproc.combine`
+    function. They offer *almost* identical capabilities. The primary
+    difference is that `~ccdproc.combine` allows you to place an upper
+    limit on the amount of memory used.
+
+    Work to improve the performance of image combination is ongoing.
 
 
 The first step in combining a set of images is creating a
@@ -131,6 +135,48 @@ This will normalize each image by its mean before combining (note that the
 underlying images are *not* scaled; scaling is only done as part of combining
 using `~ccdproc.Combiner.average_combine` or
 `~ccdproc.Combiner.median_combine`).
+
+
+.. _combination_with_IFC
+Image combination using `~ccdproc.ImageFileCollection`
+------------------------------------------------------
+
+There are a couple of ways that image combination can be done if you are using
+`~ccdproc.ImageFileCollection` to
+:ref:`manage a folder of images <image_management>`.
+
+For this example, a temporary folder with images in it is created:
+
+    >>> from tempfile import mkdtemp
+    >>> from pathlib import Path
+    >>> import numpy as np
+    >>> from astropy.nddata import CCDData
+    >>> from ccdproc import ImageFileCollection, Combiner, combine
+    >>>
+    >>> ccd = CCDData(np.ones([5, 5]), unit='adu')
+    >>>
+    >>> # Make a temporary folder as a path object
+    >>> image_folder = Path(mkdtemp())
+    >>> # Put several copies ccd in the temporary folder
+    >>> _ = [ccd.write(image_folder / f"ccd-{i}.fits") for i in range(3)]
+    >>> ifc = ImageFileCollection(image_folder)
+
+To combine images using the `~ccdproc.Combiner` class you can use the ``ccds``
+method of the `~ccdproc.ImageFileCollection`:
+
+    >>> c = Combiner(ifc.ccds())
+    >>> avg_combined = c.average_combine()
+
+There two ways combine images using the `~ccdproc.combine` function. If the
+images are large enough to combine in memory, then use the file names as the argument to `~ccdproc.combine`, like this:
+
+    >>> avg_combo_mem_lim = combine(ifc.files_filtered(include_path=True),
+    ...                             mem_limit=1e9)
+
+If memory use is not an issue, then the ``ccds`` method can be used here too:
+
+    >>> avg_combo = combine(ifc.ccds())
+
 
 
 .. _reprojection:
