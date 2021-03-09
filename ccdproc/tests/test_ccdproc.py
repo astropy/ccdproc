@@ -320,9 +320,9 @@ def test_subtract_bias():
     bias_level = 5.0
     ccd_data.data = ccd_data.data + bias_level
     ccd_data.header['key'] = 'value'
-    master_bias_array = np.zeros_like(ccd_data.data) + bias_level
-    master_bias = CCDData(master_bias_array, unit=ccd_data.unit)
-    no_bias = subtract_bias(ccd_data, master_bias, add_keyword=None)
+    main_bias_array = np.zeros_like(ccd_data.data) + bias_level
+    main_bias = CCDData(main_bias_array, unit=ccd_data.unit)
+    no_bias = subtract_bias(ccd_data, main_bias, add_keyword=None)
     # Does the data we are left with have the correct average?
     np.testing.assert_almost_equal(no_bias.data.mean(), data_avg)
     # With logging turned off, metadata should not change
@@ -353,26 +353,26 @@ def test_subtract_dark(explicit_times, scale, exposure_keyword):
     exptime_key = 'exposure'
     exposure_unit = u.second
     dark_level = 1.7
-    master_dark_data = np.zeros_like(ccd_data.data) + dark_level
-    master_dark = CCDData(master_dark_data, unit=u.adu)
-    master_dark.header[exptime_key] = 2 * exptime
-    dark_exptime = master_dark.header[exptime_key]
+    main_dark_data = np.zeros_like(ccd_data.data) + dark_level
+    main_dark = CCDData(main_dark_data, unit=u.adu)
+    main_dark.header[exptime_key] = 2 * exptime
+    dark_exptime = main_dark.header[exptime_key]
     ccd_data.header[exptime_key] = exptime
     dark_exposure_unit = exposure_unit
     if explicit_times:
         # Test case when units of dark and data exposures are different
         dark_exposure_unit = u.minute
-        dark_sub = subtract_dark(ccd_data, master_dark,
+        dark_sub = subtract_dark(ccd_data, main_dark,
                                  dark_exposure=dark_exptime * dark_exposure_unit,
                                  data_exposure=exptime * exposure_unit,
                                  scale=scale, add_keyword=None)
     elif exposure_keyword:
         key = Keyword(exptime_key, unit=u.second)
-        dark_sub = subtract_dark(ccd_data, master_dark,
+        dark_sub = subtract_dark(ccd_data, main_dark,
                                  exposure_time=key,
                                  scale=scale, add_keyword=None)
     else:
-        dark_sub = subtract_dark(ccd_data, master_dark,
+        dark_sub = subtract_dark(ccd_data, main_dark,
                                  exposure_time=exptime_key,
                                  exposure_unit=u.second,
                                  scale=scale, add_keyword=None)
@@ -392,53 +392,53 @@ def test_subtract_dark(explicit_times, scale, exposure_keyword):
 
 def test_subtract_dark_fails():
     ccd_data = ccd_data_func()
-    # None of these tests check a result so the content of the master
+    # None of these tests check a result so the content of the main
     # can be anything.
     ccd_data.header['exptime'] = 30.0
-    master = ccd_data.copy()
+    main = ccd_data.copy()
 
     # Do we fail if we give one of dark_exposure, data_exposure but not both?
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data, master, dark_exposure=30 * u.second)
+        subtract_dark(ccd_data, main, dark_exposure=30 * u.second)
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data, master, data_exposure=30 * u.second)
+        subtract_dark(ccd_data, main, data_exposure=30 * u.second)
 
     # Do we fail if we supply dark_exposure and data_exposure and exposure_time
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data, master, dark_exposure=10 * u.second,
+        subtract_dark(ccd_data, main, dark_exposure=10 * u.second,
                       data_exposure=10 * u.second,
                       exposure_time='exptime')
 
     # Fail if we supply none of the exposure-related arguments?
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data, master)
+        subtract_dark(ccd_data, main)
 
     # Fail if we supply exposure time but not a unit?
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data, master, exposure_time='exptime')
+        subtract_dark(ccd_data, main, exposure_time='exptime')
 
-    # Fail if ccd_data or master are not CCDData objects?
+    # Fail if ccd_data or main are not CCDData objects?
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data.data, master, exposure_time='exptime')
+        subtract_dark(ccd_data.data, main, exposure_time='exptime')
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data, master.data, exposure_time='exptime')
+        subtract_dark(ccd_data, main.data, exposure_time='exptime')
 
     # Fail if units do not match...
 
     # ...when there is no scaling?
-    master = CCDData(ccd_data)
-    master.unit = u.meter
+    main = CCDData(ccd_data)
+    main.unit = u.meter
 
     with pytest.raises(u.UnitsError) as e:
-        subtract_dark(ccd_data, master, exposure_time='exptime',
+        subtract_dark(ccd_data, main, exposure_time='exptime',
                       exposure_unit=u.second)
     assert "uncalibrated image" in str(e.value)
 
     # Fail when the arrays are not the same size
     with pytest.raises(ValueError):
-        small_master = CCDData(ccd_data)
-        small_master.data = np.zeros((1, 1))
-        subtract_dark(ccd_data, small_master)
+        small_main = CCDData(ccd_data)
+        small_main.data = np.zeros((1, 1))
+        subtract_dark(ccd_data, small_main)
 
 
 def test_unit_mismatch_behaves_as_expected():
@@ -817,8 +817,8 @@ def test_gain_correct_does_not_change_input():
 def test_subtract_bias_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    master_frame = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
-    ccd = subtract_bias(ccd_data, master=master_frame)
+    main_frame = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
+    ccd = subtract_bias(ccd_data, main=main_frame)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
@@ -1017,13 +1017,13 @@ def test_ccd_process_parameters_are_appropriate():
     with pytest.raises(TypeError):
         ccd_process(ccd_data, bad_pixel_mask=3)
 
-    # master bias check
+    # main bias check
     with pytest.raises(TypeError):
-        ccd_process(ccd_data, master_bias=3)
+        ccd_process(ccd_data, main_bias=3)
 
     # Master flat check
     with pytest.raises(TypeError):
-        ccd_process(ccd_data, master_flat=3)
+        ccd_process(ccd_data, main_flat=3)
 
 
 def test_ccd_process():
@@ -1034,18 +1034,18 @@ def test_ccd_process():
 
     mask = np.zeros((100, 90))
 
-    masterbias = CCDData(2.0 * np.ones((100, 90)), unit=u.electron)
-    masterbias.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+    mainbias = CCDData(2.0 * np.ones((100, 90)), unit=u.electron)
+    mainbias.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
 
     dark_frame = CCDData(0.0 * np.ones((100, 90)), unit=u.electron)
     dark_frame.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
 
-    masterflat = CCDData(10.0 * np.ones((100, 90)), unit=u.electron)
-    masterflat.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+    mainflat = CCDData(10.0 * np.ones((100, 90)), unit=u.electron)
+    mainflat.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
 
     occd = ccd_process(ccd_data, oscan=ccd_data[:, -10:], trim='[1:90,1:100]',
-                       error=True, master_bias=masterbias,
-                       master_flat=masterflat, dark_frame=dark_frame,
+                       error=True, main_bias=mainbias,
+                       main_flat=mainflat, dark_frame=dark_frame,
                        bad_pixel_mask=mask, gain=0.5 * u.electron/u.adu,
                        readnoise=5**0.5 * u.electron, oscan_median=True,
                        dark_scale=False, dark_exposure=1.*u.s,
@@ -1071,18 +1071,18 @@ def test_ccd_process_gain_corrected():
 
     mask = np.zeros((100, 90))
 
-    masterbias = CCDData(4.0 * np.ones((100, 90)), unit=u.adu)
-    masterbias.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+    mainbias = CCDData(4.0 * np.ones((100, 90)), unit=u.adu)
+    mainbias.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
 
     dark_frame = CCDData(0.0 * np.ones((100, 90)), unit=u.adu)
     dark_frame.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
 
-    masterflat = CCDData(5.0 * np.ones((100, 90)), unit=u.adu)
-    masterflat.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+    mainflat = CCDData(5.0 * np.ones((100, 90)), unit=u.adu)
+    mainflat.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
 
     occd = ccd_process(ccd_data, oscan=ccd_data[:, -10:], trim='[1:90,1:100]',
-                       error=True, master_bias=masterbias,
-                       master_flat=masterflat, dark_frame=dark_frame,
+                       error=True, main_bias=mainbias,
+                       main_flat=mainflat, dark_frame=dark_frame,
                        bad_pixel_mask=mask, gain=0.5 * u.electron/u.adu,
                        readnoise=5**0.5 * u.electron, oscan_median=True,
                        dark_scale=False, dark_exposure=1.*u.s,

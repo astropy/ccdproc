@@ -699,7 +699,7 @@ def combine(img_list, output_file=None,
     if dtype is None:
         dtype = np.float64
 
-    # Convert the master image to the appropriate dtype so when overwriting it
+    # Convert the main image to the appropriate dtype so when overwriting it
     # later the data is not downcast and the memory consumption calculation
     # uses the internally used dtype instead of the original dtype. #391
     if ccd.data.dtype != dtype:
@@ -805,7 +805,7 @@ def combine(img_list, output_file=None,
 
             comb_tile = getattr(tile_combiner, combine_function)(**combine_kwds)
 
-            # add it back into the master image
+            # add it back into the main image
             ccd.data[x:xend, y:yend] = comb_tile.data
             if ccd.mask is not None:
                 ccd.mask[x:xend, y:yend] = comb_tile.mask

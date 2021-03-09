@@ -256,7 +256,7 @@ Bug Fixes
   calculation. [#391, #392]
 
 - ``ccd_process`` now copies the meta of the input when subtracting the
-  master bias. [#404]
+  main bias. [#404]
 
 - Fixed ``combine`` with ``CCDData`` objects using ``StdDevUncertainty`` as
   uncertainty. [#416, #424]
@@ -280,7 +280,7 @@ Other Changes and Additions
 
 - Auto-identify files with extension ``fts`` as FITS files. [#355, #364]
 
-- Raise more explicit exception if unit of uncalibrated image and master do
+- Raise more explicit exception if unit of uncalibrated image and main do
   not match in ``subtract_bias`` or ``subtract_dark``. [#361, #366]
 
 - Updated the ``Combiner`` class so that it could process images with >2

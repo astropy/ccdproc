@@ -1,7 +1,7 @@
 ccdproc
 =======
 
-.. image:: https://travis-ci.org/astropy/ccdproc.svg?branch=master
+.. image:: https://travis-ci.org/astropy/ccdproc.svg?branch=main
   :target: https://travis-ci.org/astropy/ccdproc
 
 .. image:: https://coveralls.io/repos/astropy/ccdproc/badge.svg

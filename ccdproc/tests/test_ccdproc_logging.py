@@ -82,7 +82,7 @@ def test_implicit_logging():
     assert "subtract_bias" in result.header
     assert result.header['subtract_bias'] == (
         'subbias', 'Shortened name for ccdproc command')
-    assert result.header['subbias'] == "ccd=<CCDData>, master=<CCDData>"
+    assert result.header['subbias'] == "ccd=<CCDData>, main=<CCDData>"
 
     result = create_deviation(ccd_data, readnoise=3 * ccd_data.unit)
     assert result.header['create_deviation'] == (
