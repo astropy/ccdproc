@@ -10,11 +10,14 @@ Project Coordinators
 
 * Matt Craig (@mwcraig)
 * Steve Crawford (@crawfordsm)
+
+Coordinators Emeritus
+---------------------
+
 * Michael Seifert (@MSeifert04)
 
-
-Alphabetical list of contributors
----------------------------------
+Alphabetical list of code contributors
+--------------------------------------
 
 * Jaime A. Alvarado-Montes (@seap-jaime)
 * Yoonsoo P. Bach (@ysBach)
