@@ -18,6 +18,10 @@ Bug Fixes
 
 - Change ``Combiner`` to allow accepting either a list or a generator [#757]
 
+- ``ImageFileCollection`` now correctly returns an empty collection when
+  an existing collection is filtered restrictively enough to remove all
+  files.  [#750]
+
 2.1.0 (2019-12-24)
 ------------------
 

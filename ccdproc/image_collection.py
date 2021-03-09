@@ -448,7 +448,9 @@ class ImageFileCollection:
             else:
                 files = self._filenames
         else:
-            files = self._fits_files_in_directory()
+            # Check if self.location is set, otherwise proceed with empty list
+            if self.location != '':
+                files = self._fits_files_in_directory()
 
             if self.glob_include is not None:
                 files = fnmatch.filter(files, self.glob_include)
