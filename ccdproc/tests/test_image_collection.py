@@ -1095,3 +1095,8 @@ class TestImageFileCollection:
         assert len(new_ic.summary) == triage_setup.n_test['light']
         for header in new_ic.headers():
             assert header['imagetyp'].lower() == 'light'
+
+    def test_filtered_collection_with_no_files(self, triage_setup):
+        ifc = ImageFileCollection(triage_setup.test_dir)
+
+        ifc_no_files = ifc.filter(object='really fake object')
