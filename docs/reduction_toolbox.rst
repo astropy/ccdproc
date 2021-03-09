@@ -263,29 +263,29 @@ Subtract bias and dark
 Both of the functions below propagate the uncertainties in the science and
 calibration images if either or both is defined.
 
-Assume in this section that you have created a main bias image called
-``main_bias`` and a main dark image called ``main_dark`` that *has been
+Assume in this section that you have created a master bias image called
+``master_bias`` and a master dark image called ``master_dark`` that *has been
 bias-subtracted* so that it can be scaled by exposure time if necessary.
 
 Subtract the bias with `~ccdproc.subtract_bias`:
 
     >>> fake_bias_data = np.random.normal(size=trimmed.shape)  # just for illustration
-    >>> main_bias = CCDData(fake_bias_data, unit=u.electron,
+    >>> master_bias = CCDData(fake_bias_data, unit=u.electron,
     ...                       mask=np.zeros(trimmed.shape))
-    >>> bias_subtracted = ccdproc.subtract_bias(trimmed, main_bias)
+    >>> bias_subtracted = ccdproc.subtract_bias(trimmed, master_bias)
 
 There are several ways you can specify the exposure times of the dark and
 science images; see `~ccdproc.subtract_dark` for a full description.
 
 In the example below we assume there is a keyword ``exposure`` in the metadata
-of the trimmed image and the main dark and that the units of the exposure
+of the trimmed image and the master dark and that the units of the exposure
 are seconds (note that you can instead explicitly provide these times).
 
 To perform the dark subtraction use `~ccdproc.subtract_dark`:
 
-    >>> main_dark = main_bias.multiply(0.1)  # just for illustration
-    >>> main_dark.header['exposure'] = 15.0
-    >>> dark_subtracted = ccdproc.subtract_dark(bias_subtracted, main_dark,
+    >>> master_dark = master_bias.multiply(0.1)  # just for illustration
+    >>> master_dark.header['exposure'] = 15.0
+    >>> dark_subtracted = ccdproc.subtract_dark(bias_subtracted, master_dark,
     ...                                         exposure_time='exposure',
     ...                                         exposure_unit=u.second,
     ...                                         scale=True)
@@ -296,22 +296,22 @@ scale.
 Correct flat
 ------------
 
-Given a flat frame called ``main_flat``, use `~ccdproc.flat_correct` to
+Given a flat frame called ``master_flat``, use `~ccdproc.flat_correct` to
 perform this calibration:
 
     >>> fake_flat_data = np.random.normal(loc=1.0, scale=0.05, size=trimmed.shape)
-    >>> main_flat = CCDData(fake_flat_data, unit=u.electron)
-    >>> reduced_image = ccdproc.flat_correct(dark_subtracted, main_flat)
+    >>> master_flat = CCDData(fake_flat_data, unit=u.electron)
+    >>> reduced_image = ccdproc.flat_correct(dark_subtracted, master_flat)
 
 As with the additive calibrations, uncertainty is propagated in the division.
 
-The flat is scaled by the mean of ``main_flat`` before dividing.
+The flat is scaled by the mean of ``master_flat`` before dividing.
 
 If desired, you can specify a minimum value the flat can have (e.g. to prevent
 division by zero). Any pixels in the flat whose value is less than ``min_value``
 are replaced with ``min_value``):
 
-    >>> reduced_image = ccdproc.flat_correct(dark_subtracted, main_flat,
+    >>> reduced_image = ccdproc.flat_correct(dark_subtracted, master_flat,
     ...                                      min_value=0.9)
 
 Basic Processing with a single command
@@ -320,9 +320,9 @@ Basic Processing with a single command
 All of the basic processing steps can be accomplished in a single step using
 `~ccdproc.ccd_process`. This step will call overscan correct, trim, gain
 correct, add a bad pixel mask, create an uncertainty frame, subtract the
-main bias, and flat-field the image. The unit of the main calibration
+master bias, and flat-field the image. The unit of the master calibration
 frames must match that of the image *after* the gain, if any, is applied. In
-the example below, ``img`` has unit ``adu``, but the main frames have unit
+the example below, ``img`` has unit ``adu``, but the master frames have unit
 ``electron``. These can be run together as:
 
      >>> ccd = CCDData(img, unit=u.adu)
@@ -332,11 +332,11 @@ the example below, ``img`` has unit ``adu``, but the main frames have unit
      ...                            error=True,
      ...                            gain=2.0*u.electron/u.adu,
      ...                            readnoise=5*u.electron,
-     ...                            dark_frame=main_dark,
+     ...                            dark_frame=master_dark,
      ...                            exposure_key='exposure',
      ...                            exposure_unit=u.second,
      ...                            dark_scale=True,
-     ...                            main_flat=main_flat)
+     ...                            master_flat=master_flat)
 
 
 Reprojecting onto a different image footprint

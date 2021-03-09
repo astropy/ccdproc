@@ -53,8 +53,8 @@ _short_names = {
 
 
 @log_to_metadata
-def ccd_process(ccd, oscan=None, trim=None, error=False, main_bias=None,
-                dark_frame=None, main_flat=None, bad_pixel_mask=None,
+def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
+                dark_frame=None, master_flat=None, bad_pixel_mask=None,
                 gain=None, readnoise=None, oscan_median=True, oscan_model=None,
                 min_value=None, dark_exposure=None, data_exposure=None,
                 exposure_key=None, exposure_unit=None,
@@ -68,7 +68,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, main_bias=None,
     * create deviation frame (:func:`create_deviation`)
     * gain correction (:func:`gain_correct`)
     * add a mask to the data
-    * subtraction of main bias (:func:`subtract_bias`)
+    * subtraction of master bias (:func:`subtract_bias`)
     * subtraction of a dark frame (:func:`subtract_dark`)
     * correction of flat field (:func:`flat_correct`)
 
@@ -96,21 +96,21 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, main_bias=None,
         If True, create an uncertainty array for ccd.
         Default is ``False``.
 
-    main_bias : `~astropy.nddata.CCDData` or None, optional
-        A main bias frame to be subtracted from ccd. The unit of the
-        main bias frame should match the unit of the image **after
+    master_bias : `~astropy.nddata.CCDData` or None, optional
+        A master bias frame to be subtracted from ccd. The unit of the
+        master bias frame should match the unit of the image **after
         gain correction** if ``gain_corrected`` is True.
         Default is ``None``.
 
     dark_frame : `~astropy.nddata.CCDData` or None, optional
         A dark frame to be subtracted from the ccd. The unit of the
-        main dark frame should match the unit of the image **after
+        master dark frame should match the unit of the image **after
         gain correction** if ``gain_corrected`` is True.
         Default is ``None``.
 
-    main_flat : `~astropy.nddata.CCDData` or None, optional
-        A main flat frame to be divided into ccd. The unit of the
-        main flat frame should match the unit of the image **after
+    master_flat : `~astropy.nddata.CCDData` or None, optional
+        A master flat frame to be divided into ccd. The unit of the
+        master flat frame should match the unit of the image **after
         gain correction** if ``gain_corrected`` is True.
         Default is ``None``.
 
@@ -167,7 +167,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, main_bias=None,
         Default is ``False``.
 
     gain_corrected : bool, optional
-        If True, the ``main_bias``, ``main_flat``, and ``dark_frame``
+        If True, the ``master_bias``, ``master_flat``, and ``dark_frame``
         have already been gain corrected.  Default is ``True``.
 
     Returns
@@ -235,14 +235,14 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, main_bias=None,
     if gain is not None and gain_corrected:
         nccd = gain_correct(nccd, gain)
 
-    # subtracting the main bias
-    if isinstance(main_bias, CCDData):
-        nccd = subtract_bias(nccd, main_bias)
-    elif main_bias is None:
+    # subtracting the master bias
+    if isinstance(master_bias, CCDData):
+        nccd = subtract_bias(nccd, master_bias)
+    elif master_bias is None:
         pass
     else:
         raise TypeError(
-            'main_bias is not None or a CCDData object.')
+            'master_bias is not None or a CCDData object.')
 
     # subtract the dark frame
     if isinstance(dark_frame, CCDData):
@@ -257,14 +257,14 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, main_bias=None,
         raise TypeError(
             'dark_frame is not None or a CCDData object.')
 
-    # test dividing the main flat
-    if isinstance(main_flat, CCDData):
-        nccd = flat_correct(nccd, main_flat, min_value=min_value)
-    elif main_flat is None:
+    # test dividing the master flat
+    if isinstance(master_flat, CCDData):
+        nccd = flat_correct(nccd, master_flat, min_value=min_value)
+    elif master_flat is None:
         pass
     else:
         raise TypeError(
-            'main_flat is not None or a CCDData object.')
+            'master_flat is not None or a CCDData object.')
 
     # apply the gain correction only at the end if gain_corrected is False
     if gain is not None and not gain_corrected:
@@ -557,16 +557,16 @@ def trim_image(ccd, fits_section=None):
 
 
 @log_to_metadata
-def subtract_bias(ccd, main):
+def subtract_bias(ccd, master):
     """
-    Subtract main bias from image.
+    Subtract master bias from image.
 
     Parameters
     ----------
     ccd : `~astropy.nddata.CCDData`
         Image from which bias will be subtracted.
 
-    main : `~astropy.nddata.CCDData`
+    master : `~astropy.nddata.CCDData`
         Master image to be subtracted from ``ccd``.
 
     {log}
@@ -578,12 +578,12 @@ def subtract_bias(ccd, main):
     """
 
     try:
-        result = ccd.subtract(main)
+        result = ccd.subtract(master)
     except ValueError as e:
         if 'operand units' in str(e):
             raise u.UnitsError("Unit '{}' of the uncalibrated image does not "
                                "match unit '{}' of the calibration "
-                               "image".format(ccd.unit, main.unit))
+                               "image".format(ccd.unit, master.unit))
         else:
             raise e
 
@@ -592,7 +592,7 @@ def subtract_bias(ccd, main):
 
 
 @log_to_metadata
-def subtract_dark(ccd, main, dark_exposure=None, data_exposure=None,
+def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
                   exposure_time=None, exposure_unit=None,
                   scale=False):
     """
@@ -603,7 +603,7 @@ def subtract_dark(ccd, main, dark_exposure=None, data_exposure=None,
     ccd : `~astropy.nddata.CCDData`
         Image from which dark will be subtracted.
 
-    main : `~astropy.nddata.CCDData`
+    master : `~astropy.nddata.CCDData`
         Dark image.
 
     dark_exposure : `~astropy.units.Quantity` or None, optional
@@ -636,12 +636,12 @@ def subtract_dark(ccd, main, dark_exposure=None, data_exposure=None,
     result : `~astropy.nddata.CCDData`
         Dark-subtracted image.
     """
-    if ccd.shape != main.shape:
-        err_str = "operands could not be subtracted with shapes {} {}".format(ccd.shape, main.shape)
+    if ccd.shape != master.shape:
+        err_str = "operands could not be subtracted with shapes {} {}".format(ccd.shape, master.shape)
         raise ValueError(err_str)
 
-    if not (isinstance(ccd, CCDData) and isinstance(main, CCDData)):
-        raise TypeError("ccd and main must both be CCDData objects.")
+    if not (isinstance(ccd, CCDData) and isinstance(master, CCDData)):
+        raise TypeError("ccd and master must both be CCDData objects.")
 
     if (data_exposure is not None and
             dark_exposure is not None and
@@ -655,10 +655,10 @@ def subtract_dark(ccd, main, dark_exposure=None, data_exposure=None,
                             "dark_exposure and data_exposure.")
         if isinstance(exposure_time, Keyword):
             data_exposure = exposure_time.value_from(ccd.header)
-            dark_exposure = exposure_time.value_from(main.header)
+            dark_exposure = exposure_time.value_from(master.header)
         else:
             data_exposure = ccd.header[exposure_time]
-            dark_exposure = main.header[exposure_time]
+            dark_exposure = master.header[exposure_time]
 
     if not (isinstance(dark_exposure, Quantity) and
             isinstance(data_exposure, Quantity)):
@@ -674,14 +674,14 @@ def subtract_dark(ccd, main, dark_exposure=None, data_exposure=None,
 
     try:
         if scale:
-            main_scaled = main.copy()
+            master_scaled = master.copy()
             # data_exposure and dark_exposure are both quantities,
             # so we can just have subtract do the scaling
-            main_scaled = main_scaled.multiply(data_exposure /
+            master_scaled = master_scaled.multiply(data_exposure /
                                                    dark_exposure)
-            result = ccd.subtract(main_scaled)
+            result = ccd.subtract(master_scaled)
         else:
-            result = ccd.subtract(main)
+            result = ccd.subtract(master)
     except (u.UnitsError, u.UnitConversionError, ValueError) as e:
         # Astropy LTS (v1) returns a ValueError, not a UnitsError, so catch
         # that if it appears to really be a UnitsError.
@@ -694,7 +694,7 @@ def subtract_dark(ccd, main, dark_exposure=None, data_exposure=None,
         # by default.
         raise u.UnitsError("Unit '{}' of the uncalibrated image does not "
                            "match unit '{}' of the calibration "
-                           "image".format(ccd.unit, main.unit))
+                           "image".format(ccd.unit, master.unit))
 
     result.meta = ccd.meta.copy()
     return result

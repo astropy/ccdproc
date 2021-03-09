@@ -1,8 +1,9 @@
 ccdproc
 =======
 
-.. image:: https://travis-ci.org/astropy/ccdproc.svg?branch=main
-  :target: https://travis-ci.org/astropy/ccdproc
+.. image:: https://github.com/astropy/ccdproc/workflows/CI/badge.svg
+    :target: https://github.com/astropy/ccdproc/actions
+    :alt: GitHub Actions CI Status
 
 .. image:: https://coveralls.io/repos/astropy/ccdproc/badge.svg
   :target: https://coveralls.io/r/astropy/ccdproc
