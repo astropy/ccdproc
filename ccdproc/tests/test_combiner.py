@@ -10,6 +10,7 @@ from astropy.utils.data import get_pkg_data_filename
 from astropy.nddata import CCDData
 
 from ccdproc.combiner import Combiner, combine, _calculate_step_sizes
+from ccdproc.image_collection import ImageFileCollection
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
 
@@ -371,6 +372,43 @@ def test_combiner_result_dtype():
     assert res.data.dtype == np.int_
     ref = np.ones((3, 3)) * 2
     np.testing.assert_array_almost_equal(res.data, ref)
+
+
+def test_combiner_image_file_collection_input(tmp_path):
+    # Regression check for #754
+    ccd = ccd_data_func()
+    for i in range(3):
+        ccd.write(tmp_path / f'ccd-{i}.fits')
+
+    ifc = ImageFileCollection(tmp_path)
+    comb = Combiner(ifc.ccds())
+    np.testing.assert_array_almost_equal(ccd.data,
+                                         comb.average_combine().data)
+
+
+def test_combine_image_file_collection_input(tmp_path):
+    # Another regression check for #754 but this time with the
+    # combine function instead of Combiner
+    ccd = ccd_data_func()
+    for i in range(3):
+        ccd.write(tmp_path / f'ccd-{i}.fits')
+
+    ifc = ImageFileCollection(tmp_path)
+
+    comb_files = combine(ifc.files_filtered(include_path=True),
+                         method='average')
+
+    comb_ccds = combine(ifc.ccds(), method='average')
+
+    np.testing.assert_array_almost_equal(ccd.data,
+                                         comb_files.data)
+    np.testing.assert_array_almost_equal(ccd.data,
+                                         comb_ccds.data)
+
+    with pytest.raises(FileNotFoundError):
+        # This should fail because the test is not running in the
+        # folder where the images are.
+        _ = combine(ifc.files_filtered())
 
 
 # test combiner convenience function works with list of ccddata objects
