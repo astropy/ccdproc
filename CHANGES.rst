@@ -25,6 +25,9 @@ Bug Fixes
   an existing collection is filtered restrictively enough to remove all
   files.  [#750]
 
+- Logging now preserves all of the arguments when the keyword argument
+  names are not used. [#756]
+
 2.1.0 (2019-12-24)
 ------------------
 
