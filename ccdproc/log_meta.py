@@ -106,7 +106,11 @@ def log_to_metadata(func):
             # so construct one unless the config parameter auto_logging is set to False
             if ccdproc.conf.auto_logging:
                 key = func.__name__
-                all_args = chain(zip(original_positional_args, args), kwd.items())
+                # Get names of arguments, which may or may not have
+                # been called as keywords.
+                positional_args = original_args[:len(args)]
+
+                all_args = chain(zip(positional_args, args), kwd.items())
                 all_args = ["{0}={1}".format(name,
                                             _replace_array_with_placeholder(val))
                             for name, val in all_args]
