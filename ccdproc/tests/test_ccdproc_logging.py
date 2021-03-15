@@ -101,3 +101,14 @@ def test_loggin_without_keyword_args():
     section = "[10:20, 10:20]"
     trim_1 = trim_image(ccd, "[10:20, 10:20]")
     assert section in trim_1.header[_short_names['trim_image']]
+
+
+def test_logging_with_really_long_parameter_value():
+    # Another regression test for the trim_3 case in #704
+    ccd = CCDData(data=np.arange(1000).reshape(20, 50),
+                  header=None,
+                  unit='adu')
+    section = ("[10:2000000000000000000000000000000000000000000000000000000, "
+               "10:2000000000000000000000000000000]")
+    trim_3 = trim_image(ccd, fits_section=section)
+    assert section in trim_3.header[_short_names['trim_image']]
