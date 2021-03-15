@@ -39,3 +39,6 @@ if not _ASTROPY_SETUP_:
             'when calling processing operations.'
             )
     conf = Conf()
+
+# Clean up the name space
+del get_distribution, DistributionNotFound
