@@ -1100,3 +1100,19 @@ class TestImageFileCollection:
         ifc = ImageFileCollection(triage_setup.test_dir)
 
         ifc_no_files = ifc.filter(object='really fake object')
+
+    @pytest.mark.parametrize('extensions', ('flubber', ['flubber']))
+    def test_user_specified_file_extensions(self, tmp_path, extensions):
+        # Test for #727, allowing user to specify fits
+        # extensions
+        ccd = CCDData(data=np.zeros([10, 10]), unit='adu')
+        num_files = 4
+        if len(extensions) == 1:
+            extension = extensions[0]
+        else:
+            extension = extensions
+        # Explicitly give the format for writing
+        _ = [ccd.write(tmp_path / f"ccd_{i}.{extension}", format='fits')
+             for i in range(num_files)]
+        ifc = ImageFileCollection(tmp_path, extensions=extensions)
+        assert len(ifc.summary) == num_files
