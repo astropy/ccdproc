@@ -153,13 +153,13 @@ Recall that in the example on this page three images, each ``10 x 10`` pixels,
 are being combined. To weight the three images differently, set
 `~ccdproc.Combiner.weights` to an array for length three:
 
-    >>> combiner.weights = [0.5, 1, 2.0]
+    >>> combiner.weights = np.array([0.5, 1, 2.0])
     >>> combine_weighted_by_image = combiner.average_combine()
 
 To use pixel-wise weighting set `~ccdproc.Combiner.weights` to an array that
 matches the number of images and image shape, in this case ``3 x 10 x 10``:
 
-    >>> combiner.weights = np.random.rand([3, 10, 10])
+    >>> combiner.weights = np.random.random_sample([3, 10, 10])
     >>> combine_weighted_by_image = combiner.average_combine()
 
 .. note::
