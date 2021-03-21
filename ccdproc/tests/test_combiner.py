@@ -251,6 +251,38 @@ def test_combiner_sum():
     assert ccd.meta['NCOMBINE'] == len(ccd_list)
 
 
+# test weighted sum
+def test_combiner_sum_weighted():
+    ccd_data = CCDData(data=[[0, 1], [2, 3]], unit='adu')
+    ccd_list = [ccd_data, ccd_data, ccd_data]
+    c = Combiner(ccd_list)
+    c.weights = np.array([1, 2, 3])
+    ccd = c.sum_combine()
+    expected_result = np.sum(w * d.data for w, d in
+                             zip(c.weights, ccd_list))
+    np.testing.assert_almost_equal(ccd,
+                                   expected_result)
+
+
+# test weighted sum
+def test_combiner_sum_weighted_by_pixel():
+    ccd_data = CCDData(data=[[1, 2], [4, 8]], unit='adu')
+    ccd_list = [ccd_data, ccd_data, ccd_data]
+    c = Combiner(ccd_list)
+    # Weights below are chosen so that every entry in
+    weights_pixel = [
+        [8, 4],
+        [2, 1]
+    ]
+    c.weights = np.array([weights_pixel] * 3)
+    ccd = c.sum_combine()
+    expected_result = [
+        [24, 24],
+        [24, 24]
+    ]
+    np.testing.assert_almost_equal(ccd, expected_result)
+
+
 # test data combined with mask is created correctly
 def test_combiner_mask_average():
     data = np.zeros((10, 10))
