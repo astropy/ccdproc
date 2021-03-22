@@ -31,7 +31,7 @@ def _default_average():
     if HAS_BOTTLENECK:
         return bn.nanmean
     else:
-        return np.nanmedian
+        return np.nanmean
 
 
 def _default_sum():
