@@ -8,37 +8,26 @@ stand-alone processing or as part of a pipeline.
 # Affiliated packages may add whatever they like to this file, but
 # should keep this content at the top.
 # ----------------------------------------------------------------------------
-from ._astropy_init import *
+from ._astropy_init import *  # noqa
 # ----------------------------------------------------------------------------
 
-# set up the version
-from pkg_resources import get_distribution, DistributionNotFound
+# set up namespace
+from .core import *  # noqa
+from .ccddata import *  # noqa
+from .combiner import *  # noqa
+from .image_collection import *  # noqa
+from astropy import config as _config
 
-try:
-    __version__ = get_distribution(__name__).version
-except DistributionNotFound:
-    # package is not installed
-    __version__ = 'unknown'
 
-# set up namespace, unless we are in setup...
-if not _ASTROPY_SETUP_:
-    from .core import *
-    from .ccddata import *
-    from .combiner import *
-    from .image_collection import *
-    from astropy import config as _config
+class Conf(_config.ConfigNamespace):
+    """Configuration parameters for ccdproc."""
+    auto_logging = _config.ConfigItem(
+        True,
+        'Whether to automatically log operations to metadata'
+        'If set to False, there is no need to specify add_keyword=False'
+        'when calling processing operations.'
+        )
 
-    class Conf(_config.ConfigNamespace):
-        """
-        Configuration parameters for ccdproc.
-        """
-        auto_logging = _config.ConfigItem(
-            True,
-            'Whether to automatically log operations to metadata'
-            'If set to False, there is no need to specify add_keyword=False'
-            'when calling processing operations.'
-            )
-    conf = Conf()
 
-# Clean up the name space
-del get_distribution, DistributionNotFound
+conf = Conf()
+del _config
