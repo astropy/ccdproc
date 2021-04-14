@@ -63,9 +63,9 @@ Using `ccdproc`
     reduction_toolbox
     image_management
     reduction_examples
+    default_config
 
 .. toctree::
     :maxdepth: 1
 
     api
-
