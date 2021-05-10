@@ -1100,3 +1100,8 @@ class TestImageFileCollection:
         ifc = ImageFileCollection(triage_setup.test_dir)
 
         ifc_no_files = ifc.filter(object='really fake object')
+
+    def test_filter_with_parenthetical_keyword_values(self, triage_setup):
+        # Would need test data containing FITS keywords whose values have ()
+        # e.g.:  FILTREAR= 'Clear (C)'          / Rear Filter
+        pass
