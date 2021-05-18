@@ -833,6 +833,44 @@ def test_combiner_gen():
     c = Combiner(create_gen())
     assert c.data_arr.shape == (3, 100, 100)
     assert c.data_arr.mask.shape == (3, 100, 100)
+
+
+@pytest.mark.parametrize('comb_func',
+                         ['average_combine', 'median_combine', 'sum_combine'])
+def test_combiner_with_scaling_uncertainty(comb_func):
+    # A regression test for #719, in which it was pointed out that the
+    # uncertainty was not properly calculated from scaled data in
+    # median_combine
+
+    ccd_data = ccd_data_func()
+    # The factors below are not particularly important; just avoid anything
+    # whose average is 1.
+    ccd_data_lower = ccd_data.multiply(3)
+    ccd_data_higher = ccd_data.multiply(0.9)
+
+    combiner = Combiner([ccd_data, ccd_data_higher, ccd_data_lower])
+    # scale each array to the mean of the first image
+    scale_by_mean = lambda x: ccd_data.data.mean() / np.ma.average(x)
+    combiner.scaling = scale_by_mean
+
+    scaled_ccds = np.array([ccd_data.data * scale_by_mean(ccd_data.data),
+                            ccd_data_lower.data * scale_by_mean(ccd_data_lower.data),
+                            ccd_data_higher.data * scale_by_mean(ccd_data_higher.data)
+                           ])
+
+    avg_ccd = getattr(combiner, comb_func)()
+
+    if comb_func != 'median_combine':
+        uncertainty_func = _default_std()
+    else:
+        uncertainty_func = sigma_func
+
+    expected_unc = uncertainty_func(scaled_ccds, axis=0)
+
+    np.testing.assert_almost_equal(avg_ccd.uncertainty.array,
+                                   expected_unc)
+
+
 @pytest.mark.parametrize('comb_func',
                          ['average_combine', 'median_combine', 'sum_combine'])
 def test_user_supplied_combine_func_that_relies_on_masks(comb_func):
