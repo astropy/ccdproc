@@ -259,8 +259,8 @@ def test_combiner_sum_weighted():
     c = Combiner(ccd_list)
     c.weights = np.array([1, 2, 3])
     ccd = c.sum_combine()
-    expected_result = np.sum(w * d.data for w, d in
-                             zip(c.weights, ccd_list))
+    expected_result = sum(w * d.data for w, d in
+                          zip(c.weights, ccd_list))
     np.testing.assert_almost_equal(ccd,
                                    expected_result)
 
