@@ -968,7 +968,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     return nccd
 
 
-def sigma_func(arr, axis=None):
+def sigma_func(arr, axis=None, ignore_nan=False):
     """
     Robust method for calculating the deviation of an array. ``sigma_func``
     uses the median absolute deviation to determine the standard deviation.
@@ -990,7 +990,9 @@ def sigma_func(arr, axis=None):
     uncertainty : float
         uncertainty of array estimated from median absolute deviation.
     """
-    return stats.median_absolute_deviation(arr, axis=axis) * 1.482602218505602
+    return (stats.median_absolute_deviation(arr, axis=axis,
+                                            ignore_nan=ignore_nan)
+            * 1.482602218505602)
 
 
 def setbox(x, y, mbox, xmax, ymax):

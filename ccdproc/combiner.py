@@ -433,7 +433,12 @@ class Combiner:
         # This still uses numpy for the median because the astropy
         # code requires that the median function take the argument
         # overwrite_input and bottleneck doesn't allow that argument.
-        uncertainty = uncertainty_func(self.data_arr, axis=0)
+        # This is ugly, but setting ignore_nan to True should make sure
+        # that either nans or masks are handled properly.
+        if uncertainty_func is sigma_func:
+            uncertainty = uncertainty_func(data, axis=0, ignore_nan=True)
+        else:
+            uncertainty = uncertainty_func(data, axis=0)
         # Divide uncertainty by the number of pixel (#309)
         uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
