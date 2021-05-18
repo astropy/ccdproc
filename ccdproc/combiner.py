@@ -357,8 +357,30 @@ class Combiner:
             data = data.data
         return data
 
+    def _combination_setup(self,
+                           user_func,
+                           default_func,
+                           scale_to):
+        """
+        Handle the common pieces of image combination data/mask setup.
+        """
+        data = self._get_scaled_data(scale_to)
+
+        # Play it safe for now and only do the nan thing if the user is using
+        # the default combination function.
+        if user_func is None:
+            combo_func = default_func
+            # Subtitute NaN for masked entries
+            data = self._get_nan_substituted_data(data)
+            masked_values = np.isnan(data).sum(axis=0)
+        else:
+            masked_values = self.data_arr.mask.sum(axis=0)
+            combo_func = user_func
+
+        return data, masked_values, combo_func
+
     # set up the combining algorithms
-    def median_combine(self, median_func=_default_median(), scale_to=None,
+    def median_combine(self, median_func=None, scale_to=None,
                        uncertainty_func=sigma_func):
         """
         Median combine a set of arrays.
@@ -395,20 +417,15 @@ class Combiner:
         The uncertainty currently calculated using the median absolute
         deviation does not account for rejected pixels.
         """
-        # set the data
-        data = self._get_scaled_data(scale_to)
 
-        # Get the data as an unmasked array
-        # Replace masked values with NaN
-        if self.data_arr.mask.any():
-            data = np.ma.filled(data, fill_value=np.nan)
-        else:
-            data = data.data
+        data, masked_values, median_func = \
+            self._combination_setup(median_func,
+                                    _default_median(),
+                                    scale_to)
 
         medianed = median_func(data, axis=0)
 
         # set the mask
-        masked_values = np.isnan(data).sum(axis=0)
         mask = (masked_values == len(self.data_arr))
 
         # set the uncertainty
@@ -455,7 +472,7 @@ class Combiner:
         weighted_sum = sum_func(data * weights, axis=0)
         return weighted_sum, weights
 
-    def average_combine(self, scale_func=_default_average(), scale_to=None,
+    def average_combine(self, scale_func=None, scale_to=None,
                         uncertainty_func=_default_std(), sum_func=_default_sum()):
         """
         Average combine together a set of arrays.
@@ -490,11 +507,15 @@ class Combiner:
         combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
-        # set up the data
-        data = self._get_scaled_data(scale_to)
+        data, masked_values, scale_func = \
+            self._combination_setup(scale_func,
+                                    _default_average(),
+                                    scale_to)
+        # # set up the data
+        # data = self._get_scaled_data(scale_to)
 
-        # Subtitute NaN for masked entries
-        data = self._get_nan_substituted_data(data)
+        # # Subtitute NaN for masked entries
+        # data = self._get_nan_substituted_data(data)
 
         # Do NOT modify data after this -- we need it to be intact when we
         # we get to the uncertainty calculation.
@@ -504,10 +525,8 @@ class Combiner:
         else:
             mean = scale_func(data, axis=0)
 
-        # set up the mask
-        # Leave this as-is since there will be no NaNs or masked values
-        # in this sum.
-        masked_values = np.isnan(data).sum(axis=0)
+        # calculate the mask
+
         mask = (masked_values == len(self.data_arr))
 
         # set up the deviation
@@ -528,7 +547,7 @@ class Combiner:
         # return the combined image
         return combined_image
 
-    def sum_combine(self, sum_func=_default_sum(), scale_to=None,
+    def sum_combine(self, sum_func=None, scale_to=None,
                     uncertainty_func=_default_std()):
         """
         Sum combine together a set of arrays.
@@ -548,7 +567,7 @@ class Combiner:
         ----------
         sum_func : function, optional
             Function to calculate the sum. Defaults to
-            `numpy.ma.sum`.
+            `numpy.nansum` or `bottleneck.nansum`.
 
         scale_to : float or None, optional
             Scaling factor used in the sum combined image. If given,
@@ -562,12 +581,11 @@ class Combiner:
         combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
-        #import pdb; pdb.set_trace()
-        # set up the data
-        data = self._get_scaled_data(scale_to)
 
-        # Subtitute NaN for masked entries
-        data = self._get_nan_substituted_data(data)
+        data, masked_values, sum_func = \
+            self._combination_setup(sum_func,
+                                    _default_sum(),
+                                    scale_to)
 
         if self.weights is not None:
             summed, weights = self._weighted_sum(data, sum_func)
@@ -575,7 +593,6 @@ class Combiner:
             summed = sum_func(data, axis=0)
 
         # set up the mask
-        masked_values = np.isnan(data).sum(axis=0)
         mask = (masked_values == len(self.data_arr))
 
         # set up the deviation

@@ -9,7 +9,8 @@ import pytest
 from astropy.utils.data import get_pkg_data_filename
 from astropy.nddata import CCDData
 
-from ccdproc.combiner import Combiner, combine, _calculate_step_sizes
+from ccdproc.combiner import (Combiner, combine, _calculate_step_sizes,
+                              _default_std, sigma_func)
 from ccdproc.image_collection import ImageFileCollection
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
@@ -832,3 +833,36 @@ def test_combiner_gen():
     c = Combiner(create_gen())
     assert c.data_arr.shape == (3, 100, 100)
     assert c.data_arr.mask.shape == (3, 100, 100)
+@pytest.mark.parametrize('comb_func',
+                         ['average_combine', 'median_combine', 'sum_combine'])
+def test_user_supplied_combine_func_that_relies_on_masks(comb_func):
+    # Test to make sure that setting some values to NaN internally
+    # does not affect results when the user supplies a function that
+    # uses masks to screen out bad data.
+
+    data = np.ones((10, 10))
+    data[5, 5] = 2
+    mask = (data == 2)
+    ccd = CCDData(data, unit=u.adu, mask=mask)
+    # Same, but no mask
+    ccd2 = CCDData(data, unit=u.adu)
+
+    ccd_list = [ccd, ccd, ccd2]
+    c = Combiner(ccd_list)
+
+    if comb_func == 'sum_combine':
+        expected_result = 3 * data
+        actual_result = c.sum_combine(sum_func=np.ma.sum)
+    elif comb_func == 'average_combine':
+        expected_result = data
+        actual_result = c.average_combine(scale_func=np.ma.mean)
+    elif comb_func == 'median_combine':
+        expected_result = data
+        actual_result = c.median_combine(median_func=np.ma.median)
+
+    # Two of the three values are masked, so no matter what the combination
+    # method is the result in this pixel should be 2.
+    expected_result[5, 5] = 2
+
+    np.testing.assert_almost_equal(expected_result,
+                                   actual_result)
