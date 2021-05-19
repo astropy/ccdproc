@@ -20,28 +20,28 @@ from astropy import log
 __all__ = ['Combiner', 'combine']
 
 
-def _default_median():
+def _default_median(): # pragma: no cover
     if HAS_BOTTLENECK:
         return bn.nanmedian
     else:
         return np.nanmedian
 
 
-def _default_average():
+def _default_average(): # pragma: no cover
     if HAS_BOTTLENECK:
         return bn.nanmean
     else:
         return np.nanmean
 
 
-def _default_sum():
+def _default_sum(): # pragma: no cover
     if HAS_BOTTLENECK:
         return bn.nansum
     else:
         return np.nansum
 
 
-def _default_std():
+def _default_std(): # pragma: no cover
     if HAS_BOTTLENECK:
         return bn.nanstd
     else:
