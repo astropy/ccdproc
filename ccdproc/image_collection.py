@@ -710,8 +710,8 @@ class ImageFileCollection:
                         pattern = re.compile(value,
                                              flags=re.IGNORECASE)
                     else:
-                        # Add escape characters to parentheses:
-                        value = value.replace('(',r'\(').replace(')',r'\)')
+                        # Escape all special characters that might be present
+                        value = re.escape(value)
                         # This pattern matches the prior behavior.
                         pattern = re.compile('^' + value + '$',
                                              flags=re.IGNORECASE)
