@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         name: [
-          'ubuntu-py37',
+          'ubuntu-py37-oldestdeps',
           'ubuntu-py38',
           # 'ubuntu-py39',  # Skip until astroscrappy is working
           'macos-py38',
@@ -35,10 +35,11 @@ jobs:
         ]
 
         include:
-          - name: 'ubuntu-py37'
+          - name: 'ubuntu-py37-oldestdeps'
             os: ubuntu-latest
             python: '3.7'
-            tox_env: 'py37-test-alldeps-numpy117'
+            # Test the oldest supported dependencies on the oldest supported Python
+            tox_env: 'py37-test-oldestdeps'
           - name: 'ubuntu-py38'
             os: ubuntu-latest
             python: '3.8'
@@ -67,22 +68,6 @@ jobs:
             os: ubuntu-latest
             python: '3.8'
             tox_env: 'build_docs'
-          # - name: 'ubuntu-linkcheck'
-          #   os: ubuntu-latest
-          #   python: '3.8'
-          #   tox_env: 'linkcheck'
-          # - name: 'ubuntu-bandit'
-          #   os: ubuntu-latest
-          #   python: '3.8'
-          #   tox_env: 'bandit'
-          # - name: 'ubuntu-py36-test-alldeps-astropylts-numpy117'
-          #   os: ubuntu-latest
-          #   python: '3.6'
-          #   tox_env: 'py36-test-alldeps-astropylts-numpy117'
-          # - name: 'ubuntu-py37-test-alldeps-astropylts-numpy118'
-          #   os: ubuntu-latest
-          #   python: '3.7'
-          #   tox_env: 'py37-test-alldeps-astropylts-numpy118'
           - name: 'ubuntu-py38-test-alldeps-devdeps'
             os: ubuntu-latest
             python: '3.8'
