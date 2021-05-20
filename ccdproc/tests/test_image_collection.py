@@ -1117,12 +1117,12 @@ class TestImageFileCollection:
             hdu = fits.PrimaryHDU()
             hdu.data = np.zeros((5, 5))
             hdu.header['REGEX_FL'] = kw
-            hdu.writeto(os.path.join(triage_setup.test_dir, 
+            hdu.writeto(os.path.join(triage_setup.test_dir,
                         'regex_special_{:d}.fits'.format(i)))
 
         ic = ImageFileCollection(triage_setup.test_dir)
         #ic.summary.pprint()
         for kw in special_kwds:
-            new_ic = ic.filter(regex_fl = kw)
+            new_ic = ic.filter(regex_fl=kw)
             assert len(new_ic.files) == 1
             assert kw in new_ic.summary['regex_fl']
