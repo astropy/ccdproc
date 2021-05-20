@@ -1121,7 +1121,6 @@ class TestImageFileCollection:
                         'regex_special_{:d}.fits'.format(i)))
 
         ic = ImageFileCollection(triage_setup.test_dir)
-        #ic.summary.pprint()
         for kw in special_kwds:
             new_ic = ic.filter(regex_fl=kw)
             assert len(new_ic.files) == 1
