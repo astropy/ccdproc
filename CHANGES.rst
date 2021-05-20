@@ -10,6 +10,10 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- When filtering an ``ImageFileCollection`` by keyword value, and not
+  explicitly using a regex search pattern (``regex_match=True``), escape all
+  special characters in the keyword value for a successful search. [#770]
+
 2.1.1 (2021-03-15)
 ------------------
 

@@ -710,6 +710,8 @@ class ImageFileCollection:
                         pattern = re.compile(value,
                                              flags=re.IGNORECASE)
                     else:
+                        # Escape all special characters that might be present
+                        value = re.escape(value)
                         # This pattern matches the prior behavior.
                         pattern = re.compile('^' + value + '$',
                                              flags=re.IGNORECASE)
