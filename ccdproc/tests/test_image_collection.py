@@ -1101,7 +1101,28 @@ class TestImageFileCollection:
 
         ifc_no_files = ifc.filter(object='really fake object')
 
-    def test_filter_with_parenthetical_keyword_values(self, triage_setup):
-        # Would need test data containing FITS keywords whose values have ()
-        # e.g.:  FILTREAR= 'Clear (C)'          / Rear Filter
-        pass
+    def test_filter_on_regex_escape_characters(self, triage_setup):
+        # Test for implementation of bugfix at
+        #
+        #    https://github.com/astropy/ccdproc/issues/770
+        #
+        # which escapes regex special characters in keyword values used for
+        # filtering a collection, when option `regex_match=False`.
+
+        # For a few different special characters, make test files with FILTER
+        # keyword containing these
+        
+        special_kwds = ['CO+', 'GG420 (1)', 'V|R|I', 'O[III]', 'NaD^2']
+        for i,kw in enumerate(special_kwds,1):
+            hdu = fits.PrimaryHDU()
+            hdu.data = np.zeros((5, 5))
+            hdu.header['REGEX_FL'] = kw
+            hdu.writeto(os.path.join(triage_setup.test_dir, 
+                        'regex_special_{:d}.fits'.format(i)))
+
+        ic = ImageFileCollection(triage_setup.test_dir)
+        #ic.summary.pprint()
+        for kw in special_kwds:
+            new_ic = ic.filter(regex_fl = kw)
+            assert len(new_ic.files) == 1
+            assert kw in new_ic.summary['regex_fl']
