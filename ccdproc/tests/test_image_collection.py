@@ -1111,7 +1111,7 @@ class TestImageFileCollection:
 
         # For a few different special characters, make test files with FILTER
         # keyword containing these
-        
+
         special_kwds = ['CO+', 'GG420 (1)', 'V|R|I', 'O[III]', 'NaD^2']
         for i,kw in enumerate(special_kwds,1):
             hdu = fits.PrimaryHDU()
