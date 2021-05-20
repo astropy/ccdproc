@@ -78,6 +78,10 @@ class ImageFileCollection:
         The extension from which the header and data will be read in all
         files.Default is ``0``.
 
+    extensions: list
+        A list of FITS extensions to search for.  The default is ``['fit',
+        'fits', 'fts']``.
+
     Raises
     ------
     ValueError
@@ -87,7 +91,8 @@ class ImageFileCollection:
 
     def __init__(self, location=None, keywords=None,
                  find_fits_by_reading=False,
-                 filenames=None, glob_include=None, glob_exclude=None, ext=0):
+                 filenames=None, glob_include=None, glob_exclude=None, ext=0,
+                 extensions=None):
         # Include or exclude files from the collection based on glob pattern
         # matching - has to go above call to _get_files()
         if glob_exclude is not None:
@@ -102,6 +107,17 @@ class ImageFileCollection:
             self._location = location
         else:
             self._location = ''
+
+        # Set file name extensions
+        # Do our best to keep the file extensions immutable
+        if extensions is not None:
+            if isinstance(extensions, str):
+                # Comma at the end to force it to be a tuple
+                self._file_extensions = (extensions,)
+            else:
+                self._file_extensions = tuple(extensions)
+        else:
+            self._file_extensions = tuple(_recognized_fits_file_extensions)
 
         self._find_fits_by_reading = find_fits_by_reading
 
@@ -287,10 +303,18 @@ class ImageFileCollection:
     @property
     def ext(self):
         """
-        str or int, The extension from which the header and data will
+        str or int, The FITS extension from which the header and data will
         be read in all files.
         """
         return self._ext
+
+    @property
+    def file_extensions(self):
+        """
+        List of file name extensions to match when populating or refreshing
+        the ``ImageFileCollection``.
+        """
+        return self._file_extensions
 
     def values(self, keyword, unique=False):
         """
@@ -747,18 +771,13 @@ class ImageFileCollection:
         self.summary['file'].mask = ma.nomask
         self.summary['file'].mask[~matches] = True
 
-    def _fits_files_in_directory(self, extensions=None,
+    def _fits_files_in_directory(self,
                                  compressed=True):
         """
         Get names of FITS files in directory, based on filename extension.
 
         Parameters
         ----------
-        extensions : list of str or None, optional
-            List of filename extensions that are FITS files. Default is
-            ``['fit', 'fits', 'fts']``.
-            Default is ``None``.
-
         compressed : bool, optional
             If ``True``, compressed files should be included in the list
             (e.g. `.fits.gz`).
@@ -769,10 +788,12 @@ class ImageFileCollection:
         list
             *Names* of the files (with extension), not the full pathname.
         """
+        # Force a copy of the extensions to avoid endless combinations of
+        # compression extensions.
+        full_extensions = list(self.file_extensions)
 
-        full_extensions = extensions or list(_recognized_fits_file_extensions)
-
-        # The common compressed fits image .fz is supported using ext=1 when calling ImageFileCollection
+        # The common compressed fits image .fz is supported using ext=1 when
+        # calling ImageFileCollection
         if compressed:
             for comp in ['.gz', '.bz2', '.Z', '.zip', '.fz']:
                 with_comp = [extension + comp for extension in full_extensions]
