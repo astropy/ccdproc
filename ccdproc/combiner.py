@@ -709,6 +709,16 @@ def combine(img_list, output_file=None,
     if ccd.data.dtype != dtype:
         ccd.data = ccd.data.astype(dtype)
 
+    # If the template image doesn't have an uncertainty, add one, because the
+    # result always has an uncertainty.
+    if ccd.uncertainty is None:
+        ccd.uncertainty = StdDevUncertainty(np.zeros_like(ccd.data))
+
+    # If the template doesn't have a mask, add one, because the result may have
+    # a mask
+    if ccd.mask is None:
+        ccd.mask = np.zeros_like(ccd.data, dtype=bool)
+
     size_of_an_img = _calculate_size_of_image(ccd,
                                               combine_uncertainty_function)
 
