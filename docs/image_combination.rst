@@ -10,7 +10,12 @@ Combining images and generating masks from clipping
     difference is that `~ccdproc.combine` allows you to place an upper
     limit on the amount of memory used.
 
-    Work to improve the performance of image combination is ongoing.
+
+.. note::
+    Image combination performance is substantially better if you install
+    the `bottleneck`_ package, especially when using a median.
+
+    .. _bottleneck:  https://github.com/pydata/bottleneck
 
 
 The first step in combining a set of images is creating a
