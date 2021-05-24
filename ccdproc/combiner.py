@@ -15,6 +15,7 @@ else:
 from .core import sigma_func
 
 from astropy.nddata import CCDData, StdDevUncertainty
+from astropy.stats import sigma_clip
 from astropy import log
 
 __all__ = ['Combiner', 'combine']
@@ -294,7 +295,8 @@ class Combiner:
 
     # set up sigma  clipping algorithms
     def sigma_clipping(self, low_thresh=3, high_thresh=3,
-                       func=ma.mean, dev_func=ma.std):
+                       func=ma.mean, dev_func=ma.std, use_astropy=False,
+                       **kwd):
         """
         Pixels will be rejected if they have deviations greater than those
         set by the threshold values. The algorithm will first calculated
@@ -319,7 +321,9 @@ class Combiner:
         func : function, optional
             Function for calculating the baseline values (i.e. `numpy.ma.mean`
             or `numpy.ma.median`). This should be a function that can handle
-            `numpy.ma.MaskedArray` objects.
+            `numpy.ma.MaskedArray` objects. **Set to ``'median'`` and
+            set ``use_astropy=True`` for best performance if using a
+            median.**
             Default is `numpy.ma.mean`.
 
         dev_func : function, optional
@@ -327,7 +331,28 @@ class Combiner:
             (i.e. `numpy.ma.std`). This should be a function that can handle
             `numpy.ma.MaskedArray` objects.
             Default is `numpy.ma.std`.
+
+        use_astropy : bool, optional
+            If ``True``, use astropy's `~astropy.stats.sigma_clip`, which is faster
+            and more flexible. The high/low sigma clip parameters are set
+            from ``low_thresh`` and ``high_thresh``. Any remaining keywords are passed
+            in to astropy's `~astropy.stats.sigma_clip`. By default, the
+            number of iterations and other settings will be made to reproduce
+            the behavior of ccdproc's ``sigma_clipping``.
         """
+        if use_astropy:
+            copy = kwd.get('copy', False)
+            axis = kwd.get('axis', 0)
+            maxiters = kwd.get('maxiters', 1)
+            self.data_arr.mask = \
+                sigma_clip(self.data_arr.data, sigma_lower=low_thresh,
+                           sigma_upper=high_thresh, axis=axis, copy=copy,
+                           maxiters=maxiters,
+                           cenfunc=func, stdfunc=dev_func,
+                           masked=True,
+                           **kwd).mask
+            return
+
         # setup baseline values
         baseline = func(self.data_arr, axis=0)
         dev = dev_func(self.data_arr, axis=0)
