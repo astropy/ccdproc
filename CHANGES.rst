@@ -4,6 +4,11 @@
 New Features
 ^^^^^^^^^^^^
 
+- Image combination is faster for average and sum combine, and improves
+  for all operations if the ``bottleneck`` package is installed. [#741]
+
+- Pixel-wise weighting can be done for sum and average combine. [#741]
+
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -13,6 +18,9 @@ Bug Fixes
 - When filtering an ``ImageFileCollection`` by keyword value, and not
   explicitly using a regex search pattern (``regex_match=True``), escape all
   special characters in the keyword value for a successful search. [#770]
+
+- Return mask and uncertainty from ``combine`` even if input images have no
+  mask or uncertainty. [#775]
 
 2.1.1 (2021-03-15)
 ------------------

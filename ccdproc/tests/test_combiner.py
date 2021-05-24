@@ -9,7 +9,8 @@ import pytest
 from astropy.utils.data import get_pkg_data_filename
 from astropy.nddata import CCDData
 
-from ccdproc.combiner import Combiner, combine, _calculate_step_sizes
+from ccdproc.combiner import (Combiner, combine, _calculate_step_sizes,
+                              _default_std, sigma_func)
 from ccdproc.image_collection import ImageFileCollection
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
@@ -121,6 +122,18 @@ def test_1Dweights():
     np.testing.assert_almost_equal(ccd.data, 312.5)
 
 
+def test_pixelwise_weights():
+    ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
+                CCDData(np.zeros((10, 10)) - 1000, unit=u.adu),
+                CCDData(np.zeros((10, 10)) + 1000, unit=u.adu)]
+    c = Combiner(ccd_list)
+    c.weights = np.ones_like(c.data_arr)
+    c.weights[:, 5, 5] = [1, 5, 10]
+    ccd = c.average_combine()
+    np.testing.assert_almost_equal(ccd.data[5, 5], 312.5)
+    np.testing.assert_almost_equal(ccd.data[0, 0], 0)
+
+
 # test the min-max rejection
 def test_combiner_minmax():
     ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
@@ -203,6 +216,21 @@ def test_combiner_sigmaclip_low():
     assert c.data_arr[5].mask.all()
 
 
+@pytest.mark.parametrize('threshold', [1, 10])
+def test_combiner_sigma_clip_use_astropy_same_result(threshold):
+    # If we turn on use_astropy and make no other changes we should get exactly
+    # the same result as if we use ccdproc sigma_clipping
+    ccd_list = [ccd_data_func(rng_seed=seed + 1) for seed in range(10)]
+    c_ccdp = Combiner(ccd_list)
+    c_apy = Combiner(ccd_list)
+
+    c_ccdp.sigma_clipping(low_thresh=threshold, high_thresh=threshold)
+    c_apy.sigma_clipping(low_thresh=threshold, high_thresh=threshold,
+                         use_astropy=True)
+
+    np.testing.assert_allclose(c_ccdp.data_arr.mask, c_apy.data_arr.mask)
+
+
 # test that the median combination works and returns a ccddata object
 def test_combiner_median():
     ccd_data = ccd_data_func()
@@ -239,6 +267,38 @@ def test_combiner_sum():
     assert ccd.meta['NCOMBINE'] == len(ccd_list)
 
 
+# test weighted sum
+def test_combiner_sum_weighted():
+    ccd_data = CCDData(data=[[0, 1], [2, 3]], unit='adu')
+    ccd_list = [ccd_data, ccd_data, ccd_data]
+    c = Combiner(ccd_list)
+    c.weights = np.array([1, 2, 3])
+    ccd = c.sum_combine()
+    expected_result = sum(w * d.data for w, d in
+                          zip(c.weights, ccd_list))
+    np.testing.assert_almost_equal(ccd,
+                                   expected_result)
+
+
+# test weighted sum
+def test_combiner_sum_weighted_by_pixel():
+    ccd_data = CCDData(data=[[1, 2], [4, 8]], unit='adu')
+    ccd_list = [ccd_data, ccd_data, ccd_data]
+    c = Combiner(ccd_list)
+    # Weights below are chosen so that every entry in
+    weights_pixel = [
+        [8, 4],
+        [2, 1]
+    ]
+    c.weights = np.array([weights_pixel] * 3)
+    ccd = c.sum_combine()
+    expected_result = [
+        [24, 24],
+        [24, 24]
+    ]
+    np.testing.assert_almost_equal(ccd, expected_result)
+
+
 # test data combined with mask is created correctly
 def test_combiner_mask_average():
     data = np.zeros((10, 10))
@@ -248,7 +308,9 @@ def test_combiner_mask_average():
     ccd_list = [ccd, ccd, ccd]
     c = Combiner(ccd_list)
     ccd = c.average_combine()
-    assert ccd.data[0, 0] == 0
+    # How can we assert anything about the data if all values
+    # are masked?!
+    # assert ccd.data[0, 0] == 0
     assert ccd.data[5, 5] == 1
     assert ccd.mask[0, 0]
     assert not ccd.mask[5, 5]
@@ -300,9 +362,10 @@ def test_combiner_mask_median():
     ccd_list = [ccd, ccd, ccd]
     c = Combiner(ccd_list)
     ccd = c.median_combine()
-    assert ccd.data[0, 0] == 0
-    assert ccd.data[5, 5] == 1
+    # We should not check the data value for masked entries.
+    # Instead, just check that entries are masked appropriately.
     assert ccd.mask[0, 0]
+    assert ccd.data[5, 5] == 1
     assert not ccd.mask[5, 5]
 
 
@@ -508,6 +571,7 @@ def test_sum_combine_uncertainty():
     np.testing.assert_array_equal(ccd.data, ccd2.data)
     np.testing.assert_array_equal(
         ccd.uncertainty.array, ccd2.uncertainty.array)
+
 
 @pytest.mark.parametrize('mask_point', [True, False])
 @pytest.mark.parametrize('comb_func',
@@ -785,3 +849,74 @@ def test_combiner_gen():
     c = Combiner(create_gen())
     assert c.data_arr.shape == (3, 100, 100)
     assert c.data_arr.mask.shape == (3, 100, 100)
+
+
+@pytest.mark.parametrize('comb_func',
+                         ['average_combine', 'median_combine', 'sum_combine'])
+def test_combiner_with_scaling_uncertainty(comb_func):
+    # A regression test for #719, in which it was pointed out that the
+    # uncertainty was not properly calculated from scaled data in
+    # median_combine
+
+    ccd_data = ccd_data_func()
+    # The factors below are not particularly important; just avoid anything
+    # whose average is 1.
+    ccd_data_lower = ccd_data.multiply(3)
+    ccd_data_higher = ccd_data.multiply(0.9)
+
+    combiner = Combiner([ccd_data, ccd_data_higher, ccd_data_lower])
+    # scale each array to the mean of the first image
+    scale_by_mean = lambda x: ccd_data.data.mean() / np.ma.average(x)
+    combiner.scaling = scale_by_mean
+
+    scaled_ccds = np.array([ccd_data.data * scale_by_mean(ccd_data.data),
+                            ccd_data_lower.data * scale_by_mean(ccd_data_lower.data),
+                            ccd_data_higher.data * scale_by_mean(ccd_data_higher.data)
+                           ])
+
+    avg_ccd = getattr(combiner, comb_func)()
+
+    if comb_func != 'median_combine':
+        uncertainty_func = _default_std()
+    else:
+        uncertainty_func = sigma_func
+
+    expected_unc = uncertainty_func(scaled_ccds, axis=0)
+
+    np.testing.assert_almost_equal(avg_ccd.uncertainty.array,
+                                   expected_unc)
+
+
+@pytest.mark.parametrize('comb_func',
+                         ['average_combine', 'median_combine', 'sum_combine'])
+def test_user_supplied_combine_func_that_relies_on_masks(comb_func):
+    # Test to make sure that setting some values to NaN internally
+    # does not affect results when the user supplies a function that
+    # uses masks to screen out bad data.
+
+    data = np.ones((10, 10))
+    data[5, 5] = 2
+    mask = (data == 2)
+    ccd = CCDData(data, unit=u.adu, mask=mask)
+    # Same, but no mask
+    ccd2 = CCDData(data, unit=u.adu)
+
+    ccd_list = [ccd, ccd, ccd2]
+    c = Combiner(ccd_list)
+
+    if comb_func == 'sum_combine':
+        expected_result = 3 * data
+        actual_result = c.sum_combine(sum_func=np.ma.sum)
+    elif comb_func == 'average_combine':
+        expected_result = data
+        actual_result = c.average_combine(scale_func=np.ma.mean)
+    elif comb_func == 'median_combine':
+        expected_result = data
+        actual_result = c.median_combine(median_func=np.ma.median)
+
+    # Two of the three values are masked, so no matter what the combination
+    # method is the result in this pixel should be 2.
+    expected_result[5, 5] = 2
+
+    np.testing.assert_almost_equal(expected_result,
+                                   actual_result)

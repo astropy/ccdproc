@@ -10,7 +10,12 @@ Combining images and generating masks from clipping
     difference is that `~ccdproc.combine` allows you to place an upper
     limit on the amount of memory used.
 
-    Work to improve the performance of image combination is ongoing.
+
+.. note::
+    Image combination performance is substantially better if you install
+    the `bottleneck`_ package, especially when using a median.
+
+    .. _bottleneck:  https://github.com/pydata/bottleneck
 
 
 The first step in combining a set of images is creating a
@@ -27,7 +32,8 @@ The first step in combining a set of images is creating a
     >>> combiner = Combiner([ccd1, ccd2, ccd3])
 
 The combiner task really combines two things: generation of masks for
-individual images via several clipping techniques and combination of images.
+individual images via several clipping techniques and combination of images,
+with optional weighting of images for some of the combination methods.
 
 .. _clipping:
 
@@ -135,6 +141,35 @@ This will normalize each image by its mean before combining (note that the
 underlying images are *not* scaled; scaling is only done as part of combining
 using `~ccdproc.Combiner.average_combine` or
 `~ccdproc.Combiner.median_combine`).
+
+Weighting images during image combination
++++++++++++++++++++++++++++++++++++++++++
+
+There are times when different images need to have different weights during
+image combination. For example, different images may have different exposure
+times. When combining image mosaics, each pixel may need a different weight
+depending on how much overlap there is between the images that make up the
+mosaic.
+
+Both weighting by image and pixel-wise weighting are done by setting
+`~ccdproc.Combiner.weights`.
+
+Recall that in the example on this page three images, each ``10 x 10`` pixels,
+are being combined. To weight the three images differently, set
+`~ccdproc.Combiner.weights` to an array for length three:
+
+    >>> combiner.weights = np.array([0.5, 1, 2.0])
+    >>> combine_weighted_by_image = combiner.average_combine()
+
+To use pixel-wise weighting set `~ccdproc.Combiner.weights` to an array that
+matches the number of images and image shape, in this case ``3 x 10 x 10``:
+
+    >>> combiner.weights = np.random.random_sample([3, 10, 10])
+    >>> combine_weighted_by_image = combiner.average_combine()
+
+.. note::
+    Weighting does **not** work when using the median to combine images.
+    It works only for combining by average or by summation.
 
 
 .. _combination_with_IFC

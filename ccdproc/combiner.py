@@ -4,12 +4,49 @@
 
 import numpy as np
 from numpy import ma
+
+try:
+    import bottleneck as bn
+except ImportError:
+    HAS_BOTTLENECK = False
+else:
+    HAS_BOTTLENECK = True
+
 from .core import sigma_func
 
 from astropy.nddata import CCDData, StdDevUncertainty
+from astropy.stats import sigma_clip
 from astropy import log
 
 __all__ = ['Combiner', 'combine']
+
+
+def _default_median(): # pragma: no cover
+    if HAS_BOTTLENECK:
+        return bn.nanmedian
+    else:
+        return np.nanmedian
+
+
+def _default_average(): # pragma: no cover
+    if HAS_BOTTLENECK:
+        return bn.nanmean
+    else:
+        return np.nanmean
+
+
+def _default_sum(): # pragma: no cover
+    if HAS_BOTTLENECK:
+        return bn.nansum
+    else:
+        return np.nansum
+
+
+def _default_std(): # pragma: no cover
+    if HAS_BOTTLENECK:
+        return bn.nanstd
+    else:
+        return np.nanstd
 
 
 class Combiner:
@@ -258,7 +295,8 @@ class Combiner:
 
     # set up sigma  clipping algorithms
     def sigma_clipping(self, low_thresh=3, high_thresh=3,
-                       func=ma.mean, dev_func=ma.std):
+                       func=ma.mean, dev_func=ma.std, use_astropy=False,
+                       **kwd):
         """
         Pixels will be rejected if they have deviations greater than those
         set by the threshold values. The algorithm will first calculated
@@ -283,7 +321,9 @@ class Combiner:
         func : function, optional
             Function for calculating the baseline values (i.e. `numpy.ma.mean`
             or `numpy.ma.median`). This should be a function that can handle
-            `numpy.ma.MaskedArray` objects.
+            `numpy.ma.MaskedArray` objects. **Set to ``'median'`` and
+            set ``use_astropy=True`` for best performance if using a
+            median.**
             Default is `numpy.ma.mean`.
 
         dev_func : function, optional
@@ -291,7 +331,28 @@ class Combiner:
             (i.e. `numpy.ma.std`). This should be a function that can handle
             `numpy.ma.MaskedArray` objects.
             Default is `numpy.ma.std`.
+
+        use_astropy : bool, optional
+            If ``True``, use astropy's `~astropy.stats.sigma_clip`, which is faster
+            and more flexible. The high/low sigma clip parameters are set
+            from ``low_thresh`` and ``high_thresh``. Any remaining keywords are passed
+            in to astropy's `~astropy.stats.sigma_clip`. By default, the
+            number of iterations and other settings will be made to reproduce
+            the behavior of ccdproc's ``sigma_clipping``.
         """
+        if use_astropy:
+            copy = kwd.get('copy', False)
+            axis = kwd.get('axis', 0)
+            maxiters = kwd.get('maxiters', 1)
+            self.data_arr.mask = \
+                sigma_clip(self.data_arr.data, sigma_lower=low_thresh,
+                           sigma_upper=high_thresh, axis=axis, copy=copy,
+                           maxiters=maxiters,
+                           cenfunc=func, stdfunc=dev_func,
+                           masked=True,
+                           **kwd).mask
+            return
+
         # setup baseline values
         baseline = func(self.data_arr, axis=0)
         dev = dev_func(self.data_arr, axis=0)
@@ -313,8 +374,38 @@ class Combiner:
             return self.data_arr * self.scaling
         return self.data_arr
 
+    def _get_nan_substituted_data(self, data):
+        # Get the data as an unmasked array with masked values filled as NaN
+        if self.data_arr.mask.any():
+            data = np.ma.filled(data, fill_value=np.nan)
+        else:
+            data = data.data
+        return data
+
+    def _combination_setup(self,
+                           user_func,
+                           default_func,
+                           scale_to):
+        """
+        Handle the common pieces of image combination data/mask setup.
+        """
+        data = self._get_scaled_data(scale_to)
+
+        # Play it safe for now and only do the nan thing if the user is using
+        # the default combination function.
+        if user_func is None:
+            combo_func = default_func
+            # Subtitute NaN for masked entries
+            data = self._get_nan_substituted_data(data)
+            masked_values = np.isnan(data).sum(axis=0)
+        else:
+            masked_values = self.data_arr.mask.sum(axis=0)
+            combo_func = user_func
+
+        return data, masked_values, combo_func
+
     # set up the combining algorithms
-    def median_combine(self, median_func=ma.median, scale_to=None,
+    def median_combine(self, median_func=None, scale_to=None,
                        uncertainty_func=sigma_func):
         """
         Median combine a set of arrays.
@@ -351,15 +442,28 @@ class Combiner:
         The uncertainty currently calculated using the median absolute
         deviation does not account for rejected pixels.
         """
-        # set the data
-        data = median_func(self._get_scaled_data(scale_to), axis=0)
+
+        data, masked_values, median_func = \
+            self._combination_setup(median_func,
+                                    _default_median(),
+                                    scale_to)
+
+        medianed = median_func(data, axis=0)
 
         # set the mask
-        masked_values = self.data_arr.mask.sum(axis=0)
         mask = (masked_values == len(self.data_arr))
 
         # set the uncertainty
-        uncertainty = uncertainty_func(self.data_arr, axis=0)
+
+        # This still uses numpy for the median because the astropy
+        # code requires that the median function take the argument
+        # overwrite_input and bottleneck doesn't allow that argument.
+        # This is ugly, but setting ignore_nan to True should make sure
+        # that either nans or masks are handled properly.
+        if uncertainty_func is sigma_func:
+            uncertainty = uncertainty_func(data, axis=0, ignore_nan=True)
+        else:
+            uncertainty = uncertainty_func(data, axis=0)
         # Divide uncertainty by the number of pixel (#309)
         uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
@@ -370,7 +474,7 @@ class Combiner:
         uncertainty = np.asarray(uncertainty)
 
         # create the combined image with a dtype matching the combiner
-        combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
+        combined_image = CCDData(np.asarray(medianed, dtype=self.dtype),
                                  mask=mask, unit=self.unit,
                                  uncertainty=StdDevUncertainty(uncertainty))
 
@@ -380,8 +484,26 @@ class Combiner:
         # return the combined image
         return combined_image
 
-    def average_combine(self, scale_func=ma.average, scale_to=None,
-                        uncertainty_func=ma.std):
+    def _weighted_sum(self, data, sum_func):
+        """
+        Perform weighted sum, used by both ``sum_combine`` and in some cases
+        by ``average_combine``.
+        """
+        if self.weights.shape != data.shape:
+            # Add extra axes to the weights for broadcasting
+            weights = np.reshape(self.weights, [len(self.weights), 1, 1])
+        else:
+            weights = self.weights
+
+        # Turns out bn.nansum has an implementation that is not
+        # precise enough for float32 sums. Doing this should
+        # ensure the sums are carried out as float64
+        weights = weights.astype('float64')
+        weighted_sum = sum_func(data * weights, axis=0)
+        return weighted_sum, weights
+
+    def average_combine(self, scale_func=None, scale_to=None,
+                        uncertainty_func=_default_std(), sum_func=_default_sum()):
         """
         Average combine together a set of arrays.
 
@@ -397,7 +519,7 @@ class Combiner:
         ----------
         scale_func : function, optional
             Function to calculate the average. Defaults to
-            `numpy.ma.average`.
+            `numpy.nanmean`.
 
         scale_to : float or None, optional
             Scaling factor used in the average combined image. If given,
@@ -406,40 +528,57 @@ class Combiner:
         uncertainty_func : function, optional
             Function to calculate uncertainty. Defaults to `numpy.ma.std`.
 
+        sum_func : function, optional
+            Function used to calculate sums, including the one done to
+            find the weighted average. Defaults to `numpy.nansum`.
+
         Returns
         -------
         combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
-        # set up the data
-        data, wei = scale_func(self._get_scaled_data(scale_to),
-                               axis=0, weights=self.weights,
-                               returned=True)
+        data, masked_values, scale_func = \
+            self._combination_setup(scale_func,
+                                    _default_average(),
+                                    scale_to)
+        # # set up the data
+        # data = self._get_scaled_data(scale_to)
 
-        # set up the mask
-        masked_values = self.data_arr.mask.sum(axis=0)
+        # # Subtitute NaN for masked entries
+        # data = self._get_nan_substituted_data(data)
+
+        # Do NOT modify data after this -- we need it to be intact when we
+        # we get to the uncertainty calculation.
+        if self.weights is not None:
+            weighted_sum, weights = self._weighted_sum(data, sum_func)
+            mean = weighted_sum / sum_func(weights, axis=0)
+        else:
+            mean = scale_func(data, axis=0)
+
+        # calculate the mask
+
         mask = (masked_values == len(self.data_arr))
 
         # set up the deviation
-        uncertainty = uncertainty_func(self.data_arr, axis=0)
+        uncertainty = uncertainty_func(data, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
+        uncertainty /= np.sqrt(len(data) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
         uncertainty = np.asarray(uncertainty)
 
         # create the combined image with a dtype that matches the combiner
-        combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
+        combined_image = CCDData(np.asarray(mean, dtype=self.dtype),
                                  mask=mask, unit=self.unit,
                                  uncertainty=StdDevUncertainty(uncertainty))
 
         # update the meta data
-        combined_image.meta['NCOMBINE'] = len(self.data_arr)
+        combined_image.meta['NCOMBINE'] = len(data)
 
         # return the combined image
         return combined_image
 
-    def sum_combine(self, sum_func=ma.sum, scale_to=None,
-                    uncertainty_func=ma.std):
+    def sum_combine(self, sum_func=None, scale_to=None,
+                    uncertainty_func=_default_std()):
         """
         Sum combine together a set of arrays.
 
@@ -458,7 +597,7 @@ class Combiner:
         ----------
         sum_func : function, optional
             Function to calculate the sum. Defaults to
-            `numpy.ma.sum`.
+            `numpy.nansum` or `bottleneck.nansum`.
 
         scale_to : float or None, optional
             Scaling factor used in the sum combined image. If given,
@@ -472,24 +611,31 @@ class Combiner:
         combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
-        # set up the data
-        data = sum_func(self._get_scaled_data(scale_to), axis=0)
+
+        data, masked_values, sum_func = \
+            self._combination_setup(sum_func,
+                                    _default_sum(),
+                                    scale_to)
+
+        if self.weights is not None:
+            summed, weights = self._weighted_sum(data, sum_func)
+        else:
+            summed = sum_func(data, axis=0)
 
         # set up the mask
-        masked_values = self.data_arr.mask.sum(axis=0)
         mask = (masked_values == len(self.data_arr))
 
         # set up the deviation
-        uncertainty = uncertainty_func(self.data_arr, axis=0)
+        uncertainty = uncertainty_func(data, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
+        uncertainty /= np.sqrt(len(data) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
         uncertainty = np.asarray(uncertainty)
         # Multiply uncertainty by square root of the number of images
-        uncertainty *= len(self.data_arr) - masked_values
+        uncertainty *= len(data) - masked_values
 
         # create the combined image with a dtype that matches the combiner
-        combined_image = CCDData(np.asarray(data.data, dtype=self.dtype),
+        combined_image = CCDData(np.asarray(summed, dtype=self.dtype),
                                  mask=mask, unit=self.unit,
                                  uncertainty=StdDevUncertainty(uncertainty))
 
@@ -730,7 +876,7 @@ def combine(img_list, output_file=None,
     else:
         memory_factor = 2
 
-    memory_factor *= 1.5
+    memory_factor *= 1.3
 
     # determine the number of chunks to split the images into
     no_chunks = int((memory_factor * size_of_an_img * no_of_img) / mem_limit) + 1
