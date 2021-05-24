@@ -509,10 +509,10 @@ def test_sum_combine_uncertainty():
     np.testing.assert_array_equal(
         ccd.uncertainty.array, ccd2.uncertainty.array)
 
-
+@pytest.mark.parametrize('mask_point', [True, False])
 @pytest.mark.parametrize('comb_func',
                          ['average_combine', 'median_combine', 'sum_combine'])
-def test_combine_result_uncertainty_and_mask(comb_func):
+def test_combine_result_uncertainty_and_mask(comb_func, mask_point):
     # Regression test for #774
     # Turns out combine does not return an uncertainty or mask if the input
     # CCDData has no uncertainty or mask, which makes very little sense.
@@ -522,9 +522,10 @@ def test_combine_result_uncertainty_and_mask(comb_func):
     # led to no uncertainty being returned.
     assert ccd_data.uncertainty is None
 
-    # Make one pixel really negative so we can clip it and guarantee a resulting
-    # pixel is masked.
-    ccd_data.data[0, 0] = -1000
+    if mask_point:
+        # Make one pixel really negative so we can clip it and guarantee a resulting
+        # pixel is masked.
+        ccd_data.data[0, 0] = -1000
 
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
@@ -542,8 +543,12 @@ def test_combine_result_uncertainty_and_mask(comb_func):
     np.testing.assert_array_almost_equal(ccd_comb.uncertainty.array,
                                          expected_result.uncertainty.array)
 
-    assert expected_result.mask[0, 0] and expected_result.mask.sum() == 1
-    assert ccd_comb.mask[0, 0] and ccd_comb.mask.sum() == 1
+    # Check that the right point is masked, and only one point is
+    # masked
+    assert expected_result.mask[0, 0] == mask_point
+    assert expected_result.mask.sum() == mask_point
+    assert ccd_comb.mask[0, 0] == mask_point
+    assert ccd_comb.mask.sum() == mask_point
 
 
 # test resulting uncertainty is corrected for the number of images
