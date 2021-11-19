@@ -1310,7 +1310,8 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                        sepmed=True, cleantype='meanmask', fsmode='median',
                        psfmodel='gauss', psffwhm=2.5, psfsize=7,
                        psfk=None, psfbeta=4.765, verbose=False,
-                       gain_apply=True):
+                       gain_apply=True,
+                       inbkg=None):
     r"""
     Identify cosmic rays through the L.A. Cosmic technique. The L.A. Cosmic
     technique identifies cosmic rays by identifying pixels based on a variation
@@ -1485,17 +1486,21 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     if not isinstance(readnoise, u.Quantity):
         readnoise = readnoise * u.electron
 
+    if inbkg is None and pssl != 0:
+        inbkg = pssl * np.ones_like(ccd)
+
     if isinstance(ccd, np.ndarray):
         data = ccd
 
         crmask, cleanarr = detect_cosmics(
             data, inmask=None, sigclip=sigclip,
             sigfrac=sigfrac, objlim=objlim, gain=gain.value,
-            readnoise=readnoise.value, satlevel=satlevel, pssl=pssl,
+            readnoise=readnoise.value, satlevel=satlevel,
             niter=niter, sepmed=sepmed, cleantype=cleantype,
             fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
             psfsize=psfsize, psfk=psfk, psfbeta=psfbeta,
-            verbose=verbose)
+            verbose=verbose,
+            inbkg=inbkg)
 
         if not gain_apply and gain != 1.0:
             cleanarr = cleanarr / gain
@@ -1525,10 +1530,11 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         crmask, cleanarr = detect_cosmics(
             ccd.data, inmask=ccd.mask,
             sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain.value,
-            readnoise=readnoise.value, satlevel=satlevel, pssl=pssl,
+            readnoise=readnoise.value, satlevel=satlevel,
             niter=niter, sepmed=sepmed, cleantype=cleantype,
             fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
-            psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, verbose=verbose)
+            psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, verbose=verbose,
+            inbkg=inbkg)
 
         # create the new ccd data object
         nccd = ccd.copy()
