@@ -1312,7 +1312,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                        psfmodel='gauss', psffwhm=2.5, psfsize=7,
                        psfk=None, psfbeta=4.765, verbose=False,
                        gain_apply=True,
-                       inbkg=None):
+                       inbkg=None, invar=None):
     r"""
     Identify cosmic rays through the L.A. Cosmic technique. The L.A. Cosmic
     technique identifies cosmic rays by identifying pixels based on a variation
@@ -1496,20 +1496,30 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     # passed to astroscrappy.
     asy_background_kwargs = {}
 
-    # If using the old interface check that none of the new keywords are
-    # being used and raise an error if they are.
+    # Handle setting up the keyword arguments for both interfaces
     if old_astroscrappy_interface:
-        if inbkg is not None:
-            raise TypeError('The inbkg argument is only valid for astroscrappy '
-                            '1.1.0 or higher. Use pssl instead if you have an '
-                            'version of astroscrappy installed')
+        new_args = dict(inbkg=inbkg, invar=invar)
+        bad_args = []
+        for k, v in new_args.items():
+            if v is not None:
+                bad_args.append(k)
 
-    if inbkg is None and pssl != 0:
-        if old_astroscrappy_interface:
+        if bad_args:
+            s = 's' if len(bad_args) > 1 else ''
+            bads = ', '.join(bad_args)
+            raise TypeError(f'The argument{s} {bads} only valid for astroscrappy '
+                            '1.1.0 or higher.')
+
+        if pssl != 0:
             asy_background_kwargs = dict(pssl=pssl)
-        else:
+
+    else:
+        if pssl != 0:
+            if inbkg is not None:
+                raise ValueError('Cannot set both pssl and inbkg')
             inbkg = pssl * np.ones_like(ccd)
-            asy_background_kwargs = dict(inbkg=inbkg)
+
+        asy_background_kwargs = dict(inbkg=inbkg, invar=invar)
 
     if isinstance(ccd, np.ndarray):
         data = ccd
