@@ -43,8 +43,8 @@ def test_cosmicray_lacosmic():
     data, crarr = cosmicray_lacosmic(ccd_data.data, sigclip=5.9)
 
     # check the number of cosmic rays detected
-    # currently commented out while checking on issues
-    # in astroscrappy
+    # Note that to get this to succeed reliably meant tuning
+    # both sigclip and the threshold
     assert crarr.sum() == NCRAYS
 
 
@@ -58,7 +58,7 @@ def test_cosmicray_lacosmic_ccddata():
 
     # check the number of cosmic rays detected
     # Note that to get this to succeed reliably meant tuning
-    # both sigclip and the thresheold
+    # both sigclip and the threshold
     assert nccd_data.mask.sum() == NCRAYS
 
 
@@ -341,3 +341,36 @@ def test_error_raised_lacosmic_old_interface_new_args(bad_args):
 
     check_message = [k in str(err) for k in bad_args.keys()]
     assert all(check_message)
+
+
+@pytest.mark.skipif(OLD_ASTROSCRAPPY,
+                    reason='Test is of new interface compatibility layer')
+def test_cosmicray_lacosmic_pssl_and_inbkg_fails():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    with pytest.raises(ValueError) as err:
+        # An error should be raised if both pssl and inbkg are provided
+        cosmicray_lacosmic(ccd_data, pssl=3, inbkg=ccd_data.data)
+
+    assert 'pssl and inbkg' in str(err)
+
+
+@pytest.mark.skipif(OLD_ASTROSCRAPPY,
+                    reason='Test is of new interface compatibility layer')
+def test_cosmicray_lacosmic_pssl_does_not_fail():
+    # This test is a copy/paste of test_cosmicray_lacosmic_ccddata
+    # except with pssl=0.0001 as an argument. Subtracting nearly zero from
+    # the background should have no effect. The test is really
+    # to make sure that passing in pssl does not lead to an error
+    # since the new interface does not include pssl.
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    threshold = 5
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    noise = DATA_SCALE * np.ones_like(ccd_data.data)
+    ccd_data.uncertainty = noise
+    nccd_data = cosmicray_lacosmic(ccd_data, sigclip=5.9,
+                                   pssl=0.0001)
+
+    # check the number of cosmic rays detected
+    # Note that to get this to succeed reliably meant tuning
+    # both sigclip and the threshold
+    assert nccd_data.mask.sum() == NCRAYS
