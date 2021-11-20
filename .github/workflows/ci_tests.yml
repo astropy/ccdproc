@@ -13,70 +13,49 @@ env:
 
 jobs:
   ci-tests:
-    name: ${{ matrix.os }}, ${{ matrix.tox_env }}
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
     strategy:
       matrix:
-        name: [
-          'ubuntu-py37-oldestdeps',
-          'ubuntu-py38',
-          'ubuntu-py38-bottleneck',
-          # 'ubuntu-py39',  # Skip until astroscrappy is working
-          'macos-py38',
-          'windows-py38',
-          # 'ubuntu-py38-test',
-          'ubuntu-codestyle',
-          'ubuntu-build_docs',
-          # 'ubuntu-linkcheck',
-          # 'ubuntu-bandit',
-          # 'ubuntu-py36-test-alldeps-astropylts-numpy117',
-          # 'ubuntu-py37-test-alldeps-astropylts-numpy118',
-          'ubuntu-py38-test-alldeps-devdeps',
-        ]
-
         include:
-          - name: 'ubuntu-py37-oldestdeps'
+          - name: 'ubuntu-py38-oldestdeps'
             os: ubuntu-latest
-            python: '3.7'
+            python: '3.8'
             # Test the oldest supported dependencies on the oldest supported Python
-            tox_env: 'py37-test-oldestdeps'
-          - name: 'ubuntu-py38'
+            tox_env: 'py38-test-oldestdeps'
+          - name: 'ubuntu-py39'
             os: ubuntu-latest
-            python: '3.8'
-            tox_env: 'py38-test-alldeps-numpy118-cov'
-          - name: 'ubuntu-py38-bottleneck'
+            python: '3.9'
+            tox_env: 'py39-test-alldeps-numpy119-cov'
+          - name: 'ubuntu-py39-bottleneck'
             os: ubuntu-latest
-            python: '3.8'
-            tox_env: 'py38-test-alldeps-numpy118-cov-bottleneck'
-          # - name: 'ubuntu-py39'
-          #   os: ubuntu-latest
-          #   python: '3.9'
-          #   tox_env: 'py39-test-alldeps-numpy119'
-          - name: 'macos-py38'
+            python: '3.9'
+            tox_env: 'py39-test-alldeps-numpy119-cov-bottleneck'
+          - name: 'ubuntu-py310'
+            os: ubuntu-latest
+            python: '3.10'
+            tox_env: 'py310-test-alldeps-numpy121'
+          - name: 'macos-py39'
             os: macos-latest
-            python: '3.8'
-            tox_env: 'py38-test-alldeps'
-          - name: 'windows-py38'
+            python: '3.9'
+            tox_env: 'py39-test-alldeps'
+          - name: 'windows-py310'
             os: windows-latest
-            python: '3.8'
-            tox_env: 'py38-test-alldeps'
-          # - name: 'ubuntu-py38-test'
-          #   os: ubuntu-latest
-          #   python: '3.8'
-          #   tox_env: 'py38-test'
+            python: '3.10'
+            tox_env: 'py310-test-alldeps'
           - name: 'ubuntu-codestyle'
             os: ubuntu-latest
-            python: '3.8'
+            python: '3.10'
             tox_env: 'pycodestyle'
           - name: 'ubuntu-build_docs'
             os: ubuntu-latest
-            python: '3.8'
+            python: '3.10'
             tox_env: 'build_docs'
-          - name: 'ubuntu-py38-test-alldeps-devdeps'
+          - name: 'ubuntu-py310-test-alldeps-devdeps'
             os: ubuntu-latest
-            python: '3.8'
-            tox_env: 'py38-test-alldeps-devdeps'
+            python: '3.10'
+            tox_env: 'py310-test-alldeps-devdeps'
 
     steps:
     - name: Check out repository
