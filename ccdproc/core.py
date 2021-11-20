@@ -1497,7 +1497,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     asy_background_kwargs = {}
 
     # Handle setting up the keyword arguments for both interfaces
-    if old_astroscrappy_interface:
+    if old_astroscrappy_interface: # pragma: no cover
         new_args = dict(inbkg=inbkg, invar=invar)
         bad_args = []
         for k, v in new_args.items():
@@ -1624,7 +1624,7 @@ def _astroscrappy_gain_apply_helper(cleaned_data, gain,
                 return cleaned_data * gain
         else:
             # Do not want gain correct
-            if old_interface:
+            if old_interface:  # pragma: no cover
                 # Old interface gain corrected always so take it out
                 return cleaned_data / gain
     return cleaned_data
