@@ -1,4 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+import packaging
 
 import numpy as np
 
@@ -7,6 +8,7 @@ import pytest
 from astropy.utils import NumpyRNGContext
 from astropy.nddata import StdDevUncertainty
 from astropy import units as u
+from astroscrappy import __version__ as asy_version
 
 from ccdproc.core import (cosmicray_lacosmic, cosmicray_median,
                     background_deviation_box, background_deviation_filter)
@@ -15,6 +17,9 @@ from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
 DATA_SCALE = 5.3
 NCRAYS = 30
+
+OLD_ASTROSCRAPPY = (packaging.version.parse(asy_version) <
+                    packaging.version.parse('1.1.0'))
 
 
 def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
@@ -180,6 +185,32 @@ def test_cosmicray_lacosmic_warns_on_ccd_in_electrons(recwarn):
     assert "Image unit is electron" in str(recwarn.pop())
 
 
+# The skip can be removed when the oldest supported astroscrappy
+# is 1.1.0 or higher
+@pytest.mark.skipif(OLD_ASTROSCRAPPY,
+                    reason='astroscrappy < 1.1.0 does not support '
+                           'this functionality')
+# The values for inbkg and invar are DELIBERATELY BAD. They are supposed to be
+# arrays, so if detect_cosmics is called with these bad values a ValueError
+# will be raised, which we can check for.
+@pytest.mark.parametrize('new_args', [dict(inbkg=5),
+                                      dict(invar=5),
+                                      dict(inbkg=5, invar=5)])
+def test_cosmicray_lacosmic_invar_inbkg(new_args):
+    # This IS NOT TESTING FUNCTIONALITY it is simply testing
+    # that calling with the new keyword arguments to astroscrappy
+    # 1.1.0 raises no error.
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    threshold = 5
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    noise = DATA_SCALE * np.ones_like(ccd_data.data)
+    ccd_data.uncertainty = noise
+
+    with pytest.raises(TypeError):
+        nccd_data = cosmicray_lacosmic(ccd_data, sigclip=5.9,
+                                       **new_args)
+
+
 def test_cosmicray_median_check_data():
     with pytest.raises(TypeError):
         ndata, crarr = cosmicray_median(10, thresh=5, mbox=11,
@@ -294,3 +325,19 @@ def test_background_deviation_filter_fail():
         cd = np.random.normal(loc=0, size=(100, 100), scale=scale)
     with pytest.raises(ValueError):
         background_deviation_filter(cd, 0.5)
+
+
+# Remaining tests can be removed when the oldest supported version
+# of astroscrappy is 1.1.0 or higher.
+@pytest.mark.skipif(not OLD_ASTROSCRAPPY,
+                    reason='Should succeed for new astroscrappy')
+@pytest.mark.parametrize('bad_args', [dict(inbkg=5),
+                                      dict(invar=5),
+                                      dict(inbkg=5, invar=5)])
+def test_error_raised_lacosmic_old_interface_new_args(bad_args):
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    with pytest.raises(TypeError) as err:
+        cosmicray_lacosmic(ccd_data, **bad_args)
+
+    check_message = [k  in str(err) for k in bad_args.keys()]
+    assert all(check_message)
