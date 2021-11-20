@@ -21,10 +21,10 @@ def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
     size = data.shape[0]
     with NumpyRNGContext(125):
         crrays = np.random.randint(0, size, size=(ncrays, 2))
-        # use (threshold + 1) below to make sure cosmic ray is well above the
+        # use (threshold + 15) below to make sure cosmic ray is well above the
         # threshold no matter what the random number generator returns
         crflux = (10 * scale * np.random.random(NCRAYS) +
-                  (threshold + 5) * scale)
+                  (threshold + 15) * scale)
         for i in range(ncrays):
             y, x = crrays[i]
             data.data[y, x] = crflux[i]
@@ -32,15 +32,15 @@ def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
 
 def test_cosmicray_lacosmic():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    threshold = 5
+    threshold = 10
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * np.ones_like(ccd_data.data)
-    data, crarr = cosmicray_lacosmic(ccd_data.data, sigclip=5)
+    data, crarr = cosmicray_lacosmic(ccd_data.data, sigclip=5.9)
 
     # check the number of cosmic rays detected
     # currently commented out while checking on issues
     # in astroscrappy
-    # assert crarr.sum() == NCRAYS
+    assert crarr.sum() == NCRAYS
 
 
 def test_cosmicray_lacosmic_ccddata():
@@ -49,12 +49,12 @@ def test_cosmicray_lacosmic_ccddata():
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * np.ones_like(ccd_data.data)
     ccd_data.uncertainty = noise
-    nccd_data = cosmicray_lacosmic(ccd_data, sigclip=5)
+    nccd_data = cosmicray_lacosmic(ccd_data, sigclip=5.9)
 
     # check the number of cosmic rays detected
-    # currently commented out while checking on issues
-    # in astroscrappy
-    # assert nccd_data.mask.sum() == NCRAYS
+    # Note that to get this to succeed reliably meant tuning
+    # both sigclip and the thresheold
+    assert nccd_data.mask.sum() == NCRAYS
 
 
 def test_cosmicray_lacosmic_check_data():
