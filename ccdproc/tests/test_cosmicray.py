@@ -339,5 +339,5 @@ def test_error_raised_lacosmic_old_interface_new_args(bad_args):
     with pytest.raises(TypeError) as err:
         cosmicray_lacosmic(ccd_data, **bad_args)
 
-    check_message = [k  in str(err) for k in bad_args.keys()]
+    check_message = [k in str(err) for k in bad_args.keys()]
     assert all(check_message)
