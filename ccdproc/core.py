@@ -18,7 +18,7 @@ from astropy import stats
 from astropy import nddata
 from astropy.nddata import StdDevUncertainty, CCDData
 from astropy.wcs.utils import proj_plane_pixel_area
-from astropy.utils import deprecated
+from astropy.utils import deprecated, deprecated_renamed_argument
 import astropy  # To get the version.
 
 from .utils.slices import slice_from_string
@@ -1305,6 +1305,10 @@ def median_filter(data, *args, **kwargs):
         return ndimage.median_filter(data, *args, **kwargs)
 
 
+@deprecated_renamed_argument('pssl', None, '2.3.0',
+                             arg_in_kwargs=True,
+                             message='The pssl keyword will be removed in '
+                                'ccdproc 3.0. Use the inbkg keyword instead.')
 def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                        objlim=5.0, gain=1.0, readnoise=6.5,
                        satlevel=65535.0, pssl=0.0, niter=4,

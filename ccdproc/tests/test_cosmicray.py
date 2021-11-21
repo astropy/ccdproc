@@ -6,6 +6,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 from astropy.utils import NumpyRNGContext
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from astropy.nddata import StdDevUncertainty
 from astropy import units as u
 from astroscrappy import __version__ as asy_version
@@ -325,6 +326,14 @@ def test_background_deviation_filter_fail():
         cd = np.random.normal(loc=0, size=(100, 100), scale=scale)
     with pytest.raises(ValueError):
         background_deviation_filter(cd, 0.5)
+
+
+# This test can be removed in ccdproc 3.0 when support for old
+# astroscrappy is removed.
+def test_cosmicray_lacosmic_pssl_deprecation_warning():
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    with pytest.warns(AstropyDeprecationWarning):
+        cosmicray_lacosmic(ccd_data, pssl=1.0)
 
 
 # Remaining tests can be removed when the oldest supported version
