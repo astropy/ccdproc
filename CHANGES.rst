@@ -1,4 +1,4 @@
-2.2.1 (unreleased)
+2.3.0 (unreleased)
 ------------------
 
 New Features
@@ -11,6 +11,8 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- Fixes compatibility with ``astroscrappy`` version ``1.1.0`` and deprecates
+  old keyword arguments no longer used by ``astroscrappy``. [#777, #778]
 
 2.2.0 (2021-05-24)
 ------------------
