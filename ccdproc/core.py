@@ -1308,7 +1308,9 @@ def median_filter(data, *args, **kwargs):
 @deprecated_renamed_argument('pssl', None, '2.3.0',
                              arg_in_kwargs=True,
                              message='The pssl keyword will be removed in '
-                                'ccdproc 3.0. Use the inbkg keyword instead.')
+                                'ccdproc 3.0. Use inbkg instead to have '
+                                'astroscrappy temporarily remove the background '
+                                'during processing.')
 def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                        objlim=5.0, gain=1.0, readnoise=6.5,
                        satlevel=65535.0, pssl=0.0, niter=4,
@@ -1323,7 +1325,6 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     of the Laplacian edge detection. The algorithm is an implementation of the
     code describe in van Dokkum (2001) [1]_ as implemented by McCully (2014)
     [2]_. If you use this algorithm, please cite these two works.
-
 
 
     Parameters
