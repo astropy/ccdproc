@@ -1520,6 +1520,9 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     # passed to astroscrappy.
     asy_background_kwargs = {}
 
+    # This is for handling the transition in astroscrappy versions
+    data_offset = 0
+
     # Handle setting up the keyword arguments for both interfaces
     if old_astroscrappy_interface: # pragma: no cover
         new_args = dict(inbkg=inbkg, invar=invar)
@@ -1539,9 +1542,13 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
     else:
         if pssl != 0:
-            if inbkg is not None:
+            if (inbkg is not None) or (invar is not None):
                 raise ValueError('Cannot set both pssl and inbkg')
-            inbkg = pssl * np.ones_like(ccd)
+
+            # The old version of astroscrappy added the bkg back in
+            # if pssl was provided. The new one does not, so set an offset
+            # here that we later add in then take out.
+            data_offset = pssl
 
         asy_background_kwargs = dict(inbkg=inbkg, invar=invar)
 
@@ -1549,7 +1556,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         data = ccd
 
         crmask, cleanarr = detect_cosmics(
-            data, inmask=None, sigclip=sigclip,
+            data + data_offset, inmask=None, sigclip=sigclip,
             sigfrac=sigfrac, objlim=objlim, gain=gain.value,
             readnoise=readnoise.value, satlevel=satlevel,
             niter=niter, sepmed=sepmed, cleantype=cleantype,
@@ -1558,6 +1565,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
             verbose=verbose,
             **asy_background_kwargs)
 
+        cleanarr = cleanarr - data_offset
         cleanarr = _astroscrappy_gain_apply_helper(cleanarr,
                                                    gain,
                                                    gain_apply,
@@ -1587,7 +1595,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                                                                         readnoise.unit))
 
         crmask, cleanarr = detect_cosmics(
-            ccd.data, inmask=ccd.mask,
+            ccd.data + data_offset, inmask=ccd.mask,
             sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain.value,
             readnoise=readnoise.value, satlevel=satlevel,
             niter=niter, sepmed=sepmed, cleantype=cleantype,
@@ -1598,6 +1606,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         # create the new ccd data object
         nccd = ccd.copy()
 
+        cleanarr = cleanarr - data_offset
         cleanarr = _astroscrappy_gain_apply_helper(cleanarr,
                                                    gain,
                                                    gain_apply,
