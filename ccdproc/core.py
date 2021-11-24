@@ -1113,7 +1113,9 @@ def background_deviation_filter(data, bbox):
     return ndimage.generic_filter(data, sigma_func, size=(bbox, bbox))
 
 
-@deprecated('1.1')
+@deprecated('1.1',
+            message='The rebin function will be removed in ccdproc 3.0 '
+                    'Use block_reduce or block_replicate instead.')
 def rebin(ccd, newshape):
     """
     Rebin an array to have a new shape.
