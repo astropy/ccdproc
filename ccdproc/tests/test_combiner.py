@@ -1,9 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+from packaging.version import Version, parse
 
 import numpy as np
 
 import astropy.units as u
 from astropy.stats import median_absolute_deviation as mad
+import astropy
 
 import pytest
 from astropy.utils.data import get_pkg_data_filename
@@ -13,6 +15,8 @@ from ccdproc.combiner import (Combiner, combine, _calculate_step_sizes,
                               _default_std, sigma_func)
 from ccdproc.image_collection import ImageFileCollection
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
+
+SUPER_OLD_ASTROPY = parse(astropy.__version__) < Version('4.3.0')
 
 
 # test that the Combiner raises error if empty

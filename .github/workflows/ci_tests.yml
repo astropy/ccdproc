@@ -24,40 +24,49 @@ jobs:
             python: '3.8'
             # Test the oldest supported dependencies on the oldest supported Python
             tox_env: 'py38-test-oldestdeps'
+
           - name: 'macos-py310-astroscrappy11'
             # Keep this test until astroscrappy 1.1.0 is the oldest supported
             # version.
             os: macos-latest
             python: '3.10'
             tox_env: 'py310-test-astroscrappy11'
+
           - name: 'ubuntu-py39'
             os: ubuntu-latest
             python: '3.9'
             tox_env: 'py39-test-alldeps-numpy119-cov'
+
           - name: 'ubuntu-py39-bottleneck'
             os: ubuntu-latest
             python: '3.9'
             tox_env: 'py39-test-alldeps-numpy119-cov-bottleneck'
+
           - name: 'ubuntu-py310'
             os: ubuntu-latest
             python: '3.10'
             tox_env: 'py310-test-alldeps-numpy121'
+
           - name: 'macos-py39'
             os: macos-latest
             python: '3.9'
             tox_env: 'py39-test-alldeps'
+
           - name: 'windows-py310'
             os: windows-latest
             python: '3.10'
             tox_env: 'py310-test-alldeps'
+
           - name: 'ubuntu-codestyle'
             os: ubuntu-latest
             python: '3.10'
             tox_env: 'pycodestyle'
+
           - name: 'ubuntu-build_docs'
             os: ubuntu-latest
             python: '3.10'
             tox_env: 'build_docs'
+
           - name: 'ubuntu-py310-test-alldeps-devdeps'
             os: ubuntu-latest
             python: '3.10'

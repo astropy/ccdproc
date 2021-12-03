@@ -1307,9 +1307,11 @@ def median_filter(data, *args, **kwargs):
         return ndimage.median_filter(data, *args, **kwargs)
 
 
+# This originally used the "message" argument but that is not
+# supported until astropy 5, so use alternative instead.
 @deprecated_renamed_argument('pssl', None, '2.3.0',
                              arg_in_kwargs=True,
-                             message='The pssl keyword will be removed in '
+                             alternative='The pssl keyword will be removed in '
                                 'ccdproc 3.0. Use inbkg instead to have '
                                 'astroscrappy temporarily remove the background '
                                 'during processing.')
