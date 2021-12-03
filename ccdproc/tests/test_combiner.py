@@ -185,14 +185,7 @@ def test_combiner_sigmaclip_high():
     assert c.data_arr[5].mask.all()
 
 
-@pytest.mark.skipif(SUPER_OLD_ASTROPY,
-                    reason='Astropy this old had no grow in sigma_clipping')
-@pytest.mark.parametrize('grow', [False, True])
-def test_combiner_sigmaclip_single_pix(grow):
-    """
-    Test that single extreme pixel is masked. If grow is ``True`` also
-    check that the surrounding pixels are masked.
-    """
+def test_combiner_sigmaclip_single_pix():
     ccd_list = [CCDData(np.zeros((10, 10)), unit=u.adu),
                 CCDData(np.zeros((10, 10)) - 10, unit=u.adu),
                 CCDData(np.zeros((10, 10)) + 10, unit=u.adu),
@@ -207,19 +200,9 @@ def test_combiner_sigmaclip_single_pix(grow):
     c.data_arr[2, 5, 5] = 5
     c.data_arr[3, 5, 5] = -5
     c.data_arr[4, 5, 5] = 25
-    if grow:
-        c.sigma_clipping(high_thresh=3, low_thresh=None, func=np.ma.median,
-                         dev_func=mad, use_astropy=True, grow=2.0)
-        assert c.data_arr.mask[4, 5, 5]
-        grow_pix = [-1, 1]
-        for i in grow_pix:
-            print(f'{i=}')
-            assert c.data_arr.mask[4, 5 + i, 5]
-            assert c.data_arr.mask[4, 5, 5 + i]
-    else:
-        c.sigma_clipping(high_thresh=3, low_thresh=None, func=np.ma.median,
-                         dev_func=mad)
-        assert c.data_arr.mask[4, 5, 5]
+    c.sigma_clipping(high_thresh=3, low_thresh=None, func=np.ma.median,
+                     dev_func=mad)
+    assert c.data_arr.mask[4, 5, 5]
 
 
 def test_combiner_sigmaclip_low():
