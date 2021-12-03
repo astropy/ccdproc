@@ -9,7 +9,12 @@ from astropy.utils import NumpyRNGContext
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from astropy.nddata import StdDevUncertainty
 from astropy import units as u
-from astroscrappy import __version__ as asy_version
+
+try:
+    from astroscrappy import __version__ as asy_version
+except Exception as e:
+    print("Oh no, no working astroscrappy")
+    pytest.skip("skipping astroscrappy tests", allow_module_level=True)
 
 from ccdproc.core import (cosmicray_lacosmic, cosmicray_median,
                     background_deviation_box, background_deviation_filter)
