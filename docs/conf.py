@@ -51,7 +51,7 @@ setup_cfg = dict(conf.items('metadata'))
 highlight_language = 'python3'
 
 # If your documentation needs a minimal Sphinx version, state it here.
-#needs_sphinx = '1.2'
+# needs_sphinx = '1.2'
 
 # To perform a Sphinx version check that needs to be more specific than
 # major.minor, call `check_sphinx_version("x.y.z")` here.
@@ -65,7 +65,6 @@ exclude_patterns.append('_templates')
 # be used globally.
 rst_epilog += """
 """
-
 # -- Project information ------------------------------------------------------
 
 # This does not *have* to match the package name, but typically does
