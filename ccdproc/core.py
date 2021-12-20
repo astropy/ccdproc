@@ -1362,7 +1362,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         sky lines and the cross-section of an object continuum during
         iteration, "protecting" them from spurious rejection (see the above
         paper). This background is not removed from the final, cleaned output
-        (`cleanarr`). This should be in units of "counts", the same units of indat.
+        (``cleanarr``). This should be in units of "counts", the same units of indat.
         This inbkg should be free from cosmic rays. When estimating the cosmic-ray
         free noise of the image, we will treat ``inbkg`` as a constant Poisson
         contribution to the variance.

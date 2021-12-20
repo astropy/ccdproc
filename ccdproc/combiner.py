@@ -597,7 +597,7 @@ class Combiner:
         ----------
         sum_func : function, optional
             Function to calculate the sum. Defaults to
-            `numpy.nansum` or `bottleneck.nansum`.
+            `numpy.nansum` or ``bottleneck.nansum``.
 
         scale_to : float or None, optional
             Scaling factor used in the sum combined image. If given,
