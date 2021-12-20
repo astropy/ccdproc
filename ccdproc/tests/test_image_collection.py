@@ -1099,7 +1099,8 @@ class TestImageFileCollection:
     def test_filtered_collection_with_no_files(self, triage_setup):
         ifc = ImageFileCollection(triage_setup.test_dir)
 
-        ifc_no_files = ifc.filter(object='really fake object')
+        with pytest.warns(AstropyUserWarning, match="no FITS files"):
+            _ = ifc.filter(object='really fake object')
 
     def test_filter_on_regex_escape_characters(self, triage_setup):
         # Test for implementation of bugfix at
