@@ -119,11 +119,11 @@ Image combination
 Image combination is straightforward; to combine by taking the average,
 excluding any pixels mapped by clipping:
 
-    >>> combined_average = combiner.average_combine()
+    >>> combined_average = combiner.average_combine()  # doctest: +IGNORE_WARNINGS
 
-Performing a median combination is also straightforward,
+Performing a median combination is also straightforward, but can be slow:
 
-    >>> combined_median = combiner.median_combine()  # can be slow, see below
+    >>> combined_median = combiner.median_combine()  #  doctest: +IGNORE_WARNINGS
 
 
 
@@ -134,8 +134,8 @@ In some circumstances it may be convenient to scale all images to some value
 before combining them. Do so by setting `~ccdproc.Combiner.scaling`:
 
     >>> scaling_func = lambda arr: 1/np.ma.average(arr)
-    >>> combiner.scaling = scaling_func
-    >>> combined_average_scaled = combiner.average_combine()
+    >>> combiner.scaling = scaling_func  # doctest: +IGNORE_WARNINGS
+    >>> combined_average_scaled = combiner.average_combine()  # doctest: +IGNORE_WARNINGS
 
 This will normalize each image by its mean before combining (note that the
 underlying images are *not* scaled; scaling is only done as part of combining
@@ -159,20 +159,21 @@ are being combined. To weight the three images differently, set
 `~ccdproc.Combiner.weights` to an array for length three:
 
     >>> combiner.weights = np.array([0.5, 1, 2.0])
-    >>> combine_weighted_by_image = combiner.average_combine()
+    >>> combine_weighted_by_image = combiner.average_combine()  # doctest: +IGNORE_WARNINGS
 
 To use pixel-wise weighting set `~ccdproc.Combiner.weights` to an array that
 matches the number of images and image shape, in this case ``3 x 10 x 10``:
 
     >>> combiner.weights = np.random.random_sample([3, 10, 10])
-    >>> combine_weighted_by_image = combiner.average_combine()
+    >>> combine_weighted_by_image = combiner.average_combine()  # doctest: +IGNORE_WARNINGS
 
 .. note::
     Weighting does **not** work when using the median to combine images.
     It works only for combining by average or by summation.
 
 
-.. _combination_with_IFC
+.. _combination_with_IFC:
+
 Image combination using `~ccdproc.ImageFileCollection`
 ------------------------------------------------------
 
@@ -263,6 +264,6 @@ Then, combine the images as described above for any set of images:
 .. doctest-skip::
 
     >>> combiner = Combiner(reprojected)
-    >>> stacked_image = combiner.average_combine()
+    >>> stacked_image = combiner.average_combine()  # doctest: +IGNORE_WARNINGS
 
 .. _reproject project: http://reproject.readthedocs.io/
