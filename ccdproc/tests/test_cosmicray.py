@@ -363,7 +363,9 @@ def test_cosmicray_lacosmic_pssl_and_inbkg_fails():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     with pytest.raises(ValueError) as err:
         # An error should be raised if both pssl and inbkg are provided
-        cosmicray_lacosmic(ccd_data, pssl=3, inbkg=ccd_data.data)
+        with pytest.warns(AstropyDeprecationWarning):
+            # The deprecation warning is expected and should be captured
+            cosmicray_lacosmic(ccd_data, pssl=3, inbkg=ccd_data.data)
 
     assert 'pssl and inbkg' in str(err)
 
@@ -381,8 +383,10 @@ def test_cosmicray_lacosmic_pssl_does_not_fail():
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * np.ones_like(ccd_data.data)
     ccd_data.uncertainty = noise
-    nccd_data = cosmicray_lacosmic(ccd_data, sigclip=5.9,
-                                   pssl=0.0001)
+    with pytest.warns(AstropyDeprecationWarning):
+        # The deprecation warning is expected and should be captured
+        nccd_data = cosmicray_lacosmic(ccd_data, sigclip=5.9,
+                                       pssl=0.0001)
 
     # check the number of cosmic rays detected
     # Note that to get this to succeed reliably meant tuning
