@@ -1,4 +1,4 @@
-2.3.0 (unreleased)
+2.3.0 (2021-12-21)
 ------------------
 
 Other Changes and Additions
