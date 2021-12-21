@@ -1,12 +1,11 @@
 2.3.0 (unreleased)
 ------------------
 
-New Features
-^^^^^^^^^^^^
-
-
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The `rebin` function has been more clearly marked with a deprecation
+  milestone. It will be removed in v3. [#780]
 
 Bug Fixes
 ^^^^^^^^^
