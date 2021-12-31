@@ -12,9 +12,7 @@ import astropy.io.fits as fits
 from astropy.table import Table
 import numpy as np
 
-from astropy.tests.helper import catch_warnings
 from astropy.utils.data import get_pkg_data_filename
-from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.io.fits.verify import VerifyWarning
 
@@ -24,8 +22,6 @@ from ccdproc.image_collection import ImageFileCollection
 
 _filters = []
 _original_dir = ''
-
-_ASTROPY_LT_1_3 = not minversion("astropy", "1.3")
 
 
 def test_fits_summary(triage_setup):
@@ -361,7 +357,7 @@ class TestImageFileCollection:
                 location=triage_setup.test_dir, keywords=['imagetyp'])
 
         with pytest.raises(ValueError):
-            ccd = next(collection.ccds())
+            _ = next(collection.ccds())
 
     def test_generator_ccds(self, triage_setup):
         collection = ImageFileCollection(
@@ -433,7 +429,7 @@ class TestImageFileCollection:
         empty_dir = tmpdir.mkdtemp()
         some_file = empty_dir.join('some_file.txt')
         some_file.dump('words')
-        with catch_warnings() as w:
+        with pytest.warns(Warning) as w:
             collection = ImageFileCollection(location=empty_dir.strpath,
                                              keywords=['imagetyp'])
         assert len(w) == 1
@@ -571,10 +567,6 @@ class TestImageFileCollection:
             for hdr in ic.headers(save_location=bad_directory.strpath):
                 pass
 
-    def test_no_fits_files_in_collection(self):
-        with catch_warnings(AstropyUserWarning) as warning_lines:
-            assert "no FITS files in the collection."
-
     def test_initialization_with_no_keywords(self, triage_setup):
         # This test is primarily historical -- the old default for
         # keywords was an empty list (it is now the wildcard '*').
@@ -707,10 +699,6 @@ class TestImageFileCollection:
         for i in range(len(collection.summary)):
             assert(collection.summary['file'][i] == collection.files[i])
 
-    @pytest.mark.skipif(
-        _ASTROPY_LT_1_3,
-        reason="It seems to fail with a TypeError there but because of "
-               "different reasons (something to do with NumPy).")
     def test_sorting_without_key_fails(self, triage_setup):
         ic = ImageFileCollection(location=triage_setup.test_dir)
         with pytest.raises(ValueError):
@@ -726,7 +714,7 @@ class TestImageFileCollection:
 
         hdu.writeto(os.path.join(triage_setup.test_dir, 'duplicated.fits'))
 
-        with catch_warnings(UserWarning) as w:
+        with pytest.warns(UserWarning) as w:
             ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
         assert len(w) == 1
         assert 'stupid' in str(w[0].message)
@@ -977,9 +965,8 @@ class TestImageFileCollection:
             TESTVERI= '2017/02/13-16:51:38 / Test VerifyWarning
         """
 
-        with catch_warnings(VerifyWarning) as warning_lines:
+        with pytest.warns(VerifyWarning):
             testh = fits.Header.fromstring(bad_header)
-            print(testh)
 
             testfits = fits.PrimaryHDU(data=np.ones((10, 10)), header=testh)
 
@@ -990,7 +977,6 @@ class TestImageFileCollection:
                              overwrite=True)
 
             ic = ImageFileCollection(location=str(path))
-            print(ic.summary.colnames)
 
         assert bad_fits_name in ic.files
 
@@ -1002,8 +988,8 @@ class TestImageFileCollection:
         assert '17/02/13' in ic.summary.colnames
 
         # Try making the summary as in the original bug report
-        ic = ImageFileCollection(location=str(path),
-                                 glob_include='*warnA*')
+        with pytest.warns(AstropyUserWarning, match='The following header keyword is invalid'):
+            ic = ImageFileCollection(location=str(path), glob_include='*warnA*')
 
     def test_type_of_empty_collection(self, triage_setup):
         # Test for implementation of the suggestion in
@@ -1015,9 +1001,7 @@ class TestImageFileCollection:
         # with no keys and no files returns None.
 
         # Make a dummy keyword that we then delete.
-        with catch_warnings(AstropyUserWarning) as warning_lines:
-            ic = ImageFileCollection(triage_setup.test_dir, keywords=['fafa'])
-        assert "no FITS files in the collection."
+        ic = ImageFileCollection(triage_setup.test_dir, keywords=['fafa'])
         ic.keywords = []
         assert set(ic.summary.colnames) == set(['file'])
 
@@ -1027,7 +1011,8 @@ class TestImageFileCollection:
             p.unlink()
 
         # Now the summary should be none
-        ic = ImageFileCollection(triage_setup.test_dir)
+        with pytest.warns(AstropyUserWarning, match='no FITS files in the collection'):
+            ic = ImageFileCollection(triage_setup.test_dir)
         assert ic.summary is None
         assert ic.keywords == []
 
@@ -1114,7 +1099,7 @@ class TestImageFileCollection:
         # keyword containing these
 
         special_kwds = ['CO+', 'GG420 (1)', 'V|R|I', 'O[III]', 'NaD^2']
-        for i,kw in enumerate(special_kwds,1):
+        for i, kw in enumerate(special_kwds, 1):
             hdu = fits.PrimaryHDU()
             hdu.data = np.zeros((5, 5))
             hdu.header['REGEX_FL'] = kw

@@ -6,7 +6,6 @@ from astropy.modeling import models
 from astropy.units.quantity import Quantity
 import astropy.units as u
 from astropy.wcs import WCS
-from astropy.tests.helper import catch_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 
 from astropy.nddata import StdDevUncertainty, CCDData
@@ -80,7 +79,7 @@ def test_create_deviation_from_negative():
                                   np.isnan(ccd_var.uncertainty.array))
 
 
-def test_create_deviation_from_negative():
+def test_create_deviation_from_negative_2():
     ccd_data = ccd_data_func(data_mean=0, data_scale=10)
     ccd_data.unit = u.electron
     readnoise = 5 * u.electron
@@ -619,8 +618,7 @@ def test_catch_transform_wcs_warning():
     def tran(arr):
         return 10 * arr
 
-    with catch_warnings() as w:
-        tran = transform_image(ccd_data, tran)
+    tran = transform_image(ccd_data, tran)
 
 
 @pytest.mark.parametrize('mask_data, uncertainty', [
@@ -661,7 +659,7 @@ def test_block_reduce():
                   mask=np.zeros((4, 4), dtype=bool),
                   uncertainty=StdDevUncertainty(np.ones((4, 4)))
                   )
-    with catch_warnings(AstropyUserWarning) as w:
+    with pytest.warns(AstropyUserWarning) as w:
         ccd_summed = block_reduce(ccd, (2, 2))
     assert len(w) == 1
     assert 'following attributes were set' in str(w[0].message)
@@ -690,7 +688,7 @@ def test_block_average():
                   mask=np.zeros((4, 4), dtype=bool),
                   uncertainty=StdDevUncertainty(np.ones((4, 4))))
     ccd.data[::2, ::2] = 2
-    with catch_warnings(AstropyUserWarning) as w:
+    with pytest.warns(AstropyUserWarning) as w:
         ccd_avgd = block_average(ccd, (2, 2))
     assert len(w) == 1
     assert 'following attributes were set' in str(w[0].message)
@@ -716,7 +714,7 @@ def test_block_replicate():
     ccd = CCDData(np.ones((4, 4)), unit='adu', meta={'testkw': 1},
                   mask=np.zeros((4, 4), dtype=bool),
                   uncertainty=StdDevUncertainty(np.ones((4, 4))))
-    with catch_warnings(AstropyUserWarning) as w:
+    with pytest.warns(AstropyUserWarning) as w:
         ccd_repl = block_replicate(ccd, (2, 2))
     assert len(w) == 1
     assert 'following attributes were set' in str(w[0].message)
@@ -772,7 +770,7 @@ def test__overscan_schange():
 def test_create_deviation_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    ccd = create_deviation(ccd_data, gain=5 * u.electron / u.adu, readnoise=10 * u.electron)
+    _ = create_deviation(ccd_data, gain=5 * u.electron / u.adu, readnoise=10 * u.electron)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
@@ -790,8 +788,7 @@ def test_cosmicray_median_does_not_change_input():
 def test_cosmicray_lacosmic_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    error = np.zeros_like(ccd_data)
-    ccd = cosmicray_lacosmic(ccd_data)
+    _ = cosmicray_lacosmic(ccd_data)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
@@ -809,7 +806,7 @@ def test_flat_correct_does_not_change_input():
 def test_gain_correct_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    ccd = gain_correct(ccd_data, gain=1, gain_unit=ccd_data.unit)
+    _ = gain_correct(ccd_data, gain=1, gain_unit=ccd_data.unit)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
@@ -818,7 +815,7 @@ def test_subtract_bias_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     master_frame = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
-    ccd = subtract_bias(ccd_data, master=master_frame)
+    _ = subtract_bias(ccd_data, master=master_frame)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
@@ -826,7 +823,7 @@ def test_subtract_bias_does_not_change_input():
 def test_trim_image_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    ccd = trim_image(ccd_data, fits_section=None)
+    _ = trim_image(ccd_data, fits_section=None)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
@@ -988,8 +985,8 @@ def test_wcs_project_onto_scale_wcs():
 def test_ccd_process_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    ccd = ccd_process(ccd_data, gain=5 * u.electron / u.adu,
-                      readnoise=10 * u.electron)
+    _ = ccd_process(ccd_data, gain=5 * u.electron / u.adu,
+                    readnoise=10 * u.electron)
     np.testing.assert_array_equal(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
