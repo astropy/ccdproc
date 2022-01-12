@@ -1,8 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-import gzip
-from tempfile import mkdtemp
-import os
 from shutil import rmtree
 
 import numpy as np
@@ -10,7 +7,6 @@ import numpy as np
 import pytest
 from astropy import units as u
 from astropy.utils import NumpyRNGContext
-from astropy.io import fits
 from astropy.nddata import CCDData
 
 from ..utils.sample_directory import directory_for_testing

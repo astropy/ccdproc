@@ -875,7 +875,7 @@ def transform_image(ccd, transform_func, **kwargs):
 
     if nccd.wcs is not None:
         warn = 'WCS information may be incorrect as no transformation was applied to it'
-        logging.warning(warn)
+        warnings.warn(warn, UserWarning)
 
     return nccd
 
