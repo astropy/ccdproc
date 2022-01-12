@@ -16,7 +16,7 @@ Bug Fixes
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- The `rebin` function has been more clearly marked with a deprecation
+- The ``rebin`` function has been more clearly marked with a deprecation
   milestone. It will be removed in v3. [#780]
 
 Bug Fixes
