@@ -618,7 +618,13 @@ def test_catch_transform_wcs_warning():
     def tran(arr):
         return 10 * arr
 
-    tran = transform_image(ccd_data, tran)
+    # No warning.
+    transform_image(ccd_data, tran)
+
+    # FIXME: Needs to issue warning when data has WCS.
+    ccd_data.wcs = wcs_for_testing(ccd_data.shape)
+    with pytest.warns(Warning, match='WCS information may be incorrect'):
+        transform_image(ccd_data, tran)
 
 
 @pytest.mark.parametrize('mask_data, uncertainty', [
@@ -876,7 +882,6 @@ def test_wcs_project_onto_same_wcs_remove_headers():
     # Remove an example WCS keyword from the header
     target_wcs = wcs_for_testing(ccd_data.shape)
     ccd_data.wcs = wcs_for_testing(ccd_data.shape)
-    print(ccd_data.header)
     ccd_data.header = ccd_data.wcs.to_header()
 
     new_ccd = wcs_project(ccd_data, target_wcs)
