@@ -621,9 +621,9 @@ def test_catch_transform_wcs_warning():
     # No warning.
     transform_image(ccd_data, tran)
 
-    # FIXME: Needs to issue warning when data has WCS.
+    # Issue warning when data has WCS.
     ccd_data.wcs = wcs_for_testing(ccd_data.shape)
-    with pytest.warns(Warning, match='WCS information may be incorrect'):
+    with pytest.warns(UserWarning, match='WCS information may be incorrect'):
         transform_image(ccd_data, tran)
 
 
