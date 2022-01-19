@@ -5,7 +5,7 @@
 import math
 import numbers
 import logging
-import packaging
+from packaging import version as pkgversion
 import warnings
 
 import numpy as np
@@ -1518,8 +1518,8 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         readnoise = readnoise * u.electron
 
     # Handle transition from old astroscrappy interface to new
-    old_astroscrappy_interface = (packaging.version.parse(asy_version) <
-                                  packaging.version.parse('1.1.0'))
+    old_astroscrappy_interface = (pkgversion.parse(asy_version) <
+                                  pkgversion.parse('1.1.0'))
 
     # Use this dictionary to define which keyword arguments are actually
     # passed to astroscrappy.

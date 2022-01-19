@@ -10,6 +10,9 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- In python 3.7 the ``version`` method from ``packaging`` must be
+  imported directly. [#786]
+
 2.3.0 (2021-12-21)
 ------------------
 
