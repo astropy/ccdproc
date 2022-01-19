@@ -23,6 +23,7 @@ Alphabetical list of code contributors
 * Yoonsoo P. Bach (@ysBach)
 * Kyle Barbary (@kbarbary)
 * Javier Blasco (@javierblasco)
+* Attila Bódi (@astrobatty)
 * Larry Bradley (@larrybradley)
 * Julio C. N. Campagnolo (@juliotux)
 * Mihai Cara (@mcara)
@@ -62,7 +63,6 @@ Alphabetical list of code contributors
 * Nathan Walker (@walkerna22)
 * Benjamin Weiner (@bjweiner)
 * Jiyong Youn (@hletrd)
-* Attila Bódi (@astrobatty)
 
 Additional contributors
 -----------------------
