@@ -1111,3 +1111,23 @@ class TestImageFileCollection:
             new_ic = ic.filter(regex_fl=kw)
             assert len(new_ic.files) == 1
             assert kw in new_ic.summary['regex_fl']
+
+    def test_hduls(self, triage_setup):
+        # Test for implementation of new feaature at:
+        #
+        #    https://github.com/astropy/ccdproc/issues/78x
+        #
+        # which adds .hduls() generator method to ImageFileCollection.  This
+        # feature returns the full HDUList for each file in the collection,
+        # not just the specified extension, as with .hdus().
+
+        # Ensure that the generator returns an HDUList, and that the number of
+        # HDULists returned equals the number of files in the setup
+        collection = ImageFileCollection(
+            location=triage_setup.test_dir, keywords=['imagetyp'])
+
+        n_hduls = 0
+        for hdul in collection.hduls():
+            assert isinstance(hdul, fits.HDUList)
+            n_hduls += 1
+        assert n_hduls == triage_setup.n_test['files']
