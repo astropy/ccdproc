@@ -914,6 +914,11 @@ class ImageFileCollection:
                     # Need to copy the HDU to prevent lazy loading problems
                     # and "IO operations on closed file" errors
                     return_thing = hdulist[ext_index].copy()
+            elif return_type == 'hdul':
+                with fits.open(full_path, **add_kwargs) as hdulist:
+                    # Need to copy the HDU to prevent lazy loading problems
+                    # and "IO operations on closed file" errors
+                    return_thing = hdulist.copy()
             else:
                 raise ValueError('no generator for {}'.format(return_type))
 
@@ -956,6 +961,8 @@ class ImageFileCollection:
                         hdulist[ext_index].data = return_thing
                     elif return_type == 'header':
                         hdulist[ext_index].header = return_thing
+                    elif return_type == 'hdul':
+                        hdulist = return_thing
 
                     try:
                         hdulist.writeto(new_path, **nuke_existing)
@@ -987,6 +994,14 @@ class ImageFileCollection:
                                do_not_scale_image_data=do_not_scale_image_data,
                                **kwd)
     hdus.__doc__ = _generator.__doc__.format(
+        name='ImageHDU or BinTableHDU', default_scaling='False',
+        return_type='astropy.io.fits.ImageHDU or astropy.io.fits.BinTableHDU')
+
+    def hduls(self, do_not_scale_image_data=False, **kwd):
+        return self._generator('hdul',
+                               do_not_scale_image_data=do_not_scale_image_data,
+                               **kwd)
+    hduls.__doc__ = _generator.__doc__.format(
         name='HDUList', default_scaling='False',
         return_type='astropy.io.fits.HDUList')
 

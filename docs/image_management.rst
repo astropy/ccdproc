@@ -139,7 +139,7 @@ Note that the names of the arguments to ``hdus`` here are the names of FITS
 keywords in the collection and the values are the values of those keywords you
 want to select. Note also that string comparisons are not case sensitive.
 
-The other iterators are ``headers``, ``data``, and ``ccds``.
+The other iterators are ``hduls``, ``headers``, ``data``, and ``ccds``.
 
 All of them have the option to also provide the file name in addition to the
 hdu (or header or data)::
