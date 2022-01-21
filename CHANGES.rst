@@ -4,10 +4,10 @@
 New Features
 ^^^^^^^^^^^^
 
-- Add ``.hduls()`` generator to ImageFileCollection to return the full
+- Add ``.hdulists()`` generator to ImageFileCollection to return the full
   HDUList for each file in the collection.  Clarify that the ``.hdus()``
-  returns only the ImageHDU or BinTableHDU for the extension specified
-  in the initialization of the collection.  [#78x]
+  generator returns only the PrimaryHDU for the extension specified
+  in the initialization of the collection.  [#788]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

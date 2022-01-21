@@ -912,12 +912,12 @@ class ImageFileCollection:
                 with fits.open(full_path, **add_kwargs) as hdulist:
                     ext_index = hdulist.index_of(self.ext)
                     # Need to copy the HDU to prevent lazy loading problems
-                    # and "IO operations on closed file" errors
+                    # and "I/O operation on closed file" errors
                     return_thing = hdulist[ext_index].copy()
-            elif return_type == 'hdul':
+            elif return_type == 'hdulist':
                 with fits.open(full_path, **add_kwargs) as hdulist:
                     # Need to copy the HDU to prevent lazy loading problems
-                    # and "IO operations on closed file" errors
+                    # and "I/O operation on closed file" errors
                     return_thing = hdulist.copy()
             else:
                 raise ValueError('no generator for {}'.format(return_type))
@@ -950,7 +950,7 @@ class ImageFileCollection:
             else:
                 nuke_existing = {}
 
-            if return_type == 'ccd':
+            if return_type in ['ccd','hdulist']:
                 pass
             elif (new_path != full_path) or nuke_existing:
                 with fits.open(full_path, **add_kwargs) as hdulist:
@@ -961,12 +961,10 @@ class ImageFileCollection:
                         hdulist[ext_index].data = return_thing
                     elif return_type == 'header':
                         hdulist[ext_index].header = return_thing
-                    elif return_type == 'hdul':
-                        hdulist = return_thing
 
                     try:
                         hdulist.writeto(new_path, **nuke_existing)
-                    except IOError:
+                    except (IOError, ValueError):
                         logger.error('error writing file %s', new_path)
                         raise
 
@@ -994,14 +992,17 @@ class ImageFileCollection:
                                do_not_scale_image_data=do_not_scale_image_data,
                                **kwd)
     hdus.__doc__ = _generator.__doc__.format(
-        name='ImageHDU or BinTableHDU', default_scaling='False',
-        return_type='astropy.io.fits.ImageHDU or astropy.io.fits.BinTableHDU')
+        name='PrimaryHDU', default_scaling='False',
+        return_type='astropy.io.fits.PrimaryHDU')
 
-    def hduls(self, do_not_scale_image_data=False, **kwd):
-        return self._generator('hdul',
+    def hdulists(self, do_not_scale_image_data=False, **kwd):
+        if kwd.get('clobber') or kwd.get('overwrite'):
+            raise NotImplementedError(
+                "overwrite=True (or clobber=True) is not supported for HDULists.")
+        return self._generator('hdulist',
                                do_not_scale_image_data=do_not_scale_image_data,
                                **kwd)
-    hduls.__doc__ = _generator.__doc__.format(
+    hdulists.__doc__ = _generator.__doc__.format(
         name='HDUList', default_scaling='False',
         return_type='astropy.io.fits.HDUList')
 

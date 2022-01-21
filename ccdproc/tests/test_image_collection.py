@@ -1112,10 +1112,10 @@ class TestImageFileCollection:
             assert len(new_ic.files) == 1
             assert kw in new_ic.summary['regex_fl']
 
-    def test_hduls(self, triage_setup):
+    def test_hdulists_generator(self, triage_setup):
         # Test for implementation of new feaature at:
         #
-        #    https://github.com/astropy/ccdproc/issues/78x
+        #    https://github.com/astropy/ccdproc/issues/788
         #
         # which adds .hduls() generator method to ImageFileCollection.  This
         # feature returns the full HDUList for each file in the collection,
@@ -1127,7 +1127,18 @@ class TestImageFileCollection:
             location=triage_setup.test_dir, keywords=['imagetyp'])
 
         n_hduls = 0
-        for hdul in collection.hduls():
+        for hdul in collection.hdulists():
             assert isinstance(hdul, fits.HDUList)
             n_hduls += 1
         assert n_hduls == triage_setup.n_test['files']
+
+    def test_hdulists_generator_does_not_support_overwrite(self, triage_setup):
+        """
+        The complexity of HDULists makes it infeasable to support overwrite.
+        https://github.com/astropy/ccdproc/issues/788
+        """
+        ic = ImageFileCollection(triage_setup.test_dir)
+        with pytest.raises(NotImplementedError):
+            ic.hdulists(overwrite=True)
+        with pytest.raises(NotImplementedError):
+            ic.hdulists(clobber=True)
