@@ -844,7 +844,7 @@ def transform_image(ccd, transform_func, **kwargs):
     The syntax for transforming the array using
     `scipy.ndimage.shift`::
 
-        >>> from scipy.ndimage.interpolation import shift
+        >>> from scipy.ndimage import shift
         >>> from ccdproc import transform_image
         >>> transformed = transform_image(arr1, shift, shift=(5.5, 8.1))
     """
