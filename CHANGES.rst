@@ -10,6 +10,18 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+2.3.1 (2022-05-09)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Bug Fixes
+^^^^^^^^^
+
 - In python 3.7 the ``version`` method from ``packaging`` must be
   imported directly. [#786]
 
