@@ -49,6 +49,7 @@ Alphabetical list of code contributors
 * Adrian Price-Whelan (@adrn)
 * JVSN Reddy (@janga1997)
 * Luca Rizzi (@lucarizzi)
+* Thomas Robitaille (@astrofrog)
 * Evert Rol (@evertrol)
 * Jenna Ryon (@jryon)
 * William Schoenell (@wschoenell)
