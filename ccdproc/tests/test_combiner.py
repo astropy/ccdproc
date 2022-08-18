@@ -227,21 +227,6 @@ def test_combiner_sigmaclip_low():
     assert c.data_arr[5].mask.all()
 
 
-@pytest.mark.parametrize('threshold', [1, 10])
-def test_combiner_sigma_clip_use_astropy_same_result(threshold):
-    # If we turn on use_astropy and make no other changes we should get exactly
-    # the same result as if we use ccdproc sigma_clipping
-    ccd_list = [ccd_data_func(rng_seed=seed + 1) for seed in range(10)]
-    c_ccdp = Combiner(ccd_list)
-    c_apy = Combiner(ccd_list)
-
-    c_ccdp.sigma_clipping(low_thresh=threshold, high_thresh=threshold)
-    c_apy.sigma_clipping(low_thresh=threshold, high_thresh=threshold,
-                         use_astropy=True)
-
-    np.testing.assert_allclose(c_ccdp.data_arr.mask, c_apy.data_arr.mask)
-
-
 # test that the median combination works and returns a ccddata object
 def test_combiner_median():
     ccd_data = ccd_data_func()

@@ -295,8 +295,7 @@ class Combiner:
 
     # set up sigma  clipping algorithms
     def sigma_clipping(self, low_thresh=3, high_thresh=3,
-                       func=ma.mean, dev_func=ma.std, use_astropy=False,
-                       **kwd):
+                       func='mean', dev_func='std', **kwd):
         """
         Pixels will be rejected if they have deviations greater than those
         set by the threshold values. The algorithm will first calculated
@@ -307,6 +306,7 @@ class Combiner:
 
         Parameters
         -----------
+
         low_thresh : positive float or None, optional
             Threshold for rejecting pixels that deviate below the baseline
             value. If negative value, then will be convert to a positive
@@ -318,54 +318,36 @@ class Combiner:
             value. If None, no rejection will be done based on high_thresh.
             Default is 3.
 
-        func : function, optional
-            Function for calculating the baseline values (i.e. `numpy.ma.mean`
-            or `numpy.ma.median`). This should be a function that can handle
-            `numpy.ma.MaskedArray` objects. **Set to ``'median'`` and
-            set ``use_astropy=True`` for best performance if using a
-            median.**
-            Default is `numpy.ma.mean`.
+        func : {'median', 'mean'} or callable, optional
+            The statistic or callable function/object used to compute
+            the center value for the clipping. If using a callable
+            function/object and the ``axis`` keyword is used, then it must
+            be able to ignore NaNs (e.g., `numpy.nanmean`) and it must have
+            an ``axis`` keyword to return an array with axis dimension(s)
+            removed. The default is ``'median'``.
 
-        dev_func : function, optional
-            Function for calculating the deviation from the baseline value
-            (i.e. `numpy.ma.std`). This should be a function that can handle
-            `numpy.ma.MaskedArray` objects.
-            Default is `numpy.ma.std`.
+        dev_func : {'std', 'mad_std'} or callable, optional
+            The statistic or callable function/object used to compute the
+            standard deviation about the center value. If using a callable
+            function/object and the ``axis`` keyword is used, then it must
+            be able to ignore NaNs (e.g., `numpy.nanstd`) and it must have
+            an ``axis`` keyword to return an array with axis dimension(s)
+            removed. The default is ``'std'``.
 
-        use_astropy : bool, optional
-            If ``True``, use astropy's `~astropy.stats.sigma_clip`, which is faster
-            and more flexible. The high/low sigma clip parameters are set
-            from ``low_thresh`` and ``high_thresh``. Any remaining keywords are passed
-            in to astropy's `~astropy.stats.sigma_clip`. By default, the
-            number of iterations and other settings will be made to reproduce
-            the behavior of ccdproc's ``sigma_clipping``.
+        kwd
+            Any remaining keyword arguments are passed to astropy's
+            :func:`~astropy.stats.sigma_clip` function.
         """
-        if use_astropy:
-            copy = kwd.get('copy', False)
-            axis = kwd.get('axis', 0)
-            maxiters = kwd.get('maxiters', 1)
-            self.data_arr.mask = \
-                sigma_clip(self.data_arr.data, sigma_lower=low_thresh,
-                           sigma_upper=high_thresh, axis=axis, copy=copy,
-                           maxiters=maxiters,
-                           cenfunc=func, stdfunc=dev_func,
-                           masked=True,
-                           **kwd).mask
-            return
-
-        # setup baseline values
-        baseline = func(self.data_arr, axis=0)
-        dev = dev_func(self.data_arr, axis=0)
-        # reject values
-        if low_thresh is not None:
-            # check for negative numbers in low_thresh
-            if low_thresh < 0:
-                low_thresh = abs(low_thresh)
-            mask = (self.data_arr - baseline < -low_thresh * dev)
-            self.data_arr.mask[mask] = True
-        if high_thresh is not None:
-            mask = (self.data_arr - baseline > high_thresh * dev)
-            self.data_arr.mask[mask] = True
+        self.data_arr.mask = sigma_clip(self.data_arr.data,
+                                        sigma_lower=low_thresh,
+                                        sigma_upper=high_thresh,
+                                        axis=kwd.get('axis', 0),
+                                        copy=kwd.get('copy', False),
+                                        maxiters=kwd.get('maxiters', 1),
+                                        cenfunc=func,
+                                        stdfunc=dev_func,
+                                        masked=True,
+                                        **kwd).mask
 
     def _get_scaled_data(self, scale_arg):
         if scale_arg is not None:
