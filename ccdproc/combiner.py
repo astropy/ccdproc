@@ -16,6 +16,7 @@ from .core import sigma_func
 
 from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import sigma_clip
+from astropy.utils import deprecated_renamed_argument
 from astropy import log
 
 __all__ = ['Combiner', 'combine']
@@ -294,6 +295,11 @@ class Combiner:
             self.data_arr.mask[mask] = True
 
     # set up sigma  clipping algorithms
+    @deprecated_renamed_argument('use_astropy', None, arg_in_kwargs=True,
+                                 since='2.4.0',
+                                 message='The use_astropy argument has been removed because '
+                                         'astropy sigma clipping is now always used.'
+                                 )
     def sigma_clipping(self, low_thresh=3, high_thresh=3,
                        func='mean', dev_func='std', **kwd):
         """
@@ -338,6 +344,10 @@ class Combiner:
             Any remaining keyword arguments are passed to astropy's
             :func:`~astropy.stats.sigma_clip` function.
         """
+
+        # Remove in 3.0
+        _ = kwd.pop('use_astropy', True)
+
         self.data_arr.mask = sigma_clip(self.data_arr.data,
                                         sigma_lower=low_thresh,
                                         sigma_upper=high_thresh,
