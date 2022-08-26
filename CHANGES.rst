@@ -1,4 +1,4 @@
-3.0.0 (unreleased)
+2.4.0 (unreleased)
 ------------------
 
 New Features
@@ -6,6 +6,11 @@ New Features
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The sigma clipping option in the image combiner now always uses the
+  astropy sigma clipping function, and supports specifying the
+  functions to use for estimating the center and deviation values
+  as strings for common cases (which significantly improves performance). [#794]
 
 Bug Fixes
 ^^^^^^^^^
