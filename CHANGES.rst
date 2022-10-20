@@ -11,6 +11,8 @@ Other Changes and Additions
   astropy sigma clipping function, and supports specifying the
   functions to use for estimating the center and deviation values
   as strings for common cases (which significantly improves performance). [#794]
+- The image combiner now allows the optional overwrite of the optional
+  output FITS file. [#797]
 
 Bug Fixes
 ^^^^^^^^^
