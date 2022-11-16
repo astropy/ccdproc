@@ -628,6 +628,33 @@ def test_combine_result_uncertainty_and_mask(comb_func, mask_point):
     assert ccd_comb.mask.sum() == mask_point
 
 
+def test_combine_overwrite_output(tmp_path):
+    """
+    The combiune function should *not* overwrite the result file
+    unless the overwrite_output argument is True
+    """
+    output_file = tmp_path / "fake.fits"
+
+    ccd = CCDData(np.ones((3, 3)), unit='adu')
+
+    # Make sure we have a file to overwrite
+    ccd.write(output_file)
+    # Test that overwrite does NOT happen by default
+    with pytest.raises(OSError, match="fake.fits already exists"):
+        res = combine([ccd, ccd.multiply(2)], output_file=str(output_file))
+
+    # Should be no error here...
+    # The default dtype of Combiner is float64
+    res = combine([ccd, ccd.multiply(2)],
+                   output_file=output_file,
+                   overwrite_output=True)
+
+    res_from_disk = CCDData.read(output_file)
+
+    # Data should be the same
+    np.testing.assert_allclose(res.data, res_from_disk.data)
+
+
 # test resulting uncertainty is corrected for the number of images
 def test_combiner_uncertainty_average():
     ccd_list = [CCDData(np.ones((10, 10)), unit=u.adu),

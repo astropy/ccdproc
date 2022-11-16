@@ -702,7 +702,8 @@ def combine(img_list, output_file=None,
             sigma_clip=False,
             sigma_clip_low_thresh=3, sigma_clip_high_thresh=3,
             sigma_clip_func=ma.mean, sigma_clip_dev_func=ma.std,
-            dtype=None, combine_uncertainty_function=None, **ccdkwargs):
+            dtype=None, combine_uncertainty_function=None,
+            overwrite_output=False, **ccdkwargs):
     """
     Convenience function for combining multiple images.
 
@@ -798,6 +799,12 @@ def combine(img_list, output_file=None,
         If ``None`` use the default uncertainty func when using average, median or
         sum combine, otherwise use the function provided.
         Default is ``None``.
+
+    overwrite_output : bool, optional
+        If ``output_file`` is specified, this is passed to the
+        `astropy.nddata.fits_ccddata_writer` under the keyword ``overwrite``;
+        has no effect otherwise.
+        Default is ``False``.
 
     ccdkwargs : Other keyword arguments for `astropy.nddata.fits_ccddata_reader`.
 
@@ -970,6 +977,6 @@ def combine(img_list, output_file=None,
 
     # Write fits file if filename was provided
     if output_file is not None:
-        ccd.write(output_file)
+        ccd.write(output_file, overwrite=overwrite_output)
 
     return ccd
