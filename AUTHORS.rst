@@ -73,6 +73,7 @@ improvements outside of GitHub, or otherwise assisted the project.
 
 * Juan Cabanela (@JuanCab)
 * @mheida
+* Aaron W Morris (@aaronwmorris)
 * Sara Ogaz (@SaOgaz)
 * Jean-Paul Ventura (@jvntra)
 * Kerry Paterson (@KerryPaterson)
