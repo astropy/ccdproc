@@ -1,3 +1,18 @@
+2.4.1 (unreleased)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Bug Fixes
+^^^^^^^^^
+
+- Fixes a crash when attempting to filter an already-empty ImageFileCollection,
+  instead simply returning an empty ImageFileCollection.  [#801]
+
 2.4.0 (2022-11-16)
 ------------------
 

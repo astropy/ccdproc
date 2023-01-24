@@ -366,6 +366,10 @@ class ImageFileCollection:
         Value comparison is case *insensitive* for strings, whether matching
         exactly or matching with regular expressions.
         """
+        # If the collection is empty, self.summary == None; return empty list
+        if self.summary is None:
+            return []
+
         # force a copy by explicitly converting to a list
         current_file_mask = self.summary['file'].mask.tolist()
 
