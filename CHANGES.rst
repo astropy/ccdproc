@@ -1,4 +1,4 @@
-2.4.1 (unreleased)
+2.4.1 (2023-05-30)
 ------------------
 
 New Features
@@ -12,6 +12,8 @@ Bug Fixes
 
 - Fixes a crash when attempting to filter an already-empty ImageFileCollection,
   instead simply returning an empty ImageFileCollection.  [#801]
+
+- Fixes minimum astropy version in installation requirements. [#799]
 
 2.4.0 (2022-11-16)
 ------------------
