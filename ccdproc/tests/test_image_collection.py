@@ -1015,6 +1015,7 @@ class TestImageFileCollection:
             ic = ImageFileCollection(triage_setup.test_dir)
         assert ic.summary is None
         assert ic.keywords == []
+        assert ic.files_filtered() == []
 
     def test_regex_match_for_search(self, triage_setup):
         # Test regex matching in searches
