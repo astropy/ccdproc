@@ -991,8 +991,8 @@ class ImageFileCollection:
                                do_not_scale_image_data=do_not_scale_image_data,
                                **kwd)
     hdus.__doc__ = _generator.__doc__.format(
-        name='HDUList', default_scaling='False',
-        return_type='astropy.io.fits.HDUList')
+        name='HDU', default_scaling='False',
+        return_type='astropy.io.fits.HDU')
 
     def data(self, do_not_scale_image_data=False, **kwd):
         return self._generator('data',
