@@ -43,6 +43,7 @@ Alphabetical list of code contributors
 * Kelvin Lee (@laserkelvin)
 * Pey Lian Lim (@pllim)
 * James McCormac (@jmccormac01)
+* Abigale Moen (@AbigaleMoen)
 * Stefan Nelson (@stefannelson)
 * Joe Philip Ninan (@indiajoe)
 * Punyaslok Pattnaik (@Punyaslok)
