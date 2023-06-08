@@ -992,7 +992,7 @@ class ImageFileCollection:
                                **kwd)
     hdus.__doc__ = _generator.__doc__.format(
         name='HDU', default_scaling='False',
-        return_type='astropy.io.fits.PrimaryHDU, astropy.io.fits.ImageHDU')
+        return_type="`, ` ".join(('astropy.io.fits.PrimaryHDU', 'astropy.io.fits.ImageHDU')))
 
     def data(self, do_not_scale_image_data=False, **kwd):
         return self._generator('data',
