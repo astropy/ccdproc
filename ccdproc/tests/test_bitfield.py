@@ -3,8 +3,6 @@
 import numpy as np
 import pytest
 
-from astropy.tests.helper import catch_warnings
-
 from ccdproc.core import bitfield_to_boolean_mask
 
 
@@ -69,9 +67,8 @@ def test_bitfield_flag_non_integer():
 
 def test_bitfield_duplicate_flag_throws_warning():
     bm = np.random.randint(0, 10, (10, 10))
-    with catch_warnings(UserWarning) as w:
+    with pytest.warns(UserWarning):
         bitfield_to_boolean_mask(bm, [1, 1])
-    assert len(w)
 
 
 def test_bitfield_none_identical_to_strNone():

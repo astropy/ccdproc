@@ -5,7 +5,8 @@ import numpy as np
 from astropy.nddata import CCDData
 import pytest
 
-from ccdproc import subtract_bias, create_deviation, Keyword
+from ccdproc import subtract_bias, create_deviation, Keyword, trim_image
+from ccdproc.core import _short_names
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
 
@@ -89,3 +90,25 @@ def test_implicit_logging():
         'creatvar', 'Shortened name for ccdproc command')
     assert ("readnoise=" + str(3 * ccd_data.unit) in
             result.header['creatvar'])
+
+
+def test_loggin_without_keyword_args():
+    # Regression test for the first failure in #704, which fails because
+    # there is no "fits_section" keyword in the call to trim_image.
+    ccd = CCDData(data=np.arange(1000).reshape(20, 50),
+                  header=None,
+                  unit='adu')
+    section = "[10:20, 10:20]"
+    trim_1 = trim_image(ccd, "[10:20, 10:20]")
+    assert section in trim_1.header[_short_names['trim_image']]
+
+
+def test_logging_with_really_long_parameter_value():
+    # Another regression test for the trim_3 case in #704
+    ccd = CCDData(data=np.arange(1000).reshape(20, 50),
+                  header=None,
+                  unit='adu')
+    section = ("[10:2000000000000000000000000000000000000000000000000000000, "
+               "10:2000000000000000000000000000000]")
+    trim_3 = trim_image(ccd, fits_section=section)
+    assert section in trim_3.header[_short_names['trim_image']]

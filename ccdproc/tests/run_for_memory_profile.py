@@ -1,3 +1,6 @@
+import pytest
+pytest.importorskip('memory_profiler')
+
 from argparse import ArgumentParser
 from tempfile import TemporaryDirectory
 from pathlib import Path

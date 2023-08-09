@@ -12,10 +12,9 @@ import astropy.io.fits as fits
 from astropy.table import Table
 import numpy as np
 
-from astropy.tests.helper import catch_warnings
 from astropy.utils.data import get_pkg_data_filename
-from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.io.fits.verify import VerifyWarning
 
 from astropy.nddata import CCDData
 
@@ -23,8 +22,6 @@ from ccdproc.image_collection import ImageFileCollection
 
 _filters = []
 _original_dir = ''
-
-_ASTROPY_LT_1_3 = not minversion("astropy", "1.3")
 
 
 def test_fits_summary(triage_setup):
@@ -35,11 +32,11 @@ def test_fits_summary(triage_setup):
     assert len(summary['file']) == triage_setup.n_test['files']
     for keyword in keywords:
         assert len(summary[keyword]) == triage_setup.n_test['files']
-    # explicit conversion to array is needed to avoid astropy Table bug in
+    # Explicit conversion to array is needed to avoid astropy Table bug in
     # 0.2.4
     no_filter_no_object_row = np.array(summary['file'] ==
                                        'no_filter_no_object_bias.fit')
-    # there should be no filter keyword in the bias file
+    # There should be no filter keyword in the bias file
     assert summary['filter'][no_filter_no_object_row].mask
 
 
@@ -208,7 +205,7 @@ class TestImageFileCollection:
         n_hdus = 0
         for hdu in collection.hdus():
             assert isinstance(hdu, fits.PrimaryHDU)
-            data = hdu.data  # must access the data to force scaling
+            data = hdu.data  # Must access the data to force scaling
             # pre-astropy 1.1 unsigned data was changed to float32 and BZERO
             # removed. In 1.1 and later, BZERO stays but the data type is
             # unsigned int.
@@ -360,7 +357,7 @@ class TestImageFileCollection:
                 location=triage_setup.test_dir, keywords=['imagetyp'])
 
         with pytest.raises(ValueError):
-            ccd = next(collection.ccds())
+            _ = next(collection.ccds())
 
     def test_generator_ccds(self, triage_setup):
         collection = ImageFileCollection(
@@ -384,11 +381,11 @@ class TestImageFileCollection:
                                                               triage_setup):
         collection = ImageFileCollection(location=triage_setup.test_dir,
                                          keywords=['imagetyp'])
-        # ensure all files are originally unmasked
+        # Ensure all files are originally unmasked
         assert not collection.summary['file'].mask.any()
-        # generate list that will match NO files
+        # Generate list that will match NO files
         collection.files_filtered(imagetyp='foisajfoisaj')
-        # if the code works, this should have no permanent effect
+        # If the code works, this should have no permanent effect
         assert not collection.summary['file'].mask.any()
 
     @pytest.mark.parametrize("new_keywords,collection_keys", [
@@ -403,10 +400,10 @@ class TestImageFileCollection:
         tbl_new = collection.summary
 
         if set(new_keywords).issubset(collection_keys):
-            # should just delete columns without rebuilding table
+            # Should just delete columns without rebuilding table
             assert(tbl_orig is tbl_new)
         else:
-            # we need new keywords so must rebuild
+            # We need new keywords so must rebuild
             assert(tbl_orig is not tbl_new)
 
         for key in new_keywords:
@@ -432,14 +429,14 @@ class TestImageFileCollection:
         empty_dir = tmpdir.mkdtemp()
         some_file = empty_dir.join('some_file.txt')
         some_file.dump('words')
-        with catch_warnings() as w:
+        with pytest.warns(Warning) as w:
             collection = ImageFileCollection(location=empty_dir.strpath,
                                              keywords=['imagetyp'])
         assert len(w) == 1
         assert str(w[0].message) == "no FITS files in the collection."
         assert collection.summary is None
         for hdr in collection.headers():
-            # this statement should not be reached if there are no FITS files
+            # This statement should not be reached if there are no FITS files
             assert 0
 
     def test_dir_with_no_keys(self, tmpdir):
@@ -448,7 +445,7 @@ class TestImageFileCollection:
         bad_dir = tmpdir.mkdtemp()
         not_really_fits = bad_dir.join('not_fits.fit')
         not_really_fits.dump('I am not really a FITS file')
-        # make sure an error will be generated if the FITS file is read
+        # Make sure an error will be generated if the FITS file is read
         with pytest.raises(IOError):
             fits.getheader(not_really_fits.strpath)
 
@@ -484,7 +481,7 @@ class TestImageFileCollection:
                                  keywords=keywords_in)
         for key in set(keywords_in):
             assert (key in ic.keywords)
-        # one keyword gets added: file
+        # One keyword gets added: file
         assert len(ic.keywords) < len(keywords_in) + 1
 
     def test_keyword_includes_file(self, triage_setup):
@@ -520,7 +517,7 @@ class TestImageFileCollection:
     def test_collection_when_one_file_not_fits(self, triage_setup):
         not_fits = 'foo.fit'
         path_bad = os.path.join(triage_setup.test_dir, not_fits)
-        # create an empty file...
+        # Create an empty file...
         with open(path_bad, 'w'):
             pass
         ic = ImageFileCollection(triage_setup.test_dir, keywords=['imagetyp'])
@@ -570,16 +567,11 @@ class TestImageFileCollection:
             for hdr in ic.headers(save_location=bad_directory.strpath):
                 pass
 
-    def test_no_fits_files_in_collection(self):
-        with catch_warnings(AstropyUserWarning) as warning_lines:
-            # FIXME: What exactly does this assert?
-            assert "no fits files in the collection."
-
     def test_initialization_with_no_keywords(self, triage_setup):
         # This test is primarily historical -- the old default for
         # keywords was an empty list (it is now the wildcard '*').
         ic = ImageFileCollection(location=triage_setup.test_dir, keywords=[])
-        # iteration below failed before bugfix...
+        # Iteration below failed before bugfix...
         execs = 0
         for h in ic.headers():
             execs += 1
@@ -653,7 +645,8 @@ class TestImageFileCollection:
         long_history.writeto(path_history)
         ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
         with NamedTemporaryFile() as test_table:
-            ic.summary.write(test_table.name, format='ascii.csv')
+            ic.summary.write(test_table.name, format='ascii.csv',
+                             overwrite=True)
             table_disk = Table.read(test_table.name, format='ascii.csv')
         assert len(table_disk) == len(ic.summary)
 
@@ -706,10 +699,6 @@ class TestImageFileCollection:
         for i in range(len(collection.summary)):
             assert(collection.summary['file'][i] == collection.files[i])
 
-    @pytest.mark.skipif(
-        _ASTROPY_LT_1_3,
-        reason="It seems to fail with a TypeError there but because of "
-               "different reasons (something to do with NumPy).")
     def test_sorting_without_key_fails(self, triage_setup):
         ic = ImageFileCollection(location=triage_setup.test_dir)
         with pytest.raises(ValueError):
@@ -725,7 +714,7 @@ class TestImageFileCollection:
 
         hdu.writeto(os.path.join(triage_setup.test_dir, 'duplicated.fits'))
 
-        with catch_warnings(UserWarning) as w:
+        with pytest.warns(UserWarning) as w:
             ic = ImageFileCollection(triage_setup.test_dir, keywords='*')
         assert len(w) == 1
         assert 'stupid' in str(w[0].message)
@@ -771,7 +760,7 @@ class TestImageFileCollection:
 
     def test_glob_matching(self, triage_setup):
         # We'll create two files with strange names to test glob
-        #   includes / excludes
+        # includes / excludes
         one = fits.PrimaryHDU()
         one.data = np.zeros((5, 5))
         one.header[''] = 'whatever'
@@ -786,7 +775,7 @@ class TestImageFileCollection:
                                    glob_exclude='*other*')
         assert len(coll.files) == 1
 
-        # the glob attributes are readonly, so setting them raises an Exception.
+        # The glob attributes are readonly, so setting them raises an Exception.
         with pytest.raises(AttributeError):
             coll.glob_exclude = '*stuff*'
         with pytest.raises(AttributeError):
@@ -976,18 +965,19 @@ class TestImageFileCollection:
             TESTVERI= '2017/02/13-16:51:38 / Test VerifyWarning
         """
 
-        testh = fits.Header.fromstring(bad_header)
-        print(testh)
-        testfits = fits.PrimaryHDU(data=np.ones((10, 10)), header=testh)
+        with pytest.warns(VerifyWarning):
+            testh = fits.Header.fromstring(bad_header)
 
-        path = Path(triage_setup.test_dir)
-        bad_fits_name = 'test_warnA.fits'
-        testfits.writeto(path / bad_fits_name,
-                         output_verify='warn',
-                         overwrite=True)
+            testfits = fits.PrimaryHDU(data=np.ones((10, 10)), header=testh)
 
-        ic = ImageFileCollection(location=str(path))
-        print(ic.summary.colnames)
+            path = Path(triage_setup.test_dir)
+            bad_fits_name = 'test_warnA.fits'
+            testfits.writeto(path / bad_fits_name,
+                             output_verify='warn',
+                             overwrite=True)
+
+            ic = ImageFileCollection(location=str(path))
+
         assert bad_fits_name in ic.files
 
         # Turns out this sample header is so messed up that TESTVERI does not
@@ -998,8 +988,8 @@ class TestImageFileCollection:
         assert '17/02/13' in ic.summary.colnames
 
         # Try making the summary as in the original bug report
-        ic = ImageFileCollection(location=str(path),
-                                 glob_include='*warnA*')
+        with pytest.warns(AstropyUserWarning, match='The following header keyword is invalid'):
+            ic = ImageFileCollection(location=str(path), glob_include='*warnA*')
 
     def test_type_of_empty_collection(self, triage_setup):
         # Test for implementation of the suggestion in
@@ -1021,9 +1011,11 @@ class TestImageFileCollection:
             p.unlink()
 
         # Now the summary should be none
-        ic = ImageFileCollection(triage_setup.test_dir)
+        with pytest.warns(AstropyUserWarning, match='no FITS files in the collection'):
+            ic = ImageFileCollection(triage_setup.test_dir)
         assert ic.summary is None
         assert ic.keywords == []
+        assert ic.files_filtered() == []
 
     def test_regex_match_for_search(self, triage_setup):
         # Test regex matching in searches
@@ -1089,3 +1081,34 @@ class TestImageFileCollection:
         assert len(new_ic.summary) == triage_setup.n_test['light']
         for header in new_ic.headers():
             assert header['imagetyp'].lower() == 'light'
+
+    def test_filtered_collection_with_no_files(self, triage_setup):
+        ifc = ImageFileCollection(triage_setup.test_dir)
+
+        with pytest.warns(AstropyUserWarning, match="no FITS files"):
+            _ = ifc.filter(object='really fake object')
+
+    def test_filter_on_regex_escape_characters(self, triage_setup):
+        # Test for implementation of bugfix at
+        #
+        #    https://github.com/astropy/ccdproc/issues/770
+        #
+        # which escapes regex special characters in keyword values used for
+        # filtering a collection, when option `regex_match=False`.
+
+        # For a few different special characters, make test files with FILTER
+        # keyword containing these
+
+        special_kwds = ['CO+', 'GG420 (1)', 'V|R|I', 'O[III]', 'NaD^2']
+        for i, kw in enumerate(special_kwds, 1):
+            hdu = fits.PrimaryHDU()
+            hdu.data = np.zeros((5, 5))
+            hdu.header['REGEX_FL'] = kw
+            hdu.writeto(os.path.join(triage_setup.test_dir,
+                        'regex_special_{:d}.fits'.format(i)))
+
+        ic = ImageFileCollection(triage_setup.test_dir)
+        for kw in special_kwds:
+            new_ic = ic.filter(regex_fl=kw)
+            assert len(new_ic.files) == 1
+            assert kw in new_ic.summary['regex_fl']

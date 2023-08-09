@@ -12,7 +12,6 @@ A module that provides functions for manipulating bitmasks and data quality
 
 import sys
 import warnings
-import six
 import numpy as np
 
 
@@ -163,7 +162,7 @@ def interpret_bit_flags(bit_flags, flip_bits=None):
             )
         return None
 
-    elif isinstance(bit_flags, six.string_types):
+    elif isinstance(bit_flags, str):
         if has_flip_bits:
             raise TypeError(
                 "Keyword argument 'flip_bits' is not permitted for "
@@ -248,7 +247,7 @@ def interpret_bit_flags(bit_flags, flip_bits=None):
 
 def bitfield_to_boolean_mask(bitfield, ignore_flags=0, flip_bits=None,
                              good_mask_value=True, dtype=np.bool_):
-    """
+    r"""
     bitfield_to_boolean_mask(bitfield, ignore_flags=None, flip_bits=None, \
 good_mask_value=True, dtype=numpy.bool\_)
     Converts an array of bit fields to a boolean (or integer) mask array

@@ -1,8 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-import gzip
-from tempfile import mkdtemp
-import os
 from shutil import rmtree
 
 import numpy as np
@@ -10,7 +7,6 @@ import numpy as np
 import pytest
 from astropy import units as u
 from astropy.utils import NumpyRNGContext
-from astropy.io import fits
 from astropy.nddata import CCDData
 
 from ..utils.sample_directory import directory_for_testing
@@ -40,7 +36,8 @@ def value_from_markers(key, request):
 
 def ccd_data(data_size=DEFAULT_DATA_SIZE,
              data_scale=DEFAULT_DATA_SCALE,
-             data_mean=DEFAULT_DATA_MEAN):
+             data_mean=DEFAULT_DATA_MEAN,
+             rng_seed=DEFAULT_SEED):
     """
     Return a CCDData object with units of ADU.
 
@@ -61,7 +58,7 @@ def ccd_data(data_size=DEFAULT_DATA_SIZE,
     scale = data_scale
     mean = data_mean
 
-    with NumpyRNGContext(DEFAULTS['seed']):
+    with NumpyRNGContext(rng_seed):
         data = np.random.normal(loc=mean, size=[size, size], scale=scale)
 
     fake_meta = {'my_key': 42, 'your_key': 'not 42'}

@@ -1,8 +1,113 @@
-2.1.1 (unreleased)
+2.4.1 (unreleased)
 ------------------
 
 New Features
 ^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Bug Fixes
+^^^^^^^^^
+
+2.4.1 (2023-05-30)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Bug Fixes
+^^^^^^^^^
+
+- Fixes a crash when attempting to filter an already-empty ImageFileCollection,
+  instead simply returning an empty ImageFileCollection.  [#801]
+
+- Fixes minimum astropy version in installation requirements. [#799]
+
+2.4.0 (2022-11-16)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The sigma clipping option in the image combiner now always uses the
+  astropy sigma clipping function, and supports specifying the
+  functions to use for estimating the center and deviation values
+  as strings for common cases (which significantly improves performance). [#794]
+- The image combiner now allows the optional overwrite of the optional
+  output FITS file. [#797]
+
+Bug Fixes
+^^^^^^^^^
+
+2.3.1 (2022-05-09)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Bug Fixes
+^^^^^^^^^
+
+- In python 3.7 the ``version`` method from ``packaging`` must be
+  imported directly. [#786]
+
+2.3.0 (2021-12-21)
+------------------
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The ``rebin`` function has been more clearly marked with a deprecation
+  milestone. It will be removed in v3. [#780]
+
+Bug Fixes
+^^^^^^^^^
+
+- Fixes compatibility with ``astroscrappy`` version ``1.1.0`` and deprecates
+  old keyword arguments no longer used by ``astroscrappy``. [#777, #778]
+
+2.2.0 (2021-05-24)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+- Image combination is faster for average and sum combine, and improves
+  for all operations if the ``bottleneck`` package is installed. [#741]
+
+- Pixel-wise weighting can be done for sum and average combine. [#741]
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Bug Fixes
+^^^^^^^^^
+
+- When filtering an ``ImageFileCollection`` by keyword value, and not
+  explicitly using a regex search pattern (``regex_match=True``), escape all
+  special characters in the keyword value for a successful search. [#770]
+
+- Return mask and uncertainty from ``combine`` even if input images have no
+  mask or uncertainty. [#775]
+
+2.1.1 (2021-03-15)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+- Improve integration of ``ImageFileCollection`` with image combination
+  and document that integration [#762]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -14,7 +119,16 @@ Bug Fixes
 ^^^^^^^^^
 
 - ``test_image_collection.py`` in the test suite no longer produces
- permanent files on disk and cleans up after itself. [#738]
+  permanent files on disk and cleans up after itself. [#738]
+
+- Change ``Combiner`` to allow accepting either a list or a generator [#757]
+
+- ``ImageFileCollection`` now correctly returns an empty collection when
+  an existing collection is filtered restrictively enough to remove all
+  files.  [#750]
+
+- Logging now preserves all of the arguments when the keyword argument
+  names are not used. [#756]
 
 - Workaround malformed header keyword names  [#743]
 

@@ -10,10 +10,8 @@ from astropy.nddata import NDData
 from astropy import units as u
 from astropy.io import fits
 
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
+import ccdproc  # Really only need Keyword from ccdproc
 
-import ccdproc  # really only need Keyword from ccdproc
 
 __all__ = []
 
@@ -66,9 +64,15 @@ def log_to_metadata(func):
     """
     func.__doc__ = func.__doc__.format(log=_LOG_ARG_HELP)
 
-    (original_args, varargs, keywords, defaults) = inspect.getargspec(func)
+    argspec = inspect.getfullargspec(func)
+    original_args, varargs, keywords, defaults = (argspec.args, argspec.varargs,
+                                                  argspec.varkw, argspec.defaults)
+    # original_args = argspec.args
+    # varargs = argspec.varargs
+    # keywords = argspec.varkw
+    # defaults = argspec.defaults
 
-    # grab the names of positional arguments for use in automatic logging
+    # Grab the names of positional arguments for use in automatic logging
     try:
         original_positional_args = original_args[:-len(defaults)]
     except TypeError:
@@ -82,8 +86,7 @@ def log_to_metadata(func):
         defaults = []
     defaults.append(True)
 
-    signature_with_arg_added = inspect.formatargspec(original_args, varargs,
-                                                     keywords, defaults)
+    signature_with_arg_added = inspect.signature(func)
     signature_with_arg_added = "{0}{1}".format(func.__name__,
                                                signature_with_arg_added)
     func.__doc__ = "\n".join([signature_with_arg_added, func.__doc__])
@@ -104,7 +107,11 @@ def log_to_metadata(func):
             # so construct one unless the config parameter auto_logging is set to False
             if ccdproc.conf.auto_logging:
                 key = func.__name__
-                all_args = chain(zip(original_positional_args, args), kwd.items())
+                # Get names of arguments, which may or may not have
+                # been called as keywords.
+                positional_args = original_args[:len(args)]
+
+                all_args = chain(zip(positional_args, args), kwd.items())
                 all_args = ["{0}={1}".format(name,
                                             _replace_array_with_placeholder(val))
                             for name, val in all_args]
@@ -139,7 +146,7 @@ def _replace_array_with_placeholder(value):
         try:
             length = len(value)
         except TypeError:
-            # value has no length...
+            # Value has no length...
             try:
                 # ...but if it is NDData its .data will have a length
                 length = len(value.data)

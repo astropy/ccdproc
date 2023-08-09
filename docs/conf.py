@@ -51,7 +51,7 @@ setup_cfg = dict(conf.items('metadata'))
 highlight_language = 'python3'
 
 # If your documentation needs a minimal Sphinx version, state it here.
-#needs_sphinx = '1.2'
+# needs_sphinx = '1.2'
 
 # To perform a Sphinx version check that needs to be more specific than
 # major.minor, call `check_sphinx_version("x.y.z")` here.
@@ -65,7 +65,6 @@ exclude_patterns.append('_templates')
 # be used globally.
 rst_epilog += """
 """
-
 # -- Project information ------------------------------------------------------
 
 # This does not *have* to match the package name, but typically does
@@ -77,15 +76,12 @@ copyright = '{0}, {1}'.format(
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
+__import__(project)
+package = sys.modules[project]
 
-from pkg_resources import get_distribution, DistributionNotFound
-try:
-    __version__ = get_distribution(__name__)
-except DistributionNotFound:
-    __version__ = 'unknown'
-
-version = __version__
-release = __version__
+ver = package.__version__
+version = '.'.join(ver.split('.'))[:5]
+release = ver
 
 # -- Options for HTML output --------------------------------------------------
 
@@ -169,7 +165,7 @@ if eval(setup_cfg.get('edit_on_github')):
     if versionmod.version.release:
         edit_on_github_branch = "v" + versionmod.version.version
     else:
-        edit_on_github_branch = "master"
+        edit_on_github_branch = "main"
 
     edit_on_github_source_root = ""
     edit_on_github_doc_root = "docs"

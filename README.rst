@@ -1,14 +1,15 @@
 ccdproc
 =======
 
-.. image:: https://travis-ci.org/astropy/ccdproc.svg?branch=master
-  :target: https://travis-ci.org/astropy/ccdproc
+.. image:: https://github.com/astropy/ccdproc/workflows/CI/badge.svg
+    :target: https://github.com/astropy/ccdproc/actions
+    :alt: GitHub Actions CI Status
 
 .. image:: https://coveralls.io/repos/astropy/ccdproc/badge.svg
   :target: https://coveralls.io/r/astropy/ccdproc
 
-.. image:: https://zenodo.org/badge/12153/astropy/ccdproc.svg
-   :target: https://zenodo.org/badge/latestdoi/12153/astropy/ccdproc
+.. image:: https://zenodo.org/badge/13384007.svg
+   :target: https://zenodo.org/badge/latestdoi/13384007
 
 
 Ccdproc is is an affiliated package for the AstroPy package for basic data

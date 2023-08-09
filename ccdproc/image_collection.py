@@ -366,6 +366,10 @@ class ImageFileCollection:
         Value comparison is case *insensitive* for strings, whether matching
         exactly or matching with regular expressions.
         """
+        # If the collection is empty, self.summary == None; return empty list
+        if self.summary is None:
+            return []
+
         # force a copy by explicitly converting to a list
         current_file_mask = self.summary['file'].mask.tolist()
 
@@ -448,7 +452,9 @@ class ImageFileCollection:
             else:
                 files = self._filenames
         else:
-            files = self._fits_files_in_directory()
+            # Check if self.location is set, otherwise proceed with empty list
+            if self.location != '':
+                files = self._fits_files_in_directory()
 
             if self.glob_include is not None:
                 files = fnmatch.filter(files, self.glob_include)
@@ -718,6 +724,8 @@ class ImageFileCollection:
                         pattern = re.compile(value,
                                              flags=re.IGNORECASE)
                     else:
+                        # Escape all special characters that might be present
+                        value = re.escape(value)
                         # This pattern matches the prior behavior.
                         pattern = re.compile('^' + value + '$',
                                              flags=re.IGNORECASE)
@@ -993,8 +1001,8 @@ class ImageFileCollection:
                                do_not_scale_image_data=do_not_scale_image_data,
                                **kwd)
     hdus.__doc__ = _generator.__doc__.format(
-        name='HDUList', default_scaling='False',
-        return_type='astropy.io.fits.HDUList')
+        name='HDU', default_scaling='False',
+        return_type="`, ` ".join(('astropy.io.fits.PrimaryHDU', 'astropy.io.fits.ImageHDU')))
 
     def data(self, do_not_scale_image_data=False, **kwd):
         return self._generator('data',

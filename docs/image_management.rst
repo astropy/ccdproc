@@ -47,7 +47,7 @@ expressions. For example, to include all filenames that begin with ``1d_`` but
 not ones that include the word ``bad``, you could do::
 
     >>> ic_all = ImageFileCollection(dir, glob_include='1d_*',
-    ...                              glob_exclude='*bad*')
+    ...                              glob_exclude='*bad*')  # doctest: +IGNORE_WARNINGS
 
 Alternatively, you can create the collection with an explicit list of file names::
 

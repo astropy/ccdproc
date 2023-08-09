@@ -5,6 +5,7 @@
 import math
 import numbers
 import logging
+from packaging import version as pkgversion
 import warnings
 
 import numpy as np
@@ -17,7 +18,7 @@ from astropy import stats
 from astropy import nddata
 from astropy.nddata import StdDevUncertainty, CCDData
 from astropy.wcs.utils import proj_plane_pixel_area
-from astropy.utils import deprecated
+from astropy.utils import deprecated, deprecated_renamed_argument
 import astropy  # To get the version.
 
 from .utils.slices import slice_from_string
@@ -843,7 +844,7 @@ def transform_image(ccd, transform_func, **kwargs):
     The syntax for transforming the array using
     `scipy.ndimage.shift`::
 
-        >>> from scipy.ndimage.interpolation import shift
+        >>> from scipy.ndimage import shift
         >>> from ccdproc import transform_image
         >>> transformed = transform_image(arr1, shift, shift=(5.5, 8.1))
     """
@@ -874,7 +875,7 @@ def transform_image(ccd, transform_func, **kwargs):
 
     if nccd.wcs is not None:
         warn = 'WCS information may be incorrect as no transformation was applied to it'
-        logging.warning(warn)
+        warnings.warn(warn, UserWarning)
 
     return nccd
 
@@ -968,7 +969,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     return nccd
 
 
-def sigma_func(arr, axis=None):
+def sigma_func(arr, axis=None, ignore_nan=False):
     """
     Robust method for calculating the deviation of an array. ``sigma_func``
     uses the median absolute deviation to determine the standard deviation.
@@ -990,7 +991,9 @@ def sigma_func(arr, axis=None):
     uncertainty : float
         uncertainty of array estimated from median absolute deviation.
     """
-    return stats.median_absolute_deviation(arr, axis=axis) * 1.482602218505602
+    return (stats.median_absolute_deviation(arr, axis=axis,
+                                            ignore_nan=ignore_nan)
+            * 1.482602218505602)
 
 
 def setbox(x, y, mbox, xmax, ymax):
@@ -1110,7 +1113,9 @@ def background_deviation_filter(data, bbox):
     return ndimage.generic_filter(data, sigma_func, size=(bbox, bbox))
 
 
-@deprecated('1.1')
+@deprecated('1.1',
+            message='The rebin function will be removed in ccdproc 3.0 '
+                    'Use block_reduce or block_replicate instead.')
 def rebin(ccd, newshape):
     """
     Rebin an array to have a new shape.
@@ -1302,20 +1307,28 @@ def median_filter(data, *args, **kwargs):
         return ndimage.median_filter(data, *args, **kwargs)
 
 
+# This originally used the "message" argument but that is not
+# supported until astropy 5, so use alternative instead.
+@deprecated_renamed_argument('pssl', None, '2.3.0',
+                             arg_in_kwargs=True,
+                             alternative='The pssl keyword will be removed in '
+                                'ccdproc 3.0. Use inbkg instead to have '
+                                'astroscrappy temporarily remove the background '
+                                'during processing.')
 def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                        objlim=5.0, gain=1.0, readnoise=6.5,
                        satlevel=65535.0, pssl=0.0, niter=4,
                        sepmed=True, cleantype='meanmask', fsmode='median',
                        psfmodel='gauss', psffwhm=2.5, psfsize=7,
                        psfk=None, psfbeta=4.765, verbose=False,
-                       gain_apply=True):
+                       gain_apply=True,
+                       inbkg=None, invar=None):
     r"""
     Identify cosmic rays through the L.A. Cosmic technique. The L.A. Cosmic
     technique identifies cosmic rays by identifying pixels based on a variation
     of the Laplacian edge detection. The algorithm is an implementation of the
     code describe in van Dokkum (2001) [1]_ as implemented by McCully (2014)
     [2]_. If you use this algorithm, please cite these two works.
-
 
 
     Parameters
@@ -1341,6 +1354,26 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         Minimum contrast between Laplacian image and the fine structure image.
         Increase this value if cores of bright stars are flagged as cosmic
         rays. Default: 5.0.
+
+    inbkg : float numpy array, optional
+        A pre-determined background image, to be subtracted from ``indat``
+        before running the main detection algorithm.
+        This is used primarily with spectroscopic data, to remove
+        sky lines and the cross-section of an object continuum during
+        iteration, "protecting" them from spurious rejection (see the above
+        paper). This background is not removed from the final, cleaned output
+        (``cleanarr``). This should be in units of "counts", the same units of indat.
+        This inbkg should be free from cosmic rays. When estimating the cosmic-ray
+        free noise of the image, we will treat ``inbkg`` as a constant Poisson
+        contribution to the variance.
+
+    invar : float numpy array, optional
+        A pre-determined estimate of the data variance (ie. noise squared) in
+        each pixel, generated by previous processing of ``indat``. If provided,
+        this is used in place of an internal noise model based on ``indat``,
+        ``gain`` and ``readnoise``. This still gets median filtered and cleaned
+        internally, to estimate what the noise in each pixel *would* be in the
+        absence of cosmic rays. This should be in units of "counts" squared.
 
     pssl : float, optional
         Previously subtracted sky level in ADU. We always need to work in
@@ -1471,6 +1504,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
        updated with the detected cosmic rays.
     """
     from astroscrappy import detect_cosmics
+    from astroscrappy import __version__ as asy_version
 
     # If we didn't get a quantity, put them in, with unit specified by the
     # documentation above.
@@ -1483,20 +1517,65 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     if not isinstance(readnoise, u.Quantity):
         readnoise = readnoise * u.electron
 
+    # Handle transition from old astroscrappy interface to new
+    old_astroscrappy_interface = (pkgversion.parse(asy_version) <
+                                  pkgversion.parse('1.1.0'))
+
+    # Use this dictionary to define which keyword arguments are actually
+    # passed to astroscrappy.
+    asy_background_kwargs = {}
+
+    # This is for handling the transition in astroscrappy versions
+    data_offset = 0
+
+    # Handle setting up the keyword arguments for both interfaces
+    if old_astroscrappy_interface: # pragma: no cover
+        new_args = dict(inbkg=inbkg, invar=invar)
+        bad_args = []
+        for k, v in new_args.items():
+            if v is not None:
+                bad_args.append(k)
+
+        if bad_args:
+            s = 's' if len(bad_args) > 1 else ''
+            bads = ', '.join(bad_args)
+            raise TypeError(f'The argument{s} {bads} only valid for astroscrappy '
+                            '1.1.0 or higher.')
+
+        if pssl != 0:
+            asy_background_kwargs = dict(pssl=pssl)
+
+    else:
+        if pssl != 0:
+            if (inbkg is not None) or (invar is not None):
+                raise ValueError('Cannot set both pssl and inbkg')
+
+            # The old version of astroscrappy added the bkg back in
+            # if pssl was provided. The new one does not, so set an offset
+            # here that we later add in then take out.
+            data_offset = pssl
+
+        asy_background_kwargs = dict(inbkg=inbkg, invar=invar)
+
     if isinstance(ccd, np.ndarray):
         data = ccd
 
         crmask, cleanarr = detect_cosmics(
-            data, inmask=None, sigclip=sigclip,
+            data + data_offset, inmask=None, sigclip=sigclip,
             sigfrac=sigfrac, objlim=objlim, gain=gain.value,
-            readnoise=readnoise.value, satlevel=satlevel, pssl=pssl,
+            readnoise=readnoise.value, satlevel=satlevel,
             niter=niter, sepmed=sepmed, cleantype=cleantype,
             fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
             psfsize=psfsize, psfk=psfk, psfbeta=psfbeta,
-            verbose=verbose)
+            verbose=verbose,
+            **asy_background_kwargs)
 
-        if not gain_apply and gain != 1.0:
-            cleanarr = cleanarr / gain
+        cleanarr = cleanarr - data_offset
+        cleanarr = _astroscrappy_gain_apply_helper(cleanarr,
+                                                   gain,
+                                                   gain_apply,
+                                                   old_astroscrappy_interface)
+
         return cleanarr, crmask
 
     elif isinstance(ccd, CCDData):
@@ -1521,19 +1600,22 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                                                                         readnoise.unit))
 
         crmask, cleanarr = detect_cosmics(
-            ccd.data, inmask=ccd.mask,
+            ccd.data + data_offset, inmask=ccd.mask,
             sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain.value,
-            readnoise=readnoise.value, satlevel=satlevel, pssl=pssl,
+            readnoise=readnoise.value, satlevel=satlevel,
             niter=niter, sepmed=sepmed, cleantype=cleantype,
             fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
-            psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, verbose=verbose)
+            psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, verbose=verbose,
+            **asy_background_kwargs)
 
         # create the new ccd data object
         nccd = ccd.copy()
 
-        # Remove the gain scaling if it wasn't desired
-        if not gain_apply and gain != 1.0:
-            cleanarr = cleanarr / gain.value
+        cleanarr = cleanarr - data_offset
+        cleanarr = _astroscrappy_gain_apply_helper(cleanarr,
+                                                   gain,
+                                                   gain_apply,
+                                                   old_astroscrappy_interface)
 
         # Fix the units if the gain is being applied.
         nccd.unit = ccd.unit * gain.unit
@@ -1548,6 +1630,42 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
     else:
         raise TypeError('ccd is not a CCDData or ndarray object.')
+
+
+def _astroscrappy_gain_apply_helper(cleaned_data, gain,
+                                    gain_apply, old_interface):
+    """
+    Helper function for logic determining how to apply gain to cleaned
+    data. In the old astroscrappy interface cleaned data was always
+    gain-corrected. In the new interface it is not. This function works out
+    the Right Thing to do given the inputs.
+
+    cleaned_data : `numpy.ndarray`
+        The cleaned data.
+
+    gain: float
+        The gain to (maybe) be applied.
+
+    gain_apply : bool
+        If ``True``, the cleaned data should have the gain applied, otherwise
+        the gain should be applied.
+
+    old_interface : bool
+        If ``True`` the old, i.e. pre-1.1.0, astroscrappy interface is being
+        used. The old interface always gain corrected the cleaned data, the
+        new one does not.
+    """
+    if gain != 1.0:
+        if gain_apply:
+            if not old_interface:
+                # New interface does not gain correct, old one did.
+                return cleaned_data * gain
+        else:
+            # Do not want gain correct
+            if old_interface:  # pragma: no cover
+                # Old interface gain corrected always so take it out
+                return cleaned_data / gain
+    return cleaned_data
 
 
 def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
