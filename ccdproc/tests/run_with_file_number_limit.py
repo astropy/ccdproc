@@ -1,11 +1,8 @@
-from argparse import ArgumentParser
 from tempfile import TemporaryDirectory
 from pathlib import Path
 import mmap
 import sys
 import gc
-
-import psutil
 
 import numpy as np
 from astropy.io import fits
@@ -230,6 +227,10 @@ def run_with_limit(n, kind='fits', size=None, overhead=6,
 
 
 if __name__ == '__main__':
+    from argparse import ArgumentParser
+
+    import psutil
+
     parser = ArgumentParser()
     parser.add_argument('number', type=int,
                         help='Limit on number of open files.')
