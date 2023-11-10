@@ -12,6 +12,7 @@ from astropy.io import fits
 
 import ccdproc  # Really only need Keyword from ccdproc
 
+
 __all__ = []
 
 _LOG_ARGUMENT = 'add_keyword'
