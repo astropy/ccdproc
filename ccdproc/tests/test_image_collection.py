@@ -952,6 +952,7 @@ class TestImageFileCollection:
 
         assert n_heads == expected_heads
 
+    @pytest.mark.filterwarnings("ignore:The following header keyword is invalid:UserWarning")
     def test_less_strict_verify_option(self, triage_setup):
         # Tests for feature request
         #

@@ -168,7 +168,13 @@ def test_cosmicray_lacosmic_detects_inconsistent_units():
     assert 'Inconsistent units' in str(e.value)
 
 
-def test_cosmicray_lacosmic_warns_on_ccd_in_electrons(recwarn):
+if OLD_ASTROSCRAPPY:
+    decorator = pytest.mark.filterwarnings("ignore:`np.bool` is a deprecated alias:DeprecationWarning")
+else:
+    decorator = lambda f: f
+
+@decorator
+def test_cosmicray_lacosmic_warns_on_ccd_in_electrons():
     # Check that an input ccd in electrons raises a warning.
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     # The unit below is important for the test; this unit on
@@ -183,12 +189,13 @@ def test_cosmicray_lacosmic_warns_on_ccd_in_electrons(recwarn):
     # Don't really need to set this (6.5 is the default value) but want to
     # make lack of units explicit.
     readnoise = 6.5
-    new_ccd = cosmicray_lacosmic(ccd_data,
-                                 gain=gain,
-                                 gain_apply=True,
-                                 readnoise=readnoise)
-
-    assert "Image unit is electron" in str(recwarn.pop())
+    with pytest.warns(UserWarning, match="Image unit is electron"):
+        cosmicray_lacosmic(
+            ccd_data,
+            gain=gain,
+            gain_apply=True,
+            readnoise=readnoise
+        )
 
 
 # The skip can be removed when the oldest supported astroscrappy
