@@ -1,6 +1,3 @@
-numpy>=1.9
-scipy
-scikit-image
+-e .  # install ccdproc itself (and its dependencies)
 numpydoc
-astropy>=3.0
 sphinx-astropy
