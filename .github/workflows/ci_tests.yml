@@ -76,7 +76,7 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python }}
     - name: Install base dependencies
@@ -101,4 +101,4 @@ jobs:
     #   run: tox -e ${{ matrix.tox_env }} -- --remote-data=any
     - name: Upload coverage to codecov
       if: "endsWith(matrix.tox_env, '-cov')"
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
