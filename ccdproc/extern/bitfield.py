@@ -53,7 +53,7 @@ __all__ = ['bitfield_to_boolean_mask', 'interpret_bit_flags', 'is_bit_flag']
 # 1.1.1 (30-January-2018) - Improved filtering of high bits in flags.
 #
 INT_TYPE = (int, long,) if sys.version_info < (3,) else (int,)
-MAX_UINT_TYPE = np.maximum_sctype(np.uint)
+MAX_UINT_TYPE = np.uint64
 SUPPORTED_FLAGS = int(np.bitwise_not(
     0, dtype=MAX_UINT_TYPE, casting='unsafe'
 ))
