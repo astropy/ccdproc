@@ -101,4 +101,4 @@ jobs:
     #   run: tox -e ${{ matrix.tox_env }} -- --remote-data=any
     - name: Upload coverage to codecov
       if: "endsWith(matrix.tox_env, '-cov')"
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
