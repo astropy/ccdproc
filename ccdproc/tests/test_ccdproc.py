@@ -28,6 +28,7 @@ try:
 except ImportError:
     HAS_BLOCK_X_FUNCS = False
 
+_NUMPY_COPY_IF_NEEDED = False if np.__version__.startswith("1.") else None
 
 # Test creating deviation
 # Success expected if u_image * u_gain = u_readnoise
@@ -977,7 +978,7 @@ def test_wcs_project_onto_scale_wcs():
 
     # Mask should be true for four pixels (all nearest neighbors)
     # of the single pixel we masked initially.
-    new_center = np.array(new_ccd.wcs.wcs.crpix, dtype=int, copy=False)
+    new_center = np.array(new_ccd.wcs.wcs.crpix, dtype=int, copy=_NUMPY_COPY_IF_NEEDED)
     assert np.all(new_ccd.mask[new_center[0]:new_center[0]+2,
                                new_center[1]:new_center[1]+2])
 
