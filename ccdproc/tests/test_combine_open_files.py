@@ -30,8 +30,7 @@ def test_open_files_combine_no_chunks():
     # Make a copy
     args = list(common_args)
     args.extend(['--open-by', 'combine-nochunk', NUM_FILE_LIMIT])
-    p = subprocess.run(args=args, stderr=subprocess.PIPE,
-                       cwd=str(subprocess_dir))
+    p = subprocess.run(args=args, cwd=str(subprocess_dir))
     # If we have succeeded the test passes. We are only checking that
     # we don't have too many files open.
     assert p.returncode == 0
@@ -50,8 +49,7 @@ def test_open_files_combine_chunks():
     # Make a copy
     args = list(common_args)
     args.extend(['--open-by', 'combine-chunk', NUM_FILE_LIMIT])
-    p = subprocess.run(args=args, stderr=subprocess.PIPE,
-                       cwd=str(subprocess_dir))
+    p = subprocess.run(args=args, cwd=str(subprocess_dir))
     # If we have succeeded the test passes. We are only checking that
     # we don't have too many files open.
     assert p.returncode == 0
