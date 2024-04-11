@@ -20,8 +20,6 @@ common_args = [sys.executable, str(run_dir / 'run_with_file_number_limit.py'),
 # Regression test for #629
 @pytest.mark.skipif(os.environ.get('APPVEYOR') or os.sys.platform == 'win32',
                     reason='Test relies on linux/osx features of psutil')
-@pytest.mark.skipif(sys.version_info < (3, 5),
-                    reason='Test requires subprocess.run, introduced in 3.5')
 def test_open_files_combine_no_chunks():
     """
     Test that we are not opening (much) more than the number of files
@@ -40,8 +38,6 @@ def test_open_files_combine_no_chunks():
 # Regression test for #629
 @pytest.mark.skipif(os.environ.get('APPVEYOR') or os.sys.platform == 'win32',
                     reason='Test relies on linux/osx features of psutil')
-@pytest.mark.skipif(sys.version_info < (3, 5),
-                    reason='Test requires subprocess.run, introduced in 3.5')
 def test_open_files_combine_chunks():
     """
     Test that we are not opening (much) more than the number of files
