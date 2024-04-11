@@ -47,15 +47,25 @@ jobs:
             python: '3.10'
             tox_env: 'py310-test-alldeps-numpy121'
 
-          - name: 'macos-py39'
-            os: macos-latest
-            python: '3.9'
-            tox_env: 'py39-test-alldeps'
+          - name: 'ubuntu-py311'
+            os: ubuntu-latest
+            python: '3.11'
+            tox_env: 'py311-test-alldeps-numpy123'
 
-          - name: 'windows-py310'
+          - name: 'ubuntu-py312'
+            os: ubuntu-latest
+            python: '3.12'
+            tox_env: 'py310-test-alldeps-numpy126'
+
+          - name: 'macos-py312'
+            os: macos-latest
+            python: '3.12'
+            tox_env: 'py312-test-alldeps'
+
+          - name: 'windows-py312'
             os: windows-latest
-            python: '3.10'
-            tox_env: 'py310-test-alldeps'
+            python: '3.12'
+            tox_env: 'py312-test-alldeps'
 
           - name: 'ubuntu-codestyle'
             os: ubuntu-latest
@@ -64,7 +74,7 @@ jobs:
 
           - name: 'ubuntu-build_docs'
             os: ubuntu-latest
-            python: '3.10'
+            python: '3.12'
             tox_env: 'build_docs'
 
           - name: 'ubuntu-py310-test-alldeps-devdeps'
@@ -86,12 +96,10 @@ jobs:
     - name: Install graphviz dependency
       if: "endsWith(matrix.tox_env, 'build_docs')"
       run: sudo apt-get -y install graphviz
-    - name: Print Python, pip, setuptools, and tox versions
+    - name: Print Python env
       run: |
-        python -c "import sys; print(f'Python {sys.version}')"
-        python -c "import pip; print(f'pip {pip.__version__}')"
-        python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
-        python -c "import tox; print(f'tox {tox.__version__}')"
+        python --version
+        python -m pip list
     - name: Run tests
       if: "! matrix.use_remote_data"
       run: |
