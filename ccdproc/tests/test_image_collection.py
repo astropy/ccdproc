@@ -755,7 +755,7 @@ class TestImageFileCollection:
         ic = ImageFileCollection(triage_setup.test_dir)
         with pytest.raises(NotImplementedError):
             ic.ccds(overwrite=True)
-        with pytest.raises(NotImplementedError):
+        with pytest.deprecated_call(), pytest.raises(NotImplementedError):
             ic.ccds(clobber=True)
 
     def test_glob_matching(self, triage_setup):
