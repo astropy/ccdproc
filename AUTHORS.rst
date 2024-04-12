@@ -29,6 +29,7 @@ Alphabetical list of code contributors
 * Mihai Cara (@mcara)
 * James Davenport (@jradavenport)
 * Christoph Deil (@cdeil)
+* Clément M.T. Robert (@neutrinoceros)
 * Timothy P. Ellsworth-Bowers (@tbowers7)
 * Forrest Gasdia (@fgasdia)
 * Carlos Gomez (@carlgogo)
