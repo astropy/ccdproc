@@ -7,6 +7,17 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.4.2 (2024-05-03)
+------------------
+
+New Features
+^^^^^^^^^^^^
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Make ccdproc compatible with numpy 2. [#824]
+
 Bug Fixes
 ^^^^^^^^^
 
