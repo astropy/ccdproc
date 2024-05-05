@@ -531,7 +531,7 @@ def trim_image(ccd, fits_section=None):
         >>> trimmed.shape
         (100, 90)
         >>> trimmed.data[0, 0] = 2
-        >>> arr1.data[0, 0]
+        >>> float(arr1.data[0, 0])
         1.0
 
     This both trims *and makes a copy* of the image.
@@ -540,7 +540,7 @@ def trim_image(ccd, fits_section=None):
 
         >>> not_really_trimmed = arr1[:, :90]
         >>> not_really_trimmed.data[0, 0] = 2
-        >>> arr1.data[0, 0]
+        >>> float(arr1.data[0, 0])
         2.0
 
     In this case, ``not_really_trimmed`` is a view of the underlying array
