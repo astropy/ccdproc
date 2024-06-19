@@ -66,6 +66,7 @@ Alphabetical list of code contributors
 * Nathan Walker (@walkerna22)
 * Benjamin Weiner (@bjweiner)
 * Jiyong Youn (@hletrd)
+* Michael Gully-Santiago (@gully)
 
 Additional contributors
 -----------------------
