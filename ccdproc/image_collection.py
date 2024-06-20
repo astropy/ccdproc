@@ -503,8 +503,6 @@ class ImageFileCollection:
 
         h = fits.getheader(file_name, self.ext)
 
-        assert 'file' not in h
-
         if self.location:
             # We have a location and can reconstruct the path using it
             name_for_file_column = path.basename(file_name)
@@ -512,6 +510,17 @@ class ImageFileCollection:
             # No location, so use whatever path the user passed in
             name_for_file_column = file_name
 
+        # Remove the header 'FILE' keyword if present to avoid adding the value
+        # twice to the summary dictionary.
+        if h.get('file') is not None: 
+            if h.get('file').strip() != name_for_file_column.strip():
+                warnings.warn(
+                    'Header from file "{f}" contains keyword "FILE" with '
+                    'FILE={v}" which will be ignored.'
+                    ''.format(v=h.get('file').strip(), f=file_name),
+                    UserWarning)
+            h.remove('file')
+        
         # Try opening header before this so that file name is only added if
         # file is valid FITS
         try:
