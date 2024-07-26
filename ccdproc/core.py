@@ -1572,7 +1572,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
         cleanarr = cleanarr - data_offset
         cleanarr = _astroscrappy_gain_apply_helper(cleanarr,
-                                                   gain,
+                                                   gain.value,
                                                    gain_apply,
                                                    old_astroscrappy_interface)
 
@@ -1613,7 +1613,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
 
         cleanarr = cleanarr - data_offset
         cleanarr = _astroscrappy_gain_apply_helper(cleanarr,
-                                                   gain,
+                                                   gain.value,
                                                    gain_apply,
                                                    old_astroscrappy_interface)
 

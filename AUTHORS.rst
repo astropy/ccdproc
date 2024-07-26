@@ -31,6 +31,7 @@ Alphabetical list of code contributors
 * Christoph Deil (@cdeil)
 * Clément M.T. Robert (@neutrinoceros)
 * Timothy P. Ellsworth-Bowers (@tbowers7)
+* Allison Eto (@altair-above)
 * Forrest Gasdia (@fgasdia)
 * Carlos Gomez (@carlgogo)
 * Yash Gondhalekar (@Yash-10)
