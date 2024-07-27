@@ -21,6 +21,8 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- Fixes incorrect parameter passed to helper in ``cosmicray_lacosmic``. [#796]
+
 2.4.1 (2023-05-30)
 ------------------
 
