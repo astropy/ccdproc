@@ -30,6 +30,7 @@ docs = [
     "sphinx-astropy",
 ]
 test = [
+    "black",
     "memory_profiler",
     "pytest-astropy>=0.10.0",
 ]
@@ -47,6 +48,19 @@ version-file = "ccdproc/_version.py"
 include = [
     "/ccdproc",
 ]
+
+[tool.black]
+line-length = 88
+target-version = ['py310', 'py311']
+include = '\.pyi?$|\.ipynb$'
+# 'extend-exclude' excludes files or directories in addition to the defaults
+extend-exclude = '''
+# A regex preceded with ^/ will apply only to files and directories
+# in the root of the project.
+(
+  ^/ccdproc/extern
+)
+'''
 
 [tool.coverage]
     [tool.coverage.run]

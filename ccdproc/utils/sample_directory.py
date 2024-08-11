@@ -7,7 +7,7 @@ import numpy as np
 from astropy.io import fits
 
 
-def _make_file_for_testing(file_name='', **kwd):
+def _make_file_for_testing(file_name="", **kwd):
     img = np.uint16(np.arange(100))
 
     hdu = fits.PrimaryHDU(img)
@@ -52,11 +52,11 @@ def directory_for_testing():
     no_filter_no_object_light.fit    <---- this one has no filter
     """
     n_test = {
-        'files': 6,
-        'missing_filter_value': 1,
-        'bias': 1,
-        'compressed': 2,
-        'light': 5
+        "files": 6,
+        "missing_filter_value": 1,
+        "bias": 1,
+        "compressed": 2,
+        "light": 5,
     }
 
     test_dir = mkdtemp()
@@ -65,34 +65,34 @@ def directory_for_testing():
     original_dir = os.getcwd()
     os.chdir(test_dir)
 
-    _make_file_for_testing(file_name='no_filter_no_object_bias.fit',
-                           imagetyp='BIAS',
-                           EXPOSURE=0.0)
+    _make_file_for_testing(
+        file_name="no_filter_no_object_bias.fit", imagetyp="BIAS", EXPOSURE=0.0
+    )
 
-    _make_file_for_testing(file_name='no_filter_no_object_light.fit',
-                           imagetyp='LIGHT',
-                           EXPOSURE=1.0)
+    _make_file_for_testing(
+        file_name="no_filter_no_object_light.fit", imagetyp="LIGHT", EXPOSURE=1.0
+    )
 
-    _make_file_for_testing(file_name='filter_no_object_light.fit',
-                           imagetyp='LIGHT',
-                           EXPOSURE=1.0,
-                           filter='R')
+    _make_file_for_testing(
+        file_name="filter_no_object_light.fit",
+        imagetyp="LIGHT",
+        EXPOSURE=1.0,
+        filter="R",
+    )
 
-    _make_file_for_testing(file_name='filter_object_light.fit',
-                           imagetyp='LIGHT',
-                           EXPOSURE=1.0,
-                           filter='R')
+    _make_file_for_testing(
+        file_name="filter_object_light.fit", imagetyp="LIGHT", EXPOSURE=1.0, filter="R"
+    )
 
-    with open('filter_object_light.fit', 'rb') as f_in:
-        with gzip.open('filter_object_light.fit.gz', 'wb') as f_out:
+    with open("filter_object_light.fit", "rb") as f_in:
+        with gzip.open("filter_object_light.fit.gz", "wb") as f_out:
             f_out.write(f_in.read())
 
     # filter_object.writeto('filter_object_RA_keyword_light.fit')
 
-    _make_file_for_testing(file_name='test.fits.fz',
-                           imagetyp='LIGHT',
-                           EXPOSURE=15.0,
-                           filter='R')
+    _make_file_for_testing(
+        file_name="test.fits.fz", imagetyp="LIGHT", EXPOSURE=15.0, filter="R"
+    )
 
     os.chdir(original_dir)
 

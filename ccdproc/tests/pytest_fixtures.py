@@ -13,12 +13,7 @@ from ..utils.sample_directory import directory_for_testing
 
 # If additional pytest markers are defined the key in the dictionary below
 # should be the name of the marker.
-DEFAULTS = {
-    'seed': 123,
-    'data_size': 100,
-    'data_scale': 1.0,
-    'data_mean': 0.0
-}
+DEFAULTS = {"seed": 123, "data_size": 100, "data_scale": 1.0, "data_mean": 0.0}
 
 DEFAULT_SEED = 123
 DEFAULT_DATA_SIZE = 100
@@ -34,10 +29,12 @@ def value_from_markers(key, request):
         return DEFAULTS[key]
 
 
-def ccd_data(data_size=DEFAULT_DATA_SIZE,
-             data_scale=DEFAULT_DATA_SCALE,
-             data_mean=DEFAULT_DATA_MEAN,
-             rng_seed=DEFAULT_SEED):
+def ccd_data(
+    data_size=DEFAULT_DATA_SIZE,
+    data_scale=DEFAULT_DATA_SCALE,
+    data_mean=DEFAULT_DATA_MEAN,
+    rng_seed=DEFAULT_SEED,
+):
     """
     Return a CCDData object with units of ADU.
 
@@ -61,7 +58,7 @@ def ccd_data(data_size=DEFAULT_DATA_SIZE,
     with NumpyRNGContext(rng_seed):
         data = np.random.normal(loc=mean, size=[size, size], scale=scale)
 
-    fake_meta = {'my_key': 42, 'your_key': 'not 42'}
+    fake_meta = {"my_key": 42, "your_key": "not 42"}
     ccd = CCDData(data, unit=u.adu)
     ccd.header = fake_meta
     return ccd
@@ -85,4 +82,5 @@ def triage_setup(request):
         def __init__(self, n, directory):
             self.n_test = n
             self.test_dir = directory
+
     return Result(n_test, test_dir)

@@ -8,11 +8,11 @@ import os
 
 try:
     # When the pytest_astropy_header package is installed
-    from pytest_astropy_header.display import (PYTEST_HEADER_MODULES,
-                                               TESTED_VERSIONS)
+    from pytest_astropy_header.display import PYTEST_HEADER_MODULES, TESTED_VERSIONS
 
     def pytest_configure(config):
         config.option.astropy_header = True
+
 except ImportError:
     PYTEST_HEADER_MODULES = {}
     TESTED_VERSIONS = {}
@@ -24,7 +24,7 @@ from .tests.pytest_fixtures import *
 try:
     from .version import version
 except ImportError:
-    version = 'dev'
+    version = "dev"
 
 packagename = os.path.basename(os.path.dirname(__file__))
 TESTED_VERSIONS[packagename] = version
@@ -32,9 +32,9 @@ TESTED_VERSIONS[packagename] = version
 # Add astropy to test header information and remove unused packages.
 
 try:
-    PYTEST_HEADER_MODULES['Astropy'] = 'astropy'
-    PYTEST_HEADER_MODULES['astroscrappy'] = 'astroscrappy'
-    PYTEST_HEADER_MODULES['reproject'] = 'reproject'
-    del PYTEST_HEADER_MODULES['h5py']
+    PYTEST_HEADER_MODULES["Astropy"] = "astropy"
+    PYTEST_HEADER_MODULES["astroscrappy"] = "astroscrappy"
+    PYTEST_HEADER_MODULES["reproject"] = "reproject"
+    del PYTEST_HEADER_MODULES["h5py"]
 except KeyError:
     pass

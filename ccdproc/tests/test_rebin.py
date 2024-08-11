@@ -55,9 +55,7 @@ def test_rebin_smaller():
 
 
 # test rebinning with ccddata object
-@pytest.mark.parametrize('mask_data, uncertainty', [
-                         (False, False),
-                         (True, True)])
+@pytest.mark.parametrize("mask_data, uncertainty", [(False, False), (True, True)])
 def test_rebin_ccddata(mask_data, uncertainty):
     ccd_data = ccd_data_func(data_size=10)
     if mask_data:

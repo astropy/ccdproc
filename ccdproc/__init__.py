@@ -9,6 +9,7 @@ stand-alone processing or as part of a pipeline.
 # should keep this content at the top.
 # ----------------------------------------------------------------------------
 from ._astropy_init import *  # noqa
+
 # ----------------------------------------------------------------------------
 
 # set up namespace
@@ -21,12 +22,13 @@ from astropy import config as _config
 
 class Conf(_config.ConfigNamespace):
     """Configuration parameters for ccdproc."""
+
     auto_logging = _config.ConfigItem(
         True,
-        'Whether to automatically log operations to metadata'
-        'If set to False, there is no need to specify add_keyword=False'
-        'when calling processing operations.'
-        )
+        "Whether to automatically log operations to metadata"
+        "If set to False, there is no need to specify add_keyword=False"
+        "when calling processing operations.",
+    )
 
 
 conf = Conf()

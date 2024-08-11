@@ -20,8 +20,8 @@ from .ccddata import fits_ccddata_reader, _recognized_fits_file_extensions
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['ImageFileCollection']
-__doctest_skip__ = ['*']
+__all__ = ["ImageFileCollection"]
+__doctest_skip__ = ["*"]
 
 
 class ImageFileCollection:
@@ -82,9 +82,16 @@ class ImageFileCollection:
         value.
     """
 
-    def __init__(self, location=None, keywords=None,
-                 find_fits_by_reading=False,
-                 filenames=None, glob_include=None, glob_exclude=None, ext=0):
+    def __init__(
+        self,
+        location=None,
+        keywords=None,
+        find_fits_by_reading=False,
+        filenames=None,
+        glob_include=None,
+        glob_exclude=None,
+        ext=0,
+    ):
         # Include or exclude files from the collection based on glob pattern
         # matching - has to go above call to _get_files()
         if glob_exclude is not None:
@@ -98,7 +105,7 @@ class ImageFileCollection:
         if location is not None:
             self._location = location
         else:
-            self._location = ''
+            self._location = ""
 
         self._find_fits_by_reading = find_fits_by_reading
 
@@ -107,12 +114,11 @@ class ImageFileCollection:
         self._files = self._get_files()
 
         if self._files == []:
-            warnings.warn("no FITS files in the collection.",
-                          AstropyUserWarning)
+            warnings.warn("no FITS files in the collection.", AstropyUserWarning)
         self._summary = {}
         if keywords is None:
             # Use all keywords.
-            keywords = '*'
+            keywords = "*"
 
         # Used internally to keep track of whether the user asked for all
         # keywords or a specific list. The keywords setter takes care of
@@ -137,12 +143,12 @@ class ImageFileCollection:
             kw = "keywords={!r}".format(self.keywords[1:])
 
         if self.glob_exclude is None:
-            glob_exclude = ''
+            glob_exclude = ""
         else:
             glob_exclude = "glob_exclude={!r}".format(self.glob_exclude)
 
         if self.glob_include is None:
-            glob_include = ''
+            glob_include = ""
         else:
             glob_include = "glob_include={!r}".format(self.glob_include)
 
@@ -157,10 +163,11 @@ class ImageFileCollection:
             filenames = "filenames={}".format(self._filenames)
 
         params = [location, kw, filenames, glob_include, glob_exclude, ext]
-        params = ', '.join([p for p in params if p])
+        params = ", ".join([p for p in params if p])
 
         str_repr = "{self.__class__.__name__}({params})".format(
-            self=self, params=params)
+            self=self, params=params
+        )
 
         return str_repr
 
@@ -220,34 +227,33 @@ class ImageFileCollection:
             self._summary = []
             return
 
-        if keywords == '*':
+        if keywords == "*":
             self._all_keywords = True
         else:
             self._all_keywords = False
 
-        logging.debug('keywords in setter before pruning: %s.', keywords)
+        logging.debug("keywords in setter before pruning: %s.", keywords)
 
         # remove duplicates and force a copy so we can sort the items later
         # by their given position.
         new_keys_set = set(keywords)
         new_keys_lst = list(new_keys_set)
-        new_keys_set.add('file')
+        new_keys_set.add("file")
 
-        logging.debug('keywords after pruning %s.', new_keys_lst)
+        logging.debug("keywords after pruning %s.", new_keys_lst)
 
         current_set = set(self.keywords)
         if new_keys_set.issubset(current_set):
-            logging.debug('table columns before trimming: %s.',
-                          ' '.join(current_set))
+            logging.debug("table columns before trimming: %s.", " ".join(current_set))
             cut_keys = current_set.difference(new_keys_set)
-            logging.debug('will try removing columns: %s.',
-                          ' '.join(cut_keys))
+            logging.debug("will try removing columns: %s.", " ".join(cut_keys))
             for key in cut_keys:
                 self._summary.remove_column(key)
-            logging.debug('after removal column names are: %s.',
-                          ' '.join(self.keywords))
+            logging.debug(
+                "after removal column names are: %s.", " ".join(self.keywords)
+            )
         else:
-            logging.debug('should be building new table...')
+            logging.debug("should be building new table...")
             # Reorder the keywords to match the initial ordering.
             new_keys_lst.sort(key=keywords.index)
             self._summary = self._fits_summary(new_keys_lst)
@@ -308,8 +314,7 @@ class ImageFileCollection:
             Values as a list.
         """
         if keyword not in self.keywords:
-            raise ValueError(
-                'keyword %s is not in the current summary' % keyword)
+            raise ValueError("keyword %s is not in the current summary" % keyword)
         if unique:
             return list(set(self.summary[keyword].tolist()))
         else:
@@ -368,23 +373,24 @@ class ImageFileCollection:
             return []
 
         # force a copy by explicitly converting to a list
-        current_file_mask = self.summary['file'].mask.tolist()
+        current_file_mask = self.summary["file"].mask.tolist()
 
-        include_path = kwd.pop('include_path', False)
+        include_path = kwd.pop("include_path", False)
 
         self._find_keywords_by_values(**kwd)
-        filtered_files = self.summary['file'].compressed()
-        self.summary['file'].mask = current_file_mask
+        filtered_files = self.summary["file"].compressed()
+        self.summary["file"].mask = current_file_mask
         if include_path:
-            filtered_files = [path.join(self._location, f)
-                              for f in filtered_files.tolist()]
+            filtered_files = [
+                path.join(self._location, f) for f in filtered_files.tolist()
+            ]
         return filtered_files
 
     def refresh(self):
         """
         Refresh the collection by re-reading headers.
         """
-        keywords = '*' if self._all_keywords else self.keywords
+        keywords = "*" if self._all_keywords else self.keywords
         # Re-load list of files
         self._files = self._get_files()
         self._summary = self._fits_summary(header_keywords=keywords)
@@ -402,7 +408,7 @@ class ImageFileCollection:
         """
         if len(self._summary) > 0:
             self._summary.sort(keys)
-            self._files = self.summary['file'].tolist()
+            self._files = self.summary["file"].tolist()
 
     def filter(self, **kwd):
         """
@@ -430,11 +436,10 @@ class ImageFileCollection:
             to filter.
         """
         files = self.files_filtered(include_path=True, **kwd)
-        return ImageFileCollection(filenames=files,
-                                   keywords=self.keywords)
+        return ImageFileCollection(filenames=files, keywords=self.keywords)
 
     def _get_files(self):
-        """ Helper method which checks whether ``files`` should be set
+        """Helper method which checks whether ``files`` should be set
         to a subset of file names or to all file names in a directory.
 
         Returns
@@ -450,19 +455,23 @@ class ImageFileCollection:
                 files = self._filenames
         else:
             # Check if self.location is set, otherwise proceed with empty list
-            if self.location != '':
+            if self.location != "":
                 files = self._fits_files_in_directory()
 
             if self.glob_include is not None:
                 files = fnmatch.filter(files, self.glob_include)
             if self.glob_exclude is not None:
-                files = [file for file in files
-                         if not fnmatch.fnmatch(file, self.glob_exclude)]
+                files = [
+                    file
+                    for file in files
+                    if not fnmatch.fnmatch(file, self.glob_exclude)
+                ]
 
         return files
 
-    def _dict_from_fits_header(self, file_name, input_summary=None,
-                               missing_marker=None):
+    def _dict_from_fits_header(
+        self, file_name, input_summary=None, missing_marker=None
+    ):
         """
         Construct an ordered dictionary whose keys are the header keywords
         and values are a list of the values from this file and the input
@@ -499,11 +508,11 @@ class ImageFileCollection:
             n_previous = 0
         else:
             summary = input_summary
-            n_previous = len(summary['file'])
+            n_previous = len(summary["file"])
 
         h = fits.getheader(file_name, self.ext)
 
-        assert 'file' not in h
+        assert "file" not in h
 
         if self.location:
             # We have a location and can reconstruct the path using it
@@ -515,24 +524,22 @@ class ImageFileCollection:
         # Try opening header before this so that file name is only added if
         # file is valid FITS
         try:
-            summary['file'].append(name_for_file_column)
+            summary["file"].append(name_for_file_column)
         except KeyError:
-            summary['file'] = [name_for_file_column]
+            summary["file"] = [name_for_file_column]
 
-        missing_in_this_file = [k for k in summary if (k not in h and
-                                                       k != 'file')]
+        missing_in_this_file = [k for k in summary if (k not in h and k != "file")]
 
-        multi_entry_keys = {'comment': [],
-                            'history': []}
+        multi_entry_keys = {"comment": [], "history": []}
 
         alreadyencountered = set()
         for k, v in h.items():
-            if k == '':
+            if k == "":
                 continue
 
             k = k.lower()
 
-            if k in ['comment', 'history']:
+            if k in ["comment", "history"]:
                 multi_entry_keys[k].append(str(v))
                 # Accumulate these in a separate dictionary until the
                 # end to avoid adding multiple entries to summary.
@@ -545,8 +552,9 @@ class ImageFileCollection:
                 warnings.warn(
                     'Header from file "{f}" contains multiple entries for '
                     '"{k}", the pair "{k}={v}" will be ignored.'
-                    ''.format(k=k, v=v, f=file_name),
-                    UserWarning)
+                    "".format(k=k, v=v, f=file_name),
+                    UserWarning,
+                )
                 continue
             else:
                 # Add the key to the already encountered keys so we don't add
@@ -557,17 +565,15 @@ class ImageFileCollection:
 
         for k, v in multi_entry_keys.items():
             if v:
-                joined = ','.join(v)
-                _add_val_to_dict(k, joined, summary, n_previous,
-                                 missing_marker)
+                joined = ",".join(v)
+                _add_val_to_dict(k, joined, summary, n_previous, missing_marker)
 
         for missing in missing_in_this_file:
             summary[missing].append(missing_marker)
 
         return summary
 
-    def _set_column_name_case_to_match_keywords(self, header_keys,
-                                                summary_table):
+    def _set_column_name_case_to_match_keywords(self, header_keys, summary_table):
         for k in header_keys:
             k_lower = k.lower()
             if k_lower != k:
@@ -596,11 +602,11 @@ class ImageFileCollection:
 
         # Get rid of any duplicate keywords, also forces a copy.
         header_keys = set(original_keywords)
-        header_keys.add('file')
+        header_keys.add("file")
 
-        file_name_column = MaskedColumn(name='file', data=self.files)
+        file_name_column = MaskedColumn(name="file", data=self.files)
 
-        if not header_keys or (header_keys == {'file'}):
+        if not header_keys or (header_keys == {"file"}):
             summary_table = Table(masked=True)
             summary_table.add_column(file_name_column)
             return summary_table
@@ -614,36 +620,37 @@ class ImageFileCollection:
                 # Note: summary_dict is an OrderedDict, so should preserve
                 # the order of the keywords in the FITS header.
                 summary_dict = self._dict_from_fits_header(
-                    file_path, input_summary=summary_dict,
-                    missing_marker=missing_marker)
+                    file_path, input_summary=summary_dict, missing_marker=missing_marker
+                )
             except IOError as e:
-                logger.warning('unable to get FITS header for file %s: %s.',
-                               file_path, e)
+                logger.warning(
+                    "unable to get FITS header for file %s: %s.", file_path, e
+                )
                 continue
 
         summary_table = Table(summary_dict, masked=True)
 
         for column in summary_table.colnames:
             summary_table[column].mask = [
-                v is missing_marker for v in summary_table[column].tolist()]
+                v is missing_marker for v in summary_table[column].tolist()
+            ]
 
-        self._set_column_name_case_to_match_keywords(header_keys,
-                                                     summary_table)
+        self._set_column_name_case_to_match_keywords(header_keys, summary_table)
         missing_columns = header_keys - set(summary_table.colnames)
-        missing_columns -= {'*'}
+        missing_columns -= {"*"}
 
         length = len(summary_table)
         for column in missing_columns:
-            all_masked = MaskedColumn(name=column, data=np.zeros(length),
-                                      mask=np.ones(length))
+            all_masked = MaskedColumn(
+                name=column, data=np.zeros(length), mask=np.ones(length)
+            )
             summary_table.add_column(all_masked)
 
-        if '*' not in header_keys:
+        if "*" not in header_keys:
             # Rearrange table columns to match order of keywords.
             # File always comes first.
-            header_keys -= {'file'}
-            original_order = ['file'] + sorted(header_keys,
-                                               key=original_keywords.index)
+            header_keys -= {"file"}
+            original_order = ["file"] + sorted(header_keys, key=original_keywords.index)
             summary_table = summary_table[original_order]
 
         if not summary_table.masked:
@@ -680,7 +687,7 @@ class ImageFileCollection:
 
         NOTE: Value comparison is case *insensitive* for strings.
         """
-        regex_match = kwd.pop('regex_match', False)
+        regex_match = kwd.pop("regex_match", False)
         keywords = kwd.keys()
         values = kwd.values()
 
@@ -693,12 +700,12 @@ class ImageFileCollection:
 
         matches = np.ones(len(use_info), dtype=bool)
         for key, value in zip(keywords, values):
-            logger.debug('key %s, value %s', key, value)
-            logger.debug('value in table %s', use_info[key])
+            logger.debug("key %s, value %s", key, value)
+            logger.debug("value in table %s", use_info[key])
             value_missing = use_info[key].mask
-            logger.debug('value missing: %s', value_missing)
+            logger.debug("value missing: %s", value_missing)
             value_not_missing = np.logical_not(value_missing)
-            if value == '*':
+            if value == "*":
                 have_this_value = value_not_missing
             elif value is not None:
                 if isinstance(value, str):
@@ -708,20 +715,19 @@ class ImageFileCollection:
 
                     # We are going to do a regex match no matter what.
                     if regex_match:
-                        pattern = re.compile(value,
-                                             flags=re.IGNORECASE)
+                        pattern = re.compile(value, flags=re.IGNORECASE)
                     else:
                         # Escape all special characters that might be present
                         value = re.escape(value)
                         # This pattern matches the prior behavior.
-                        pattern = re.compile('^' + value + '$',
-                                             flags=re.IGNORECASE)
+                        pattern = re.compile("^" + value + "$", flags=re.IGNORECASE)
 
                     for idx, file_key_value in enumerate(use_info[key].tolist()):
                         if value_not_missing[idx]:
                             try:
                                 value_matches = (
-                                    pattern.search(file_key_value) is not None)
+                                    pattern.search(file_key_value) is not None
+                                )
                             except TypeError:
                                 # In case we're dealing with an object column
                                 # there could be values other than strings in it
@@ -730,11 +736,10 @@ class ImageFileCollection:
                         else:
                             value_matches = False
 
-                        have_this_value[idx] = (value_not_missing[idx] &
-                                                value_matches)
+                        have_this_value[idx] = value_not_missing[idx] & value_matches
                 else:
                     have_this_value = value_not_missing
-                    tmp = (use_info[key][value_not_missing] == value)
+                    tmp = use_info[key][value_not_missing] == value
                     have_this_value[value_not_missing] = tmp
                     have_this_value &= value_not_missing
             else:
@@ -746,12 +751,11 @@ class ImageFileCollection:
 
         # the numpy convention is that the mask is True for values to
         # be omitted, hence use ~matches.
-        logger.debug('Matches: %s', matches)
-        self.summary['file'].mask = ma.nomask
-        self.summary['file'].mask[~matches] = True
+        logger.debug("Matches: %s", matches)
+        self.summary["file"].mask = ma.nomask
+        self.summary["file"].mask[~matches] = True
 
-    def _fits_files_in_directory(self, extensions=None,
-                                 compressed=True):
+    def _fits_files_in_directory(self, extensions=None, compressed=True):
         """
         Get names of FITS files in directory, based on filename extension.
 
@@ -777,7 +781,7 @@ class ImageFileCollection:
 
         # The common compressed fits image .fz is supported using ext=1 when calling ImageFileCollection
         if compressed:
-            for comp in ['.gz', '.bz2', '.Z', '.zip', '.fz']:
+            for comp in [".gz", ".bz2", ".Z", ".zip", ".fz"]:
                 with_comp = [extension + comp for extension in full_extensions]
                 full_extensions.extend(with_comp)
 
@@ -785,26 +789,30 @@ class ImageFileCollection:
         files = []
         if not self._find_fits_by_reading:
             for extension in full_extensions:
-                files.extend(fnmatch.filter(all_files, '*' + extension))
+                files.extend(fnmatch.filter(all_files, "*" + extension))
         else:
             for infile in all_files:
                 inpath = path.join(self.location, infile)
-                with open(inpath, 'rb') as fp:
+                with open(inpath, "rb") as fp:
                     # Hmm, first argument to is_fits is not actually used in
                     # that function. *shrug*
-                    if fits.connect.is_fits('just some junk', infile, fp):
+                    if fits.connect.is_fits("just some junk", infile, fp):
                         files.append(infile)
 
         files.sort()
         return files
 
-    def _generator(self, return_type,
-                   save_with_name="", save_location='',
-                   overwrite=False,
-                   do_not_scale_image_data=True,
-                   return_fname=False,
-                   ccd_kwargs=None,
-                   **kwd):
+    def _generator(
+        self,
+        return_type,
+        save_with_name="",
+        save_location="",
+        overwrite=False,
+        do_not_scale_image_data=True,
+        return_fname=False,
+        ccd_kwargs=None,
+        **kwd,
+    ):
         """
         Generator that yields each {name} in the collection.
 
@@ -890,28 +898,29 @@ class ImageFileCollection:
         ccd_kwargs = ccd_kwargs or {}
 
         for full_path in self._paths():
-            add_kwargs = {'do_not_scale_image_data': do_not_scale_image_data}
+            add_kwargs = {"do_not_scale_image_data": do_not_scale_image_data}
 
             # We need to open the file here, get the appropriate values and then
             # close it again before it "yields" otherwise it's not garantueed
             # that the generator actually advances and closes the file again.
             # For example if one uses "next" on the generator manually the
             # file handle could "leak".
-            if return_type == 'header':
+            if return_type == "header":
                 return_thing = fits.getheader(full_path, self.ext)
-            elif return_type == 'data':
+            elif return_type == "data":
                 return_thing = fits.getdata(full_path, self.ext, **add_kwargs)
-            elif return_type == 'ccd':
+            elif return_type == "ccd":
                 return_thing = fits_ccddata_reader(
-                    full_path, hdu=self.ext, **ccd_kwargs)
-            elif return_type == 'hdu':
+                    full_path, hdu=self.ext, **ccd_kwargs
+                )
+            elif return_type == "hdu":
                 with fits.open(full_path, **add_kwargs) as hdulist:
                     ext_index = hdulist.index_of(self.ext)
                     # Need to copy the HDU to prevent lazy loading problems
                     # and "IO operations on closed file" errors
                     return_thing = hdulist[ext_index].copy()
             else:
-                raise ValueError('no generator for {}'.format(return_type))
+                raise ValueError("no generator for {}".format(return_type))
 
             file_name = path.basename(full_path)
             if return_fname:
@@ -930,22 +939,22 @@ class ImageFileCollection:
 
             new_path = path.join(destination_dir, basename)
 
-            if return_type == 'ccd':
+            if return_type == "ccd":
                 pass
             elif (new_path != full_path) or overwrite:
                 with fits.open(full_path, **add_kwargs) as hdulist:
                     ext_index = hdulist.index_of(self.ext)
-                    if return_type == 'hdu':
+                    if return_type == "hdu":
                         hdulist[ext_index] = return_thing
-                    elif return_type == 'data':
+                    elif return_type == "data":
                         hdulist[ext_index].data = return_thing
-                    elif return_type == 'header':
+                    elif return_type == "header":
                         hdulist[ext_index].header = return_thing
 
                     try:
                         hdulist.writeto(new_path, overwrite=overwrite)
                     except IOError:
-                        logger.error('error writing file %s', new_path)
+                        logger.error("error writing file %s", new_path)
                         raise
 
         # reset mask
@@ -956,42 +965,52 @@ class ImageFileCollection:
         """
         Full path to each file.
         """
-        unmasked_files = self.summary['file'].compressed().tolist()
+        unmasked_files = self.summary["file"].compressed().tolist()
         return [path.join(self.location, file_) for file_ in unmasked_files]
 
     def headers(self, do_not_scale_image_data=True, **kwd):
-        return self._generator('header',
-                               do_not_scale_image_data=do_not_scale_image_data,
-                               **kwd)
+        return self._generator(
+            "header", do_not_scale_image_data=do_not_scale_image_data, **kwd
+        )
+
     headers.__doc__ = _generator.__doc__.format(
-        name='header', default_scaling='True',
-        return_type='astropy.io.fits.Header')
+        name="header", default_scaling="True", return_type="astropy.io.fits.Header"
+    )
 
     def hdus(self, do_not_scale_image_data=False, **kwd):
-        return self._generator('hdu',
-                               do_not_scale_image_data=do_not_scale_image_data,
-                               **kwd)
+        return self._generator(
+            "hdu", do_not_scale_image_data=do_not_scale_image_data, **kwd
+        )
+
     hdus.__doc__ = _generator.__doc__.format(
-        name='HDU', default_scaling='False',
-        return_type="`, ` ".join(('astropy.io.fits.PrimaryHDU', 'astropy.io.fits.ImageHDU')))
+        name="HDU",
+        default_scaling="False",
+        return_type="`, ` ".join(
+            ("astropy.io.fits.PrimaryHDU", "astropy.io.fits.ImageHDU")
+        ),
+    )
 
     def data(self, do_not_scale_image_data=False, **kwd):
-        return self._generator('data',
-                               do_not_scale_image_data=do_not_scale_image_data,
-                               **kwd)
+        return self._generator(
+            "data", do_not_scale_image_data=do_not_scale_image_data, **kwd
+        )
+
     data.__doc__ = _generator.__doc__.format(
-        name='image', default_scaling='False', return_type='numpy.ndarray')
+        name="image", default_scaling="False", return_type="numpy.ndarray"
+    )
 
     def ccds(self, ccd_kwargs=None, **kwd):
-        if (clobber := kwd.get('clobber')) is not None:
+        if (clobber := kwd.get("clobber")) is not None:
             warnings.warn(
                 "The 'clobber' keyword argument is a deprecated alias for 'overwrite'",
                 category=DeprecationWarning,
-                stacklevel=2
+                stacklevel=2,
             )
             kwd["overwrite"] = clobber
-        if kwd.get('overwrite'):
+        if kwd.get("overwrite"):
             raise NotImplementedError("overwrite=True is not supported for CCDs.")
-        return self._generator('ccd', ccd_kwargs=ccd_kwargs, **kwd)
+        return self._generator("ccd", ccd_kwargs=ccd_kwargs, **kwd)
+
     ccds.__doc__ = _generator.__doc__.format(
-        name='CCDData', default_scaling='True', return_type='astropy.nddata.CCDData')
+        name="CCDData", default_scaling="True", return_type="astropy.nddata.CCDData"
+    )

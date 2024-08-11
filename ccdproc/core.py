@@ -27,39 +27,70 @@ from .extern.bitfield import bitfield_to_boolean_mask as _bitfield_to_boolean_ma
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['background_deviation_box', 'background_deviation_filter',
-           'ccd_process', 'cosmicray_median', 'cosmicray_lacosmic',
-           'create_deviation', 'flat_correct', 'gain_correct', 'rebin',
-           'sigma_func', 'subtract_bias', 'subtract_dark', 'subtract_overscan',
-           'transform_image', 'trim_image', 'wcs_project', 'Keyword',
-           'median_filter', 'ccdmask', 'bitfield_to_boolean_mask']
+__all__ = [
+    "background_deviation_box",
+    "background_deviation_filter",
+    "ccd_process",
+    "cosmicray_median",
+    "cosmicray_lacosmic",
+    "create_deviation",
+    "flat_correct",
+    "gain_correct",
+    "rebin",
+    "sigma_func",
+    "subtract_bias",
+    "subtract_dark",
+    "subtract_overscan",
+    "transform_image",
+    "trim_image",
+    "wcs_project",
+    "Keyword",
+    "median_filter",
+    "ccdmask",
+    "bitfield_to_boolean_mask",
+]
 
 # The dictionary below is used to translate actual function names to names
 # that are FITS compliant, i.e. 8 characters or less.
 _short_names = {
-    'background_deviation_box': 'bakdevbx',
-    'background_deviation_filter': 'bakdfilt',
-    'ccd_process': 'ccdproc',
-    'cosmicray_median': 'crmedian',
-    'create_deviation': 'creatvar',
-    'flat_correct': 'flatcor',
-    'gain_correct': 'gaincor',
-    'subtract_bias': 'subbias',
-    'subtract_dark': 'subdark',
-    'subtract_overscan': 'suboscan',
-    'trim_image': 'trimim',
-    'transform_image': 'tranim',
-    'wcs_project': 'wcsproj'
+    "background_deviation_box": "bakdevbx",
+    "background_deviation_filter": "bakdfilt",
+    "ccd_process": "ccdproc",
+    "cosmicray_median": "crmedian",
+    "create_deviation": "creatvar",
+    "flat_correct": "flatcor",
+    "gain_correct": "gaincor",
+    "subtract_bias": "subbias",
+    "subtract_dark": "subdark",
+    "subtract_overscan": "suboscan",
+    "trim_image": "trimim",
+    "transform_image": "tranim",
+    "wcs_project": "wcsproj",
 }
 
 
 @log_to_metadata
-def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
-                dark_frame=None, master_flat=None, bad_pixel_mask=None,
-                gain=None, readnoise=None, oscan_median=True, oscan_model=None,
-                min_value=None, dark_exposure=None, data_exposure=None,
-                exposure_key=None, exposure_unit=None,
-                dark_scale=False, gain_corrected=True):
+def ccd_process(
+    ccd,
+    oscan=None,
+    trim=None,
+    error=False,
+    master_bias=None,
+    dark_frame=None,
+    master_flat=None,
+    bad_pixel_mask=None,
+    gain=None,
+    readnoise=None,
+    oscan_median=True,
+    oscan_model=None,
+    min_value=None,
+    dark_exposure=None,
+    data_exposure=None,
+    exposure_key=None,
+    exposure_unit=None,
+    dark_scale=False,
+    gain_corrected=True,
+):
     """Perform basic processing on ccd data.
 
     The following steps can be included:
@@ -194,17 +225,17 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
 
     # apply the overscan correction
     if isinstance(oscan, CCDData):
-        nccd = subtract_overscan(nccd, overscan=oscan,
-                                 median=oscan_median,
-                                 model=oscan_model)
+        nccd = subtract_overscan(
+            nccd, overscan=oscan, median=oscan_median, model=oscan_model
+        )
     elif isinstance(oscan, str):
-        nccd = subtract_overscan(nccd, fits_section=oscan,
-                                 median=oscan_median,
-                                 model=oscan_model)
+        nccd = subtract_overscan(
+            nccd, fits_section=oscan, median=oscan_median, model=oscan_model
+        )
     elif oscan is None:
         pass
     else:
-        raise TypeError('oscan is not None, a string, or CCDData object.')
+        raise TypeError("oscan is not None, a string, or CCDData object.")
 
     # apply the trim correction
     if isinstance(trim, str):
@@ -212,14 +243,13 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     elif trim is None:
         pass
     else:
-        raise TypeError('trim is not None or a string.')
+        raise TypeError("trim is not None or a string.")
 
     # create the error frame
     if error and gain is not None and readnoise is not None:
         nccd = create_deviation(nccd, gain=gain, readnoise=readnoise)
     elif error and (gain is None or readnoise is None):
-        raise ValueError(
-            'gain and readnoise must be specified to create error frame.')
+        raise ValueError("gain and readnoise must be specified to create error frame.")
 
     # apply the bad pixel mask
     if isinstance(bad_pixel_mask, np.ndarray):
@@ -227,11 +257,11 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     elif bad_pixel_mask is None:
         pass
     else:
-        raise TypeError('bad_pixel_mask is not None or numpy.ndarray.')
+        raise TypeError("bad_pixel_mask is not None or numpy.ndarray.")
 
     # apply the gain correction
     if not (gain is None or isinstance(gain, Quantity)):
-        raise TypeError('gain is not None or astropy.units.Quantity.')
+        raise TypeError("gain is not None or astropy.units.Quantity.")
 
     if gain is not None and gain_corrected:
         nccd = gain_correct(nccd, gain)
@@ -242,21 +272,23 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     elif master_bias is None:
         pass
     else:
-        raise TypeError(
-            'master_bias is not None or a CCDData object.')
+        raise TypeError("master_bias is not None or a CCDData object.")
 
     # subtract the dark frame
     if isinstance(dark_frame, CCDData):
-        nccd = subtract_dark(nccd, dark_frame, dark_exposure=dark_exposure,
-                             data_exposure=data_exposure,
-                             exposure_time=exposure_key,
-                             exposure_unit=exposure_unit,
-                             scale=dark_scale)
+        nccd = subtract_dark(
+            nccd,
+            dark_frame,
+            dark_exposure=dark_exposure,
+            data_exposure=data_exposure,
+            exposure_time=exposure_key,
+            exposure_unit=exposure_unit,
+            scale=dark_scale,
+        )
     elif dark_frame is None:
         pass
     else:
-        raise TypeError(
-            'dark_frame is not None or a CCDData object.')
+        raise TypeError("dark_frame is not None or a CCDData object.")
 
     # test dividing the master flat
     if isinstance(master_flat, CCDData):
@@ -264,8 +296,7 @@ def ccd_process(ccd, oscan=None, trim=None, error=False, master_bias=None,
     elif master_flat is None:
         pass
     else:
-        raise TypeError(
-            'master_flat is not None or a CCDData object.')
+        raise TypeError("master_flat is not None or a CCDData object.")
 
     # apply the gain correction only at the end if gain_corrected is False
     if gain is not None and not gain_corrected:
@@ -318,13 +349,13 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
 
     """
     if gain is not None and not isinstance(gain, Quantity):
-        raise TypeError('gain must be a astropy.units.Quantity.')
+        raise TypeError("gain must be a astropy.units.Quantity.")
 
     if readnoise is None:
-        raise ValueError('must provide a readnoise.')
+        raise ValueError("must provide a readnoise.")
 
     if not isinstance(readnoise, Quantity):
-        raise TypeError('readnoise must be a astropy.units.Quantity.')
+        raise TypeError("readnoise must be a astropy.units.Quantity.")
 
     if gain is None:
         gain = 1.0 * u.dimensionless_unscaled
@@ -339,15 +370,15 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
 
     # remove values that might be negative or treat as nan
     data = gain_value * ccd_data.data
-    mask = (data < 0)
+    mask = data < 0
     if disregard_nan:
         data[mask] = 0
     else:
         data[mask] = np.nan
-        logging.warning('Negative values in array will be replaced with nan')
+        logging.warning("Negative values in array will be replaced with nan")
 
     # calculate the deviation
-    var = (data + readnoise_value ** 2) ** 0.5
+    var = (data + readnoise_value**2) ** 0.5
 
     # ensure uncertainty and image data have same unit
     ccd = ccd_data.copy()
@@ -357,8 +388,9 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
 
 
 @log_to_metadata
-def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
-                      median=False, model=None):
+def subtract_overscan(
+    ccd, overscan=None, overscan_axis=1, fits_section=None, median=False, model=None
+):
     """
     Subtract the overscan region from an image.
 
@@ -447,19 +479,18 @@ def subtract_overscan(ccd, overscan=None, overscan_axis=1, fits_section=None,
 
     """
     if not (isinstance(ccd, CCDData) or isinstance(ccd, np.ndarray)):
-        raise TypeError('ccddata is not a CCDData or ndarray object.')
+        raise TypeError("ccddata is not a CCDData or ndarray object.")
 
-    if ((overscan is not None and fits_section is not None) or
-            (overscan is None and fits_section is None)):
-        raise TypeError('specify either overscan or fits_section, but not '
-                        'both.')
+    if (overscan is not None and fits_section is not None) or (
+        overscan is None and fits_section is None
+    ):
+        raise TypeError("specify either overscan or fits_section, but not " "both.")
 
     if (overscan is not None) and (not isinstance(overscan, CCDData)):
-        raise TypeError('overscan is not a CCDData object.')
+        raise TypeError("overscan is not a CCDData object.")
 
-    if (fits_section is not None and
-            not isinstance(fits_section, str)):
-        raise TypeError('overscan is not a string.')
+    if fits_section is not None and not isinstance(fits_section, str):
+        raise TypeError("overscan is not a string.")
 
     if fits_section is not None:
         overscan = ccd[slice_from_string(fits_section, fits_convention=True)]
@@ -546,8 +577,7 @@ def trim_image(ccd, fits_section=None):
     In this case, ``not_really_trimmed`` is a view of the underlying array
     ``arr1``, not a copy.
     """
-    if (fits_section is not None and
-            not isinstance(fits_section, str)):
+    if fits_section is not None and not isinstance(fits_section, str):
         raise TypeError("fits_section must be a string.")
     trimmed = ccd.copy()
     if fits_section:
@@ -581,10 +611,12 @@ def subtract_bias(ccd, master):
     try:
         result = ccd.subtract(master)
     except ValueError as e:
-        if 'operand units' in str(e):
-            raise u.UnitsError("Unit '{}' of the uncalibrated image does not "
-                               "match unit '{}' of the calibration "
-                               "image".format(ccd.unit, master.unit))
+        if "operand units" in str(e):
+            raise u.UnitsError(
+                "Unit '{}' of the uncalibrated image does not "
+                "match unit '{}' of the calibration "
+                "image".format(ccd.unit, master.unit)
+            )
         else:
             raise e
 
@@ -593,9 +625,15 @@ def subtract_bias(ccd, master):
 
 
 @log_to_metadata
-def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
-                  exposure_time=None, exposure_unit=None,
-                  scale=False):
+def subtract_dark(
+    ccd,
+    master,
+    dark_exposure=None,
+    data_exposure=None,
+    exposure_time=None,
+    exposure_unit=None,
+    scale=False,
+):
     """
     Subtract dark current from an image.
 
@@ -638,22 +676,30 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
         Dark-subtracted image.
     """
     if ccd.shape != master.shape:
-        err_str = "operands could not be subtracted with shapes {} {}".format(ccd.shape, master.shape)
+        err_str = "operands could not be subtracted with shapes {} {}".format(
+            ccd.shape, master.shape
+        )
         raise ValueError(err_str)
 
     if not (isinstance(ccd, CCDData) and isinstance(master, CCDData)):
         raise TypeError("ccd and master must both be CCDData objects.")
 
-    if (data_exposure is not None and
-            dark_exposure is not None and
-            exposure_time is not None):
-        raise TypeError("specify either exposure_time or "
-                        "(dark_exposure and data_exposure), not both.")
+    if (
+        data_exposure is not None
+        and dark_exposure is not None
+        and exposure_time is not None
+    ):
+        raise TypeError(
+            "specify either exposure_time or "
+            "(dark_exposure and data_exposure), not both."
+        )
 
     if data_exposure is None and dark_exposure is None:
         if exposure_time is None:
-            raise TypeError("must specify either exposure_time or both "
-                            "dark_exposure and data_exposure.")
+            raise TypeError(
+                "must specify either exposure_time or both "
+                "dark_exposure and data_exposure."
+            )
         if isinstance(exposure_time, Keyword):
             data_exposure = exposure_time.value_from(ccd.header)
             dark_exposure = exposure_time.value_from(master.header)
@@ -661,8 +707,9 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
             data_exposure = ccd.header[exposure_time]
             dark_exposure = master.header[exposure_time]
 
-    if not (isinstance(dark_exposure, Quantity) and
-            isinstance(data_exposure, Quantity)):
+    if not (
+        isinstance(dark_exposure, Quantity) and isinstance(data_exposure, Quantity)
+    ):
         if exposure_time:
             try:
                 data_exposure *= exposure_unit
@@ -670,32 +717,34 @@ def subtract_dark(ccd, master, dark_exposure=None, data_exposure=None,
             except TypeError:
                 raise TypeError("must provide unit for exposure time.")
         else:
-            raise TypeError("exposure times must be astropy.units.Quantity "
-                            "objects.")
+            raise TypeError("exposure times must be astropy.units.Quantity objects.")
 
     try:
         if scale:
             master_scaled = master.copy()
             # data_exposure and dark_exposure are both quantities,
             # so we can just have subtract do the scaling
-            master_scaled = master_scaled.multiply(data_exposure /
-                                                   dark_exposure)
+            master_scaled = master_scaled.multiply(data_exposure / dark_exposure)
             result = ccd.subtract(master_scaled)
         else:
             result = ccd.subtract(master)
     except (u.UnitsError, u.UnitConversionError, ValueError) as e:
         # Astropy LTS (v1) returns a ValueError, not a UnitsError, so catch
         # that if it appears to really be a UnitsError.
-        if (isinstance(e, ValueError) and
-                'operand units' not in str(e) and
-                astropy.__version__.startswith('1.0')):
+        if (
+            isinstance(e, ValueError)
+            and "operand units" not in str(e)
+            and astropy.__version__.startswith("1.0")
+        ):
             raise e
 
         # Make the error message a little more explicit than what is returned
         # by default.
-        raise u.UnitsError("Unit '{}' of the uncalibrated image does not "
-                           "match unit '{}' of the calibration "
-                           "image".format(ccd.unit, master.unit))
+        raise u.UnitsError(
+            "Unit '{}' of the uncalibrated image does not "
+            "match unit '{}' of the calibration "
+            "image".format(ccd.unit, master.unit)
+        )
 
     result.meta = ccd.meta.copy()
     return result
@@ -783,7 +832,7 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None):
         flat_mean_val = norm_value
     elif norm_value is not None:
         # norm_value was set to a bad value
-        raise ValueError('norm_value must be greater than zero.')
+        raise ValueError("norm_value must be greater than zero.")
     else:
         # norm_value was not set, use mean of the image.
         flat_mean_val = use_flat.data.mean()
@@ -850,7 +899,7 @@ def transform_image(ccd, transform_func, **kwargs):
     """
     # check that it is a ccddata object
     if not isinstance(ccd, CCDData):
-        raise TypeError('ccd is not a CCDData.')
+        raise TypeError("ccd is not a CCDData.")
 
     # make a copy of the object
     nccd = ccd.copy()
@@ -859,14 +908,13 @@ def transform_image(ccd, transform_func, **kwargs):
     try:
         nccd.data = transform_func(nccd.data, **kwargs)
     except TypeError as exc:
-        if 'is not callable' in str(exc):
-            raise TypeError('transform_func is not a callable.')
+        if "is not callable" in str(exc):
+            raise TypeError("transform_func is not a callable.")
         raise
 
     # transform the uncertainty plane if it exists
     if nccd.uncertainty is not None:
-        nccd.uncertainty.array = transform_func(nccd.uncertainty.array,
-                                                **kwargs)
+        nccd.uncertainty.array = transform_func(nccd.uncertainty.array, **kwargs)
 
     # transform the mask plane
     if nccd.mask is not None:
@@ -874,14 +922,14 @@ def transform_image(ccd, transform_func, **kwargs):
         nccd.mask = mask > 0
 
     if nccd.wcs is not None:
-        warn = 'WCS information may be incorrect as no transformation was applied to it'
+        warn = "WCS information may be incorrect as no transformation was applied to it"
         warnings.warn(warn, UserWarning)
 
     return nccd
 
 
 @log_to_metadata
-def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
+def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear"):
     """
     Given a CCDData image with WCS, project it onto a target WCS and
     return the reprojected data as a new CCDData image.
@@ -923,22 +971,20 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     from reproject import reproject_interp
 
     if not (ccd.wcs.is_celestial and target_wcs.is_celestial):
-        raise ValueError('one or both WCS is not celestial.')
+        raise ValueError("one or both WCS is not celestial.")
 
     if target_shape is None:
         target_shape = ccd.shape
 
-    projected_image_raw, _ = reproject_interp((ccd.data, ccd.wcs),
-                                              target_wcs,
-                                              shape_out=target_shape,
-                                              order=order)
+    projected_image_raw, _ = reproject_interp(
+        (ccd.data, ccd.wcs), target_wcs, shape_out=target_shape, order=order
+    )
 
     reprojected_mask = None
     if ccd.mask is not None:
-        reprojected_mask, _ = reproject_interp((ccd.mask, ccd.wcs),
-                                               target_wcs,
-                                               shape_out=target_shape,
-                                               order=order)
+        reprojected_mask, _ = reproject_interp(
+            (ccd.mask, ccd.wcs), target_wcs, shape_out=target_shape, order=order
+        )
         # Make the mask 1 if the reprojected mask pixel value is non-zero.
         # A small threshold is included to allow for some rounding in
         # reproject_interp.
@@ -952,8 +998,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
         output_mask = output_mask | reprojected_mask
 
     # Need to scale counts by ratio of pixel areas
-    area_ratio = (proj_plane_pixel_area(target_wcs) /
-                  proj_plane_pixel_area(ccd.wcs))
+    area_ratio = proj_plane_pixel_area(target_wcs) / proj_plane_pixel_area(ccd.wcs)
 
     # If nothing ended up masked, don't create a mask.
     if not output_mask.any():
@@ -962,9 +1007,13 @@ def wcs_project(ccd, target_wcs, target_shape=None, order='bilinear'):
     # If there are any wcs keywords in the header, remove them
     hdr, _ = _generate_wcs_and_update_header(ccd.header)
 
-    nccd = CCDData(area_ratio * projected_image_raw, wcs=target_wcs,
-                   mask=output_mask,
-                   header=hdr, unit=ccd.unit)
+    nccd = CCDData(
+        area_ratio * projected_image_raw,
+        wcs=target_wcs,
+        mask=output_mask,
+        header=hdr,
+        unit=ccd.unit,
+    )
 
     return nccd
 
@@ -991,9 +1040,10 @@ def sigma_func(arr, axis=None, ignore_nan=False):
     uncertainty : float
         uncertainty of array estimated from median absolute deviation.
     """
-    return (stats.median_absolute_deviation(arr, axis=axis,
-                                            ignore_nan=ignore_nan)
-            * 1.482602218505602)
+    return (
+        stats.median_absolute_deviation(arr, axis=axis, ignore_nan=ignore_nan)
+        * 1.482602218505602
+    )
 
 
 def setbox(x, y, mbox, xmax, ymax):
@@ -1070,7 +1120,7 @@ def background_deviation_box(data, bbox):
     # Check to make sure the background box is an appropriate size
     # If it is too small, then insufficient statistics are generated
     if bbox < 1:
-        raise ValueError('bbox must be greater than 1.')
+        raise ValueError("bbox must be greater than 1.")
 
     # make the background image
     barr = data * 0.0 + data.std()
@@ -1108,14 +1158,16 @@ def background_deviation_filter(data, bbox):
     """
     # Check to make sure the background box is an appropriate size
     if bbox < 1:
-        raise ValueError('bbox must be greater than 1.')
+        raise ValueError("bbox must be greater than 1.")
 
     return ndimage.generic_filter(data, sigma_func, size=(bbox, bbox))
 
 
-@deprecated('1.1',
-            message='The rebin function will be removed in ccdproc 3.0 '
-                    'Use block_reduce or block_replicate instead.')
+@deprecated(
+    "1.1",
+    message="The rebin function will be removed in ccdproc 3.0 "
+    "Use block_reduce or block_replicate instead.",
+)
 def rebin(ccd, newshape):
     """
     Rebin an array to have a new shape.
@@ -1170,20 +1222,17 @@ def rebin(ccd, newshape):
 
         # check to see that the two arrays are going to be the same length
         if len(ccd.shape) != len(newshape):
-            raise ValueError('newshape does not have the same dimensions as '
-                             'ccd.')
+            raise ValueError("newshape does not have the same dimensions as " "ccd.")
 
-        slices = [slice(0, old, old/new) for old, new in
-                  zip(ccd.shape, newshape)]
+        slices = [slice(0, old, old / new) for old, new in zip(ccd.shape, newshape)]
         coordinates = np.mgrid[slices]
-        indices = coordinates.astype('i')
+        indices = coordinates.astype("i")
         return ccd[tuple(indices)]
 
     elif isinstance(ccd, CCDData):
         # check to see that the two arrays are going to be the same length
         if len(ccd.shape) != len(newshape):
-            raise ValueError('newshape does not have the same dimensions as '
-                             'ccd.')
+            raise ValueError("newshape does not have the same dimensions as ccd.")
 
         nccd = ccd.copy()
         # rebin the data plane
@@ -1199,7 +1248,7 @@ def rebin(ccd, newshape):
 
         return nccd
     else:
-        raise TypeError('ccd is not an ndarray or a CCDData object.')
+        raise TypeError("ccd is not an ndarray or a CCDData object.")
 
 
 def block_reduce(ccd, block_size, func=np.sum):
@@ -1213,8 +1262,7 @@ def block_reduce(ccd, block_size, func=np.sum):
 
 
 def block_average(ccd, block_size):
-    """Like `block_reduce` but with predefined ``func=np.mean``.
-    """
+    """Like `block_reduce` but with predefined ``func=np.mean``."""
     data = nddata.block_reduce(ccd, block_size, np.mean)
     # Like in block_reduce:
     if isinstance(ccd, CCDData):
@@ -1235,7 +1283,7 @@ try:
     # Append original docstring to docstrings of these functions
     block_reduce.__doc__ += nddata.block_reduce.__doc__
     block_replicate.__doc__ += nddata.block_replicate.__doc__
-    __all__ += ['block_average', 'block_reduce', 'block_replicate']
+    __all__ += ["block_average", "block_reduce", "block_replicate"]
 except AttributeError:
     # Astropy 1.0 has no block_reduce, block_average
     del block_reduce, block_average, block_replicate
@@ -1274,21 +1322,24 @@ def _blkavg(data, newshape):
     """
     # check to see that is in a nddata type
     if not isinstance(data, np.ndarray):
-        raise TypeError('data is not a ndarray object.')
+        raise TypeError("data is not a ndarray object.")
 
     # check to see that the two arrays are going to be the same length
     if len(data.shape) != len(newshape):
-        raise ValueError('newshape does not have the same dimensions as data.')
+        raise ValueError("newshape does not have the same dimensions as data.")
 
     shape = data.shape
     lenShape = len(shape)
-    factor = np.asarray(shape)/np.asarray(newshape)
+    factor = np.asarray(shape) / np.asarray(newshape)
 
-    evList = ['data.reshape('] + \
-        ['newshape[%d],int(factor[%d]),' % (i, i) for i in range(lenShape)] + \
-        [')'] + ['.mean(%d)' % (i + 1) for i in range(lenShape)]
+    evList = (
+        ["data.reshape("]
+        + ["newshape[%d],int(factor[%d])," % (i, i) for i in range(lenShape)]
+        + [")"]
+        + [".mean(%d)" % (i + 1) for i in range(lenShape)]
+    )
 
-    return eval(''.join(evList))
+    return eval("".join(evList))
 
 
 def median_filter(data, *args, **kwargs):
@@ -1299,8 +1350,7 @@ def median_filter(data, *args, **kwargs):
     copied ``unit`` and ``meta``.
     """
     if isinstance(data, CCDData):
-        out_kwargs = {'meta': data.meta.copy(),
-                      'unit': data.unit}
+        out_kwargs = {"meta": data.meta.copy(), "unit": data.unit}
         result = ndimage.median_filter(data.data, *args, **kwargs)
         return CCDData(result, **out_kwargs)
     else:
@@ -1309,20 +1359,38 @@ def median_filter(data, *args, **kwargs):
 
 # This originally used the "message" argument but that is not
 # supported until astropy 5, so use alternative instead.
-@deprecated_renamed_argument('pssl', None, '2.3.0',
-                             arg_in_kwargs=True,
-                             alternative='The pssl keyword will be removed in '
-                                'ccdproc 3.0. Use inbkg instead to have '
-                                'astroscrappy temporarily remove the background '
-                                'during processing.')
-def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
-                       objlim=5.0, gain=1.0, readnoise=6.5,
-                       satlevel=65535.0, pssl=0.0, niter=4,
-                       sepmed=True, cleantype='meanmask', fsmode='median',
-                       psfmodel='gauss', psffwhm=2.5, psfsize=7,
-                       psfk=None, psfbeta=4.765, verbose=False,
-                       gain_apply=True,
-                       inbkg=None, invar=None):
+@deprecated_renamed_argument(
+    "pssl",
+    None,
+    "2.3.0",
+    arg_in_kwargs=True,
+    alternative="The pssl keyword will be removed in "
+    "ccdproc 3.0. Use inbkg instead to have astroscrappy temporarily remove the "
+    "background during processing.",
+)
+def cosmicray_lacosmic(
+    ccd,
+    sigclip=4.5,
+    sigfrac=0.3,
+    objlim=5.0,
+    gain=1.0,
+    readnoise=6.5,
+    satlevel=65535.0,
+    pssl=0.0,
+    niter=4,
+    sepmed=True,
+    cleantype="meanmask",
+    fsmode="median",
+    psfmodel="gauss",
+    psffwhm=2.5,
+    psfsize=7,
+    psfk=None,
+    psfbeta=4.765,
+    verbose=False,
+    gain_apply=True,
+    inbkg=None,
+    invar=None,
+):
     r"""
     Identify cosmic rays through the L.A. Cosmic technique. The L.A. Cosmic
     technique identifies cosmic rays by identifying pixels based on a variation
@@ -1518,8 +1586,9 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         readnoise = readnoise * u.electron
 
     # Handle transition from old astroscrappy interface to new
-    old_astroscrappy_interface = (pkgversion.parse(asy_version) <
-                                  pkgversion.parse('1.1.0'))
+    old_astroscrappy_interface = pkgversion.parse(asy_version) < pkgversion.parse(
+        "1.1.0"
+    )
 
     # Use this dictionary to define which keyword arguments are actually
     # passed to astroscrappy.
@@ -1529,7 +1598,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     data_offset = 0
 
     # Handle setting up the keyword arguments for both interfaces
-    if old_astroscrappy_interface: # pragma: no cover
+    if old_astroscrappy_interface:  # pragma: no cover
         new_args = dict(inbkg=inbkg, invar=invar)
         bad_args = []
         for k, v in new_args.items():
@@ -1537,10 +1606,12 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
                 bad_args.append(k)
 
         if bad_args:
-            s = 's' if len(bad_args) > 1 else ''
-            bads = ', '.join(bad_args)
-            raise TypeError(f'The argument{s} {bads} only valid for astroscrappy '
-                            '1.1.0 or higher.')
+            s = "s" if len(bad_args) > 1 else ""
+            bads = ", ".join(bad_args)
+            raise TypeError(
+                f"The argument{s} {bads} only valid for astroscrappy "
+                "1.1.0 or higher."
+            )
 
         if pssl != 0:
             asy_background_kwargs = dict(pssl=pssl)
@@ -1548,7 +1619,7 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
     else:
         if pssl != 0:
             if (inbkg is not None) or (invar is not None):
-                raise ValueError('Cannot set both pssl and inbkg')
+                raise ValueError("Cannot set both pssl and inbkg")
 
             # The old version of astroscrappy added the bkg back in
             # if pssl was provided. The new one does not, so set an offset
@@ -1561,20 +1632,31 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         data = ccd
 
         crmask, cleanarr = detect_cosmics(
-            data + data_offset, inmask=None, sigclip=sigclip,
-            sigfrac=sigfrac, objlim=objlim, gain=gain.value,
-            readnoise=readnoise.value, satlevel=satlevel,
-            niter=niter, sepmed=sepmed, cleantype=cleantype,
-            fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
-            psfsize=psfsize, psfk=psfk, psfbeta=psfbeta,
+            data + data_offset,
+            inmask=None,
+            sigclip=sigclip,
+            sigfrac=sigfrac,
+            objlim=objlim,
+            gain=gain.value,
+            readnoise=readnoise.value,
+            satlevel=satlevel,
+            niter=niter,
+            sepmed=sepmed,
+            cleantype=cleantype,
+            fsmode=fsmode,
+            psfmodel=psfmodel,
+            psffwhm=psffwhm,
+            psfsize=psfsize,
+            psfk=psfk,
+            psfbeta=psfbeta,
             verbose=verbose,
-            **asy_background_kwargs)
+            **asy_background_kwargs,
+        )
 
         cleanarr = cleanarr - data_offset
-        cleanarr = _astroscrappy_gain_apply_helper(cleanarr,
-                                                   gain.value,
-                                                   gain_apply,
-                                                   old_astroscrappy_interface)
+        cleanarr = _astroscrappy_gain_apply_helper(
+            cleanarr, gain.value, gain_apply, old_astroscrappy_interface
+        )
 
         return cleanarr, crmask
 
@@ -1583,39 +1665,56 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         # gain and readnoise have no units. In that case we issue a warning
         # instead of raising an error to avoid crashing user's pipelines.
         if ccd.unit.is_equivalent(u.electron) and gain.value != 1.0:
-            warnings.warn("Image unit is electron but gain value "
-                          "is not 1.0. Data maybe end up being gain "
-                          "corrected twice.")
+            warnings.warn(
+                "Image unit is electron but gain value "
+                "is not 1.0. Data maybe end up being gain "
+                "corrected twice."
+            )
 
         else:
-            if ((readnoise.unit == u.electron)
+            if (
+                (readnoise.unit == u.electron)
                 and (ccd.unit == u.electron)
-                and (gain.value == 1.0)):
+                and (gain.value == 1.0)
+            ):
                 gain = gain.value * u.one
             # Check unit consistency before taking the time to check for
             # cosmic rays.
             if not (gain * ccd).unit.is_equivalent(readnoise.unit):
-                raise ValueError('Inconsistent units for gain ({}) '.format(gain.unit) +
-                                 ' ccd ({}) and readnoise ({}).'.format(ccd.unit,
-                                                                        readnoise.unit))
+                raise ValueError(
+                    "Inconsistent units for gain ({}) ".format(gain.unit)
+                    + " ccd ({}) and readnoise ({}).".format(ccd.unit, readnoise.unit)
+                )
 
         crmask, cleanarr = detect_cosmics(
-            ccd.data + data_offset, inmask=ccd.mask,
-            sigclip=sigclip, sigfrac=sigfrac, objlim=objlim, gain=gain.value,
-            readnoise=readnoise.value, satlevel=satlevel,
-            niter=niter, sepmed=sepmed, cleantype=cleantype,
-            fsmode=fsmode, psfmodel=psfmodel, psffwhm=psffwhm,
-            psfsize=psfsize, psfk=psfk, psfbeta=psfbeta, verbose=verbose,
-            **asy_background_kwargs)
+            ccd.data + data_offset,
+            inmask=ccd.mask,
+            sigclip=sigclip,
+            sigfrac=sigfrac,
+            objlim=objlim,
+            gain=gain.value,
+            readnoise=readnoise.value,
+            satlevel=satlevel,
+            niter=niter,
+            sepmed=sepmed,
+            cleantype=cleantype,
+            fsmode=fsmode,
+            psfmodel=psfmodel,
+            psffwhm=psffwhm,
+            psfsize=psfsize,
+            psfk=psfk,
+            psfbeta=psfbeta,
+            verbose=verbose,
+            **asy_background_kwargs,
+        )
 
         # create the new ccd data object
         nccd = ccd.copy()
 
         cleanarr = cleanarr - data_offset
-        cleanarr = _astroscrappy_gain_apply_helper(cleanarr,
-                                                   gain.value,
-                                                   gain_apply,
-                                                   old_astroscrappy_interface)
+        cleanarr = _astroscrappy_gain_apply_helper(
+            cleanarr, gain.value, gain_apply, old_astroscrappy_interface
+        )
 
         # Fix the units if the gain is being applied.
         nccd.unit = ccd.unit * gain.unit
@@ -1629,11 +1728,10 @@ def cosmicray_lacosmic(ccd, sigclip=4.5, sigfrac=0.3,
         return nccd
 
     else:
-        raise TypeError('ccd is not a CCDData or ndarray object.')
+        raise TypeError("ccd is not a CCDData or ndarray object.")
 
 
-def _astroscrappy_gain_apply_helper(cleaned_data, gain,
-                                    gain_apply, old_interface):
+def _astroscrappy_gain_apply_helper(cleaned_data, gain, gain_apply, old_interface):
     """
     Helper function for logic determining how to apply gain to cleaned
     data. In the old astroscrappy interface cleaned data was always
@@ -1668,8 +1766,7 @@ def _astroscrappy_gain_apply_helper(cleaned_data, gain,
     return cleaned_data
 
 
-def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
-                     rbox=0):
+def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
     """
     Identify cosmic rays through median technique. The median technique
     identifies cosmic rays by identifying pixels by subtracting a median image
@@ -1749,7 +1846,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
             error_image = data.std()
         else:
             if not isinstance(error_image, (float, np.ndarray)):
-                raise TypeError('error_image is not a float or ndarray.')
+                raise TypeError("error_image is not a float or ndarray.")
 
         # create the median image
         marr = ndimage.median_filter(data, size=(mbox, mbox))
@@ -1762,7 +1859,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         rarr = (data - marr) / error_image
 
         # identify all sources
-        crarr = (rarr > thresh)
+        crarr = rarr > thresh
 
         # grow the pixels
         if gbox > 0:
@@ -1782,11 +1879,16 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         if error_image is None and ccd.uncertainty is not None:
             error_image = ccd.uncertainty.array
         if ccd.data.shape != error_image.shape:
-            raise ValueError('error_image is not the same shape as data.')
+            raise ValueError("error_image is not the same shape as data.")
 
-        data, crarr = cosmicray_median(ccd.data, error_image=error_image,
-                                       thresh=thresh, mbox=mbox, gbox=gbox,
-                                       rbox=rbox)
+        data, crarr = cosmicray_median(
+            ccd.data,
+            error_image=error_image,
+            thresh=thresh,
+            mbox=mbox,
+            gbox=gbox,
+            rbox=rbox,
+        )
 
         # create the new ccd data object
         nccd = ccd.copy()
@@ -1798,11 +1900,21 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0,
         return nccd
 
     else:
-        raise TypeError('ccd is not an numpy.ndarray or a CCDData object.')
+        raise TypeError("ccd is not an numpy.ndarray or a CCDData object.")
 
 
-def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
-            ncsig=15, nlsig=15, lsigma=9, hsigma=9, ngood=5):
+def ccdmask(
+    ratio,
+    findbadcolumns=False,
+    byblocks=False,
+    ncmed=7,
+    nlmed=7,
+    ncsig=15,
+    nlsig=15,
+    lsigma=9,
+    hsigma=9,
+    ngood=5,
+):
     """
     Uses method based on the IRAF ccdmask task to generate a mask based on the
     given input.
@@ -1915,14 +2027,13 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
         raise ValueError('"ratio" should be a "CCDData".')
 
     def _sigma_mask(baseline, one_sigma_value, lower_sigma, upper_sigma):
-        """Helper function to mask values outside of the specified sigma range.
-        """
-        return ((baseline < -lower_sigma * one_sigma_value) |
-                (baseline > upper_sigma * one_sigma_value))
+        """Helper function to mask values outside of the specified sigma range."""
+        return (baseline < -lower_sigma * one_sigma_value) | (
+            baseline > upper_sigma * one_sigma_value
+        )
 
     mask = ~np.isfinite(ratio.data)
-    medsub = (ratio.data -
-              ndimage.median_filter(ratio.data, size=(nlmed, ncmed)))
+    medsub = ratio.data - ndimage.median_filter(ratio.data, size=(nlmed, ncmed))
 
     if byblocks:
         nlinesblock = int(math.ceil(nlines / nlsig))
@@ -1944,8 +2055,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                     csum = np.ma.sum(mblock, axis=0)
                     csum[csum <= 0] = 0
                     csum_sigma = np.ma.MaskedArray(np.sqrt(c2 - c1 - csum))
-                    colmask = _sigma_mask(csum.filled(1), csum_sigma,
-                                          lsigma, hsigma)
+                    colmask = _sigma_mask(csum.filled(1), csum_sigma, lsigma, hsigma)
                     block_mask[:, :] |= colmask[np.newaxis, :]
 
                 mask[l1:l2, c1:c2] = block_mask
@@ -1964,8 +2074,7 @@ def ccdmask(ratio, findbadcolumns=False, byblocks=False, ncmed=7, nlmed=7,
                 if mask[line, col]:
                     for i in range(2, ngood + 2):
                         lend = line + i
-                        if (mask[lend, col] and
-                                not np.all(mask[line:lend + 1, col])):
+                        if mask[lend, col] and not np.all(mask[line : lend + 1, col]):
                             mask[line:lend, col] = True
     return mask
 
@@ -2055,13 +2164,13 @@ def bitfield_to_boolean_mask(bitfield, ignore_bits=0, flip_bits=None):
 
     """
     return _bitfield_to_boolean_mask(
-        bitfield, ignore_bits, flip_bits=flip_bits,
-        good_mask_value=False, dtype=bool)
+        bitfield, ignore_bits, flip_bits=flip_bits, good_mask_value=False, dtype=bool
+    )
 
 
 class Keyword:
-    """
-    """
+    """ """
+
     def __init__(self, name, unit=None, value=None):
         self._name = name
         self._unit = unit
@@ -2088,14 +2197,14 @@ class Keyword:
             self._value = value
         elif isinstance(value, str):
             if self.unit is not None:
-                raise ValueError("keyword with a unit cannot have a "
-                                 "string value.")
+                raise ValueError("keyword with a unit cannot have a " "string value.")
             else:
                 self._value = value
         else:
             if self.unit is None:
-                raise ValueError("no unit provided. Set value with "
-                                 "an astropy.units.Quantity.")
+                raise ValueError(
+                    "no unit provided. Set value with " "an astropy.units.Quantity."
+                )
             self._value = value * self.unit
 
     def value_from(self, header):

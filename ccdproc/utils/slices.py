@@ -59,28 +59,27 @@ def slice_from_string(string, fits_convention=False):
     array([[0, 1, 2],
            [5, 6, 7]])
     """
-    no_space = string.replace(' ', '')
+    no_space = string.replace(" ", "")
 
     if not no_space:
         return ()
 
-    if not (no_space.startswith('[') and no_space.endswith(']')):
-        raise ValueError('Slice string must be enclosed in square brackets.')
+    if not (no_space.startswith("[") and no_space.endswith("]")):
+        raise ValueError("Slice string must be enclosed in square brackets.")
 
-    no_space = no_space.strip('[]')
+    no_space = no_space.strip("[]")
     if fits_convention:
         # Special cases first
         # Flip dimension, with step
-        no_space = no_space.replace('-*:', '::-')
+        no_space = no_space.replace("-*:", "::-")
         # Flip dimension
-        no_space = no_space.replace('-*', '::-1')
+        no_space = no_space.replace("-*", "::-1")
         # Normal wildcard
-        no_space = no_space.replace('*', ':')
-    string_slices = no_space.split(',')
+        no_space = no_space.replace("*", ":")
+    string_slices = no_space.split(",")
     slices = []
     for string_slice in string_slices:
-        slice_args = [int(arg) if arg else None
-                      for arg in string_slice.split(':')]
+        slice_args = [int(arg) if arg else None for arg in string_slice.split(":")]
         a_slice = slice(*slice_args)
         slices.append(a_slice)
 
@@ -114,12 +113,15 @@ def _defitsify_slice(slices):
         if a_slice.stop is not None and a_slice.stop < 0:
             raise ValueError("Negative final index not allowed for FITS slice")
         new_slice = slice(new_start, a_slice.stop, a_slice.step)
-        if (a_slice.start is not None and a_slice.stop is not None and
-            a_slice.start > a_slice.stop):
+        if (
+            a_slice.start is not None
+            and a_slice.stop is not None
+            and a_slice.start > a_slice.stop
+        ):
             # FITS use a positive step index when dimension are inverted
             new_step = -1 if a_slice.step is None else -a_slice.step
             # Special case to prevent -1 as slice stop value
-            new_stop = None if a_slice.stop == 1 else a_slice.stop-2
+            new_stop = None if a_slice.stop == 1 else a_slice.stop - 2
             new_slice = slice(new_start, new_stop, new_step)
         python_slice.append(new_slice)
 
