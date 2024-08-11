@@ -1,5 +1,49 @@
 [build-system]
-requires = ["setuptools",
-            "setuptools_scm",
-            "wheel"]
-build-backend = 'setuptools.build_meta'
+requires = ["hatchling",
+"hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ccdproc"
+dynamic = ["version"]
+description = "Astropy affiliated package"
+readme = "README.rst"
+license = "BSD-3-clause"
+requires-python = ">=3.8"
+authors = [
+    { name = "Steve Crawford", email = "ccdproc@gmail.com" },
+    { name = "Matt Craig" },
+    { name = "and Michael Seifert" },
+]
+dependencies = [
+    "astropy>=5.0.1",
+    "astroscrappy>=1.0.8",
+    "numpy>=1.21",
+    "reproject>=0.7",
+    "scikit-image",
+    "scipy",
+]
+
+[project.optional-dependencies]
+docs = [
+    "matplotlib",
+    "sphinx-astropy",
+]
+test = [
+    "memory_profiler",
+    "pytest-astropy>=0.10.0",
+]
+
+[project.urls]
+Homepage = "http://ccdproc.readthedocs.io/"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "ccdproc/_version.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/ccdproc",
+]
