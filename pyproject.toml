@@ -73,3 +73,35 @@ include = [
         # Ignore branches that don't pertain to this version of Python
         "pragma: py{ignore_python_version}",
     ]
+
+[tool.pytest.ini_options]
+minversion = 7.0
+testpaths = [
+    "ccdproc",
+    "docs",
+]
+norecursedirs = [
+    "docs[\\/]_build",
+    "docs[\\/]generated",
+]
+astropy_header = true
+doctest_plus = "enabled"
+text_file_format = "rst"
+remote_data_strict = true
+addopts = [
+    "--doctest-rst",
+    "--color=yes",
+]
+log_cli_level = "info"
+xfail_strict = true
+filterwarnings= [
+    "error",
+    "ignore:numpy\\.ufunc size changed:RuntimeWarning",
+    "ignore:numpy.ndarray size changed:RuntimeWarning",
+    "ignore:`np.bool` is a deprecated alias for the builtin `bool`:DeprecationWarning",
+]
+markers = [
+    "data_size(N): set dimension of square data array for ccd_data fixture",
+    "data_scale(s): set the scale of the normal distribution used to generate data",
+    "data_mean(m): set the center of the normal distribution used to generate data",
+]
