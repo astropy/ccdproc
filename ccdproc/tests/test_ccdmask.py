@@ -18,18 +18,19 @@ def test_ccdmask_no_ccddata():
 def test_ccdmask_not_2d():
     # Fails when a CCDData has less than 2 dimensions
     with pytest.raises(ValueError):
-        ccdmask(CCDData(np.ones(3), unit='adu'))
+        ccdmask(CCDData(np.ones(3), unit="adu"))
 
     # Fails when scalar
     with pytest.raises(ValueError):
-        ccdmask(CCDData(np.array(10), unit='adu'))
+        ccdmask(CCDData(np.array(10), unit="adu"))
 
     # Fails when more than 2d
     with pytest.raises(ValueError):
-        ccdmask(CCDData(np.ones((3, 3, 3)), unit='adu'))
+        ccdmask(CCDData(np.ones((3, 3, 3)), unit="adu"))
 
 
 def test_ccdmask_pixels():
+    # fmt: off
     flat1 = CCDData(np.array([[
         20044, 19829, 19936, 20162, 19948, 19965, 19919, 20004, 19951,
         20002, 19926, 20151, 19886, 20014, 19928, 20025, 19921, 19996,
@@ -160,7 +161,7 @@ def test_ccdmask_pixels():
         20184, 19948, 20034, 19896, 19905, 20138, 19870, 19936, 20085,
         19971, 20063, 19936, 19941, 19928, 19937, 19970, 19931, 20036,
         19965, 19855, 19949, 19965, 19821]]), unit='adu')
-
+    # fmt: on
     target_mask = np.zeros(flat1.shape, dtype=bool)
 
     # No bad pixels in this scenario
@@ -198,8 +199,7 @@ def test_ccdmask_pixels():
     mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=True)
     assert_array_equal(mask, target_mask)
 
-    mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=True,
-                   byblocks=True)
+    mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=True, byblocks=True)
     assert_array_equal(mask, target_mask)
 
     # Add bad column with gaps

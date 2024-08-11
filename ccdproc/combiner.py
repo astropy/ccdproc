@@ -19,31 +19,31 @@ from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
 from astropy import log
 
-__all__ = ['Combiner', 'combine']
+__all__ = ["Combiner", "combine"]
 
 
-def _default_median(): # pragma: no cover
+def _default_median():  # pragma: no cover
     if HAS_BOTTLENECK:
         return bn.nanmedian
     else:
         return np.nanmedian
 
 
-def _default_average(): # pragma: no cover
+def _default_average():  # pragma: no cover
     if HAS_BOTTLENECK:
         return bn.nanmean
     else:
         return np.nanmean
 
 
-def _default_sum(): # pragma: no cover
+def _default_sum():  # pragma: no cover
     if HAS_BOTTLENECK:
         return bn.nansum
     else:
         return np.nansum
 
 
-def _default_std(): # pragma: no cover
+def _default_std():  # pragma: no cover
     if HAS_BOTTLENECK:
         return bn.nanstd
     else:
@@ -94,9 +94,12 @@ class Combiner:
                  [ 0.66666667,  0.66666667,  0.66666667,  0.66666667],
                  [ 0.66666667,  0.66666667,  0.66666667,  0.66666667]]...)
     """
+
     def __init__(self, ccd_iter, dtype=None):
         if ccd_iter is None:
-            raise TypeError("ccd_iter should be a list or a generator of CCDData objects.")
+            raise TypeError(
+                "ccd_iter should be a list or a generator of CCDData objects."
+            )
 
         if dtype is None:
             dtype = np.float64
@@ -109,8 +112,7 @@ class Combiner:
         for ccd in ccd_list:
             # raise an error if the objects aren't CCDData objects
             if not isinstance(ccd, CCDData):
-                raise TypeError(
-                    "ccd_list should only contain CCDData objects.")
+                raise TypeError("ccd_list should only contain CCDData objects.")
 
             # raise an error if the shape is different
             if default_shape is None:
@@ -170,9 +172,13 @@ class Combiner:
             if isinstance(value, np.ndarray):
                 if value.shape != self.data_arr.data.shape:
                     if value.ndim != 1:
-                        raise ValueError("1D weights expected when shapes of the data and weights differ.")
+                        raise ValueError(
+                            "1D weights expected when shapes of the data and weights differ."
+                        )
                     if value.shape[0] != self.data_arr.data.shape[0]:
-                        raise ValueError("Length of weights not compatible with specified axis.")
+                        raise ValueError(
+                            "Length of weights not compatible with specified axis."
+                        )
                 self._weights = value
             else:
                 raise TypeError("weights must be a numpy.ndarray.")
@@ -201,18 +207,19 @@ class Combiner:
         else:
             n_images = self.data_arr.data.shape[0]
             if callable(value):
-                self._scaling = [value(self.data_arr[i]) for
-                                 i in range(n_images)]
+                self._scaling = [value(self.data_arr[i]) for i in range(n_images)]
                 self._scaling = np.array(self._scaling)
             else:
                 try:
                     len(value) == n_images
                     self._scaling = np.array(value)
                 except TypeError:
-                    raise TypeError("scaling must be a function or an array "
-                                    "the same length as the number of images.")
+                    raise TypeError(
+                        "scaling must be a function or an array "
+                        "the same length as the number of images."
+                    )
             # reshape so that broadcasting occurs properly
-            for i in range(len(self.data_arr.data.shape)-1):
+            for i in range(len(self.data_arr.data.shape) - 1):
                 self._scaling = self.scaling[:, np.newaxis]
 
     # set up IRAF-like minmax clipping
@@ -265,43 +272,47 @@ class Combiner:
             nhigh = 0
 
         argsorted = np.argsort(self.data_arr.data, axis=0)
-        mg = np.mgrid[[slice(ndim)
-                       for i, ndim in enumerate(self.data_arr.shape) if i > 0]]
-        for i in range(-1*nhigh, nlow):
+        mg = np.mgrid[
+            [slice(ndim) for i, ndim in enumerate(self.data_arr.shape) if i > 0]
+        ]
+        for i in range(-1 * nhigh, nlow):
             # create a tuple with the indices
-            where = tuple([argsorted[i, :, :].ravel()] +
-                          [i.ravel() for i in mg])
+            where = tuple([argsorted[i, :, :].ravel()] + [i.ravel() for i in mg])
             self.data_arr.mask[where] = True
 
     # set up min/max clipping algorithms
     def minmax_clipping(self, min_clip=None, max_clip=None):
         """Mask all pixels that are below min_clip or above max_clip.
 
-         Parameters
-         -----------
-         min_clip : float or None, optional
-             If not None, all pixels with values below min_clip will be masked.
-             Default is ``None``.
+        Parameters
+        -----------
+        min_clip : float or None, optional
+            If not None, all pixels with values below min_clip will be masked.
+            Default is ``None``.
 
-         max_clip : float or None, optional
-             If not None, all pixels with values above min_clip will be masked.
-             Default is ``None``.
+        max_clip : float or None, optional
+            If not None, all pixels with values above min_clip will be masked.
+            Default is ``None``.
         """
         if min_clip is not None:
-            mask = (self.data_arr < min_clip)
+            mask = self.data_arr < min_clip
             self.data_arr.mask[mask] = True
         if max_clip is not None:
-            mask = (self.data_arr > max_clip)
+            mask = self.data_arr > max_clip
             self.data_arr.mask[mask] = True
 
     # set up sigma  clipping algorithms
-    @deprecated_renamed_argument('use_astropy', None, arg_in_kwargs=True,
-                                 since='2.4.0',
-                                 message='The use_astropy argument has been removed because '
-                                         'astropy sigma clipping is now always used.'
-                                 )
-    def sigma_clipping(self, low_thresh=3, high_thresh=3,
-                       func='mean', dev_func='std', **kwd):
+    @deprecated_renamed_argument(
+        "use_astropy",
+        None,
+        arg_in_kwargs=True,
+        since="2.4.0",
+        message="The use_astropy argument has been removed because "
+        "astropy sigma clipping is now always used.",
+    )
+    def sigma_clipping(
+        self, low_thresh=3, high_thresh=3, func="mean", dev_func="std", **kwd
+    ):
         """
         Pixels will be rejected if they have deviations greater than those
         set by the threshold values. The algorithm will first calculated
@@ -346,18 +357,20 @@ class Combiner:
         """
 
         # Remove in 3.0
-        _ = kwd.pop('use_astropy', True)
+        _ = kwd.pop("use_astropy", True)
 
-        self.data_arr.mask = sigma_clip(self.data_arr.data,
-                                        sigma_lower=low_thresh,
-                                        sigma_upper=high_thresh,
-                                        axis=kwd.get('axis', 0),
-                                        copy=kwd.get('copy', False),
-                                        maxiters=kwd.get('maxiters', 1),
-                                        cenfunc=func,
-                                        stdfunc=dev_func,
-                                        masked=True,
-                                        **kwd).mask
+        self.data_arr.mask = sigma_clip(
+            self.data_arr.data,
+            sigma_lower=low_thresh,
+            sigma_upper=high_thresh,
+            axis=kwd.get("axis", 0),
+            copy=kwd.get("copy", False),
+            maxiters=kwd.get("maxiters", 1),
+            cenfunc=func,
+            stdfunc=dev_func,
+            masked=True,
+            **kwd,
+        ).mask
 
     def _get_scaled_data(self, scale_arg):
         if scale_arg is not None:
@@ -374,10 +387,7 @@ class Combiner:
             data = data.data
         return data
 
-    def _combination_setup(self,
-                           user_func,
-                           default_func,
-                           scale_to):
+    def _combination_setup(self, user_func, default_func, scale_to):
         """
         Handle the common pieces of image combination data/mask setup.
         """
@@ -397,8 +407,9 @@ class Combiner:
         return data, masked_values, combo_func
 
     # set up the combining algorithms
-    def median_combine(self, median_func=None, scale_to=None,
-                       uncertainty_func=sigma_func):
+    def median_combine(
+        self, median_func=None, scale_to=None, uncertainty_func=sigma_func
+    ):
         """
         Median combine a set of arrays.
 
@@ -435,15 +446,14 @@ class Combiner:
         deviation does not account for rejected pixels.
         """
 
-        data, masked_values, median_func = \
-            self._combination_setup(median_func,
-                                    _default_median(),
-                                    scale_to)
+        data, masked_values, median_func = self._combination_setup(
+            median_func, _default_median(), scale_to
+        )
 
         medianed = median_func(data, axis=0)
 
         # set the mask
-        mask = (masked_values == len(self.data_arr))
+        mask = masked_values == len(self.data_arr)
 
         # set the uncertainty
 
@@ -466,12 +476,15 @@ class Combiner:
         uncertainty = np.asarray(uncertainty)
 
         # create the combined image with a dtype matching the combiner
-        combined_image = CCDData(np.asarray(medianed, dtype=self.dtype),
-                                 mask=mask, unit=self.unit,
-                                 uncertainty=StdDevUncertainty(uncertainty))
+        combined_image = CCDData(
+            np.asarray(medianed, dtype=self.dtype),
+            mask=mask,
+            unit=self.unit,
+            uncertainty=StdDevUncertainty(uncertainty),
+        )
 
         # update the meta data
-        combined_image.meta['NCOMBINE'] = len(self.data_arr)
+        combined_image.meta["NCOMBINE"] = len(self.data_arr)
 
         # return the combined image
         return combined_image
@@ -490,12 +503,17 @@ class Combiner:
         # Turns out bn.nansum has an implementation that is not
         # precise enough for float32 sums. Doing this should
         # ensure the sums are carried out as float64
-        weights = weights.astype('float64')
+        weights = weights.astype("float64")
         weighted_sum = sum_func(data * weights, axis=0)
         return weighted_sum, weights
 
-    def average_combine(self, scale_func=None, scale_to=None,
-                        uncertainty_func=_default_std(), sum_func=_default_sum()):
+    def average_combine(
+        self,
+        scale_func=None,
+        scale_to=None,
+        uncertainty_func=_default_std(),
+        sum_func=_default_sum(),
+    ):
         """
         Average combine together a set of arrays.
 
@@ -529,10 +547,9 @@ class Combiner:
         combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
-        data, masked_values, scale_func = \
-            self._combination_setup(scale_func,
-                                    _default_average(),
-                                    scale_to)
+        data, masked_values, scale_func = self._combination_setup(
+            scale_func, _default_average(), scale_to
+        )
         # # set up the data
         # data = self._get_scaled_data(scale_to)
 
@@ -549,7 +566,7 @@ class Combiner:
 
         # calculate the mask
 
-        mask = (masked_values == len(self.data_arr))
+        mask = masked_values == len(self.data_arr)
 
         # set up the deviation
         uncertainty = uncertainty_func(data, axis=0)
@@ -559,18 +576,22 @@ class Combiner:
         uncertainty = np.asarray(uncertainty)
 
         # create the combined image with a dtype that matches the combiner
-        combined_image = CCDData(np.asarray(mean, dtype=self.dtype),
-                                 mask=mask, unit=self.unit,
-                                 uncertainty=StdDevUncertainty(uncertainty))
+        combined_image = CCDData(
+            np.asarray(mean, dtype=self.dtype),
+            mask=mask,
+            unit=self.unit,
+            uncertainty=StdDevUncertainty(uncertainty),
+        )
 
         # update the meta data
-        combined_image.meta['NCOMBINE'] = len(data)
+        combined_image.meta["NCOMBINE"] = len(data)
 
         # return the combined image
         return combined_image
 
-    def sum_combine(self, sum_func=None, scale_to=None,
-                    uncertainty_func=_default_std()):
+    def sum_combine(
+        self, sum_func=None, scale_to=None, uncertainty_func=_default_std()
+    ):
         """
         Sum combine together a set of arrays.
 
@@ -604,10 +625,9 @@ class Combiner:
             CCDData object based on the combined input of CCDData objects.
         """
 
-        data, masked_values, sum_func = \
-            self._combination_setup(sum_func,
-                                    _default_sum(),
-                                    scale_to)
+        data, masked_values, sum_func = self._combination_setup(
+            sum_func, _default_sum(), scale_to
+        )
 
         if self.weights is not None:
             summed, weights = self._weighted_sum(data, sum_func)
@@ -615,7 +635,7 @@ class Combiner:
             summed = sum_func(data, axis=0)
 
         # set up the mask
-        mask = (masked_values == len(self.data_arr))
+        mask = masked_values == len(self.data_arr)
 
         # set up the deviation
         uncertainty = uncertainty_func(data, axis=0)
@@ -627,12 +647,15 @@ class Combiner:
         uncertainty *= len(data) - masked_values
 
         # create the combined image with a dtype that matches the combiner
-        combined_image = CCDData(np.asarray(summed, dtype=self.dtype),
-                                 mask=mask, unit=self.unit,
-                                 uncertainty=StdDevUncertainty(uncertainty))
+        combined_image = CCDData(
+            np.asarray(summed, dtype=self.dtype),
+            mask=mask,
+            unit=self.unit,
+            uncertainty=StdDevUncertainty(uncertainty),
+        )
 
         # update the meta data
-        combined_image.meta['NCOMBINE'] = len(self.data_arr)
+        combined_image.meta["NCOMBINE"] = len(self.data_arr)
 
         # return the combined image
         return combined_image
@@ -665,8 +688,7 @@ def _calculate_step_sizes(x_size, y_size, num_chunks):
     return xstep, ystep
 
 
-def _calculate_size_of_image(ccd,
-                             combine_uncertainty_function):
+def _calculate_size_of_image(ccd, combine_uncertainty_function):
     # If uncertainty_func is given for combine this will create an uncertainty
     # even if the originals did not have one. In that case we need to create
     # an empty placeholder.
@@ -695,15 +717,29 @@ def _calculate_size_of_image(ccd,
     return size_of_an_img
 
 
-def combine(img_list, output_file=None,
-            method='average', weights=None, scale=None, mem_limit=16e9,
-            clip_extrema=False, nlow=1, nhigh=1,
-            minmax_clip=False, minmax_clip_min=None, minmax_clip_max=None,
-            sigma_clip=False,
-            sigma_clip_low_thresh=3, sigma_clip_high_thresh=3,
-            sigma_clip_func=ma.mean, sigma_clip_dev_func=ma.std,
-            dtype=None, combine_uncertainty_function=None,
-            overwrite_output=False, **ccdkwargs):
+def combine(
+    img_list,
+    output_file=None,
+    method="average",
+    weights=None,
+    scale=None,
+    mem_limit=16e9,
+    clip_extrema=False,
+    nlow=1,
+    nhigh=1,
+    minmax_clip=False,
+    minmax_clip_min=None,
+    minmax_clip_max=None,
+    sigma_clip=False,
+    sigma_clip_low_thresh=3,
+    sigma_clip_high_thresh=3,
+    sigma_clip_func=ma.mean,
+    sigma_clip_dev_func=ma.std,
+    dtype=None,
+    combine_uncertainty_function=None,
+    overwrite_output=False,
+    **ccdkwargs,
+):
     """
     Convenience function for combining multiple images.
 
@@ -818,23 +854,22 @@ def combine(img_list, output_file=None,
         # filenames separated by comma
         if isinstance(img_list, np.ndarray):
             img_list = img_list.tolist()
-        elif isinstance(img_list, str) and (',' in img_list):
-            img_list = img_list.split(',')
+        elif isinstance(img_list, str) and ("," in img_list):
+            img_list = img_list.split(",")
         else:
             try:
                 # Maybe the input can be made into a list, so try that
                 img_list = list(img_list)
             except TypeError:
-                raise ValueError(
-                    "unrecognised input for list of images to combine.")
+                raise ValueError("unrecognised input for list of images to combine.")
 
     # Select Combine function to call in Combiner
-    if method == 'average':
-        combine_function = 'average_combine'
-    elif method == 'median':
-        combine_function = 'median_combine'
-    elif method == 'sum':
-        combine_function = 'sum_combine'
+    if method == "average":
+        combine_function = "average_combine"
+    elif method == "median":
+        combine_function = "median_combine"
+    elif method == "sum":
+        combine_function = "sum_combine"
     else:
         raise ValueError("unrecognised combine method : {0}.".format(method))
 
@@ -864,13 +899,12 @@ def combine(img_list, output_file=None,
     if ccd.mask is None:
         ccd.mask = np.zeros_like(ccd.data, dtype=bool)
 
-    size_of_an_img = _calculate_size_of_image(ccd,
-                                              combine_uncertainty_function)
+    size_of_an_img = _calculate_size_of_image(ccd, combine_uncertainty_function)
 
     no_of_img = len(img_list)
 
     # Set a memory use factor based on profiling
-    if method == 'median':
+    if method == "median":
         memory_factor = 3
     else:
         memory_factor = 2
@@ -880,8 +914,10 @@ def combine(img_list, output_file=None,
     # determine the number of chunks to split the images into
     no_chunks = int((memory_factor * size_of_an_img * no_of_img) / mem_limit) + 1
     if no_chunks > 1:
-        log.info('splitting each image into {0} chunks to limit memory usage '
-                 'to {1} bytes.'.format(no_chunks, mem_limit))
+        log.info(
+            "splitting each image into {0} chunks to limit memory usage "
+            "to {1} bytes.".format(no_chunks, mem_limit)
+        )
     xs, ys = ccd.data.shape
 
     # Calculate strides for loop
@@ -895,7 +931,7 @@ def combine(img_list, output_file=None,
     # Define all the Combiner properties one wants to apply before combining
     # images
     if weights is not None:
-        to_set_in_combiner['weights'] = weights
+        to_set_in_combiner["weights"] = weights
 
     if scale is not None:
         # If the scale is a function, then scaling function need to be applied
@@ -910,24 +946,26 @@ def combine(img_list, output_file=None,
 
                 scalevalues.append(scale(imgccd.data))
 
-            to_set_in_combiner['scaling'] = np.array(scalevalues)
+            to_set_in_combiner["scaling"] = np.array(scalevalues)
         else:
-            to_set_in_combiner['scaling'] = scale
+            to_set_in_combiner["scaling"] = scale
 
     if clip_extrema:
-        to_call_in_combiner['clip_extrema'] = {'nlow': nlow,
-                                               'nhigh': nhigh}
+        to_call_in_combiner["clip_extrema"] = {"nlow": nlow, "nhigh": nhigh}
 
     if minmax_clip:
-        to_call_in_combiner['minmax_clipping'] = {'min_clip': minmax_clip_min,
-                                                  'max_clip': minmax_clip_max}
+        to_call_in_combiner["minmax_clipping"] = {
+            "min_clip": minmax_clip_min,
+            "max_clip": minmax_clip_max,
+        }
 
     if sigma_clip:
-        to_call_in_combiner['sigma_clipping'] = {
-            'low_thresh': sigma_clip_low_thresh,
-            'high_thresh': sigma_clip_high_thresh,
-            'func': sigma_clip_func,
-            'dev_func': sigma_clip_dev_func}
+        to_call_in_combiner["sigma_clipping"] = {
+            "low_thresh": sigma_clip_low_thresh,
+            "high_thresh": sigma_clip_high_thresh,
+            "func": sigma_clip_func,
+            "dev_func": sigma_clip_dev_func,
+        }
 
     # Finally Run the input method on all the subsections of the image
     # and write final stitched image to ccd
@@ -960,7 +998,7 @@ def combine(img_list, output_file=None,
             # Finally call the combine algorithm
             combine_kwds = {}
             if combine_uncertainty_function is not None:
-                combine_kwds['uncertainty_func'] = combine_uncertainty_function
+                combine_kwds["uncertainty_func"] = combine_uncertainty_function
 
             comb_tile = getattr(tile_combiner, combine_function)(**combine_kwds)
 

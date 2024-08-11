@@ -32,31 +32,31 @@ def test_bitfield_flipbits_when_no_bits():
 def test_bitfield_flipbits_when_stringbits():
     bm = np.random.randint(0, 10, (10, 10))
     with pytest.raises(TypeError):
-        bitfield_to_boolean_mask(bm, '3', flip_bits=1)
+        bitfield_to_boolean_mask(bm, "3", flip_bits=1)
 
 
 def test_bitfield_string_flag_flip_not_start_of_string():
     bm = np.random.randint(0, 10, (10, 10))
     with pytest.raises(ValueError):
-        bitfield_to_boolean_mask(bm, '1, ~4')
+        bitfield_to_boolean_mask(bm, "1, ~4")
 
 
 def test_bitfield_string_flag_unbalanced_parens():
     bm = np.random.randint(0, 10, (10, 10))
     with pytest.raises(ValueError):
-        bitfield_to_boolean_mask(bm, '(1, 4))')
+        bitfield_to_boolean_mask(bm, "(1, 4))")
 
 
 def test_bitfield_string_flag_wrong_positioned_parens():
     bm = np.random.randint(0, 10, (10, 10))
     with pytest.raises(ValueError):
-        bitfield_to_boolean_mask(bm, '((1, )4)')
+        bitfield_to_boolean_mask(bm, "((1, )4)")
 
 
 def test_bitfield_string_flag_empty():
     bm = np.random.randint(0, 10, (10, 10))
     with pytest.raises(ValueError):
-        bitfield_to_boolean_mask(bm, '~')
+        bitfield_to_boolean_mask(bm, "~")
 
 
 def test_bitfield_flag_non_integer():
@@ -74,5 +74,5 @@ def test_bitfield_duplicate_flag_throws_warning():
 def test_bitfield_none_identical_to_strNone():
     bm = np.random.randint(0, 10, (10, 10))
     m1 = bitfield_to_boolean_mask(bm, None)
-    m2 = bitfield_to_boolean_mask(bm, 'None')
+    m2 = bitfield_to_boolean_mask(bm, "None")
     np.testing.assert_array_equal(m1, m2)

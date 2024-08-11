@@ -5,9 +5,9 @@
 from astropy.nddata import fits_ccddata_reader, fits_ccddata_writer, CCDData
 
 
-__all__ = ['CCDData', 'fits_ccddata_reader', 'fits_ccddata_writer']
+__all__ = ["CCDData", "fits_ccddata_reader", "fits_ccddata_writer"]
 
 
 # This should be be a tuple to ensure it isn't inadvertently changed
 # elsewhere.
-_recognized_fits_file_extensions = ('fit', 'fits', 'fts')
+_recognized_fits_file_extensions = ("fit", "fits", "fts")

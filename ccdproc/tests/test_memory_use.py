@@ -6,13 +6,17 @@ import numpy as np
 import pytest
 
 try:
-    from ccdproc.tests.run_for_memory_profile import run_memory_profile, generate_fits_files, TMPPATH
+    from ccdproc.tests.run_for_memory_profile import (
+        run_memory_profile,
+        generate_fits_files,
+        TMPPATH,
+    )
 except ImportError:
     memory_profile_present = False
 else:
     memory_profile_present = True
 
-image_size = 2000   # Square image, so 4000 x 4000
+image_size = 2000  # Square image, so 4000 x 4000
 num_files = 10
 
 
@@ -23,16 +27,15 @@ def setup_module():
 
 def teardown_module():
     if memory_profile_present:
-        for fil in TMPPATH.glob('*.fit'):
+        for fil in TMPPATH.glob("*.fit"):
             fil.unlink()
 
 
-@pytest.mark.skipif(not platform.startswith('linux'),
-                    reason='memory tests only work on linux')
-@pytest.mark.skipif(not memory_profile_present,
-                    reason='memory_profiler not installed')
-@pytest.mark.parametrize('combine_method',
-                         ['average', 'sum', 'median'])
+@pytest.mark.skipif(
+    not platform.startswith("linux"), reason="memory tests only work on linux"
+)
+@pytest.mark.skipif(not memory_profile_present, reason="memory_profiler not installed")
+@pytest.mark.parametrize("combine_method", ["average", "sum", "median"])
 def test_memory_use_in_combine(combine_method):
     # This is essentially a regression test for
     # https://github.com/astropy/ccdproc/issues/638
@@ -40,9 +43,13 @@ def test_memory_use_in_combine(combine_method):
     sampling_interval = 0.01  # sec
     memory_limit = 500000000  # bytes, roughly 0.5GB
 
-    mem_use, _ = run_memory_profile(num_files, sampling_interval,
-                                    size=image_size, memory_limit=memory_limit,
-                                    combine_method=combine_method)
+    mem_use, _ = run_memory_profile(
+        num_files,
+        sampling_interval,
+        size=image_size,
+        memory_limit=memory_limit,
+        combine_method=combine_method,
+    )
 
     mem_use = np.array(mem_use)
     # We do not expect memory use to be strictly less than memory_limit

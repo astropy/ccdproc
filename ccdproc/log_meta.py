@@ -14,10 +14,9 @@ import ccdproc  # Really only need Keyword from ccdproc
 
 __all__ = []
 
-_LOG_ARGUMENT = 'add_keyword'
+_LOG_ARGUMENT = "add_keyword"
 
-_LOG_ARG_HELP = \
-    """
+_LOG_ARG_HELP = """
     {arg} : str, `~ccdproc.Keyword` or dict-like, optional
         Item(s) to add to metadata of result. Set to False or None to
         completely  disable logging.
@@ -25,7 +24,9 @@ _LOG_ARG_HELP = \
         The key is the name of this function  and the value is a string
         containing the arguments the function was called with, except the
         value of this argument.
-    """.format(arg=_LOG_ARGUMENT)
+    """.format(
+    arg=_LOG_ARGUMENT
+)
 
 
 def _insert_in_metadata_fits_safe(ccd, key, value):
@@ -41,11 +42,12 @@ def _insert_in_metadata_fits_safe(ccd, key, value):
         # Shorten, sort of...
         short_name = _short_names[key]
         if isinstance(ccd.meta, fits.Header):
-            ccd.meta['HIERARCH {0}'.format(key.upper())] = (
-                short_name, "Shortened name for ccdproc command")
+            ccd.meta["HIERARCH {0}".format(key.upper())] = (
+                short_name,
+                "Shortened name for ccdproc command",
+            )
         else:
-            ccd.meta[key] = (
-                short_name, "Shortened name for ccdproc command")
+            ccd.meta[key] = (short_name, "Shortened name for ccdproc command")
         ccd.meta[short_name] = value
     else:
         ccd.meta[key] = value
@@ -64,8 +66,12 @@ def log_to_metadata(func):
     func.__doc__ = func.__doc__.format(log=_LOG_ARG_HELP)
 
     argspec = inspect.getfullargspec(func)
-    original_args, varargs, keywords, defaults = (argspec.args, argspec.varargs,
-                                                  argspec.varkw, argspec.defaults)
+    original_args, varargs, keywords, defaults = (
+        argspec.args,
+        argspec.varargs,
+        argspec.varkw,
+        argspec.defaults,
+    )
     # original_args = argspec.args
     # varargs = argspec.varargs
     # keywords = argspec.varkw
@@ -73,7 +79,7 @@ def log_to_metadata(func):
 
     # Grab the names of positional arguments for use in automatic logging
     try:
-        original_positional_args = original_args[:-len(defaults)]
+        original_positional_args = original_args[: -len(defaults)]
     except TypeError:
         original_positional_args = original_args
 
@@ -86,8 +92,7 @@ def log_to_metadata(func):
     defaults.append(True)
 
     signature_with_arg_added = inspect.signature(func)
-    signature_with_arg_added = "{0}{1}".format(func.__name__,
-                                               signature_with_arg_added)
+    signature_with_arg_added = "{0}{1}".format(func.__name__, signature_with_arg_added)
     func.__doc__ = "\n".join([signature_with_arg_added, func.__doc__])
 
     @wraps(func)
@@ -108,12 +113,13 @@ def log_to_metadata(func):
                 key = func.__name__
                 # Get names of arguments, which may or may not have
                 # been called as keywords.
-                positional_args = original_args[:len(args)]
+                positional_args = original_args[: len(args)]
 
                 all_args = chain(zip(positional_args, args), kwd.items())
-                all_args = ["{0}={1}".format(name,
-                                            _replace_array_with_placeholder(val))
-                            for name, val in all_args]
+                all_args = [
+                    "{0}={1}".format(name, _replace_array_with_placeholder(val))
+                    for name, val in all_args
+                ]
                 log_val = ", ".join(all_args)
                 log_val = log_val.replace("\n", "")
                 meta_dict = {key: log_val}
