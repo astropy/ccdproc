@@ -1,0 +1,24 @@
+exclude: '^/ccdproc/extern/.*.py|.*\.fits?$'
+  # ^/ccdproc/extern/.*.py   # Ignore files in the extern directory
+  # | .*\.fits?$             # Ignore FITS files
+repos:
+  -   repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v3.2.0
+      hooks:
+      -   id: check-yaml
+      -   id: end-of-file-fixer
+      -   id: trailing-whitespace
+      -   id: check-added-large-files
+
+
+  # Using this mirror lets us use mypyc-compiled black, which is about 2x faster
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 24.8.0
+    hooks:
+      - id: black
+        # It is recommended to specify the latest version of Python
+        # supported by your project here, or alternatively use
+        # pre-commit's default_language_version, see
+        # https://pre-commit.com/#top_level-default_language_version
+        language_version: python3.12
+        extend-exclude: '^/ccdproc/extern/.*.py|.*\.fits?$'
