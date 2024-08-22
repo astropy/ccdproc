@@ -17,8 +17,8 @@ authors = [
 ]
 dependencies = [
     "astropy>=5.0.1",
-    "astroscrappy>=1.0.8",
-    "numpy>=1.21",
+    "astroscrappy>=1.1.0",
+    "numpy>=1.24",
     "reproject>=0.7",
     "scikit-image",
     "scipy",
