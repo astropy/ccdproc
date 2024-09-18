@@ -35,22 +35,22 @@ jobs:
           - name: 'ubuntu-py39'
             os: ubuntu-latest
             python: '3.9'
-            tox_env: 'py39-test-alldeps-numpy119-cov'
+            tox_env: 'py39-test-alldeps-numpy124-cov'
 
           - name: 'ubuntu-py39-bottleneck'
             os: ubuntu-latest
             python: '3.9'
-            tox_env: 'py39-test-alldeps-numpy119-cov-bottleneck'
+            tox_env: 'py39-test-alldeps-numpy124-cov-bottleneck'
 
           - name: 'ubuntu-py310'
             os: ubuntu-latest
             python: '3.10'
-            tox_env: 'py310-test-alldeps-numpy121'
+            tox_env: 'py310-test-alldeps-numpy124'
 
           - name: 'ubuntu-py311'
             os: ubuntu-latest
             python: '3.11'
-            tox_env: 'py311-test-alldeps-numpy123'
+            tox_env: 'py311-test-alldeps-numpy124'
 
           - name: 'ubuntu-py312'
             os: ubuntu-latest
@@ -77,10 +77,10 @@ jobs:
             python: '3.12'
             tox_env: 'build_docs'
 
-          - name: 'ubuntu-py310-test-alldeps-devdeps'
+          - name: 'ubuntu-py312-test-alldeps-devdeps'
             os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'py310-test-alldeps-devdeps'
+            python: '3.12'
+            tox_env: 'py312-test-alldeps-devdeps'
 
     steps:
     - name: Check out repository
