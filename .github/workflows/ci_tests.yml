@@ -77,10 +77,10 @@ jobs:
             python: '3.12'
             tox_env: 'build_docs'
 
-          - name: 'ubuntu-py310-test-alldeps-devdeps'
+          - name: 'ubuntu-py312-test-alldeps-devdeps'
             os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'py310-test-alldeps-devdeps'
+            python: '3.12'
+            tox_env: 'py312-test-alldeps-devdeps'
 
     steps:
     - name: Check out repository
