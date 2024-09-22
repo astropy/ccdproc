@@ -216,12 +216,18 @@ class Combiner:
                 self._scaling = np.array(self._scaling)
             else:
                 try:
-                    self._scaling = np.array(value)
+                    len(value)
                 except TypeError as err:
                     raise TypeError(
                         "scaling must be a function or an array "
                         "the same length as the number of images.",
                     ) from err
+                if len(value) != n_images:
+                    raise ValueError(
+                        "scaling must be a function or an array "
+                        "the same length as the number of images."
+                    )
+                self._scaling = np.array(value)
             # reshape so that broadcasting occurs properly
             for _ in range(len(self.data_arr.data.shape) - 1):
                 self._scaling = self.scaling[:, np.newaxis]
