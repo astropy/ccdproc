@@ -31,6 +31,14 @@ pytestmark = pytest.mark.filterwarnings(
 )
 
 
+def _make_mean_scaler(ccd_data):
+    def scale_by_mean(x):
+        # scale each array to the mean of the first image
+        return ccd_data.data.mean() / np.ma.average(x)
+
+    return scale_by_mean
+
+
 # test that the Combiner raises error if empty
 def test_combiner_empty():
     with pytest.raises(TypeError):
@@ -337,8 +345,7 @@ def test_combiner_with_scaling():
     ccd_data_lower = ccd_data.multiply(3)
     ccd_data_higher = ccd_data.multiply(0.9)
     combiner = Combiner([ccd_data, ccd_data_higher, ccd_data_lower])
-    # scale each array to the mean of the first image
-    scale_by_mean = lambda x: ccd_data.data.mean() / np.ma.average(x)
+    scale_by_mean = _make_mean_scaler(ccd_data)
     combiner.scaling = scale_by_mean
     avg_ccd = combiner.average_combine()
     # Does the mean of the scaled arrays match the value to which it was
@@ -519,7 +526,7 @@ def test_combine_limitedmem_scale_fitsimages():
     ccd_list = [ccd] * 5
     c = Combiner(ccd_list)
     # scale each array to the mean of the first image
-    scale_by_mean = lambda x: ccd.data.mean() / np.ma.average(x)
+    scale_by_mean = _make_mean_scaler(ccd)
     c.scaling = scale_by_mean
     ccd_by_combiner = c.average_combine()
 
@@ -757,8 +764,8 @@ def test_3d_combiner_with_scaling():
     ccd_data_lower = CCDData(3 * np.ones((5, 5, 5)), unit=u.adu)
     ccd_data_higher = CCDData(0.9 * np.ones((5, 5, 5)), unit=u.adu)
     combiner = Combiner([ccd_data, ccd_data_higher, ccd_data_lower])
-    # scale each array to the mean of the first image
-    scale_by_mean = lambda x: ccd_data.data.mean() / np.ma.average(x)
+    scale_by_mean = _make_mean_scaler(ccd_data)
+
     combiner.scaling = scale_by_mean
     avg_ccd = combiner.average_combine()
     # Does the mean of the scaled arrays match the value to which it was
@@ -933,7 +940,7 @@ def test_combiner_with_scaling_uncertainty(comb_func):
 
     combiner = Combiner([ccd_data, ccd_data_higher, ccd_data_lower])
     # scale each array to the mean of the first image
-    scale_by_mean = lambda x: ccd_data.data.mean() / np.ma.average(x)
+    scale_by_mean = _make_mean_scaler(ccd_data)
     combiner.scaling = scale_by_mean
 
     scaled_ccds = np.array(

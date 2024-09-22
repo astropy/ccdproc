@@ -102,6 +102,9 @@ class TestImageFileCollectionRepresentation:
 # argument to each method.
 # @pytest.mark.usefixtures("triage_setup")
 class TestImageFileCollection:
+    def _basenames(self, paths):
+        return set([os.path.basename(file) for file in paths])
+
     def _setup_logger(self, path, level=logging.WARN):
         """
         Set up file logger at the path.
@@ -309,10 +312,12 @@ class TestImageFileCollection:
         new_collection = ImageFileCollection(
             location=destination, keywords=["imagetyp"]
         )
-        basenames = lambda paths: set([os.path.basename(file) for file in paths])
 
         assert (
-            len(basenames(collection._paths()) - basenames(new_collection._paths()))
+            len(
+                self._basenames(collection._paths())
+                - self._basenames(new_collection._paths())
+            )
             == 0
         )
         rmtree(destination)
