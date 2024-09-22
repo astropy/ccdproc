@@ -1,19 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-import packaging
 
 import numpy as np
 
-from numpy.testing import assert_allclose
 import pytest
 from astropy.utils import NumpyRNGContext
 from astropy.utils.exceptions import AstropyDeprecationWarning
-from astropy.nddata import StdDevUncertainty
 from astropy import units as u
-
-try:
-    from astroscrappy import __version__ as asy_version
-except Exception:
-    pytest.skip("skipping astroscrappy tests", allow_module_level=True)
 
 from ccdproc.core import (
     cosmicray_lacosmic,
@@ -23,6 +15,7 @@ from ccdproc.core import (
 )
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
+pytest.importorskip("astroscrappy", reason="astroscrappy not installed")
 
 DATA_SCALE = 5.3
 NCRAYS = 30
