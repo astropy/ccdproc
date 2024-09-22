@@ -2159,7 +2159,8 @@ def bitfield_to_boolean_mask(bitfield, ignore_bits=0, flip_bits=None):
         array([False,  True, False,  True, False,  True, False,  True]...)
 
         >>> # Equivalent for a list using flip_bits.
-        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits=[1, 8, 32], flip_bits=True)
+        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits=[1, 8, 32],
+        ...                                  flip_bits=True)
         array([False,  True, False,  True, False,  True, False,  True]...)
 
     """
