@@ -50,6 +50,10 @@ def _default_std():  # pragma: no cover
         return np.nanstd
 
 
+_default_sum_func = _default_sum()
+_default_std_dev_func = _default_std()
+
+
 class Combiner:
     """
     A class for combining CCDData objects.
@@ -212,7 +216,6 @@ class Combiner:
                 self._scaling = np.array(self._scaling)
             else:
                 try:
-                    len(value) == n_images
                     self._scaling = np.array(value)
                 except TypeError as err:
                     raise TypeError(
@@ -512,8 +515,8 @@ class Combiner:
         self,
         scale_func=None,
         scale_to=None,
-        uncertainty_func=_default_std(),
-        sum_func=_default_sum(),
+        uncertainty_func=_default_std_dev_func,
+        sum_func=_default_sum_func,
     ):
         """
         Average combine together a set of arrays.
@@ -551,11 +554,6 @@ class Combiner:
         data, masked_values, scale_func = self._combination_setup(
             scale_func, _default_average(), scale_to
         )
-        # # set up the data
-        # data = self._get_scaled_data(scale_to)
-
-        # # Subtitute NaN for masked entries
-        # data = self._get_nan_substituted_data(data)
 
         # Do NOT modify data after this -- we need it to be intact when we
         # we get to the uncertainty calculation.
@@ -591,7 +589,7 @@ class Combiner:
         return combined_image
 
     def sum_combine(
-        self, sum_func=None, scale_to=None, uncertainty_func=_default_std()
+        self, sum_func=None, scale_to=None, uncertainty_func=_default_std_dev_func
     ):
         """
         Sum combine together a set of arrays.
