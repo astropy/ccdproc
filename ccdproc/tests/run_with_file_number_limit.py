@@ -1,8 +1,8 @@
-from tempfile import TemporaryDirectory
-from pathlib import Path
+import gc
 import mmap
 import sys
-import gc
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
 from astropy.io import fits
@@ -41,7 +41,7 @@ def generate_fits_files(number, size=None):
 
 def generate_plain_files(number):
     for i in range(number):
-        file = TMPPATH / ("{i:03d}.".format(i=i) + ALLOWED_EXTENSIONS["plain"])
+        file = TMPPATH / (f"{i:03d}." + ALLOWED_EXTENSIONS["plain"])
         file.write_bytes(np.random.random(100))
 
 
@@ -171,7 +171,7 @@ def run_with_limit(n, kind="fits", size=None, overhead=6, open_method="mmap"):
 
     if kind not in ALLOWED_EXTENSIONS.keys():
         raise ValueError(
-            "Argument 'kind' must be one of " "{}".format(ALLOWED_EXTENSIONS.keys())
+            "Argument 'kind' must be one of " f"{ALLOWED_EXTENSIONS.keys()}"
         )
 
     # Set the limit on the number of open files to n. The try/except
@@ -184,8 +184,8 @@ def run_with_limit(n, kind="fits", size=None, overhead=6, open_method="mmap"):
             raise
         max_n_this_process = resource.getrlimit(resource.RLIMIT_NOFILE)
         raise ValueError(
-            "Maximum number of open " "files is {}".format(max_n_this_process)
-        )
+            "Maximum number of open " f"files is {max_n_this_process}"
+        ) from e
 
     # The "-1" is to leave a little wiggle room. overhead is based on the
     # the number of open files that a process running on linux has open.
@@ -195,7 +195,7 @@ def run_with_limit(n, kind="fits", size=None, overhead=6, open_method="mmap"):
     proc = psutil.Process()
 
     print("Process ID is: ", proc.pid, flush=True)
-    print("Making {} files".format(n_files))
+    print(f"Making {n_files} files")
     if kind == "plain":
         generate_plain_files(n_files)
     elif kind == "fits":
@@ -203,7 +203,7 @@ def run_with_limit(n, kind="fits", size=None, overhead=6, open_method="mmap"):
 
     # Print number of open files before we try opening anything for debugging
     # purposes.
-    print("Before opening, files open is {}".format(len(proc.open_files())), flush=True)
+    print(f"Before opening, files open is {len(proc.open_files())}", flush=True)
     print("    Note well: this number is different than what lsof reports.")
 
     try:
@@ -217,8 +217,8 @@ def run_with_limit(n, kind="fits", size=None, overhead=6, open_method="mmap"):
         raise SystemExit(
             str(e)
             + "; number of open files: "
-            + "{}, with target {}".format(len(proc.open_files()), n_files)
-        )
+            + f"{len(proc.open_files())}, with target {n_files}"
+        ) from e
     else:
         print(
             "Opens succeeded, files currently open:", len(proc.open_files()), flush=True

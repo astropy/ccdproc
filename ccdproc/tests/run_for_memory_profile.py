@@ -2,57 +2,24 @@ import pytest
 
 pytest.importorskip("memory_profiler")
 
-from argparse import ArgumentParser
-from tempfile import TemporaryDirectory
-from pathlib import Path
-import sys
 import gc
-
-import psutil
-from memory_profiler import memory_usage
+import sys
+from argparse import ArgumentParser
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
+import psutil
 from astropy.io import fits
-from astropy.stats import median_absolute_deviation
 from astropy.nddata import CCDData
+from astropy.stats import median_absolute_deviation
+from memory_profiler import memory_usage
 
 # This bit of hackery ensures that we can see ccdproc from within
 # the test suite
 sys.path.append(str(Path().cwd()))
-from ccdproc import combine, ImageFileCollection
-
-try:
-    from ccdproc.combiner import _calculate_size_of_image
-except ImportError:
-
-    def _calculate_size_of_image(ccd, combine_uncertainty_function):
-        # If uncertainty_func is given for combine this will create an uncertainty
-        # even if the originals did not have one. In that case we need to create
-        # an empty placeholder.
-        if ccd.uncertainty is None and combine_uncertainty_function is not None:
-            ccd.uncertainty = StdDevUncertainty(np.zeros(ccd.data.shape))
-
-        size_of_an_img = ccd.data.nbytes
-        try:
-            size_of_an_img += ccd.uncertainty.array.nbytes
-        # In case uncertainty is None it has no "array" and in case the "array" is
-        # not a numpy array:
-        except AttributeError:
-            pass
-        # Mask is enforced to be a numpy.array across astropy versions
-        if ccd.mask is not None:
-            size_of_an_img += ccd.mask.nbytes
-        # flags is not necessarily a numpy array so do not fail with an
-        # AttributeError in case something was set!
-        # TODO: Flags are not taken into account in Combiner. This number is added
-        #       nevertheless for future compatibility.
-        try:
-            size_of_an_img += ccd.flags.nbytes
-        except AttributeError:
-            pass
-
-        return size_of_an_img
-
+from ccdproc import ImageFileCollection, combine
+from ccdproc.combiner import _calculate_size_of_image
 
 # Do not combine these into one statement. When all references are lost
 # to a TemporaryDirectory the directory is automatically deleted. _TMPDIR
@@ -90,7 +57,6 @@ def generate_fits_files(n_images, size=None, seed=1523):
 def run_memory_profile(
     n_files,
     sampling_interval,
-    size=None,
     sigma_clip=False,
     combine_method=None,
     memory_limit=None,
@@ -152,7 +118,7 @@ def run_memory_profile(
 
     pre_mem_use = memory_usage(-1, interval=sampling_interval, timeout=1)
     baseline = np.mean(pre_mem_use)
-    print("Subtracting baseline memory before profile: {}".format(baseline))
+    print(f"Subtracting baseline memory before profile: {baseline}")
     mem_use = memory_usage(
         (combine, (files,), kwargs), interval=sampling_interval, timeout=None
     )
@@ -207,10 +173,9 @@ if __name__ == "__main__":
 
     print("Garbage collection thresholds: ", gc.get_threshold())
 
-    mem_use = run_with_limit(
+    mem_use = run_memory_profile(
         args.number,
         args.sampling_freq,
-        size=args.size,
         sigma_clip=args.sigma_clip,
         combine_method=args.combine_method,
         memory_limit=args.memory_limit,

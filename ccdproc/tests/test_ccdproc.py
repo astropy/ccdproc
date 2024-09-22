@@ -1,24 +1,24 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-import numpy as np
-from astropy.io import fits
-from astropy.modeling import models
-from astropy.units.quantity import Quantity
-import astropy.units as u
-from astropy.wcs import WCS
-from astropy.utils.exceptions import AstropyUserWarning
-
-from astropy.nddata import StdDevUncertainty, CCDData
 import astropy
-
-from numpy.testing import assert_array_equal
+import astropy.units as u
+import numpy as np
 import pytest
 import skimage
+from astropy.io import fits
+from astropy.modeling import models
+from astropy.nddata import CCDData, StdDevUncertainty
+from astropy.units.quantity import Quantity
+from astropy.utils.exceptions import AstropyUserWarning
+from astropy.wcs import WCS
+from numpy.testing import assert_array_equal
 
 from ccdproc.core import (
+    Keyword,
+    _blkavg,
     ccd_process,
-    cosmicray_median,
     cosmicray_lacosmic,
+    cosmicray_median,
     create_deviation,
     flat_correct,
     gain_correct,
@@ -28,13 +28,11 @@ from ccdproc.core import (
     transform_image,
     trim_image,
     wcs_project,
-    Keyword,
 )
-from ccdproc.core import _blkavg
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
 try:
-    from ..core import block_reduce, block_average, block_replicate
+    from ..core import block_average, block_reduce, block_replicate
 
     HAS_BLOCK_X_FUNCS = True
 except ImportError:
@@ -78,7 +76,7 @@ def test_create_deviation(u_image, u_gain, u_readnoise, expect_success):
         assert ccd_var.unit == ccd_data.unit
         # Uncertainty should *not* have any units -- does it?
         with pytest.raises(AttributeError):
-            ccd_var.uncertainty.array.unit
+            ccd_var.uncertainty.array.unit  # noqa B018 useless expression
     else:
         with pytest.raises(u.UnitsError):
             ccd_var = create_deviation(ccd_data, gain=gain, readnoise=readnoise)
@@ -550,7 +548,7 @@ def test_flat_correct():
 
 
 # Test for flat correction with min_value
-def test_flat_correct_min_value(data_scale=1, data_mean=5):
+def test_flat_correct_min_value():
     ccd_data = ccd_data_func()
     size = ccd_data.shape[0]
 

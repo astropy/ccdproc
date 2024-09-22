@@ -1,12 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-from numpy.testing import assert_array_equal
 import numpy as np
-
 import pytest
+from astropy.nddata import CCDData
+from numpy.testing import assert_array_equal
 
 from ccdproc.core import ccdmask
-from astropy.nddata import CCDData
 
 
 def test_ccdmask_no_ccddata():

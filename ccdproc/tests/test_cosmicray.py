@@ -1,36 +1,23 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-import packaging
 
 import numpy as np
-
-from numpy.testing import assert_allclose
 import pytest
+from astropy import units as u
 from astropy.utils import NumpyRNGContext
 from astropy.utils.exceptions import AstropyDeprecationWarning
-from astropy.nddata import StdDevUncertainty
-from astropy import units as u
-
-try:
-    from astroscrappy import __version__ as asy_version
-except Exception as e:
-    print("Oh no, no working astroscrappy")
-    pytest.skip("skipping astroscrappy tests", allow_module_level=True)
 
 from ccdproc.core import (
-    cosmicray_lacosmic,
-    cosmicray_median,
     background_deviation_box,
     background_deviation_filter,
+    cosmicray_lacosmic,
+    cosmicray_median,
 )
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
+pytest.importorskip("astroscrappy", reason="astroscrappy not installed")
 
 DATA_SCALE = 5.3
 NCRAYS = 30
-
-OLD_ASTROSCRAPPY = packaging.version.parse(asy_version) < packaging.version.parse(
-    "1.1.0"
-)
 
 
 def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
@@ -49,8 +36,7 @@ def test_cosmicray_lacosmic():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 10
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    noise = DATA_SCALE * np.ones_like(ccd_data.data)
-    data, crarr = cosmicray_lacosmic(ccd_data.data, sigclip=5.9)
+    _, crarr = cosmicray_lacosmic(ccd_data.data, sigclip=5.9)
 
     # check the number of cosmic rays detected
     # Note that to get this to succeed reliably meant tuning
@@ -94,9 +80,7 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
     ccd_data.uncertainty = noise
     # No units here on purpose.
     gain = 2.0
-    # Don't really need to set this (6.5 is the default value) but want to
-    # make lack of units explicit.
-    readnoise = 6.5
+
     if array_input:
         new_data, cr_mask = cosmicray_lacosmic(
             ccd_data.data, gain=gain, gain_apply=gain_correct_data
@@ -126,9 +110,7 @@ def test_cosmicray_lacosmic_accepts_quantity_gain():
     # The units below are the point of the test
     gain = 2.0 * u.electron / u.adu
 
-    # Since gain and ccd_data have units, the readnoise should too.
-    readnoise = 6.5 * u.electron
-    new_ccd = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True)
+    _ = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True)
 
 
 def test_cosmicray_lacosmic_accepts_quantity_readnoise():
@@ -140,9 +122,7 @@ def test_cosmicray_lacosmic_accepts_quantity_readnoise():
     gain = 2.0 * u.electron / u.adu
     # The units below are the point of this test
     readnoise = 6.5 * u.electron
-    new_ccd = cosmicray_lacosmic(
-        ccd_data, gain=gain, gain_apply=True, readnoise=readnoise
-    )
+    _ = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True, readnoise=readnoise)
 
 
 def test_cosmicray_lacosmic_detects_inconsistent_units():
@@ -164,15 +144,6 @@ def test_cosmicray_lacosmic_detects_inconsistent_units():
     assert "Inconsistent units" in str(e.value)
 
 
-if OLD_ASTROSCRAPPY:
-    decorator = pytest.mark.filterwarnings(
-        "ignore:`np.bool` is a deprecated alias:DeprecationWarning"
-    )
-else:
-    decorator = lambda f: f
-
-
-@decorator
 def test_cosmicray_lacosmic_warns_on_ccd_in_electrons():
     # Check that an input ccd in electrons raises a warning.
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
@@ -192,12 +163,6 @@ def test_cosmicray_lacosmic_warns_on_ccd_in_electrons():
         cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True, readnoise=readnoise)
 
 
-# The skip can be removed when the oldest supported astroscrappy
-# is 1.1.0 or higher
-@pytest.mark.skipif(
-    OLD_ASTROSCRAPPY,
-    reason="astroscrappy < 1.1.0 does not support " "this functionality",
-)
 # The values for inbkg and invar are DELIBERATELY BAD. They are supposed to be
 # arrays, so if detect_cosmics is called with these bad values a ValueError
 # will be raised, which we can check for.
@@ -215,7 +180,7 @@ def test_cosmicray_lacosmic_invar_inbkg(new_args):
     ccd_data.uncertainty = noise
 
     with pytest.raises(TypeError):
-        nccd_data = cosmicray_lacosmic(ccd_data, sigclip=5.9, **new_args)
+        cosmicray_lacosmic(ccd_data, sigclip=5.9, **new_args)
 
 
 def test_cosmicray_median_check_data():
@@ -340,24 +305,6 @@ def test_cosmicray_lacosmic_pssl_deprecation_warning():
         cosmicray_lacosmic(ccd_data, pssl=1.0)
 
 
-# Remaining tests can be removed when the oldest supported version
-# of astroscrappy is 1.1.0 or higher.
-@pytest.mark.skipif(not OLD_ASTROSCRAPPY, reason="Should succeed for new astroscrappy")
-@pytest.mark.parametrize(
-    "bad_args", [dict(inbkg=5), dict(invar=5), dict(inbkg=5, invar=5)]
-)
-def test_error_raised_lacosmic_old_interface_new_args(bad_args):
-    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    with pytest.raises(TypeError) as err:
-        cosmicray_lacosmic(ccd_data, **bad_args)
-
-    check_message = [k in str(err) for k in bad_args.keys()]
-    assert all(check_message)
-
-
-@pytest.mark.skipif(
-    OLD_ASTROSCRAPPY, reason="Test is of new interface compatibility layer"
-)
 def test_cosmicray_lacosmic_pssl_and_inbkg_fails():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     with pytest.raises(ValueError) as err:
@@ -369,9 +316,6 @@ def test_cosmicray_lacosmic_pssl_and_inbkg_fails():
     assert "pssl and inbkg" in str(err)
 
 
-@pytest.mark.skipif(
-    OLD_ASTROSCRAPPY, reason="Test is of new interface compatibility layer"
-)
 def test_cosmicray_lacosmic_pssl_does_not_fail():
     # This test is a copy/paste of test_cosmicray_lacosmic_ccddata
     # except with pssl=0.0001 as an argument. Subtracting nearly zero from

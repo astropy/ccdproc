@@ -1,11 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import astropy.units as u
 import numpy as np
 import pytest
 
-import astropy.units as u
-
-from ccdproc.core import create_deviation, gain_correct, Keyword
+from ccdproc.core import Keyword, create_deviation, gain_correct
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
 

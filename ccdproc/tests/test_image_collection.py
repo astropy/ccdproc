@@ -1,22 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import logging
 import os
-from shutil import rmtree
-from tempfile import mkdtemp, TemporaryDirectory, NamedTemporaryFile
 from glob import iglob
 from pathlib import Path
-import logging
-import pytest
+from shutil import rmtree
+from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 
 import astropy.io.fits as fits
-from astropy.table import Table
 import numpy as np
-
+import pytest
+from astropy.io.fits.verify import VerifyWarning
+from astropy.nddata import CCDData
+from astropy.table import Table
 from astropy.utils.data import get_pkg_data_filename
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.io.fits.verify import VerifyWarning
-
-from astropy.nddata import CCDData
 
 from ccdproc.image_collection import ImageFileCollection
 
@@ -43,14 +41,13 @@ def test_fits_summary(triage_setup):
 class TestImageFileCollectionRepresentation:
     def test_repr_location(self, triage_setup):
         ic = ImageFileCollection(location=triage_setup.test_dir)
-        assert repr(ic) == "ImageFileCollection(location={0!r})".format(
-            triage_setup.test_dir
-        )
+        assert repr(ic) == f"ImageFileCollection(location={triage_setup.test_dir!r})"
 
     def test_repr_keywords(self, triage_setup):
         ic = ImageFileCollection(location=triage_setup.test_dir, keywords=["imagetyp"])
-        ref = "ImageFileCollection(location={0!r}, keywords=['imagetyp'])".format(
-            triage_setup.test_dir
+        ref = (
+            f"ImageFileCollection(location={triage_setup.test_dir!r}, "
+            "keywords=['imagetyp'])"
         )
         assert repr(ic) == ref
 
@@ -61,9 +58,9 @@ class TestImageFileCollectionRepresentation:
             glob_include="*object_light*",
         )
         ref = (
-            "ImageFileCollection(location={0!r}, "
+            f"ImageFileCollection(location={triage_setup.test_dir!r}, "
             "glob_include='*object_light*', "
-            "glob_exclude='*no_filter*')".format(triage_setup.test_dir)
+            "glob_exclude='*no_filter*')"
         )
         assert repr(ic) == ref
 
@@ -73,9 +70,9 @@ class TestImageFileCollectionRepresentation:
             filenames=["no_filter_no_object_light.fit", "no_filter_no_object_bias.fit"],
         )
         ref = (
-            "ImageFileCollection(location={0!r}, "
+            f"ImageFileCollection(location={triage_setup.test_dir!r}, "
             "filenames=['no_filter_no_object_light.fit', "
-            "'no_filter_no_object_bias.fit'])".format(triage_setup.test_dir)
+            "'no_filter_no_object_bias.fit'])"
         )
         assert repr(ic) == ref
 
@@ -90,9 +87,9 @@ class TestImageFileCollectionRepresentation:
             location=triage_setup.test_dir, filenames=["mef.fits"], ext=1
         )
         ref = (
-            "ImageFileCollection(location={0!r}, "
+            f"ImageFileCollection(location={triage_setup.test_dir!r}, "
             "filenames=['mef.fits'], "
-            "ext=1)".format(triage_setup.test_dir)
+            "ext=1)"
         )
         assert repr(ic) == ref
 
@@ -102,6 +99,9 @@ class TestImageFileCollectionRepresentation:
 # argument to each method.
 # @pytest.mark.usefixtures("triage_setup")
 class TestImageFileCollection:
+    def _basenames(self, paths):
+        return set([os.path.basename(file) for file in paths])
+
     def _setup_logger(self, path, level=logging.WARN):
         """
         Set up file logger at the path.
@@ -231,7 +231,7 @@ class TestImageFileCollection:
             location=triage_setup.test_dir, keywords=["imagetyp", "exposure"]
         )
         old_data = np.array(collection.summary)
-        for hdu in collection.hdus(imagetyp="bias"):
+        for _ in collection.hdus(imagetyp="bias"):
             pass
         new_data = np.array(collection.summary)
         assert (new_data == old_data).all()
@@ -304,15 +304,17 @@ class TestImageFileCollection:
             location=triage_setup.test_dir, keywords=["imagetyp"]
         )
         destination = mkdtemp()
-        for header in collection.headers(save_location=destination):
+        for _ in collection.headers(save_location=destination):
             pass
         new_collection = ImageFileCollection(
             location=destination, keywords=["imagetyp"]
         )
-        basenames = lambda paths: set([os.path.basename(file) for file in paths])
 
         assert (
-            len(basenames(collection._paths()) - basenames(new_collection._paths()))
+            len(
+                self._basenames(collection._paths())
+                - self._basenames(new_collection._paths())
+            )
             == 0
         )
         rmtree(destination)
@@ -345,7 +347,7 @@ class TestImageFileCollection:
             location=triage_setup.test_dir, keywords=["imagetyp"]
         )
         cnt = 0
-        for header in collection.headers(imagetyp="*"):
+        for _ in collection.headers(imagetyp="*"):
             cnt += 1
         assert cnt == triage_setup.n_test["files"]
 
@@ -471,7 +473,7 @@ class TestImageFileCollection:
         assert len(w) == 1
         assert str(w[0].message) == "no FITS files in the collection."
         assert collection.summary is None
-        for hdr in collection.headers():
+        for _ in collection.headers():
             # This statement should not be reached if there are no FITS files
             assert 0
 
@@ -588,7 +590,7 @@ class TestImageFileCollection:
     def test_unknown_generator_type_raises_error(self, triage_setup):
         ic = ImageFileCollection(triage_setup.test_dir, keywords=["naxis"])
         with pytest.raises(ValueError):
-            for foo in ic._generator("not a real generator"):
+            for _ in ic._generator("not a real generator"):
                 pass
 
     def test_setting_write_location_to_bad_dest_raises_error(
@@ -599,7 +601,7 @@ class TestImageFileCollection:
 
         ic = ImageFileCollection(triage_setup.test_dir, keywords=["naxis"])
         with pytest.raises(IOError):
-            for hdr in ic.headers(save_location=bad_directory.strpath):
+            for _ in ic.headers(save_location=bad_directory.strpath):
                 pass
 
     def test_initialization_with_no_keywords(self, triage_setup):
@@ -608,7 +610,7 @@ class TestImageFileCollection:
         ic = ImageFileCollection(location=triage_setup.test_dir, keywords=[])
         # Iteration below failed before bugfix...
         execs = 0
-        for h in ic.headers():
+        for _ in ic.headers():
             execs += 1
         assert not execs
 
@@ -708,7 +710,7 @@ class TestImageFileCollection:
         # Compressed files don't get copied. Not sure why...
         original_len = len(ic.summary) - triage_setup.n_test["compressed"]
         # Generate additional files in this directory
-        for h in ic.headers(save_with_name="_foo"):
+        for _ in ic.headers(save_with_name="_foo"):
             pass
         ic.refresh()
         new_len = len(ic.summary) - triage_setup.n_test["compressed"]
@@ -956,7 +958,7 @@ class TestImageFileCollection:
         path = Path(triage_setup.test_dir)
 
         for idx, p in enumerate(path.iterdir()):
-            new_name = "no_extension{}".format(idx)
+            new_name = f"no_extension{idx}"
             new_path = path / new_name
             new_path.write_bytes(p.read_bytes())
 
@@ -1142,7 +1144,7 @@ class TestImageFileCollection:
             hdu.data = np.zeros((5, 5))
             hdu.header["REGEX_FL"] = kw
             hdu.writeto(
-                os.path.join(triage_setup.test_dir, "regex_special_{:d}.fits".format(i))
+                os.path.join(triage_setup.test_dir, f"regex_special_{i:d}.fits")
             )
 
         ic = ImageFileCollection(triage_setup.test_dir)

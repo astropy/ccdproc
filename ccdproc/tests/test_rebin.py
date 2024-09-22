@@ -2,9 +2,7 @@
 
 import numpy as np
 import pytest
-
 from astropy.nddata import StdDevUncertainty
-
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from ccdproc.core import rebin

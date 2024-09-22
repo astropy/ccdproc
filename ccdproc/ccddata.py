@@ -2,8 +2,7 @@
 
 """This module implements the base CCDData class."""
 
-from astropy.nddata import fits_ccddata_reader, fits_ccddata_writer, CCDData
-
+from astropy.nddata import CCDData, fits_ccddata_reader, fits_ccddata_writer
 
 __all__ = ["CCDData", "fits_ccddata_reader", "fits_ccddata_writer"]
 

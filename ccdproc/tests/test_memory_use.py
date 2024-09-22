@@ -2,14 +2,13 @@
 from sys import platform
 
 import numpy as np
-
 import pytest
 
 try:
     from ccdproc.tests.run_for_memory_profile import (
-        run_memory_profile,
-        generate_fits_files,
         TMPPATH,
+        generate_fits_files,
+        run_memory_profile,
     )
 except ImportError:
     memory_profile_present = False
@@ -46,7 +45,6 @@ def test_memory_use_in_combine(combine_method):
     mem_use, _ = run_memory_profile(
         num_files,
         sampling_interval,
-        size=image_size,
         memory_limit=memory_limit,
         combine_method=combine_method,
     )

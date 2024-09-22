@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import numpy as np
-
 import pytest
 
 from ..slices import slice_from_string
@@ -28,7 +27,9 @@ def test_slice_from_string_needs_enclosing_brackets(arg):
 def test_slice_from_string_1d(start, stop, step):
     an_array = np.zeros([100])
 
-    stringify = lambda n: str(n) if n else ""
+    def stringify(n):
+        return str(n) if n else ""
+
     start_str = stringify(start)
     stop_str = stringify(stop)
     step_str = stringify(step)

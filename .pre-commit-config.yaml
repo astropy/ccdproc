@@ -10,6 +10,14 @@ repos:
       -   id: trailing-whitespace
       -   id: check-added-large-files
 
+# Per the ruff documentation, this should be before black
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.6.7
+    hooks:
+      # Run the linter.
+      - id: ruff
+        args: [--fix]
 
   # Using this mirror lets us use mypyc-compiled black, which is about 2x faster
   - repo: https://github.com/psf/black-pre-commit-mirror

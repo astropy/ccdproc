@@ -1,11 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import numpy as np
-
-from astropy.nddata import CCDData
 import pytest
+from astropy.nddata import CCDData
 
-from ccdproc import subtract_bias, create_deviation, Keyword, trim_image
+from ccdproc import Keyword, create_deviation, subtract_bias, trim_image
 from ccdproc.core import _short_names
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 

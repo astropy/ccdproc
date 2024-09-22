@@ -1,10 +1,6 @@
 import numpy as np
-
-from astropy.utils.misc import NumpyRNGContext
 from astropy.io import fits
-from astropy.nddata import CCDData
-
-from ccdproc import flat_correct
+from astropy.utils.misc import NumpyRNGContext
 
 
 def make_sample_mef(science_name, flat_name, size=10, dtype="float32"):

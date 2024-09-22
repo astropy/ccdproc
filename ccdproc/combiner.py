@@ -8,16 +8,16 @@ from numpy import ma
 try:
     import bottleneck as bn
 except ImportError:
-    HAS_BOTTLENECK = False
+    HAS_BOTTLENECK = False  # pragma: no cover
 else:
     HAS_BOTTLENECK = True
 
-from .core import sigma_func
-
+from astropy import log
 from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
-from astropy import log
+
+from .core import sigma_func
 
 __all__ = ["Combiner", "combine"]
 
@@ -48,6 +48,10 @@ def _default_std():  # pragma: no cover
         return bn.nanstd
     else:
         return np.nanstd
+
+
+_default_sum_func = _default_sum()
+_default_std_dev_func = _default_std()
 
 
 class Combiner:
@@ -173,7 +177,8 @@ class Combiner:
                 if value.shape != self.data_arr.data.shape:
                     if value.ndim != 1:
                         raise ValueError(
-                            "1D weights expected when shapes of the data and weights differ."
+                            "1D weights expected when shapes of the "
+                            "data and weights differ."
                         )
                     if value.shape[0] != self.data_arr.data.shape[0]:
                         raise ValueError(
@@ -211,15 +216,20 @@ class Combiner:
                 self._scaling = np.array(self._scaling)
             else:
                 try:
-                    len(value) == n_images
-                    self._scaling = np.array(value)
-                except TypeError:
+                    len(value)
+                except TypeError as err:
                     raise TypeError(
+                        "scaling must be a function or an array "
+                        "the same length as the number of images.",
+                    ) from err
+                if len(value) != n_images:
+                    raise ValueError(
                         "scaling must be a function or an array "
                         "the same length as the number of images."
                     )
+                self._scaling = np.array(value)
             # reshape so that broadcasting occurs properly
-            for i in range(len(self.data_arr.data.shape) - 1):
+            for _ in range(len(self.data_arr.data.shape) - 1):
                 self._scaling = self.scaling[:, np.newaxis]
 
     # set up IRAF-like minmax clipping
@@ -511,8 +521,8 @@ class Combiner:
         self,
         scale_func=None,
         scale_to=None,
-        uncertainty_func=_default_std(),
-        sum_func=_default_sum(),
+        uncertainty_func=_default_std_dev_func,
+        sum_func=_default_sum_func,
     ):
         """
         Average combine together a set of arrays.
@@ -550,11 +560,6 @@ class Combiner:
         data, masked_values, scale_func = self._combination_setup(
             scale_func, _default_average(), scale_to
         )
-        # # set up the data
-        # data = self._get_scaled_data(scale_to)
-
-        # # Subtitute NaN for masked entries
-        # data = self._get_nan_substituted_data(data)
 
         # Do NOT modify data after this -- we need it to be intact when we
         # we get to the uncertainty calculation.
@@ -590,7 +595,7 @@ class Combiner:
         return combined_image
 
     def sum_combine(
-        self, sum_func=None, scale_to=None, uncertainty_func=_default_std()
+        self, sum_func=None, scale_to=None, uncertainty_func=_default_std_dev_func
     ):
         """
         Sum combine together a set of arrays.
@@ -860,8 +865,10 @@ def combine(
             try:
                 # Maybe the input can be made into a list, so try that
                 img_list = list(img_list)
-            except TypeError:
-                raise ValueError("unrecognised input for list of images to combine.")
+            except TypeError as err:
+                raise ValueError(
+                    "unrecognised input for list of images to combine."
+                ) from err
 
     # Select Combine function to call in Combiner
     if method == "average":
@@ -871,7 +878,7 @@ def combine(
     elif method == "sum":
         combine_function = "sum_combine"
     else:
-        raise ValueError("unrecognised combine method : {0}.".format(method))
+        raise ValueError(f"unrecognised combine method : {method}.")
 
     # First we create a CCDObject from first image for storing output
     if isinstance(img_list[0], CCDData):
@@ -915,8 +922,8 @@ def combine(
     no_chunks = int((memory_factor * size_of_an_img * no_of_img) / mem_limit) + 1
     if no_chunks > 1:
         log.info(
-            "splitting each image into {0} chunks to limit memory usage "
-            "to {1} bytes.".format(no_chunks, mem_limit)
+            f"splitting each image into {no_chunks} chunks to limit memory usage "
+            f"to {mem_limit} bytes."
         )
     xs, ys = ccd.data.shape
 

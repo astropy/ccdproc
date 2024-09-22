@@ -1,9 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import numpy as np
-
-from astropy.nddata import StdDevUncertainty, CCDData
-
+from astropy.nddata import CCDData, StdDevUncertainty
 from scipy import ndimage
 
 from ccdproc import core

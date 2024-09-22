@@ -2,28 +2,25 @@
 
 """This module implements the base CCDPROC functions"""
 
+import logging
 import math
 import numbers
-import logging
-from packaging import version as pkgversion
 import warnings
 
 import numpy as np
-from scipy import ndimage
-
-from astropy.units.quantity import Quantity
+from astropy import nddata, stats
 from astropy import units as u
 from astropy.modeling import fitting
-from astropy import stats
-from astropy import nddata
-from astropy.nddata import StdDevUncertainty, CCDData
-from astropy.wcs.utils import proj_plane_pixel_area
+from astropy.nddata import CCDData, StdDevUncertainty
+from astropy.units.quantity import Quantity
 from astropy.utils import deprecated, deprecated_renamed_argument
-import astropy  # To get the version.
+from astropy.wcs.utils import proj_plane_pixel_area
+from packaging import version as pkgversion
+from scipy import ndimage
 
-from .utils.slices import slice_from_string
-from .log_meta import log_to_metadata
 from .extern.bitfield import bitfield_to_boolean_mask as _bitfield_to_boolean_mask
+from .log_meta import log_to_metadata
+from .utils.slices import slice_from_string
 
 logger = logging.getLogger(__name__)
 
@@ -610,15 +607,15 @@ def subtract_bias(ccd, master):
 
     try:
         result = ccd.subtract(master)
-    except ValueError as e:
-        if "operand units" in str(e):
+    except ValueError as err:
+        if "operand units" in str(err):
             raise u.UnitsError(
-                "Unit '{}' of the uncalibrated image does not "
-                "match unit '{}' of the calibration "
-                "image".format(ccd.unit, master.unit)
-            )
+                f"Unit '{ccd.unit}' of the uncalibrated image does not "
+                f"match unit '{master.unit}' of the calibration "
+                "image"
+            ) from err
         else:
-            raise e
+            raise err
 
     result.meta = ccd.meta.copy()
     return result
@@ -676,8 +673,9 @@ def subtract_dark(
         Dark-subtracted image.
     """
     if ccd.shape != master.shape:
-        err_str = "operands could not be subtracted with shapes {} {}".format(
-            ccd.shape, master.shape
+        err_str = (
+            f"operands could not be subtracted with "
+            f"shapes {ccd.shape} {master.shape}"
         )
         raise ValueError(err_str)
 
@@ -714,8 +712,8 @@ def subtract_dark(
             try:
                 data_exposure *= exposure_unit
                 dark_exposure *= exposure_unit
-            except TypeError:
-                raise TypeError("must provide unit for exposure time.")
+            except TypeError as err:
+                raise TypeError("must provide unit for exposure time.") from err
         else:
             raise TypeError("exposure times must be astropy.units.Quantity objects.")
 
@@ -728,23 +726,14 @@ def subtract_dark(
             result = ccd.subtract(master_scaled)
         else:
             result = ccd.subtract(master)
-    except (u.UnitsError, u.UnitConversionError, ValueError) as e:
-        # Astropy LTS (v1) returns a ValueError, not a UnitsError, so catch
-        # that if it appears to really be a UnitsError.
-        if (
-            isinstance(e, ValueError)
-            and "operand units" not in str(e)
-            and astropy.__version__.startswith("1.0")
-        ):
-            raise e
-
+    except (u.UnitsError, u.UnitConversionError, ValueError) as err:
         # Make the error message a little more explicit than what is returned
         # by default.
         raise u.UnitsError(
-            "Unit '{}' of the uncalibrated image does not "
-            "match unit '{}' of the calibration "
-            "image".format(ccd.unit, master.unit)
-        )
+            f"Unit '{ccd.unit}' of the uncalibrated image does not "
+            f"match unit '{master.unit}' of the calibration "
+            "image"
+        ) from err
 
     result.meta = ccd.meta.copy()
     return result
@@ -909,7 +898,7 @@ def transform_image(ccd, transform_func, **kwargs):
         nccd.data = transform_func(nccd.data, **kwargs)
     except TypeError as exc:
         if "is not callable" in str(exc):
-            raise TypeError("transform_func is not a callable.")
+            raise TypeError("transform_func is not a callable.") from exc
         raise
 
     # transform the uncertainty plane if it exists
@@ -923,7 +912,7 @@ def transform_image(ccd, transform_func, **kwargs):
 
     if nccd.wcs is not None:
         warn = "WCS information may be incorrect as no transformation was applied to it"
-        warnings.warn(warn, UserWarning)
+        warnings.warn(warn, UserWarning, stacklevel=2)
 
     return nccd
 
@@ -1330,13 +1319,19 @@ def _blkavg(data, newshape):
 
     shape = data.shape
     lenShape = len(shape)
-    factor = np.asarray(shape) / np.asarray(newshape)
+    # fmt: off
+    factor = np.asarray(  # noqa: F841  factor is actually used in eval
+        shape
+    ) / np.asarray(
+        newshape
+    )
+    # fmt: on
 
     evList = (
         ["data.reshape("]
-        + ["newshape[%d],int(factor[%d])," % (i, i) for i in range(lenShape)]
+        + [f"newshape[{i}],int(factor[{i}])," for i in range(lenShape)]
         + [")"]
-        + [".mean(%d)" % (i + 1) for i in range(lenShape)]
+        + [f".mean({i + 1})" for i in range(lenShape)]
     )
 
     return eval("".join(evList))
@@ -1571,8 +1566,8 @@ def cosmicray_lacosmic(
        mask of the object will be created if it did not previously exist or be
        updated with the detected cosmic rays.
     """
-    from astroscrappy import detect_cosmics
     from astroscrappy import __version__ as asy_version
+    from astroscrappy import detect_cosmics
 
     # If we didn't get a quantity, put them in, with unit specified by the
     # documentation above.
@@ -1668,7 +1663,8 @@ def cosmicray_lacosmic(
             warnings.warn(
                 "Image unit is electron but gain value "
                 "is not 1.0. Data maybe end up being gain "
-                "corrected twice."
+                "corrected twice.",
+                stacklevel=2,
             )
 
         else:
@@ -1682,8 +1678,8 @@ def cosmicray_lacosmic(
             # cosmic rays.
             if not (gain * ccd).unit.is_equivalent(readnoise.unit):
                 raise ValueError(
-                    "Inconsistent units for gain ({}) ".format(gain.unit)
-                    + " ccd ({}) and readnoise ({}).".format(ccd.unit, readnoise.unit)
+                    f"Inconsistent units for gain ({gain.unit}) "
+                    + f" ccd ({ccd.unit}) and readnoise ({readnoise.unit})."
                 )
 
         crmask, cleanarr = detect_cosmics(
@@ -2019,12 +2015,12 @@ def ccdmask(
     """
     try:
         nlines, ncols = ratio.data.shape
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as err:
         # shape is not iterable or has more or less than two values
-        raise ValueError('"ratio" must be two-dimensional.')
-    except AttributeError:
+        raise ValueError('"ratio" must be two-dimensional.') from err
+    except AttributeError as err:
         # No data attribute or data has no shape attribute.
-        raise ValueError('"ratio" should be a "CCDData".')
+        raise ValueError('"ratio" should be a "CCDData".') from err
 
     def _sigma_mask(baseline, one_sigma_value, lower_sigma, upper_sigma):
         """Helper function to mask values outside of the specified sigma range."""
@@ -2159,7 +2155,8 @@ def bitfield_to_boolean_mask(bitfield, ignore_bits=0, flip_bits=None):
         array([False,  True, False,  True, False,  True, False,  True]...)
 
         >>> # Equivalent for a list using flip_bits.
-        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits=[1, 8, 32], flip_bits=True)
+        >>> ccdproc.bitfield_to_boolean_mask(np.arange(8), ignore_bits=[1, 8, 32],
+        ...                                  flip_bits=True)
         array([False,  True, False,  True, False,  True, False,  True]...)
 
     """

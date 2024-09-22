@@ -34,6 +34,7 @@ test = [
     "memory_profiler",
     "pre-commit",
     "pytest-astropy>=0.10.0",
+    "ruff",
 ]
 
 [project.urls]
@@ -89,6 +90,30 @@ extend-exclude = '''
         # Ignore branches that don't pertain to this version of Python
         "pragma: py{ignore_python_version}",
     ]
+
+[tool.ruff]
+# ruff 0.6.0 started automatically linting notebooks. We are not ready for that yet.
+extend-exclude = ["*.ipynb", "extern"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # E and W are the checks done by pycodestyle
+    "W",
+    "F",    # pyflakes checks
+    "ARG",  # flake8-unused-arguments
+    "UP",   # language updates
+    # "NPY",  # check for numpy deprecations
+    "I",    # isort checks
+    "B",    # flake8-bugbear
+]
+[tool.ruff.lint.per-file-ignores]
+# Ignore `E402` and `F403` (import violations) in all `__init__.py` files.
+"__init__.py" = ["E402", "F403"]
+# Ignore `E402` in `run_for_memory_profiler.py` because we need to check for a package or
+# skip the test before importing the module.
+"run_for_memory_profile.py" = ["E402"]
+# Ignore F405 (variable may be from star imports) in docs/conf.py
+"docs/conf.py" = ["F405"]
 
 [tool.pytest.ini_options]
 minversion = 7.0
