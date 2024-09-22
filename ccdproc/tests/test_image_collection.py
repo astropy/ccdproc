@@ -231,7 +231,7 @@ class TestImageFileCollection:
             location=triage_setup.test_dir, keywords=["imagetyp", "exposure"]
         )
         old_data = np.array(collection.summary)
-        for hdu in collection.hdus(imagetyp="bias"):
+        for _ in collection.hdus(imagetyp="bias"):
             pass
         new_data = np.array(collection.summary)
         assert (new_data == old_data).all()
@@ -304,7 +304,7 @@ class TestImageFileCollection:
             location=triage_setup.test_dir, keywords=["imagetyp"]
         )
         destination = mkdtemp()
-        for header in collection.headers(save_location=destination):
+        for _ in collection.headers(save_location=destination):
             pass
         new_collection = ImageFileCollection(
             location=destination, keywords=["imagetyp"]
@@ -347,7 +347,7 @@ class TestImageFileCollection:
             location=triage_setup.test_dir, keywords=["imagetyp"]
         )
         cnt = 0
-        for header in collection.headers(imagetyp="*"):
+        for _ in collection.headers(imagetyp="*"):
             cnt += 1
         assert cnt == triage_setup.n_test["files"]
 
@@ -473,7 +473,7 @@ class TestImageFileCollection:
         assert len(w) == 1
         assert str(w[0].message) == "no FITS files in the collection."
         assert collection.summary is None
-        for hdr in collection.headers():
+        for _ in collection.headers():
             # This statement should not be reached if there are no FITS files
             assert 0
 
@@ -590,7 +590,7 @@ class TestImageFileCollection:
     def test_unknown_generator_type_raises_error(self, triage_setup):
         ic = ImageFileCollection(triage_setup.test_dir, keywords=["naxis"])
         with pytest.raises(ValueError):
-            for foo in ic._generator("not a real generator"):
+            for _ in ic._generator("not a real generator"):
                 pass
 
     def test_setting_write_location_to_bad_dest_raises_error(
@@ -601,7 +601,7 @@ class TestImageFileCollection:
 
         ic = ImageFileCollection(triage_setup.test_dir, keywords=["naxis"])
         with pytest.raises(IOError):
-            for hdr in ic.headers(save_location=bad_directory.strpath):
+            for _ in ic.headers(save_location=bad_directory.strpath):
                 pass
 
     def test_initialization_with_no_keywords(self, triage_setup):
@@ -610,7 +610,7 @@ class TestImageFileCollection:
         ic = ImageFileCollection(location=triage_setup.test_dir, keywords=[])
         # Iteration below failed before bugfix...
         execs = 0
-        for h in ic.headers():
+        for _ in ic.headers():
             execs += 1
         assert not execs
 
@@ -710,7 +710,7 @@ class TestImageFileCollection:
         # Compressed files don't get copied. Not sure why...
         original_len = len(ic.summary) - triage_setup.n_test["compressed"]
         # Generate additional files in this directory
-        for h in ic.headers(save_with_name="_foo"):
+        for _ in ic.headers(save_with_name="_foo"):
             pass
         ic.refresh()
         new_len = len(ic.summary) - triage_setup.n_test["compressed"]

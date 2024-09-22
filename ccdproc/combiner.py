@@ -220,7 +220,7 @@ class Combiner:
                         "the same length as the number of images.",
                     ) from err
             # reshape so that broadcasting occurs properly
-            for i in range(len(self.data_arr.data.shape) - 1):
+            for _ in range(len(self.data_arr.data.shape) - 1):
                 self._scaling = self.scaling[:, np.newaxis]
 
     # set up IRAF-like minmax clipping
