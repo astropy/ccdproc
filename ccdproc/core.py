@@ -1330,13 +1330,19 @@ def _blkavg(data, newshape):
 
     shape = data.shape
     lenShape = len(shape)
-    factor = np.asarray(shape) / np.asarray(newshape)
+    # fmt: off
+    factor = np.asarray(  # noqa: F841  factor is actually used in eval
+        shape
+    ) / np.asarray(
+        newshape
+    )
+    # fmt: on
 
     evList = (
         ["data.reshape("]
-        + ["newshape[%d],int(factor[%d])," % (i, i) for i in range(lenShape)]
+        + [f"newshape[{i}],int(factor[{i}])," for i in range(lenShape)]
         + [")"]
-        + [".mean(%d)" % (i + 1) for i in range(lenShape)]
+        + [f".mean({i + 1})" for i in range(lenShape)]
     )
 
     return eval("".join(evList))

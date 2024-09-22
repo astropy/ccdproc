@@ -12,8 +12,7 @@ from astropy import units as u
 
 try:
     from astroscrappy import __version__ as asy_version
-except Exception as e:
-    print("Oh no, no working astroscrappy")
+except Exception:
     pytest.skip("skipping astroscrappy tests", allow_module_level=True)
 
 from ccdproc.core import (
@@ -45,8 +44,7 @@ def test_cosmicray_lacosmic():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 10
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    noise = DATA_SCALE * np.ones_like(ccd_data.data)
-    data, crarr = cosmicray_lacosmic(ccd_data.data, sigclip=5.9)
+    _, crarr = cosmicray_lacosmic(ccd_data.data, sigclip=5.9)
 
     # check the number of cosmic rays detected
     # Note that to get this to succeed reliably meant tuning
@@ -90,9 +88,7 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
     ccd_data.uncertainty = noise
     # No units here on purpose.
     gain = 2.0
-    # Don't really need to set this (6.5 is the default value) but want to
-    # make lack of units explicit.
-    readnoise = 6.5
+
     if array_input:
         new_data, cr_mask = cosmicray_lacosmic(
             ccd_data.data, gain=gain, gain_apply=gain_correct_data
@@ -122,9 +118,7 @@ def test_cosmicray_lacosmic_accepts_quantity_gain():
     # The units below are the point of the test
     gain = 2.0 * u.electron / u.adu
 
-    # Since gain and ccd_data have units, the readnoise should too.
-    readnoise = 6.5 * u.electron
-    new_ccd = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True)
+    _ = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True)
 
 
 def test_cosmicray_lacosmic_accepts_quantity_readnoise():
@@ -136,9 +130,7 @@ def test_cosmicray_lacosmic_accepts_quantity_readnoise():
     gain = 2.0 * u.electron / u.adu
     # The units below are the point of this test
     readnoise = 6.5 * u.electron
-    new_ccd = cosmicray_lacosmic(
-        ccd_data, gain=gain, gain_apply=True, readnoise=readnoise
-    )
+    _ = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True, readnoise=readnoise)
 
 
 def test_cosmicray_lacosmic_detects_inconsistent_units():
@@ -196,7 +188,7 @@ def test_cosmicray_lacosmic_invar_inbkg(new_args):
     ccd_data.uncertainty = noise
 
     with pytest.raises(TypeError):
-        nccd_data = cosmicray_lacosmic(ccd_data, sigclip=5.9, **new_args)
+        cosmicray_lacosmic(ccd_data, sigclip=5.9, **new_args)
 
 
 def test_cosmicray_median_check_data():
