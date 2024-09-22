@@ -40,7 +40,7 @@ jobs:
           - name: 'ubuntu-py312-bottleneck'
             os: ubuntu-latest
             python: '3.12'
-            tox_env: 'py312-test-alldeps-numpy124-bottleneck-cov'
+            tox_env: 'py312-test-alldeps-bottleneck-cov'
 
           - name: 'ubuntu-py310'
             os: ubuntu-latest
