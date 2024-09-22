@@ -111,7 +111,9 @@ class ImageFileCollection:
         self._files = self._get_files()
 
         if self._files == []:
-            warnings.warn("no FITS files in the collection.", AstropyUserWarning)
+            warnings.warn(
+                "no FITS files in the collection.", AstropyUserWarning, stacklevel=2
+            )
         self._summary = {}
         if keywords is None:
             # Use all keywords.
@@ -548,6 +550,7 @@ class ImageFileCollection:
                     f'Header from file "{file_name}" contains multiple entries for '
                     f'"{k}", the pair "{k}={v}" will be ignored.',
                     UserWarning,
+                    stacklevel=2,
                 )
                 continue
             else:

@@ -912,7 +912,7 @@ def transform_image(ccd, transform_func, **kwargs):
 
     if nccd.wcs is not None:
         warn = "WCS information may be incorrect as no transformation was applied to it"
-        warnings.warn(warn, UserWarning)
+        warnings.warn(warn, UserWarning, stacklevel=2)
 
     return nccd
 
@@ -1663,7 +1663,8 @@ def cosmicray_lacosmic(
             warnings.warn(
                 "Image unit is electron but gain value "
                 "is not 1.0. Data maybe end up being gain "
-                "corrected twice."
+                "corrected twice.",
+                stacklevel=2,
             )
 
         else:
