@@ -8,7 +8,7 @@ from numpy import ma
 try:
     import bottleneck as bn
 except ImportError:
-    HAS_BOTTLENECK = False
+    HAS_BOTTLENECK = False  # pragma: no cover
 else:
     HAS_BOTTLENECK = True
 

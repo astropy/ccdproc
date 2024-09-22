@@ -144,6 +144,9 @@ def test_1Dweights():
     ccd = c.average_combine()
     np.testing.assert_almost_equal(ccd.data, 312.5)
 
+    with pytest.raises(ValueError):
+        c.weights = np.array([1, 5, 10, 20])
+
 
 def test_pixelwise_weights():
     ccd_list = [
@@ -367,6 +370,10 @@ def test_combiner_scaling_fails():
     with pytest.raises(TypeError):
         combiner.scaling = 5
 
+    # Should calendar because the scaling function is not the right shape
+    with pytest.raises(ValueError):
+        combiner.scaling = [5, 5, 5]
+
 
 # test data combined with mask is created correctly
 def test_combiner_mask_median():
@@ -399,6 +406,15 @@ def test_combiner_mask_sum():
     assert ccd.data[5, 5] == 3
     assert ccd.mask[0, 0]
     assert not ccd.mask[5, 5]
+
+
+# Test that calling combine with a bad input raises an error
+def test_combine_bad_input():
+    with pytest.raises(ValueError, match="unrecognised input for list of images"):
+        combine(1)
+
+    with pytest.raises(ValueError, match="unrecognised combine method"):
+        combine([1, 2, 3], method="bad_method")
 
 
 # test combiner convenience function reads fits file and combine as expected
