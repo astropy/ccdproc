@@ -28,10 +28,6 @@ from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 DATA_SCALE = 5.3
 NCRAYS = 30
 
-OLD_ASTROSCRAPPY = packaging.version.parse(asy_version) < packaging.version.parse(
-    "1.1.0"
-)
-
 
 def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
     size = data.shape[0]
@@ -164,15 +160,6 @@ def test_cosmicray_lacosmic_detects_inconsistent_units():
     assert "Inconsistent units" in str(e.value)
 
 
-if OLD_ASTROSCRAPPY:
-    decorator = pytest.mark.filterwarnings(
-        "ignore:`np.bool` is a deprecated alias:DeprecationWarning"
-    )
-else:
-    decorator = lambda f: f
-
-
-@decorator
 def test_cosmicray_lacosmic_warns_on_ccd_in_electrons():
     # Check that an input ccd in electrons raises a warning.
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
@@ -192,12 +179,6 @@ def test_cosmicray_lacosmic_warns_on_ccd_in_electrons():
         cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True, readnoise=readnoise)
 
 
-# The skip can be removed when the oldest supported astroscrappy
-# is 1.1.0 or higher
-@pytest.mark.skipif(
-    OLD_ASTROSCRAPPY,
-    reason="astroscrappy < 1.1.0 does not support " "this functionality",
-)
 # The values for inbkg and invar are DELIBERATELY BAD. They are supposed to be
 # arrays, so if detect_cosmics is called with these bad values a ValueError
 # will be raised, which we can check for.
@@ -340,24 +321,6 @@ def test_cosmicray_lacosmic_pssl_deprecation_warning():
         cosmicray_lacosmic(ccd_data, pssl=1.0)
 
 
-# Remaining tests can be removed when the oldest supported version
-# of astroscrappy is 1.1.0 or higher.
-@pytest.mark.skipif(not OLD_ASTROSCRAPPY, reason="Should succeed for new astroscrappy")
-@pytest.mark.parametrize(
-    "bad_args", [dict(inbkg=5), dict(invar=5), dict(inbkg=5, invar=5)]
-)
-def test_error_raised_lacosmic_old_interface_new_args(bad_args):
-    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    with pytest.raises(TypeError) as err:
-        cosmicray_lacosmic(ccd_data, **bad_args)
-
-    check_message = [k in str(err) for k in bad_args.keys()]
-    assert all(check_message)
-
-
-@pytest.mark.skipif(
-    OLD_ASTROSCRAPPY, reason="Test is of new interface compatibility layer"
-)
 def test_cosmicray_lacosmic_pssl_and_inbkg_fails():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     with pytest.raises(ValueError) as err:
@@ -369,9 +332,6 @@ def test_cosmicray_lacosmic_pssl_and_inbkg_fails():
     assert "pssl and inbkg" in str(err)
 
 
-@pytest.mark.skipif(
-    OLD_ASTROSCRAPPY, reason="Test is of new interface compatibility layer"
-)
 def test_cosmicray_lacosmic_pssl_does_not_fail():
     # This test is a copy/paste of test_cosmicray_lacosmic_ccddata
     # except with pssl=0.0001 as an argument. Subtracting nearly zero from
