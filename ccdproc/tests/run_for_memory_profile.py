@@ -58,7 +58,6 @@ def generate_fits_files(n_images, size=None, seed=1523):
 def run_memory_profile(
     n_files,
     sampling_interval,
-    size=None,
     sigma_clip=False,
     combine_method=None,
     memory_limit=None,
@@ -178,7 +177,6 @@ if __name__ == "__main__":
     mem_use = run_memory_profile(
         args.number,
         args.sampling_freq,
-        size=args.size,
         sigma_clip=args.sigma_clip,
         combine_method=args.combine_method,
         memory_limit=args.memory_limit,

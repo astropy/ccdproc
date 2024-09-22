@@ -550,7 +550,7 @@ def test_flat_correct():
 
 
 # Test for flat correction with min_value
-def test_flat_correct_min_value(data_scale=1, data_mean=5):
+def test_flat_correct_min_value():
     ccd_data = ccd_data_func()
     size = ccd_data.shape[0]
 

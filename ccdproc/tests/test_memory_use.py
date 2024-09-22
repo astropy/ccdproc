@@ -46,7 +46,6 @@ def test_memory_use_in_combine(combine_method):
     mem_use, _ = run_memory_profile(
         num_files,
         sampling_interval,
-        size=image_size,
         memory_limit=memory_limit,
         combine_method=combine_method,
     )
