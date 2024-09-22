@@ -2,14 +2,13 @@
 from sys import platform
 
 import numpy as np
-
 import pytest
 
 try:
     from ccdproc.tests.run_for_memory_profile import (
-        run_memory_profile,
-        generate_fits_files,
         TMPPATH,
+        generate_fits_files,
+        run_memory_profile,
     )
 except ImportError:
     memory_profile_present = False

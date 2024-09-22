@@ -1,17 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import numpy as np
-
 import pytest
+from astropy import units as u
 from astropy.utils import NumpyRNGContext
 from astropy.utils.exceptions import AstropyDeprecationWarning
-from astropy import units as u
 
 from ccdproc.core import (
-    cosmicray_lacosmic,
-    cosmicray_median,
     background_deviation_box,
     background_deviation_filter,
+    cosmicray_lacosmic,
+    cosmicray_median,
 )
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 

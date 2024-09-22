@@ -1,21 +1,18 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from packaging.version import Version, parse
-
-import numpy as np
-
-import astropy.units as u
-from astropy.stats import median_absolute_deviation as mad
 import astropy
-
+import astropy.units as u
+import numpy as np
 import pytest
-from astropy.utils.data import get_pkg_data_filename
 from astropy.nddata import CCDData
+from astropy.stats import median_absolute_deviation as mad
+from astropy.utils.data import get_pkg_data_filename
+from packaging.version import Version, parse
 
 from ccdproc.combiner import (
     Combiner,
-    combine,
     _calculate_step_sizes,
     _default_std,
+    combine,
     sigma_func,
 )
 from ccdproc.image_collection import ImageFileCollection

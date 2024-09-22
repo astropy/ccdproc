@@ -1,8 +1,8 @@
-from tempfile import TemporaryDirectory
-from pathlib import Path
+import gc
 import mmap
 import sys
-import gc
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
 from astropy.io import fits

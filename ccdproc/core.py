@@ -2,28 +2,26 @@
 
 """This module implements the base CCDPROC functions"""
 
+import logging
 import math
 import numbers
-import logging
-from packaging import version as pkgversion
 import warnings
 
+import astropy  # To get the version.
 import numpy as np
-from scipy import ndimage
-
-from astropy.units.quantity import Quantity
+from astropy import nddata, stats
 from astropy import units as u
 from astropy.modeling import fitting
-from astropy import stats
-from astropy import nddata
-from astropy.nddata import StdDevUncertainty, CCDData
-from astropy.wcs.utils import proj_plane_pixel_area
+from astropy.nddata import CCDData, StdDevUncertainty
+from astropy.units.quantity import Quantity
 from astropy.utils import deprecated, deprecated_renamed_argument
-import astropy  # To get the version.
+from astropy.wcs.utils import proj_plane_pixel_area
+from packaging import version as pkgversion
+from scipy import ndimage
 
-from .utils.slices import slice_from_string
-from .log_meta import log_to_metadata
 from .extern.bitfield import bitfield_to_boolean_mask as _bitfield_to_boolean_mask
+from .log_meta import log_to_metadata
+from .utils.slices import slice_from_string
 
 logger = logging.getLogger(__name__)
 
@@ -1578,8 +1576,8 @@ def cosmicray_lacosmic(
        mask of the object will be created if it did not previously exist or be
        updated with the detected cosmic rays.
     """
-    from astroscrappy import detect_cosmics
     from astroscrappy import __version__ as asy_version
+    from astroscrappy import detect_cosmics
 
     # If we didn't get a quantity, put them in, with unit specified by the
     # documentation above.

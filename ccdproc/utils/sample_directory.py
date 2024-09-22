@@ -1,9 +1,8 @@
 import gzip
-from tempfile import mkdtemp
 import os
+from tempfile import mkdtemp
 
 import numpy as np
-
 from astropy.io import fits
 
 

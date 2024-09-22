@@ -1,22 +1,19 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-from collections import OrderedDict
 import fnmatch
-from os import listdir, path
-import re
-
 import logging
+import re
+import warnings
+from collections import OrderedDict
+from os import listdir, path
 
+import astropy.io.fits as fits
 import numpy as np
 import numpy.ma as ma
-
-from astropy.table import Table, MaskedColumn
-import astropy.io.fits as fits
-
-import warnings
+from astropy.table import MaskedColumn, Table
 from astropy.utils.exceptions import AstropyUserWarning
 
-from .ccddata import fits_ccddata_reader, _recognized_fits_file_extensions
+from .ccddata import _recognized_fits_file_extensions, fits_ccddata_reader
 
 logger = logging.getLogger(__name__)
 

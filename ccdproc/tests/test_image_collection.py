@@ -1,22 +1,20 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import logging
 import os
-from shutil import rmtree
-from tempfile import mkdtemp, TemporaryDirectory, NamedTemporaryFile
 from glob import iglob
 from pathlib import Path
-import logging
-import pytest
+from shutil import rmtree
+from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 
 import astropy.io.fits as fits
-from astropy.table import Table
 import numpy as np
-
+import pytest
+from astropy.io.fits.verify import VerifyWarning
+from astropy.nddata import CCDData
+from astropy.table import Table
 from astropy.utils.data import get_pkg_data_filename
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.io.fits.verify import VerifyWarning
-
-from astropy.nddata import CCDData
 
 from ccdproc.image_collection import ImageFileCollection
 

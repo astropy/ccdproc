@@ -2,24 +2,23 @@ import pytest
 
 pytest.importorskip("memory_profiler")
 
-from argparse import ArgumentParser
-from tempfile import TemporaryDirectory
-from pathlib import Path
-import sys
 import gc
-
-import psutil
-from memory_profiler import memory_usage
+import sys
+from argparse import ArgumentParser
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
+import psutil
 from astropy.io import fits
-from astropy.stats import median_absolute_deviation
 from astropy.nddata import CCDData
+from astropy.stats import median_absolute_deviation
+from memory_profiler import memory_usage
 
 # This bit of hackery ensures that we can see ccdproc from within
 # the test suite
 sys.path.append(str(Path().cwd()))
-from ccdproc import combine, ImageFileCollection
+from ccdproc import ImageFileCollection, combine
 from ccdproc.combiner import _calculate_size_of_image
 
 # Do not combine these into one statement. When all references are lost

@@ -3,11 +3,10 @@
 from shutil import rmtree
 
 import numpy as np
-
 import pytest
 from astropy import units as u
-from astropy.utils import NumpyRNGContext
 from astropy.nddata import CCDData
+from astropy.utils import NumpyRNGContext
 
 from ..utils.sample_directory import directory_for_testing
 

@@ -1,14 +1,13 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-from functools import wraps
 import inspect
+from functools import wraps
 from itertools import chain
 
 import numpy as np
-
-from astropy.nddata import NDData
 from astropy import units as u
 from astropy.io import fits
+from astropy.nddata import NDData
 
 import ccdproc  # Really only need Keyword from ccdproc
 

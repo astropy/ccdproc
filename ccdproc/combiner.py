@@ -12,12 +12,12 @@ except ImportError:
 else:
     HAS_BOTTLENECK = True
 
-from .core import sigma_func
-
+from astropy import log
 from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
-from astropy import log
+
+from .core import sigma_func
 
 __all__ = ["Combiner", "combine"]
 
