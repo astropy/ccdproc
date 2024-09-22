@@ -20,39 +20,7 @@ from astropy.nddata import CCDData
 # the test suite
 sys.path.append(str(Path().cwd()))
 from ccdproc import combine, ImageFileCollection
-
-try:
-    from ccdproc.combiner import _calculate_size_of_image
-except ImportError:
-
-    def _calculate_size_of_image(ccd, combine_uncertainty_function):
-        # If uncertainty_func is given for combine this will create an uncertainty
-        # even if the originals did not have one. In that case we need to create
-        # an empty placeholder.
-        if ccd.uncertainty is None and combine_uncertainty_function is not None:
-            ccd.uncertainty = StdDevUncertainty(np.zeros(ccd.data.shape))
-
-        size_of_an_img = ccd.data.nbytes
-        try:
-            size_of_an_img += ccd.uncertainty.array.nbytes
-        # In case uncertainty is None it has no "array" and in case the "array" is
-        # not a numpy array:
-        except AttributeError:
-            pass
-        # Mask is enforced to be a numpy.array across astropy versions
-        if ccd.mask is not None:
-            size_of_an_img += ccd.mask.nbytes
-        # flags is not necessarily a numpy array so do not fail with an
-        # AttributeError in case something was set!
-        # TODO: Flags are not taken into account in Combiner. This number is added
-        #       nevertheless for future compatibility.
-        try:
-            size_of_an_img += ccd.flags.nbytes
-        except AttributeError:
-            pass
-
-        return size_of_an_img
-
+from ccdproc.combiner import _calculate_size_of_image
 
 # Do not combine these into one statement. When all references are lost
 # to a TemporaryDirectory the directory is automatically deleted. _TMPDIR
@@ -207,7 +175,7 @@ if __name__ == "__main__":
 
     print("Garbage collection thresholds: ", gc.get_threshold())
 
-    mem_use = run_with_limit(
+    mem_use = run_memory_profile(
         args.number,
         args.sampling_freq,
         size=args.size,
