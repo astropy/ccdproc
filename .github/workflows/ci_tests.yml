@@ -37,15 +37,10 @@ jobs:
             python: '3.10'
             tox_env: 'py310-test-astroscrappy11'
 
-          - name: 'ubuntu-py39'
+          - name: 'ubuntu-py312-bottleneck'
             os: ubuntu-latest
-            python: '3.9'
-            tox_env: 'py39-test-alldeps-numpy124-cov'
-
-          - name: 'ubuntu-py39-bottleneck'
-            os: ubuntu-latest
-            python: '3.9'
-            tox_env: 'py39-test-alldeps-numpy124-cov-bottleneck'
+            python: '3.12'
+            tox_env: 'py312-test-alldeps-numpy124-bottleneck-cov'
 
           - name: 'ubuntu-py310'
             os: ubuntu-latest
