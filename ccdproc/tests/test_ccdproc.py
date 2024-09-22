@@ -76,7 +76,7 @@ def test_create_deviation(u_image, u_gain, u_readnoise, expect_success):
         assert ccd_var.unit == ccd_data.unit
         # Uncertainty should *not* have any units -- does it?
         with pytest.raises(AttributeError):
-            ccd_var.uncertainty.array.unit
+            ccd_var.uncertainty.array.unit  # noqa B018 useless expression
     else:
         with pytest.raises(u.UnitsError):
             ccd_var = create_deviation(ccd_data, gain=gain, readnoise=readnoise)
