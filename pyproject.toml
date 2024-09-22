@@ -8,7 +8,7 @@ name = "ccdproc"
 dynamic = ["version"]
 description = "Astropy affiliated package"
 readme = "README.rst"
-license = "BSD-3-clause"
+license = { text = "BSD-3-Clause" }
 requires-python = ">=3.8"
 authors = [
     { name = "Steve Crawford", email = "ccdproc@gmail.com" },
@@ -107,6 +107,9 @@ remote_data_strict = true
 addopts = [
     "--doctest-rst",
     "--color=yes",
+    "--strict-config",
+    "--strict-markers",
+    "-ra",
 ]
 log_cli_level = "info"
 xfail_strict = true
