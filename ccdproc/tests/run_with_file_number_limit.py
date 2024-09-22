@@ -183,7 +183,9 @@ def run_with_limit(n, kind="fits", size=None, overhead=6, open_method="mmap"):
         if "not allowed to raise maximum limit" not in str(e):
             raise
         max_n_this_process = resource.getrlimit(resource.RLIMIT_NOFILE)
-        raise ValueError("Maximum number of open " f"files is {max_n_this_process}")
+        raise ValueError(
+            "Maximum number of open " f"files is {max_n_this_process}"
+        ) from e
 
     # The "-1" is to leave a little wiggle room. overhead is based on the
     # the number of open files that a process running on linux has open.
@@ -216,7 +218,7 @@ def run_with_limit(n, kind="fits", size=None, overhead=6, open_method="mmap"):
             str(e)
             + "; number of open files: "
             + f"{len(proc.open_files())}, with target {n_files}"
-        )
+        ) from e
     else:
         print(
             "Opens succeeded, files currently open:", len(proc.open_files()), flush=True

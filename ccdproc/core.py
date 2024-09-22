@@ -607,15 +607,15 @@ def subtract_bias(ccd, master):
 
     try:
         result = ccd.subtract(master)
-    except ValueError as e:
-        if "operand units" in str(e):
+    except ValueError as err:
+        if "operand units" in str(err):
             raise u.UnitsError(
                 f"Unit '{ccd.unit}' of the uncalibrated image does not "
                 f"match unit '{master.unit}' of the calibration "
                 "image"
-            )
+            ) from err
         else:
-            raise e
+            raise err
 
     result.meta = ccd.meta.copy()
     return result
@@ -712,8 +712,8 @@ def subtract_dark(
             try:
                 data_exposure *= exposure_unit
                 dark_exposure *= exposure_unit
-            except TypeError:
-                raise TypeError("must provide unit for exposure time.")
+            except TypeError as err:
+                raise TypeError("must provide unit for exposure time.") from err
         else:
             raise TypeError("exposure times must be astropy.units.Quantity objects.")
 
@@ -733,7 +733,7 @@ def subtract_dark(
             f"Unit '{ccd.unit}' of the uncalibrated image does not "
             f"match unit '{master.unit}' of the calibration "
             "image"
-        )
+        ) from err
 
     result.meta = ccd.meta.copy()
     return result
@@ -898,7 +898,7 @@ def transform_image(ccd, transform_func, **kwargs):
         nccd.data = transform_func(nccd.data, **kwargs)
     except TypeError as exc:
         if "is not callable" in str(exc):
-            raise TypeError("transform_func is not a callable.")
+            raise TypeError("transform_func is not a callable.") from exc
         raise
 
     # transform the uncertainty plane if it exists
@@ -2014,12 +2014,12 @@ def ccdmask(
     """
     try:
         nlines, ncols = ratio.data.shape
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as err:
         # shape is not iterable or has more or less than two values
-        raise ValueError('"ratio" must be two-dimensional.')
-    except AttributeError:
+        raise ValueError('"ratio" must be two-dimensional.') from err
+    except AttributeError as err:
         # No data attribute or data has no shape attribute.
-        raise ValueError('"ratio" should be a "CCDData".')
+        raise ValueError('"ratio" should be a "CCDData".') from err
 
     def _sigma_mask(baseline, one_sigma_value, lower_sigma, upper_sigma):
         """Helper function to mask values outside of the specified sigma range."""

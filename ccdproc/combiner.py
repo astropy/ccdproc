@@ -214,11 +214,11 @@ class Combiner:
                 try:
                     len(value) == n_images
                     self._scaling = np.array(value)
-                except TypeError:
+                except TypeError as err:
                     raise TypeError(
                         "scaling must be a function or an array "
-                        "the same length as the number of images."
-                    )
+                        "the same length as the number of images.",
+                    ) from err
             # reshape so that broadcasting occurs properly
             for i in range(len(self.data_arr.data.shape) - 1):
                 self._scaling = self.scaling[:, np.newaxis]
@@ -861,8 +861,10 @@ def combine(
             try:
                 # Maybe the input can be made into a list, so try that
                 img_list = list(img_list)
-            except TypeError:
-                raise ValueError("unrecognised input for list of images to combine.")
+            except TypeError as err:
+                raise ValueError(
+                    "unrecognised input for list of images to combine."
+                ) from err
 
     # Select Combine function to call in Combiner
     if method == "average":
