@@ -619,7 +619,7 @@ class ImageFileCollection:
                 summary_dict = self._dict_from_fits_header(
                     file_path, input_summary=summary_dict, missing_marker=missing_marker
                 )
-            except IOError as e:
+            except OSError as e:
                 logger.warning(
                     "unable to get FITS header for file %s: %s.", file_path, e
                 )
@@ -951,7 +951,7 @@ class ImageFileCollection:
 
                     try:
                         hdulist.writeto(new_path, overwrite=overwrite)
-                    except IOError:
+                    except OSError:
                         logger.error("error writing file %s", new_path)
                         raise
 
