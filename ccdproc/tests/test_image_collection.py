@@ -43,14 +43,13 @@ def test_fits_summary(triage_setup):
 class TestImageFileCollectionRepresentation:
     def test_repr_location(self, triage_setup):
         ic = ImageFileCollection(location=triage_setup.test_dir)
-        assert repr(ic) == "ImageFileCollection(location={0!r})".format(
-            triage_setup.test_dir
-        )
+        assert repr(ic) == f"ImageFileCollection(location={triage_setup.test_dir!r})"
 
     def test_repr_keywords(self, triage_setup):
         ic = ImageFileCollection(location=triage_setup.test_dir, keywords=["imagetyp"])
-        ref = "ImageFileCollection(location={0!r}, keywords=['imagetyp'])".format(
-            triage_setup.test_dir
+        ref = (
+            f"ImageFileCollection(location={triage_setup.test_dir!r}, "
+            "keywords=['imagetyp'])"
         )
         assert repr(ic) == ref
 
@@ -61,9 +60,9 @@ class TestImageFileCollectionRepresentation:
             glob_include="*object_light*",
         )
         ref = (
-            "ImageFileCollection(location={0!r}, "
+            f"ImageFileCollection(location={triage_setup.test_dir!r}, "
             "glob_include='*object_light*', "
-            "glob_exclude='*no_filter*')".format(triage_setup.test_dir)
+            "glob_exclude='*no_filter*')"
         )
         assert repr(ic) == ref
 
@@ -73,9 +72,9 @@ class TestImageFileCollectionRepresentation:
             filenames=["no_filter_no_object_light.fit", "no_filter_no_object_bias.fit"],
         )
         ref = (
-            "ImageFileCollection(location={0!r}, "
+            f"ImageFileCollection(location={triage_setup.test_dir!r}, "
             "filenames=['no_filter_no_object_light.fit', "
-            "'no_filter_no_object_bias.fit'])".format(triage_setup.test_dir)
+            "'no_filter_no_object_bias.fit'])"
         )
         assert repr(ic) == ref
 
@@ -90,9 +89,9 @@ class TestImageFileCollectionRepresentation:
             location=triage_setup.test_dir, filenames=["mef.fits"], ext=1
         )
         ref = (
-            "ImageFileCollection(location={0!r}, "
+            f"ImageFileCollection(location={triage_setup.test_dir!r}, "
             "filenames=['mef.fits'], "
-            "ext=1)".format(triage_setup.test_dir)
+            "ext=1)"
         )
         assert repr(ic) == ref
 
@@ -961,7 +960,7 @@ class TestImageFileCollection:
         path = Path(triage_setup.test_dir)
 
         for idx, p in enumerate(path.iterdir()):
-            new_name = "no_extension{}".format(idx)
+            new_name = f"no_extension{idx}"
             new_path = path / new_name
             new_path.write_bytes(p.read_bytes())
 
@@ -1147,7 +1146,7 @@ class TestImageFileCollection:
             hdu.data = np.zeros((5, 5))
             hdu.header["REGEX_FL"] = kw
             hdu.writeto(
-                os.path.join(triage_setup.test_dir, "regex_special_{:d}.fits".format(i))
+                os.path.join(triage_setup.test_dir, f"regex_special_{i:d}.fits")
             )
 
         ic = ImageFileCollection(triage_setup.test_dir)

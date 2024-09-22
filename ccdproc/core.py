@@ -613,9 +613,9 @@ def subtract_bias(ccd, master):
     except ValueError as e:
         if "operand units" in str(e):
             raise u.UnitsError(
-                "Unit '{}' of the uncalibrated image does not "
-                "match unit '{}' of the calibration "
-                "image".format(ccd.unit, master.unit)
+                f"Unit '{ccd.unit}' of the uncalibrated image does not "
+                f"match unit '{master.unit}' of the calibration "
+                "image"
             )
         else:
             raise e
@@ -676,8 +676,9 @@ def subtract_dark(
         Dark-subtracted image.
     """
     if ccd.shape != master.shape:
-        err_str = "operands could not be subtracted with shapes {} {}".format(
-            ccd.shape, master.shape
+        err_str = (
+            f"operands could not be subtracted with "
+            f"shapes {ccd.shape} {master.shape}"
         )
         raise ValueError(err_str)
 
@@ -741,9 +742,9 @@ def subtract_dark(
         # Make the error message a little more explicit than what is returned
         # by default.
         raise u.UnitsError(
-            "Unit '{}' of the uncalibrated image does not "
-            "match unit '{}' of the calibration "
-            "image".format(ccd.unit, master.unit)
+            f"Unit '{ccd.unit}' of the uncalibrated image does not "
+            f"match unit '{master.unit}' of the calibration "
+            "image"
         )
 
     result.meta = ccd.meta.copy()
@@ -1688,8 +1689,8 @@ def cosmicray_lacosmic(
             # cosmic rays.
             if not (gain * ccd).unit.is_equivalent(readnoise.unit):
                 raise ValueError(
-                    "Inconsistent units for gain ({}) ".format(gain.unit)
-                    + " ccd ({}) and readnoise ({}).".format(ccd.unit, readnoise.unit)
+                    f"Inconsistent units for gain ({gain.unit}) "
+                    + f" ccd ({ccd.unit}) and readnoise ({readnoise.unit})."
                 )
 
         crmask, cleanarr = detect_cosmics(

@@ -119,7 +119,7 @@ def run_memory_profile(
 
     pre_mem_use = memory_usage(-1, interval=sampling_interval, timeout=1)
     baseline = np.mean(pre_mem_use)
-    print("Subtracting baseline memory before profile: {}".format(baseline))
+    print(f"Subtracting baseline memory before profile: {baseline}")
     mem_use = memory_usage(
         (combine, (files,), kwargs), interval=sampling_interval, timeout=None
     )

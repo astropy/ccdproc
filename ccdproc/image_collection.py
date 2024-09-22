@@ -135,39 +135,37 @@ class ImageFileCollection:
         if self.location is None:
             location = ""
         else:
-            location = "location={!r}".format(self.location)
+            location = f"location={self.location!r}"
 
         if self._all_keywords:
             kw = ""
         else:
-            kw = "keywords={!r}".format(self.keywords[1:])
+            kw = f"keywords={self.keywords[1:]!r}"
 
         if self.glob_exclude is None:
             glob_exclude = ""
         else:
-            glob_exclude = "glob_exclude={!r}".format(self.glob_exclude)
+            glob_exclude = f"glob_exclude={self.glob_exclude!r}"
 
         if self.glob_include is None:
             glob_include = ""
         else:
-            glob_include = "glob_include={!r}".format(self.glob_include)
+            glob_include = f"glob_include={self.glob_include!r}"
 
         if self.ext == 0:
             ext = ""
         else:
-            ext = "ext={}".format(self.ext)
+            ext = f"ext={self.ext}"
 
         if self._filenames is None:
             filenames = ""
         else:
-            filenames = "filenames={}".format(self._filenames)
+            filenames = f"filenames={self._filenames}"
 
         params = [location, kw, filenames, glob_include, glob_exclude, ext]
         params = ", ".join([p for p in params if p])
 
-        str_repr = "{self.__class__.__name__}({params})".format(
-            self=self, params=params
-        )
+        str_repr = f"{self.__class__.__name__}({params})"
 
         return str_repr
 
@@ -314,7 +312,7 @@ class ImageFileCollection:
             Values as a list.
         """
         if keyword not in self.keywords:
-            raise ValueError("keyword %s is not in the current summary" % keyword)
+            raise ValueError(f"keyword {keyword} is not in the current summary")
         if unique:
             return list(set(self.summary[keyword].tolist()))
         else:
@@ -550,9 +548,8 @@ class ImageFileCollection:
                 # a mistake. It would lead to problems in ImageFileCollection
                 # to add it as well, so simply ignore those.
                 warnings.warn(
-                    'Header from file "{f}" contains multiple entries for '
-                    '"{k}", the pair "{k}={v}" will be ignored.'
-                    "".format(k=k, v=v, f=file_name),
+                    f'Header from file "{file_name}" contains multiple entries for '
+                    f'"{k}", the pair "{k}={v}" will be ignored.',
                     UserWarning,
                 )
                 continue
@@ -921,7 +918,7 @@ class ImageFileCollection:
                     # and "IO operations on closed file" errors
                     return_thing = hdulist[ext_index].copy()
             else:
-                raise ValueError("no generator for {}".format(return_type))
+                raise ValueError(f"no generator for {return_type}")
 
             file_name = path.basename(full_path)
             if return_fname:

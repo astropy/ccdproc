@@ -872,7 +872,7 @@ def combine(
     elif method == "sum":
         combine_function = "sum_combine"
     else:
-        raise ValueError("unrecognised combine method : {0}.".format(method))
+        raise ValueError(f"unrecognised combine method : {method}.")
 
     # First we create a CCDObject from first image for storing output
     if isinstance(img_list[0], CCDData):
@@ -916,8 +916,8 @@ def combine(
     no_chunks = int((memory_factor * size_of_an_img * no_of_img) / mem_limit) + 1
     if no_chunks > 1:
         log.info(
-            "splitting each image into {0} chunks to limit memory usage "
-            "to {1} bytes.".format(no_chunks, mem_limit)
+            f"splitting each image into {no_chunks} chunks to limit memory usage "
+            f"to {mem_limit} bytes."
         )
     xs, ys = ccd.data.shape
 
