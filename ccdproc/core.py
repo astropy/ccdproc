@@ -7,7 +7,6 @@ import math
 import numbers
 import warnings
 
-import astropy  # To get the version.
 import numpy as np
 from astropy import nddata, stats
 from astropy import units as u
@@ -727,16 +726,7 @@ def subtract_dark(
             result = ccd.subtract(master_scaled)
         else:
             result = ccd.subtract(master)
-    except (u.UnitsError, u.UnitConversionError, ValueError) as e:
-        # Astropy LTS (v1) returns a ValueError, not a UnitsError, so catch
-        # that if it appears to really be a UnitsError.
-        if (
-            isinstance(e, ValueError)
-            and "operand units" not in str(e)
-            and astropy.__version__.startswith("1.0")
-        ):
-            raise e
-
+    except (u.UnitsError, u.UnitConversionError, ValueError) as err:
         # Make the error message a little more explicit than what is returned
         # by default.
         raise u.UnitsError(
