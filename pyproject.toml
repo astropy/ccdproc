@@ -107,6 +107,9 @@ remote_data_strict = true
 addopts = [
     "--doctest-rst",
     "--color=yes",
+    "--strict-config",
+    "--strict-markers",
+    "-ra",
 ]
 log_cli_level = "info"
 xfail_strict = true
