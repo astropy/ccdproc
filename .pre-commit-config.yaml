@@ -3,7 +3,7 @@ exclude: '^/ccdproc/extern/.*.py|.*\.fits?$'
   # | .*\.fits?$             # Ignore FITS files
 repos:
   -   repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v3.2.0
+      rev: v4.6.0
       hooks:
       -   id: check-yaml
       -   id: end-of-file-fixer
