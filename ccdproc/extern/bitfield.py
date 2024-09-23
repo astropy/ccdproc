@@ -15,12 +15,12 @@ import warnings
 import numpy as np
 
 
-__version__ = '1.1.1'
-__vdate__ = '30-January-2018'
-__author__ = 'Mihai Cara'
+__version__ = "1.1.1"
+__vdate__ = "30-January-2018"
+__author__ = "Mihai Cara"
 
 
-__all__ = ['bitfield_to_boolean_mask', 'interpret_bit_flags', 'is_bit_flag']
+__all__ = ["bitfield_to_boolean_mask", "interpret_bit_flags", "is_bit_flag"]
 
 
 # Revision history:
@@ -52,11 +52,16 @@ __all__ = ['bitfield_to_boolean_mask', 'interpret_bit_flags', 'is_bit_flag']
 #          the argument `bitfield` can hold.
 # 1.1.1 (30-January-2018) - Improved filtering of high bits in flags.
 #
-INT_TYPE = (int, long,) if sys.version_info < (3,) else (int,)
+INT_TYPE = (
+    (
+        int,
+        long,
+    )
+    if sys.version_info < (3,)
+    else (int,)
+)
 MAX_UINT_TYPE = np.uint64
-SUPPORTED_FLAGS = int(np.bitwise_not(
-    0, dtype=MAX_UINT_TYPE, casting='unsafe'
-))
+SUPPORTED_FLAGS = int(np.bitwise_not(0, dtype=MAX_UINT_TYPE, casting="unsafe"))
 
 
 def is_bit_flag(n):
@@ -79,13 +84,12 @@ def is_bit_flag(n):
     if n < 1:
         return False
 
-    return bin(n).count('1') == 1
+    return bin(n).count("1") == 1
 
 
 def _is_int(n):
-    return (
-        (isinstance(n, INT_TYPE) and not isinstance(n, bool)) or
-        (isinstance(n, np.generic) and np.issubdtype(n, np.integer))
+    return (isinstance(n, INT_TYPE) and not isinstance(n, bool)) or (
+        isinstance(n, np.generic) and np.issubdtype(n, np.integer)
     )
 
 
@@ -152,7 +156,7 @@ def interpret_bit_flags(bit_flags, flip_bits=None):
     allow_non_flags = False
 
     if _is_int(bit_flags):
-        return (~int(bit_flags) if flip_bits else int(bit_flags))
+        return ~int(bit_flags) if flip_bits else int(bit_flags)
 
     elif bit_flags is None:
         if has_flip_bits:
@@ -172,12 +176,12 @@ def interpret_bit_flags(bit_flags, flip_bits=None):
 
         bit_flags = str(bit_flags).strip()
 
-        if bit_flags.upper() in ['', 'NONE', 'INDEF']:
+        if bit_flags.upper() in ["", "NONE", "INDEF"]:
             return None
 
         # check whether bitwise-NOT is present and if it is, check that it is
         # in the first position:
-        bitflip_pos = bit_flags.find('~')
+        bitflip_pos = bit_flags.find("~")
         if bitflip_pos == 0:
             flip_bits = True
             bit_flags = bit_flags[1:].lstrip()
@@ -188,8 +192,8 @@ def interpret_bit_flags(bit_flags, flip_bits=None):
 
         # basic check for correct use of parenthesis:
         while True:
-            nlpar = bit_flags.count('(')
-            nrpar = bit_flags.count(')')
+            nlpar = bit_flags.count("(")
+            nrpar = bit_flags.count(")")
 
             if nlpar == 0 and nrpar == 0:
                 break
@@ -197,22 +201,24 @@ def interpret_bit_flags(bit_flags, flip_bits=None):
             if nlpar != nrpar:
                 raise ValueError("Unbalanced parantheses in bit flag list.")
 
-            lpar_pos = bit_flags.find('(')
-            rpar_pos = bit_flags.rfind(')')
+            lpar_pos = bit_flags.find("(")
+            rpar_pos = bit_flags.rfind(")")
             if lpar_pos > 0 or rpar_pos < (len(bit_flags) - 1):
-                raise ValueError("Incorrect syntax (incorrect use of "
-                                 "parenthesis) in bit flag list.")
+                raise ValueError(
+                    "Incorrect syntax (incorrect use of "
+                    "parenthesis) in bit flag list."
+                )
 
             bit_flags = bit_flags[1:-1].strip()
 
-        if ',' in bit_flags:
-            bit_flags = bit_flags.split(',')
+        if "," in bit_flags:
+            bit_flags = bit_flags.split(",")
 
-        elif '+' in bit_flags:
-            bit_flags = bit_flags.split('+')
+        elif "+" in bit_flags:
+            bit_flags = bit_flags.split("+")
 
         else:
-            if bit_flags == '':
+            if bit_flags == "":
                 raise ValueError(
                     "Empty bit flag lists not allowed when either bitwise-NOT "
                     "or parenthesis are present."
@@ -221,7 +227,7 @@ def interpret_bit_flags(bit_flags, flip_bits=None):
 
         allow_non_flags = len(bit_flags) == 1
 
-    elif hasattr(bit_flags, '__iter__'):
+    elif hasattr(bit_flags, "__iter__"):
         if not all([_is_int(flag) for flag in bit_flags]):
             raise TypeError("Each bit flag in a list must be an integer.")
 
@@ -235,8 +241,9 @@ def interpret_bit_flags(bit_flags, flip_bits=None):
     bitmask = 0
     for v in bitset:
         if not is_bit_flag(v) and not allow_non_flags:
-            raise ValueError("Input list contains invalid (not powers of two) "
-                             "bit flags")
+            raise ValueError(
+                "Input list contains invalid (not powers of two) " "bit flags"
+            )
         bitmask += v
 
     if flip_bits:
@@ -245,8 +252,9 @@ def interpret_bit_flags(bit_flags, flip_bits=None):
     return bitmask
 
 
-def bitfield_to_boolean_mask(bitfield, ignore_flags=0, flip_bits=None,
-                             good_mask_value=True, dtype=np.bool_):
+def bitfield_to_boolean_mask(
+    bitfield, ignore_flags=0, flip_bits=None, good_mask_value=True, dtype=np.bool_
+):
     r"""
     bitfield_to_boolean_mask(bitfield, ignore_flags=None, flip_bits=None, \
 good_mask_value=True, dtype=numpy.bool\_)
@@ -438,11 +446,10 @@ good_mask_value=True, dtype=numpy.bool\_)
     ignore_mask = ignore_mask & SUPPORTED_FLAGS
 
     # invert the "ignore" mask:
-    ignore_mask = np.bitwise_not(ignore_mask, dtype=bitfield.dtype,
-                                 casting='unsafe')
+    ignore_mask = np.bitwise_not(ignore_mask, dtype=bitfield.dtype, casting="unsafe")
 
     mask = np.empty_like(bitfield, dtype=np.bool_)
-    np.bitwise_and(bitfield, ignore_mask, out=mask, casting='unsafe')
+    np.bitwise_and(bitfield, ignore_mask, out=mask, casting="unsafe")
 
     if good_mask_value:
         np.logical_not(mask, out=mask)
