@@ -1,9 +1,9 @@
-exclude: '^/ccdproc/extern/.*.py|.*\.fits?$'
+exclude: 'ccdproc/extern/.*.py|.*\.fits?$'
   # ^/ccdproc/extern/.*.py   # Ignore files in the extern directory
   # | .*\.fits?$             # Ignore FITS files
 repos:
   -   repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v3.2.0
+      rev: v4.6.0
       hooks:
       -   id: check-yaml
       -   id: end-of-file-fixer
@@ -13,7 +13,7 @@ repos:
 # Per the ruff documentation, this should be before black
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: v0.6.7
+    rev: v0.6.8
     hooks:
       # Run the linter.
       - id: ruff
@@ -29,4 +29,9 @@ repos:
         # pre-commit's default_language_version, see
         # https://pre-commit.com/#top_level-default_language_version
         language_version: python3.12
-        extend-exclude: '^/ccdproc/extern/.*.py|.*\.fits?$'
+
+# Make pre-commit-ci more reasonable
+ci:
+  autofix_prs: false
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly

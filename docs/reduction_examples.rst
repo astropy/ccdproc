@@ -18,4 +18,3 @@ Here are some examples and different repositories using `ccdproc`.
 .. _reduceccd: https://github.com/rgbIAA/reduceccd
 .. _astrolib: https://github.com/yucelkilic/astrolib
 .. _mont4k_reduction: https://github.com/bjweiner/ARTN/tree/master/mont4k_pipeline
-
