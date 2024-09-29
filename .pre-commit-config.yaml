@@ -30,3 +30,9 @@ repos:
         # https://pre-commit.com/#top_level-default_language_version
         language_version: python3.12
         extend-exclude: '^/ccdproc/extern/.*.py|.*\.fits?$'
+
+# Make pre-commit-ci more reasonable
+ci:
+  autofix_prs: false
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
