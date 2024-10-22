@@ -369,7 +369,7 @@ class Combiner:
         # Remove in 3.0
         _ = kwd.pop("use_astropy", True)
 
-        self.data_arr.mask = sigma_clip(
+        self.data_arr.mask |= sigma_clip(
             self.data_arr.data,
             sigma_lower=low_thresh,
             sigma_upper=high_thresh,
