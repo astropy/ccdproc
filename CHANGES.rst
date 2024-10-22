@@ -1,4 +1,4 @@
-2.4.1 (unreleased)
+2.4.3 (unreleased)
 ------------------
 
 New Features
@@ -6,6 +6,8 @@ New Features
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- ``Combiner.sigma_clipping`` no longer overwrites the existing mask.
 
 2.4.2 (2024-05-03)
 ------------------
