@@ -1,4 +1,4 @@
-2.4.1 (unreleased)
+2.4.3 (2025-01-15)
 ------------------
 
 New Features
@@ -6,6 +6,14 @@ New Features
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- There was extensive modernization of the package infrastructure
+  that should not affect users.
+
+Bug Fixes
+^^^^^^^^^
+
+- Fixes incorrect parameter passed to helper in ``cosmicray_lacosmic``. [#796]
 
 2.4.2 (2024-05-03)
 ------------------
@@ -17,11 +25,6 @@ Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - Make ccdproc compatible with numpy 2. [#824]
-
-Bug Fixes
-^^^^^^^^^
-
-- Fixes incorrect parameter passed to helper in ``cosmicray_lacosmic``. [#796]
 
 2.4.1 (2023-05-30)
 ------------------
