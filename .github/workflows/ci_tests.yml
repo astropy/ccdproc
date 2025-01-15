@@ -55,7 +55,7 @@ jobs:
           - name: 'ubuntu-py312'
             os: ubuntu-latest
             python: '3.12'
-            tox_env: 'py310-test-alldeps-numpy126'
+            tox_env: 'py312-test-alldeps-numpy126'
 
           - name: 'macos-py312'
             os: macos-latest
