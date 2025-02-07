@@ -7,6 +7,7 @@ import math
 import numbers
 import warnings
 
+import array_api_compat
 import numpy as np
 from astropy import nddata, stats
 from astropy import units as u
@@ -347,6 +348,8 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
         units as the data in the parameter ``ccd_data``.
 
     """
+    # Get array namespace
+    xp = array_api_compat.array_namespace(ccd_data.data)
     if gain is not None and not isinstance(gain, Quantity):
         raise TypeError("gain must be a astropy.units.Quantity.")
 
@@ -373,7 +376,7 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
     if disregard_nan:
         data[mask] = 0
     else:
-        data[mask] = np.nan
+        data[mask] = xp.nan
         logging.warning("Negative values in array will be replaced with nan")
 
     # calculate the deviation
@@ -480,6 +483,9 @@ def subtract_overscan(
     if not isinstance(ccd, CCDData):
         raise TypeError("ccddata is not a CCDData object.")
 
+    # Set array namespace
+    xp = array_api_compat.array_namespace(ccd.data)
+
     if (overscan is not None and fits_section is not None) or (
         overscan is None and fits_section is None
     ):
@@ -498,24 +504,24 @@ def subtract_overscan(
         overscan_axis = 0 if overscan.shape[1] > overscan.shape[0] else 1
 
     if median:
-        oscan = np.median(overscan.data, axis=overscan_axis)
+        oscan = xp.median(overscan.data, axis=overscan_axis)
     else:
-        oscan = np.mean(overscan.data, axis=overscan_axis)
+        oscan = xp.mean(overscan.data, axis=overscan_axis)
 
     if model is not None:
         of = fitting.LinearLSQFitter()
-        yarr = np.arange(len(oscan))
+        yarr = xp.arange(len(oscan))
         oscan = of(model, yarr, oscan)
         oscan = oscan(yarr)
         if overscan_axis == 1:
-            oscan = np.reshape(oscan, (oscan.size, 1))
+            oscan = xp.reshape(oscan, (oscan.size, 1))
         else:
-            oscan = np.reshape(oscan, (1, oscan.size))
+            oscan = xp.reshape(oscan, (1, oscan.size))
     else:
         if overscan_axis == 1:
-            oscan = np.reshape(oscan, oscan.shape + (1,))
+            oscan = xp.reshape(oscan, oscan.shape + (1,))
         else:
-            oscan = np.reshape(oscan, (1,) + oscan.shape)
+            oscan = xp.reshape(oscan, (1,) + oscan.shape)
 
     subtracted = ccd.copy()
 
@@ -968,6 +974,9 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear"):
     from astropy.nddata.ccddata import _generate_wcs_and_update_header
     from reproject import reproject_interp
 
+    # Set array namespace
+    xp = array_api_compat.array_namespace(ccd.data)
+
     if not (ccd.wcs.is_celestial and target_wcs.is_celestial):
         raise ValueError("one or both WCS is not celestial.")
 
@@ -990,7 +999,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear"):
 
     # The reprojection will contain nan for any pixels for which the source
     # was outside the original image. Those should be masked also.
-    output_mask = np.isnan(projected_image_raw)
+    output_mask = xp.isnan(projected_image_raw)
 
     if reprojected_mask is not None:
         output_mask = output_mask | reprojected_mask
@@ -1216,14 +1225,21 @@ def rebin(ccd, newshape):
         rebin(arr1, (20,20))
     """
     # check to see that is in a nddata type
-    if isinstance(ccd, np.ndarray):
+    try:
+        xp = array_api_compat.array_namespace(ccd)
+    except TypeError:
+        # This will also raise aTypeError if ccd.data isn't an array
+        # but that is fine.
+        xp = array_api_compat.array_namespace(ccd.data)
+
+    if isinstance(ccd, xp.ndarray):
 
         # check to see that the two arrays are going to be the same length
         if len(ccd.shape) != len(newshape):
             raise ValueError("newshape does not have the same dimensions as " "ccd.")
 
         slices = [slice(0, old, old / new) for old, new in zip(ccd.shape, newshape)]
-        coordinates = np.mgrid[slices]
+        coordinates = xp.mgrid[slices]
         indices = coordinates.astype("i")
         return ccd[tuple(indices)]
 
