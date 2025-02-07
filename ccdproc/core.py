@@ -475,8 +475,8 @@ def subtract_overscan(
     Spaces are stripped out of the ``fits_section`` string.
 
     """
-    if not (isinstance(ccd, CCDData) or isinstance(ccd, np.ndarray)):
-        raise TypeError("ccddata is not a CCDData or ndarray object.")
+    if not isinstance(ccd, CCDData):
+        raise TypeError("ccddata is not a CCDData object.")
 
     if (overscan is not None and fits_section is not None) or (
         overscan is None and fits_section is None

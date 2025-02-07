@@ -10,6 +10,9 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- Do not allow the first argument of ``subtract_overscan`` to be a plain numpy
+  array. [#867]
+
 2.4.3 (2025-01-15)
 ------------------
 
