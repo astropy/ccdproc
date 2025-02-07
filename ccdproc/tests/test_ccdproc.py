@@ -305,6 +305,9 @@ def test_subtract_overscan_fails():
     # Does a fits_section which is not a string raise an error?
     with pytest.raises(TypeError):
         subtract_overscan(ccd_data, fits_section=5)
+    # Do we raise an error if the input is a plain array?
+    with pytest.raises(TypeError):
+        subtract_overscan(np.zeros((10, 10)), fits_section="[1:10]")
 
 
 def test_trim_image_fits_section_requires_string():
