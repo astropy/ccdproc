@@ -1228,9 +1228,12 @@ def rebin(ccd, newshape):
     try:
         xp = array_api_compat.array_namespace(ccd)
     except TypeError:
-        # This will also raise aTypeError if ccd.data isn't an array
-        # but that is fine.
-        xp = array_api_compat.array_namespace(ccd.data)
+        try:
+            # This will also raise a TypeError if ccd.data isn't an array
+            # but that is fine.
+            xp = array_api_compat.array_namespace(ccd.data)
+        except AttributeError as e:
+            raise TypeError("ccd is not an ndarray or a CCDData object.") from e
 
     if isinstance(ccd, xp.ndarray):
 
@@ -1265,8 +1268,11 @@ def rebin(ccd, newshape):
         raise TypeError("ccd is not an ndarray or a CCDData object.")
 
 
-def block_reduce(ccd, block_size, func=np.sum):
+def block_reduce(ccd, block_size, func=None):
     """Thin wrapper around `astropy.nddata.block_reduce`."""
+    if func is None:
+        xp = array_api_compat.array_namespace(ccd.data)
+        func = xp.sum
     data = nddata.block_reduce(ccd, block_size, func)
     if isinstance(ccd, CCDData):
         # unit and meta "should" be unaffected by the change of shape and can
@@ -1277,7 +1283,10 @@ def block_reduce(ccd, block_size, func=np.sum):
 
 def block_average(ccd, block_size):
     """Like `block_reduce` but with predefined ``func=np.mean``."""
-    data = nddata.block_reduce(ccd, block_size, np.mean)
+
+    xp = array_api_compat.array_namespace(ccd.data)
+
+    data = nddata.block_reduce(ccd, block_size, xp.mean)
     # Like in block_reduce:
     if isinstance(ccd, CCDData):
         data = CCDData(data, unit=ccd.unit, meta=ccd.meta.copy())
@@ -1988,13 +1997,16 @@ def ccdmask(
         # No data attribute or data has no shape attribute.
         raise ValueError('"ratio" should be a "CCDData".') from err
 
+    # Get array namespace
+    xp = array_api_compat.array_namespace(ratio.data)
+
     def _sigma_mask(baseline, one_sigma_value, lower_sigma, upper_sigma):
         """Helper function to mask values outside of the specified sigma range."""
         return (baseline < -lower_sigma * one_sigma_value) | (
             baseline > upper_sigma * one_sigma_value
         )
 
-    mask = ~np.isfinite(ratio.data)
+    mask = ~xp.isfinite(ratio.data)
     medsub = ratio.data - ndimage.median_filter(ratio.data, size=(nlmed, ncmed))
 
     if byblocks:
