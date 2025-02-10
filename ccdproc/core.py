@@ -1278,65 +1278,6 @@ except AttributeError:
     del block_reduce, block_average, block_replicate
 
 
-def _blkavg(data, newshape):
-    """
-    Block average an array such that it has the new shape.
-
-    Parameters
-    ----------
-    data : `numpy.ndarray` or `numpy.ma.MaskedArray`
-        Data to average.
-
-    newshape : tuple
-        Tuple containing the new shape for the array.
-
-    Returns
-    -------
-    output : `numpy.ndarray` or `numpy.ma.MaskedArray`
-        An array with the new shape and the average of the pixels.
-
-    Raises
-    ------
-    TypeError
-        A type error is raised if data is not an `numpy.ndarray`.
-
-    ValueError
-        A value error is raised if the dimensions of new shape is not equal
-        to data.
-
-    Notes
-    -----
-    This is based on the scipy cookbook for rebinning:
-    http://wiki.scipy.org/Cookbook/Rebinning
-    """
-    # check to see that is in a nddata type
-    if not isinstance(data, np.ndarray):
-        raise TypeError("data is not a ndarray object.")
-
-    # check to see that the two arrays are going to be the same length
-    if len(data.shape) != len(newshape):
-        raise ValueError("newshape does not have the same dimensions as data.")
-
-    shape = data.shape
-    lenShape = len(shape)
-    # fmt: off
-    factor = np.asarray(  # noqa: F841  factor is actually used in eval
-        shape
-    ) / np.asarray(
-        newshape
-    )
-    # fmt: on
-
-    evList = (
-        ["data.reshape("]
-        + [f"newshape[{i}],int(factor[{i}])," for i in range(lenShape)]
-        + [")"]
-        + [f".mean({i + 1})" for i in range(lenShape)]
-    )
-
-    return eval("".join(evList))
-
-
 def median_filter(data, *args, **kwargs):
     """See `scipy.ndimage.median_filter` for arguments.
 
