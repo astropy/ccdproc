@@ -69,6 +69,14 @@ _short_names = {
 }
 
 
+def _is_array(arr):
+    try:
+        array_api_compat.array_namespace(arr)
+    except TypeError:
+        return False
+    return True
+
+
 @log_to_metadata
 def ccd_process(
     ccd,
@@ -223,6 +231,9 @@ def ccd_process(
     # make a copy of the object
     nccd = ccd.copy()
 
+    # Set array namespace
+    xp = array_api_compat.array_namespace(nccd.data)
+
     # apply the overscan correction
     if isinstance(oscan, CCDData):
         nccd = subtract_overscan(
@@ -252,12 +263,13 @@ def ccd_process(
         raise ValueError("gain and readnoise must be specified to create error frame.")
 
     # apply the bad pixel mask
-    if isinstance(bad_pixel_mask, np.ndarray):
-        nccd.mask = bad_pixel_mask
-    elif bad_pixel_mask is None:
+    if bad_pixel_mask is None:
+        # Handle this simple case first....
         pass
+    elif _is_array(bad_pixel_mask):
+        nccd.mask = xp.asarray(bad_pixel_mask, dtype=bool)
     else:
-        raise TypeError("bad_pixel_mask is not None or numpy.ndarray.")
+        raise TypeError("bad_pixel_mask is not None or an array.")
 
     # apply the gain correction
     if not (gain is None or isinstance(gain, Quantity)):
@@ -489,7 +501,7 @@ def subtract_overscan(
     if (overscan is not None and fits_section is not None) or (
         overscan is None and fits_section is None
     ):
-        raise TypeError("specify either overscan or fits_section, but not " "both.")
+        raise TypeError("specify either overscan or fits_section, but not both.")
 
     if (overscan is not None) and (not isinstance(overscan, CCDData)):
         raise TypeError("overscan is not a CCDData object.")
@@ -1598,39 +1610,7 @@ def cosmicray_lacosmic(
 
         asy_background_kwargs = dict(inbkg=inbkg, invar=invar)
 
-    if isinstance(ccd, np.ndarray):
-        data = ccd
-
-        crmask, cleanarr = detect_cosmics(
-            data + data_offset,
-            inmask=None,
-            sigclip=sigclip,
-            sigfrac=sigfrac,
-            objlim=objlim,
-            gain=gain.value,
-            readnoise=readnoise.value,
-            satlevel=satlevel,
-            niter=niter,
-            sepmed=sepmed,
-            cleantype=cleantype,
-            fsmode=fsmode,
-            psfmodel=psfmodel,
-            psffwhm=psffwhm,
-            psfsize=psfsize,
-            psfk=psfk,
-            psfbeta=psfbeta,
-            verbose=verbose,
-            **asy_background_kwargs,
-        )
-
-        cleanarr = cleanarr - data_offset
-        cleanarr = _astroscrappy_gain_apply_helper(
-            cleanarr, gain.value, gain_apply, old_astroscrappy_interface
-        )
-
-        return cleanarr, crmask
-
-    elif isinstance(ccd, CCDData):
+    if isinstance(ccd, CCDData):
         # Start with a check for a special case: ccd is in electron, and
         # gain and readnoise have no units. In that case we issue a warning
         # instead of raising an error to avoid crashing user's pipelines.
@@ -1697,6 +1677,37 @@ def cosmicray_lacosmic(
             nccd.mask = nccd.mask + crmask
 
         return nccd
+    elif _is_array(ccd):
+        data = ccd
+
+        crmask, cleanarr = detect_cosmics(
+            data + data_offset,
+            inmask=None,
+            sigclip=sigclip,
+            sigfrac=sigfrac,
+            objlim=objlim,
+            gain=gain.value,
+            readnoise=readnoise.value,
+            satlevel=satlevel,
+            niter=niter,
+            sepmed=sepmed,
+            cleantype=cleantype,
+            fsmode=fsmode,
+            psfmodel=psfmodel,
+            psffwhm=psffwhm,
+            psfsize=psfsize,
+            psfk=psfk,
+            psfbeta=psfbeta,
+            verbose=verbose,
+            **asy_background_kwargs,
+        )
+
+        cleanarr = cleanarr - data_offset
+        cleanarr = _astroscrappy_gain_apply_helper(
+            cleanarr, gain.value, gain_apply, old_astroscrappy_interface
+        )
+
+        return cleanarr, crmask
 
     else:
         raise TypeError("ccd is not a CCDData or ndarray object.")
@@ -1810,21 +1821,25 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
        mask of the object will be created if it did not previously exist or be
        updated with the detected cosmic rays.
     """
-    if isinstance(ccd, np.ndarray):
-        data = ccd
+    if _is_array(ccd):
+        xp = array_api_compat.array_namespace(ccd)
+
+        # Masked data is not part of the array API so remove mask if present.
+        # Only look at the data array, guessing that if there is a .mask then
+        # there is also a .data.
+        if hasattr(ccd, "mask"):
+            data = ccd.data
+
+        data = xp.asarray(ccd)
 
         if error_image is None:
-            error_image = data.std()
-        else:
-            if not isinstance(error_image, (float, np.ndarray)):
+            error_image = xp.std(data)
+        elif not isinstance(error_image, float):
+            if not _is_array(error_image):
                 raise TypeError("error_image is not a float or ndarray.")
 
         # create the median image
         marr = ndimage.median_filter(data, size=(mbox, mbox))
-
-        # Only look at the data array
-        if isinstance(data, np.ma.MaskedArray):
-            data = data.data
 
         # Find the residual image
         rarr = (data - marr) / error_image
@@ -1839,7 +1854,9 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
         # replace bad pixels in the image
         ndata = data.copy()
         if rbox > 0:
-            data = np.ma.masked_array(data, (crarr == 1))
+            # Fun fact: scipy.ndimage ignores the mask, so may as well not
+            # bother with it.
+            # data = np.ma.masked_array(data, (crarr == 1))
             mdata = ndimage.median_filter(data, rbox)
             ndata[crarr == 1] = mdata[crarr == 1]
 
