@@ -7,6 +7,8 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Removed the unused private function `_blkavg`. [#869]
+
 Bug Fixes
 ^^^^^^^^^
 
