@@ -139,7 +139,7 @@ Uncertainty
 
 Pixel-by-pixel uncertainty can be calculated for you:
 
-    >>> data = np.random.normal(size=(10, 10), loc=1.0, scale=0.1)
+    >>> data = np.random.default_rng().normal(size=(10, 10), loc=1.0, scale=0.1)
     >>> ccd = CCDData(data, unit="electron")
     >>> ccd_new = ccdproc.create_deviation(ccd, readnoise=5 * u.electron)
 

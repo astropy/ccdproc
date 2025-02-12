@@ -59,7 +59,7 @@ def test_rebin_ccddata(mask_data, uncertainty):
     if mask_data:
         ccd_data.mask = np.zeros_like(ccd_data)
     if uncertainty:
-        err = np.random.normal(size=ccd_data.shape)
+        err = np.random.default_rng().normal(size=ccd_data.shape)
         ccd_data.uncertainty = StdDevUncertainty(err)
 
     with pytest.warns(AstropyDeprecationWarning):
