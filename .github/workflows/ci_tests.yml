@@ -55,7 +55,7 @@ jobs:
           - name: 'ubuntu-py312'
             os: ubuntu-latest
             python: '3.12'
-            tox_env: 'py310-test-alldeps-numpy126'
+            tox_env: 'py312-test-alldeps-numpy126'
 
           - name: 'macos-py312'
             os: macos-latest
@@ -86,7 +86,7 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
     - name: Set up Python ${{ matrix.python }}
-      uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
+      uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38  # v5.4.0
       with:
         python-version: ${{ matrix.python }}
     - name: Install base dependencies
@@ -109,4 +109,4 @@ jobs:
     #   run: tox -e ${{ matrix.tox_env }} -- --remote-data=any
     - name: Upload coverage to codecov
       if: "endsWith(matrix.tox_env, '-cov')"
-      uses: codecov/codecov-action@015f24e6818733317a2da2edd6290ab26238649a  # v5.0.7
+      uses: codecov/codecov-action@13ce06bfc6bbe3ecf90edbbf1bc32fe5978ca1d3  # v5.3.1
