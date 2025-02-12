@@ -8,7 +8,6 @@ import numbers
 import warnings
 
 import array_api_compat
-import numpy as np
 from astropy import nddata, stats
 from astropy import units as u
 from astropy.modeling import fitting
@@ -70,11 +69,57 @@ _short_names = {
 
 
 def _is_array(arr):
+    """
+    Check whether an object is an array by tring to find a namespace
+    for it.
+
+    Parameters
+    ----------
+    arr : object
+        Object to be tested.
+
+    Returns
+    -------
+    is_array : bool
+        ``True`` if arr is an array, ``False`` otherwise.
+    """
     try:
         array_api_compat.array_namespace(arr)
     except TypeError:
         return False
     return True
+
+
+def _percentile_fallback(array, percentiles):
+    """
+    Try calculating percentile using namespace, otherwise fall back to
+    an implmentation that uses sort. As of the 2023 version of the array API
+    there is no percentile function in the API but there is a sort function.
+
+    Parameters
+    ----------
+    array : array-like
+        Array from which to calculate the percentile.
+
+    percentiles : float or list-like
+        Percentile to calculate.
+
+    Returns
+    -------
+    percentile : float or list-like
+        Calculated percentile.
+    """
+    xp = array_api_compat.array_namespace(array)
+    try:
+        return xp.percentile(array, percentiles)
+    except AttributeError:
+        pass
+
+    # Fall back to using sort
+    sorted_array = xp.sort(array)
+
+    indexes = xp.astype(len(sorted_array) * xp.asarray(percentiles), int)
+    return sorted_array[indexes]
 
 
 @log_to_metadata
@@ -2036,18 +2081,40 @@ def ccdmask(
                 c1 = j * ncsig
                 c2 = min((j + 1) * ncsig, ncols)
                 block = medsub[l1:l2, c1:c2]
-                high = np.percentile(block.ravel(), 69.1)
-                low = np.percentile(block.ravel(), 30.9)
+                # The array API has no percentile function, so we use a small
+                # function that first tries percentile in case a particular
+                # array package has it but otherwise falls back to a sort.
+                # This is the case at least as of the 2023.12 API.
+                high = _percentile_fallback(
+                    xp.reshape(block, (xp.prod(block.shape),)), 69.1
+                )
+                low = _percentile_fallback(
+                    xp.reshape(block, (xp.prod(block.shape),)), 30.9
+                )
                 block_sigma = (high - low) / 2.0
                 block_mask = _sigma_mask(block, block_sigma, lsigma, hsigma)
-                mblock = np.ma.MaskedArray(block, mask=block_mask, copy=False)
+                # mblock = np.ma.MaskedArray(block, mask=block_mask, copy=False)
 
                 if findbadcolumns:
-                    csum = np.ma.sum(mblock, axis=0)
+                    # Not clear yet what the right solution to masking is in the array
+                    # API, so we'll use a boolean index to get the elements we want
+                    # and sum them....unfortunately, we'll need to do this in a loop
+                    # as far as I can tell.
+                    csum = []
+                    all_masked = []
+                    for k in range(block.shape[1]):
+                        subset = block[:, k]
+                        csum.append(xp.sum(subset[~block_mask[:, k]]))
+                        all_masked.append(xp.all(block_mask[:, k]))
+                    csum = xp.array(csum)
                     csum[csum <= 0] = 0
-                    csum_sigma = np.ma.MaskedArray(np.sqrt(c2 - c1 - csum))
-                    colmask = _sigma_mask(csum.filled(1), csum_sigma, lsigma, hsigma)
-                    block_mask[:, :] |= colmask[np.newaxis, :]
+                    csum_sigma = xp.array(xp.sqrt(c2 - c1 - csum))
+                    # The prior code filled the csum array with the value 1, which
+                    # only affects those cases where all of the input values to
+                    # the csum were masked, so we fill those with 1.
+                    csum[all_masked] = 1
+                    colmask = _sigma_mask(csum, csum_sigma, lsigma, hsigma)
+                    block_mask[:, :] |= colmask[xp.newaxis, :]
 
                 mask[l1:l2, c1:c2] = block_mask
     else:
@@ -2065,7 +2132,7 @@ def ccdmask(
                 if mask[line, col]:
                     for i in range(2, ngood + 2):
                         lend = line + i
-                        if mask[lend, col] and not np.all(mask[line : lend + 1, col]):
+                        if mask[lend, col] and not xp.all(mask[line : lend + 1, col]):
                             mask[line:lend, col] = True
     return mask
 
