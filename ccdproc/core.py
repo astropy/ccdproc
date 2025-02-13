@@ -818,7 +818,9 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None):
 
     # If a norm_value was input and is positive, use it to scale the flat
     if norm_value is not None and norm_value > 0:
-        flat_mean = norm_value if hasattr(norm_value, 'unit') else norm_value * use_flat.unit
+        flat_mean = (
+            norm_value if hasattr(norm_value, "unit") else norm_value * use_flat.unit
+        )
     elif norm_value is not None:
         # norm_value was set to a bad value
         raise ValueError("norm_value must be greater than zero.")
@@ -829,13 +831,11 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None):
     # Normalize the flat.
     flat_normed = use_flat.divide(flat_mean)
 
-    # TODO: Check that the normed flat is unitless?
-
     # Set masked values to unity; the array element remains masked, but the data
     # value is set to unity to avoid runtime divide-by-zero errors that are due
     # to a masked value being set to 0.
     if flat_normed.mask.any():
-        flat_normed.data[flat_normed.mask] = 1.
+        flat_normed.data[flat_normed.mask] = 1.0
 
     # divide through the flat
     flat_corrected = ccd.divide(flat_normed)
