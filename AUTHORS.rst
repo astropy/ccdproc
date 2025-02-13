@@ -47,6 +47,7 @@ Alphabetical list of code contributors
 * James McCormac (@jmccormac01)
 * Abigale Moen (@AbigaleMoen)
 * Stefan Nelson (@stefannelson)
+* Alex Niemi (@AlexN1234)
 * Joe Philip Ninan (@indiajoe)
 * Punyaslok Pattnaik (@Punyaslok)
 * Adrian Price-Whelan (@adrn)
