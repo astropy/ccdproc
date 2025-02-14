@@ -8,12 +8,15 @@ Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - Removed the unused private function `_blkavg`. [#869]
+- Elements of the data array in a flat image that are masked are set to 1
+  instead of 0.
 
 Bug Fixes
 ^^^^^^^^^
 
 - Do not allow the first argument of ``subtract_overscan`` to be a plain numpy
   array. [#867]
+- ``Combiner.sigma_clipping`` no longer overwrites the existing mask.
 
 2.4.3 (2025-01-15)
 ------------------
