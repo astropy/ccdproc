@@ -26,7 +26,7 @@ See the documentation for `~astropy.nddata.CCDData` for a complete list of attri
 
 Most operations are performed by functions in `ccdproc`:
 
-    >>> dark = CCDData(np.random.normal(size=(10, 10)), unit="adu")
+    >>> dark = CCDData(np.random.default_rng().normal(size=(10, 10)), unit="adu")
     >>> dark_sub = ccdproc.subtract_dark(image_1, dark,
     ...                                  dark_exposure=30*u.second,
     ...                                  data_exposure=15*u.second,
@@ -63,7 +63,7 @@ with `~ccdproc.gain_correct` that you do not get with multiplication:
 The same advantages apply to operations that are more complex, like flat
 correction, in which one image is divided by another:
 
-    >>> flat = CCDData(np.random.normal(1.0, scale=0.1, size=(10, 10)),
+    >>> flat = CCDData(np.random.default_rng().normal(1.0, scale=0.1, size=(10, 10)),
     ...                        unit='adu')
     >>> image_1_flat = ccdproc.flat_correct(image_1, flat)
 

@@ -40,7 +40,7 @@ An uncertainty can be calculated from your data with
     >>> import numpy as np
     >>> from astropy.nddata import CCDData
     >>> import ccdproc
-    >>> img = np.random.normal(loc=10, scale=0.5, size=(100, 232))
+    >>> img = np.random.default_rng().normal(loc=10, scale=0.5, size=(100, 232))
     >>> data = CCDData(img, unit=u.adu)
     >>> data_with_deviation = ccdproc.create_deviation(
     ...                           data, gain=1.5 * u.electron/u.adu,
@@ -269,7 +269,7 @@ bias-subtracted* so that it can be scaled by exposure time if necessary.
 
 Subtract the bias with `~ccdproc.subtract_bias`:
 
-    >>> fake_bias_data = np.random.normal(size=trimmed.shape)  # just for illustration
+    >>> fake_bias_data = np.random.default_rng().normal(size=trimmed.shape)  # just for illustration
     >>> master_bias = CCDData(fake_bias_data, unit=u.electron,
     ...                       mask=np.zeros(trimmed.shape))
     >>> bias_subtracted = ccdproc.subtract_bias(trimmed, master_bias)
@@ -299,7 +299,7 @@ Correct flat
 Given a flat frame called ``master_flat``, use `~ccdproc.flat_correct` to
 perform this calibration:
 
-    >>> fake_flat_data = np.random.normal(loc=1.0, scale=0.05, size=trimmed.shape)
+    >>> fake_flat_data = np.random.default_rng().normal(loc=1.0, scale=0.05, size=trimmed.shape)
     >>> master_flat = CCDData(fake_flat_data, unit=u.electron)
     >>> reduced_image = ccdproc.flat_correct(dark_subtracted, master_flat)
 
@@ -427,7 +427,7 @@ which should be removed rather than propagated:
 
     # create some random signals
     with NumpyRNGContext(1234):
-        noise = np.random.exponential(40, (250, 250))
+        noise = np.random.default_rng().exponential(40, (250, 250))
         # remove low signal
         noise[noise < 100] = 0
         data += noise

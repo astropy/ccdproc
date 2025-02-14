@@ -25,7 +25,7 @@ The first step in combining a set of images is creating a
     >>> from astropy.nddata import CCDData
     >>> from ccdproc import Combiner
     >>> import numpy as np
-    >>> ccd1 = CCDData(np.random.normal(size=(10,10)),
+    >>> ccd1 = CCDData(np.random.default_rng().normal(size=(10,10)),
     ...                unit=u.adu)
     >>> ccd2 = ccd1.copy()
     >>> ccd3 = ccd1.copy()
@@ -164,7 +164,7 @@ are being combined. To weight the three images differently, set
 To use pixel-wise weighting set `~ccdproc.Combiner.weights` to an array that
 matches the number of images and image shape, in this case ``3 x 10 x 10``:
 
-    >>> combiner.weights = np.random.random_sample([3, 10, 10])
+    >>> combiner.weights = np.random.default_rng().random([3, 10, 10])
     >>> combine_weighted_by_image = combiner.average_combine()  # doctest: +IGNORE_WARNINGS
 
 .. note::

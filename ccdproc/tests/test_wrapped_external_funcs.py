@@ -69,7 +69,7 @@ def test_medianfilter_unusued():
 
 
 def test_medianfilter_ndarray():
-    arr = np.random.random((5, 5))
+    arr = np.random.default_rng().random((5, 5))
     result = core.median_filter(arr, 3)
     reference = ndimage.median_filter(arr, 3)
     # It's a wrapped function so we can use the equal comparison.

@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 from astropy import units as u
 from astropy.nddata import CCDData
-from astropy.utils import NumpyRNGContext
 
 from ..utils.sample_directory import directory_for_testing
 
@@ -54,8 +53,10 @@ def ccd_data(
     scale = data_scale
     mean = data_mean
 
-    with NumpyRNGContext(rng_seed):
-        data = np.random.normal(loc=mean, size=[size, size], scale=scale)
+    ##Create random number generator with a specified state
+    rng = np.random.default_rng(seed=rng_seed)
+
+    data = rng.normal(loc=mean, size=[size, size], scale=scale)
 
     fake_meta = {"my_key": 42, "your_key": "not 42"}
     ccd = CCDData(data, unit=u.adu)

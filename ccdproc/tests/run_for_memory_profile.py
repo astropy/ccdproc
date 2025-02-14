@@ -34,19 +34,17 @@ def generate_fits_files(n_images, size=None, seed=1523):
     else:
         use_size = (size, size)
 
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed=seed)
 
     base_name = "test-combine-{num:03d}.fits"
 
     for num in range(n_images):
-        data = np.random.normal(size=use_size)
+        data = rng.normal(size=use_size)
         # Now add some outlying pixels so there is something to clip
         n_bad = 50000
-        bad_x = np.random.randint(0, high=use_size[0] - 1, size=n_bad)
-        bad_y = np.random.randint(0, high=use_size[1] - 1, size=n_bad)
-        data[bad_x, bad_y] = np.random.choice([-1, 1], size=n_bad) * (
-            10 + np.random.rand(n_bad)
-        )
+        bad_x = rng.integers(0, high=use_size[0] - 1, size=n_bad)
+        bad_y = rng.integers(0, high=use_size[1] - 1, size=n_bad)
+        data[bad_x, bad_y] = rng.choice([-1, 1], size=n_bad) * (10 + rng.random(n_bad))
         hdu = fits.PrimaryHDU(data=np.asarray(data, dtype="float32"))
         hdu.header["for_prof"] = "yes"
         hdu.header["bunit"] = "adu"
