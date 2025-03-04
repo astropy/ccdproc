@@ -826,7 +826,7 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None):
         raise ValueError("norm_value must be greater than zero.")
     else:
         # norm_value was not set, use mean of the image.
-        flat_mean = use_flat.mean()
+        flat_mean = use_flat.data.mean() * use_flat.unit
 
     # Normalize the flat.
     flat_normed = use_flat.divide(flat_mean)
