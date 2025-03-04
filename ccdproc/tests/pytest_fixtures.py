@@ -2,6 +2,8 @@
 
 from shutil import rmtree
 
+# import dask.array as da
+import jax.numpy as jnp
 import numpy as np
 import pytest
 from astropy import units as u
@@ -59,7 +61,7 @@ def ccd_data(
     data = rng.normal(loc=mean, size=[size, size], scale=scale)
 
     fake_meta = {"my_key": 42, "your_key": "not 42"}
-    ccd = CCDData(data, unit=u.adu)
+    ccd = CCDData(jnp.array(data), unit=u.adu)
     ccd.header = fake_meta
     return ccd
 
