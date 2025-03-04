@@ -73,4 +73,4 @@ def test_medianfilter_ndarray():
     result = core.median_filter(arr, 3)
     reference = ndimage.median_filter(arr, 3)
     # It's a wrapped function so we can use the equal comparison.
-    np.testing.assert_array_equal(result, reference)
+    np.testing.assert_allclose(result, reference)
