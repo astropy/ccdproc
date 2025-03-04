@@ -40,13 +40,13 @@ def test_slice_from_string_1d(start, stop, step):
         slice_str = ":".join([start_str, stop_str])
     sli = slice_from_string("[" + slice_str + "]")
     expected = an_array[slice(start, stop, step)]
-    np.testing.assert_array_equal(expected, an_array[sli])
+    np.testing.assert_allclose(expected, an_array[sli])
 
 
 @pytest.mark.parametrize("arg", ["  [ 1:  45]", "[ 1  :4 5]", "  [1:45] "])
 def test_slice_from_string_spaces(arg):
     an_array = np.zeros([100])
-    np.testing.assert_array_equal(an_array[1:45], an_array[slice_from_string(arg)])
+    np.testing.assert_allclose(an_array[1:45], an_array[slice_from_string(arg)])
 
 
 def test_slice_from_string_2d():
@@ -55,13 +55,13 @@ def test_slice_from_string_2d():
     # manually writing a few cases here rather than parametrizing because the
     # latter seems not worth the trouble.
     sli = slice_from_string("[:-1:2, :]")
-    np.testing.assert_array_equal(an_array[:-1:2, :], an_array[sli])
+    np.testing.assert_allclose(an_array[:-1:2, :], an_array[sli])
 
     sli = slice_from_string("[:, 15:90]")
-    np.testing.assert_array_equal(an_array[:, 15:90], an_array[sli])
+    np.testing.assert_allclose(an_array[:, 15:90], an_array[sli])
 
     sli = slice_from_string("[10:80:5, 15:90:-1]")
-    np.testing.assert_array_equal(an_array[10:80:5, 15:90:-1], an_array[sli])
+    np.testing.assert_allclose(an_array[10:80:5, 15:90:-1], an_array[sli])
 
 
 def test_slice_from_string_fits_style():

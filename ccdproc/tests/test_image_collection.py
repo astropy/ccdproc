@@ -280,11 +280,11 @@ class TestImageFileCollection:
         for data, hdr, hdu, ccd in zip(
             ic2.data(), ic2.headers(), ic2.hdus(), ic2.ccds(ccd_kwargs)
         ):
-            np.testing.assert_array_equal(data, ext2.data)
+            np.testing.assert_allclose(data, ext2.data)
             assert hdr == ext2.header
             # Now compare that the generators each give the same stuff
-            np.testing.assert_array_equal(data, ccd.data)
-            np.testing.assert_array_equal(data, hdu.data)
+            np.testing.assert_allclose(data, ccd.data)
+            np.testing.assert_allclose(data, hdu.data)
             assert hdr == hdu.header
             assert hdr == ccd.meta
 

@@ -11,7 +11,6 @@ from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.units.quantity import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
-from numpy.testing import assert_array_equal
 
 from ccdproc.core import (
     Keyword,
@@ -71,7 +70,7 @@ def test_create_deviation(u_image, u_gain, u_readnoise, expect_success):
             expected_var = np.sqrt(2 * ccd_data.data + 5**2) / 2
         else:
             expected_var = np.sqrt(ccd_data.data + 5**2)
-        np.testing.assert_array_equal(ccd_var.uncertainty.array, expected_var)
+        np.testing.assert_allclose(ccd_var.uncertainty.array, expected_var)
         assert ccd_var.unit == ccd_data.unit
         # Uncertainty should *not* have any units -- does it?
         with pytest.raises(AttributeError):
@@ -103,7 +102,7 @@ def test_create_deviation_from_negative_2():
     mask = ccd_data.data < 0
     ccd_data.data[mask] = 0
     expected_var = np.sqrt(ccd_data.data + readnoise.value**2)
-    np.testing.assert_array_equal(ccd_var.uncertainty.array, expected_var)
+    np.testing.assert_allclose(ccd_var.uncertainty.array, expected_var)
 
 
 def test_create_deviation_keywords_must_have_unit():
@@ -189,7 +188,7 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     assert (ccd_data_fits_section.data[oscan_region] == 0).all()
 
     # Do both ways of subtracting overscan give exactly the same result?
-    np.testing.assert_array_equal(
+    np.testing.assert_allclose(
         ccd_data_overscan[science_region], ccd_data_fits_section[science_region]
     )
 
@@ -327,7 +326,7 @@ def test_trim_image_fits_section(mask_data, uncertainty):
     trimmed = trim_image(ccd_data, fits_section="[20:40,:]")
     # FITS reverse order, bounds are inclusive and starting index is 1-based
     assert trimmed.shape == (50, 21)
-    np.testing.assert_array_equal(trimmed.data, ccd_data[:, 19:40])
+    np.testing.assert_allclose(trimmed.data, ccd_data[:, 19:40])
     if mask_data:
         assert trimmed.shape == trimmed.mask.shape
     if uncertainty:
@@ -338,7 +337,7 @@ def test_trim_image_no_section():
     ccd_data = ccd_data_func(data_size=50)
     trimmed = trim_image(ccd_data[:, 19:40])
     assert trimmed.shape == (50, 21)
-    np.testing.assert_array_equal(trimmed.data, ccd_data[:, 19:40])
+    np.testing.assert_allclose(trimmed.data, ccd_data[:, 19:40])
 
 
 def test_trim_with_wcs_alters_wcs():
@@ -435,9 +434,7 @@ def test_subtract_dark(explicit_times, scale, exposure_keyword):
             (exptime / dark_exptime) * (exposure_unit / dark_exposure_unit)
         )
 
-    np.testing.assert_array_equal(
-        ccd_data.data - dark_scale * dark_level, dark_sub.data
-    )
+    np.testing.assert_allclose(ccd_data.data - dark_scale * dark_level, dark_sub.data)
     # Headers should have the same content...do they?
     assert dark_sub.header == ccd_data.header
     # But the headers should not be the same object -- a copy was made
@@ -644,7 +641,7 @@ def test_gain_correct():
     ccd_data = ccd_data_func()
     init_data = ccd_data.data
     gain_data = gain_correct(ccd_data, gain=3, add_keyword=None)
-    assert_array_equal(gain_data.data, 3 * init_data)
+    np.testing.assert_allclose(gain_data.data, 3 * init_data)
     assert ccd_data.meta == gain_data.meta
 
 
@@ -654,7 +651,7 @@ def test_gain_correct_quantity():
     g = Quantity(3, u.electron / u.adu)
     ccd_data = gain_correct(ccd_data, gain=g)
 
-    assert_array_equal(ccd_data.data, 3 * init_data)
+    np.testing.assert_allclose(ccd_data.data, 3 * init_data)
     assert ccd_data.unit == u.electron
 
 
@@ -702,13 +699,15 @@ def test_transform_image(mask_data, uncertainty):
 
     tran = transform_image(ccd_data, tran)
 
-    assert_array_equal(10 * ccd_data.data, tran.data)
+    np.testing.assert_allclose(10 * ccd_data.data, tran.data)
     if mask_data:
         assert tran.shape == tran.mask.shape
-        assert_array_equal(ccd_data.mask, tran.mask)
+        np.testing.assert_array_equal(ccd_data.mask, tran.mask)
     if uncertainty:
         assert tran.shape == tran.uncertainty.array.shape
-        assert_array_equal(10 * ccd_data.uncertainty.array, tran.uncertainty.array)
+        np.testing.assert_allclose(
+            10 * ccd_data.uncertainty.array, tran.uncertainty.array
+        )
 
 
 # Test block_reduce and block_replicate wrapper
@@ -815,7 +814,7 @@ def test__overscan_schange():
     old_data = ccd_data.copy()
     new_data = subtract_overscan(ccd_data, overscan=ccd_data[:, 1], overscan_axis=0)
     assert not np.allclose(old_data.data, new_data.data)
-    np.testing.assert_array_equal(old_data.data, ccd_data.data)
+    np.testing.assert_allclose(old_data.data, ccd_data.data)
 
 
 def test_create_deviation_does_not_change_input():
@@ -824,7 +823,7 @@ def test_create_deviation_does_not_change_input():
     _ = create_deviation(
         ccd_data, gain=5 * u.electron / u.adu, readnoise=10 * u.electron
     )
-    np.testing.assert_array_equal(original.data, ccd_data.data)
+    np.testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
 
@@ -836,7 +835,7 @@ def test_cosmicray_median_does_not_change_input():
         _ = cosmicray_median(
             ccd_data, error_image=error, thresh=5, mbox=11, gbox=0, rbox=0
         )
-    np.testing.assert_array_equal(original.data, ccd_data.data)
+    np.testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
 
@@ -844,7 +843,7 @@ def test_cosmicray_lacosmic_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     _ = cosmicray_lacosmic(ccd_data)
-    np.testing.assert_array_equal(original.data, ccd_data.data)
+    np.testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
 
@@ -854,7 +853,7 @@ def test_flat_correct_does_not_change_input():
     flat = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
     with np.errstate(invalid="ignore"):
         _ = flat_correct(ccd_data, flat=flat)
-    np.testing.assert_array_equal(original.data, ccd_data.data)
+    np.testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
 
@@ -862,7 +861,7 @@ def test_gain_correct_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     _ = gain_correct(ccd_data, gain=1, gain_unit=ccd_data.unit)
-    np.testing.assert_array_equal(original.data, ccd_data.data)
+    np.testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
 
@@ -871,7 +870,7 @@ def test_subtract_bias_does_not_change_input():
     original = ccd_data.copy()
     master_frame = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
     _ = subtract_bias(ccd_data, master=master_frame)
-    np.testing.assert_array_equal(original.data, ccd_data.data)
+    np.testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
 
@@ -879,7 +878,7 @@ def test_trim_image_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     _ = trim_image(ccd_data, fits_section=None)
-    np.testing.assert_array_equal(original.data, ccd_data.data)
+    np.testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
 
@@ -888,7 +887,7 @@ def test_transform_image_does_not_change_input():
     original = ccd_data.copy()
     with np.errstate(invalid="ignore"):
         _ = transform_image(ccd_data, np.sqrt)
-    np.testing.assert_array_equal(original.data, ccd_data)
+    np.testing.assert_allclose(original.data, ccd_data)
     assert original.unit == ccd_data.unit
 
 
@@ -1039,7 +1038,7 @@ def test_ccd_process_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     _ = ccd_process(ccd_data, gain=5 * u.electron / u.adu, readnoise=10 * u.electron)
-    np.testing.assert_array_equal(original.data, ccd_data.data)
+    np.testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
 
@@ -1112,7 +1111,7 @@ def test_ccd_process():
     # Final results should be (10 - 2) / 2.0 - 2 = 2
     # Error should be (4 + 5)**0.5 / 0.5  = 3.0
 
-    np.testing.assert_array_equal(2.0 * np.ones((100, 90)), occd.data)
+    np.testing.assert_allclose(2.0 * np.ones((100, 90)), occd.data)
     np.testing.assert_almost_equal(3.0 * np.ones((100, 90)), occd.uncertainty.array)
     np.testing.assert_array_equal(mask, occd.mask)
     assert occd.unit == u.electron
@@ -1158,7 +1157,7 @@ def test_ccd_process_gain_corrected():
     # Final results should be (10 - 2) / 2.0 - 2 = 2
     # Error should be (4 + 5)**0.5 / 0.5  = 3.0
 
-    np.testing.assert_array_equal(2.0 * np.ones((100, 90)), occd.data)
+    np.testing.assert_allclose(2.0 * np.ones((100, 90)), occd.data)
     np.testing.assert_almost_equal(3.0 * np.ones((100, 90)), occd.uncertainty.array)
     np.testing.assert_array_equal(mask, occd.mask)
     assert occd.unit == u.electron

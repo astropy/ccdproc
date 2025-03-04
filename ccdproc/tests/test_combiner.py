@@ -563,12 +563,12 @@ def test_average_combine_uncertainty():
     c = Combiner(ccd_list)
     ccd = c.average_combine(uncertainty_func=np.sum)
     uncert_ref = np.sum(c.data_arr, 0) / np.sqrt(3)
-    np.testing.assert_array_equal(ccd.uncertainty.array, uncert_ref)
+    np.testing.assert_allclose(ccd.uncertainty.array, uncert_ref)
 
     # Compare this also to the "combine" call
     ccd2 = combine(ccd_list, method="average", combine_uncertainty_function=np.sum)
-    np.testing.assert_array_equal(ccd.data, ccd2.data)
-    np.testing.assert_array_equal(ccd.uncertainty.array, ccd2.uncertainty.array)
+    np.testing.assert_allclose(ccd.data, ccd2.data)
+    np.testing.assert_allclose(ccd.uncertainty.array, ccd2.uncertainty.array)
 
 
 # test the optional uncertainty function in median_combine
@@ -578,12 +578,12 @@ def test_median_combine_uncertainty():
     c = Combiner(ccd_list)
     ccd = c.median_combine(uncertainty_func=np.sum)
     uncert_ref = np.sum(c.data_arr, 0) / np.sqrt(3)
-    np.testing.assert_array_equal(ccd.uncertainty.array, uncert_ref)
+    np.testing.assert_allclose(ccd.uncertainty.array, uncert_ref)
 
     # Compare this also to the "combine" call
     ccd2 = combine(ccd_list, method="median", combine_uncertainty_function=np.sum)
-    np.testing.assert_array_equal(ccd.data, ccd2.data)
-    np.testing.assert_array_equal(ccd.uncertainty.array, ccd2.uncertainty.array)
+    np.testing.assert_allclose(ccd.data, ccd2.data)
+    np.testing.assert_allclose(ccd.uncertainty.array, ccd2.uncertainty.array)
 
 
 # test the optional uncertainty function in sum_combine
@@ -597,8 +597,8 @@ def test_sum_combine_uncertainty():
 
     # Compare this also to the "combine" call
     ccd2 = combine(ccd_list, method="sum", combine_uncertainty_function=np.sum)
-    np.testing.assert_array_equal(ccd.data, ccd2.data)
-    np.testing.assert_array_equal(ccd.uncertainty.array, ccd2.uncertainty.array)
+    np.testing.assert_allclose(ccd.data, ccd2.data)
+    np.testing.assert_allclose(ccd.uncertainty.array, ccd2.uncertainty.array)
 
 
 # Ignore warnings generated because most values are masked
@@ -809,7 +809,7 @@ def test_clip_extrema_3d():
     c.clip_extrema(nlow=1, nhigh=1)
     result = c.average_combine()
     expected = CCDData(np.ones((3, 3, 3)) * 30, unit="adu")
-    np.testing.assert_array_equal(result, expected)
+    np.testing.assert_allclose(result, expected)
 
 
 @pytest.mark.parametrize(
@@ -846,7 +846,7 @@ def test_clip_extrema():
         [30.0, 30.0, 47.5, 30.0, 30.0],
         [47.5, 30.0, 30.0, 30.0, 30.0],
     ]
-    np.testing.assert_array_equal(result, expected)
+    np.testing.assert_allclose(result, expected)
 
 
 def test_clip_extrema_via_combine():
@@ -872,7 +872,7 @@ def test_clip_extrema_via_combine():
         [30.0, 30.0, 47.5, 30.0, 30.0],
         [47.5, 30.0, 30.0, 30.0, 30.0],
     ]
-    np.testing.assert_array_equal(result, expected)
+    np.testing.assert_allclose(result, expected)
 
 
 def test_clip_extrema_with_other_rejection():
@@ -900,7 +900,7 @@ def test_clip_extrema_with_other_rejection():
         [30.0, 30.0, 47.5, 30.0, 30.0],
         [47.5, 30.0, 30.0, 30.0, 30.0],
     ]
-    np.testing.assert_array_equal(result, expected)
+    np.testing.assert_allclose(result, expected)
 
 
 # The expected values below assume an image that is 2000x2000

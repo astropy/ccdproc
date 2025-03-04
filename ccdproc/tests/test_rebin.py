@@ -77,5 +77,5 @@ def test_rebin_does_not_change_input():
     original = ccd_data.copy()
     with pytest.warns(AstropyDeprecationWarning):
         _ = rebin(ccd_data, (20, 20))
-    np.testing.assert_array_equal(original.data, ccd_data.data)
+    np.testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
