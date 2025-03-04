@@ -67,6 +67,7 @@ Alphabetical list of code contributors
 * Josh Walawender (@joshwalawender)
 * Nathan Walker (@walkerna22)
 * Benjamin Weiner (@bjweiner)
+* Kyle B. Westfall (@kbwestfall)
 * Jiyong Youn (@hletrd)
 
 Additional contributors
