@@ -834,7 +834,7 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None):
     # Set masked values to unity; the array element remains masked, but the data
     # value is set to unity to avoid runtime divide-by-zero errors that are due
     # to a masked value being set to 0.
-    if flat_normed.mask.any():
+    if flat_normed.mask is not None and flat_normed.mask.any():
         flat_normed.data[flat_normed.mask] = 1.0
 
     # divide through the flat
