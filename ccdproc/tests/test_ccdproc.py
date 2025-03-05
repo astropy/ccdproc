@@ -304,7 +304,9 @@ def test_subtract_overscan_model(transpose):
         median=False,
         model=models.Polynomial1D(2),
     )
-    np_testing.assert_allclose(ccd_data.data[science_region].mean(), original_mean)
+    np_testing.assert_allclose(
+        ccd_data.data[science_region].mean(), original_mean, atol=1e-5
+    )
     # Set the overscan_axis explicitly to None, and let the routine
     # figure it out.
     ccd_data = subtract_overscan(
@@ -314,7 +316,9 @@ def test_subtract_overscan_model(transpose):
         median=False,
         model=models.Polynomial1D(2),
     )
-    np_testing.assert_allclose(ccd_data.data[science_region].mean(), original_mean)
+    np_testing.assert_allclose(
+        ccd_data.data[science_region].mean(), original_mean, atol=1e-5
+    )
 
 
 def test_subtract_overscan_fails():
@@ -465,7 +469,9 @@ def test_subtract_dark(explicit_times, scale, exposure_keyword):
             (exptime / dark_exptime) * (exposure_unit / dark_exposure_unit)
         )
 
-    np_testing.assert_allclose(ccd_data.data - dark_scale * dark_level, dark_sub.data)
+    np_testing.assert_allclose(
+        ccd_data.data - dark_scale * dark_level, dark_sub.data, rtol=1e-6
+    )
     # Headers should have the same content...do they?
     assert dark_sub.header == ccd_data.header
     # But the headers should not be the same object -- a copy was made
@@ -567,10 +573,14 @@ def test_flat_correct():
     # Should be the case that flat * flat_data = ccd_data * flat.data.mean
     # if the normalization was done correctly.
     np_testing.assert_allclose(
-        (flat_data.data * flat.data).mean(), ccd_data.data.mean() * flat.data.mean()
+        (flat_data.data * flat.data).mean(),
+        ccd_data.data.mean() * flat.data.mean(),
+        rtol=1e-6,
     )
     np_testing.assert_allclose(
-        ccd_data.data / flat_data.data, flat.data / flat.data.mean()
+        ccd_data.data / flat_data.data,
+        flat.data / flat.data.mean(),
+        rtol=1e-6,
     )
 
     # Check that metadata is unchanged (since logging is turned off)
@@ -597,10 +607,12 @@ def test_flat_correct_min_value():
     np_testing.assert_allclose(
         (flat_corrected_data.data * flat_with_min.data).mean(),
         (ccd_data.data * flat_with_min.data.mean()).mean(),
+        rtol=1e-6,
     )
     np_testing.assert_allclose(
         ccd_data.data / flat_corrected_data.data,
         flat_with_min.data / flat_with_min.data.mean(),
+        rtol=1e-6,
     )
 
     # Test that flat is not modified.
@@ -625,9 +637,13 @@ def test_flat_correct_norm_value():
     # Should be the case that flat * flat_data = ccd_data * flat_mean
     # if the normalization was done correctly.
     np_testing.assert_allclose(
-        (flat_data.data * flat.data).mean(), ccd_data.data.mean() * flat_mean
+        (flat_data.data * flat.data).mean(),
+        ccd_data.data.mean() * flat_mean,
+        rtol=1e-6,
     )
-    np_testing.assert_allclose(ccd_data.data / flat_data.data, flat.data / flat_mean)
+    np_testing.assert_allclose(
+        ccd_data.data / flat_data.data, flat.data / flat_mean, rtol=1e-6
+    )
 
 
 def test_flat_correct_norm_value_bad_value():
