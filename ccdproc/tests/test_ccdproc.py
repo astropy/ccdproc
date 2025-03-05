@@ -174,8 +174,8 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     )
     # Is the mean of the "science" region the sum of sky and the mean the
     # "science" section had before backgrounds were added?
-    np_testing.assert_almost_equal(
-        ccd_data_overscan.data[science_region].mean(), sky + original_mean
+    np_testing.assert_allclose(
+        ccd_data_overscan.data[science_region].mean(), sky + original_mean, rtol=1e-6
     )
     # Is the overscan region zero?
     assert (ccd_data_overscan.data[oscan_region] == 0).all()
@@ -191,8 +191,10 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     )
     # Is the mean of the "science" region the sum of sky and the mean the
     # "science" section had before backgrounds were added?
-    np_testing.assert_almost_equal(
-        ccd_data_fits_section.data[science_region].mean(), sky + original_mean
+    np_testing.assert_allclose(
+        ccd_data_fits_section.data[science_region].mean(),
+        sky + original_mean,
+        rtol=1e-6,
     )
     # Is the overscan region zero?
     assert (ccd_data_fits_section.data[oscan_region] == 0).all()
@@ -211,8 +213,10 @@ def test_subtract_overscan(median, transpose, data_rectangle):
         median=median,
         model=None,
     )
-    np_testing.assert_almost_equal(
-        ccd_data_overscan_auto.data[science_region].mean(), sky + original_mean
+    np_testing.assert_allclose(
+        ccd_data_overscan_auto.data[science_region].mean(),
+        sky + original_mean,
+        rtol=1e-6,
     )
     # Use overscan_axis=None with a FITS section
     ccd_data_fits_section_overscan_auto = subtract_overscan(
@@ -222,9 +226,10 @@ def test_subtract_overscan(median, transpose, data_rectangle):
         median=median,
         model=None,
     )
-    np_testing.assert_almost_equal(
+    np_testing.assert_allclose(
         ccd_data_fits_section_overscan_auto.data[science_region].mean(),
         sky + original_mean,
+        rtol=1e-6,
     )
     # Overscan_axis should be 1 for a square overscan region
     # This test only works for a non-square data region, but the
@@ -283,7 +288,7 @@ def test_subtract_overscan_model(transpose):
         median=False,
         model=models.Polynomial1D(2),
     )
-    np_testing.assert_almost_equal(ccd_data.data[science_region].mean(), original_mean)
+    np_testing.assert_allclose(ccd_data.data[science_region].mean(), original_mean)
     # Set the overscan_axis explicitly to None, and let the routine
     # figure it out.
     ccd_data = subtract_overscan(
@@ -293,7 +298,7 @@ def test_subtract_overscan_model(transpose):
         median=False,
         model=models.Polynomial1D(2),
     )
-    np_testing.assert_almost_equal(ccd_data.data[science_region].mean(), original_mean)
+    np_testing.assert_allclose(ccd_data.data[science_region].mean(), original_mean)
 
 
 def test_subtract_overscan_fails():
@@ -377,7 +382,7 @@ def test_subtract_bias():
     master_bias = CCDData(master_bias_array, unit=ccd_data.unit)
     no_bias = subtract_bias(ccd_data, master_bias, add_keyword=None)
     # Does the data we are left with have the correct average?
-    np_testing.assert_almost_equal(no_bias.data.mean(), data_avg)
+    np_testing.assert_allclose(no_bias.data.mean(), data_avg)
     # With logging turned off, metadata should not change
     assert no_bias.header == ccd_data.header
     del no_bias.header["key"]
@@ -444,9 +449,7 @@ def test_subtract_dark(explicit_times, scale, exposure_keyword):
             (exptime / dark_exptime) * (exposure_unit / dark_exposure_unit)
         )
 
-    np_testing.assert_allclose(
-        ccd_data.data - dark_scale * dark_level, dark_sub.data
-    )
+    np_testing.assert_allclose(ccd_data.data - dark_scale * dark_level, dark_sub.data)
     # Headers should have the same content...do they?
     assert dark_sub.header == ccd_data.header
     # But the headers should not be the same object -- a copy was made
@@ -547,7 +550,7 @@ def test_flat_correct():
     # Check that the flat was normalized
     # Should be the case that flat * flat_data = ccd_data * flat.data.mean
     # if the normalization was done correctly.
-    np_testing.assert_almost_equal(
+    np_testing.assert_allclose(
         (flat_data.data * flat.data).mean(), ccd_data.data.mean() * flat.data.mean()
     )
     np_testing.assert_allclose(
@@ -575,7 +578,7 @@ def test_flat_correct_min_value():
     # Check that the flat was normalized. The asserts below, which look a
     # little odd, are correctly testing that
     #    flat_corrected_data = ccd_data / (flat_with_min / mean(flat_with_min))
-    np_testing.assert_almost_equal(
+    np_testing.assert_allclose(
         (flat_corrected_data.data * flat_with_min.data).mean(),
         (ccd_data.data * flat_with_min.data.mean()).mean(),
     )
@@ -605,7 +608,7 @@ def test_flat_correct_norm_value():
     # Check that the flat was normalized
     # Should be the case that flat * flat_data = ccd_data * flat_mean
     # if the normalization was done correctly.
-    np_testing.assert_almost_equal(
+    np_testing.assert_allclose(
         (flat_data.data * flat.data).mean(), ccd_data.data.mean() * flat_mean
     )
     np_testing.assert_allclose(ccd_data.data / flat_data.data, flat.data / flat_mean)
