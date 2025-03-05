@@ -12,6 +12,7 @@ from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.units.quantity import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
+from numpy import random as np_random
 from numpy import testing as np_testing
 
 from ccdproc.core import (
@@ -40,6 +41,7 @@ except ImportError:
 
 _NUMPY_COPY_IF_NEEDED = None  # False if np.__version__.startswith("1.") else None
 
+RNG = np_random.default_rng
 
 # import dask.array as da
 # import numpy
@@ -335,7 +337,7 @@ def test_trim_image_fits_section(mask_data, uncertainty):
     if mask_data:
         ccd_data.mask = np.zeros_like(ccd_data)
     if uncertainty:
-        err = np.random.default_rng().normal(size=ccd_data.shape)
+        err = RNG().normal(size=ccd_data.shape)
         ccd_data.uncertainty = StdDevUncertainty(err)
 
     trimmed = trim_image(ccd_data, fits_section="[20:40,:]")
@@ -543,7 +545,7 @@ def test_flat_correct():
     ccd_data.header["my_key"] = 42
     size = ccd_data.shape[0]
     # create the flat, with some scatter
-    data = 2 * np.random.default_rng().normal(loc=1.0, scale=0.05, size=(size, size))
+    data = 2 * RNG().normal(loc=1.0, scale=0.05, size=(size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat_data = flat_correct(ccd_data, flat, add_keyword=None)
 
@@ -567,7 +569,7 @@ def test_flat_correct_min_value():
     size = ccd_data.shape[0]
 
     # Create the flat
-    data = 2 * np.random.default_rng().normal(loc=1.0, scale=0.05, size=(size, size))
+    data = 2 * RNG().normal(loc=1.0, scale=0.05, size=(size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat_orig_data = flat.data.copy()
     min_value = 2.1  # Should replace some, but not all, values
@@ -601,7 +603,7 @@ def test_flat_correct_norm_value():
     # Note that mean value of flat is set below and is different than
     # the mean of the flat data.
     flat_mean = 5.0
-    data = np.random.default_rng().normal(loc=1.0, scale=0.05, size=ccd_data.shape)
+    data = RNG().normal(loc=1.0, scale=0.05, size=ccd_data.shape)
     flat = CCDData(data, meta=fits.Header(), unit=ccd_data.unit)
     flat_data = flat_correct(ccd_data, flat, add_keyword=None, norm_value=flat_mean)
 
@@ -620,7 +622,7 @@ def test_flat_correct_norm_value_bad_value():
     # it is given a bad norm_value. Bad means <=0.
 
     # Create the flat, with some scatter
-    data = np.random.default_rng().normal(loc=1.0, scale=0.05, size=ccd_data.shape)
+    data = RNG().normal(loc=1.0, scale=0.05, size=ccd_data.shape)
     flat = CCDData(data, meta=fits.Header(), unit=ccd_data.unit)
     with pytest.raises(ValueError) as e:
         flat_correct(ccd_data, flat, add_keyword=None, norm_value=-7)
@@ -706,7 +708,7 @@ def test_transform_image(mask_data, uncertainty):
         ccd_data.mask = np.zeros_like(ccd_data)
         ccd_data.mask[10, 10] = 1
     if uncertainty:
-        err = np.random.default_rng().normal(size=ccd_data.shape)
+        err = RNG().normal(size=ccd_data.shape)
         ccd_data.uncertainty = StdDevUncertainty(err)
 
     def tran(arr):
@@ -962,7 +964,7 @@ def test_wcs_project_onto_shifted_wcs():
     target_wcs = wcs_for_testing(ccd_data.shape)
     target_wcs.wcs.crpix += [1, 1]
 
-    ccd_data.mask = np.random.default_rng().choice([0, 1], size=ccd_data.shape)
+    ccd_data.mask = RNG().choice([0, 1], size=ccd_data.shape)
 
     new_ccd = wcs_project(ccd_data, target_wcs)
 
