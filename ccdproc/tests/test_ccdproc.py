@@ -112,7 +112,10 @@ def test_create_deviation_from_negative_2():
         ccd_data, gain=None, readnoise=readnoise, disregard_nan=True
     )
     mask = ccd_data.data < 0
-    ccd_data.data[mask] = 0
+    # Set the variance to zero where the data is negative
+    # In-place replacement of values does not work in some array
+    # libraries.
+    ccd_data.data = ccd_data.data * ~mask
     expected_var = np.sqrt(ccd_data.data + readnoise.value**2)
     np_testing.assert_allclose(ccd_var.uncertainty.array, expected_var)
 
@@ -160,12 +163,19 @@ def test_subtract_overscan(median, transpose, data_rectangle):
         science_region = science_region[::-1]
         overscan_axis = 0
 
-    ccd_data.data[oscan_region] = oscan
+    # Since some array libraries do not support in-place operations, we
+    # work on the science and overscan regions separately.
+    science_data = ccd_data.data[science_region].copy()
+    overscan_data = 0 * ccd_data.data[oscan_region].copy() + oscan
+
     # Add a fake sky background so the "science" part of the image has a
     # different average than the "overscan" part.
     sky = 10.0
-    original_mean = ccd_data.data[science_region].mean()
-    ccd_data.data[science_region] += oscan + sky
+    original_mean = science_data.mean()
+    science_data = science_data + oscan + sky
+
+    # Reconstruct the full image
+    ccd_data.data = np.concat([overscan_data, science_data], axis=overscan_axis)
     # Test once using the overscan argument to specify the overscan region
     ccd_data_overscan = subtract_overscan(
         ccd_data,
@@ -280,8 +290,12 @@ def test_subtract_overscan_model(transpose):
 
     original_mean = ccd_data.data[science_region].mean()
 
-    ccd_data.data[oscan_region] = 0.0  # Only want overscan in that region
-    ccd_data.data = ccd_data.data + scan
+    science_data = ccd_data.data[science_region].copy()
+    # Set any existing overscan to zero. Overscan is stored for the entire
+    # image, so we need to do this before we add the new overscan.
+    overscan_data = 0 * ccd_data.data[oscan_region].copy()
+    # Reconstruct the full image
+    ccd_data.data = np.concat([overscan_data, science_data], axis=overscan_axis) + scan
 
     ccd_data = subtract_overscan(
         ccd_data,
@@ -766,14 +780,22 @@ def test_block_reduce():
     reason="Incompatibility between scikit-image " "and numpy 1.16",
 )
 def test_block_average():
+    data = np.array(
+        [
+            [2.0, 1.0, 2.0, 1.0],
+            [1.0, 1.0, 1.0, 1.0],
+            [2.0, 1.0, 2.0, 1.0],
+            [1.0, 1.0, 1.0, 1.0],
+        ]
+    )
     ccd = CCDData(
-        np.ones((4, 4)),
+        data,
         unit="adu",
         meta={"testkw": 1},
         mask=np.zeros((4, 4), dtype=bool),
         uncertainty=StdDevUncertainty(np.ones((4, 4))),
     )
-    ccd.data[::2, ::2] = 2
+
     with pytest.warns(AstropyUserWarning) as w:
         ccd_avgd = block_average(ccd, (2, 2))
     assert len(w) == 1
