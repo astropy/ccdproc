@@ -12,6 +12,7 @@ from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.units.quantity import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
+from numpy import array as np_array
 from numpy import random as np_random
 from numpy import testing as np_testing
 
@@ -675,7 +676,11 @@ def test_flat_correct_deviation():
 # Test the uncertainty on the data after flat correction
 def test_flat_correct_data_uncertainty():
     # Regression test for #345
-    dat = CCDData(np.ones([100, 100]), unit="adu", uncertainty=np.ones([100, 100]))
+    # Temporarily work around the fact that NDUncertainty explicitly checks
+    # whether the value is a numpy array.
+    dat = CCDData(
+        np.ones([100, 100]), unit="adu", uncertainty=np_array(np.ones([100, 100]))
+    )
     # Note flat is set to 10, error, if present, is set to one.
     flat = CCDData(10 * np.ones([100, 100]), unit="adu")
     res = flat_correct(dat, flat)
@@ -971,6 +976,8 @@ def test_wcs_project_onto_same_wcs():
     target_wcs = wcs_for_testing(ccd_data.shape)
     ccd_data.wcs = wcs_for_testing(ccd_data.shape)
 
+    # Ugly hack for numpy-specific check in astropy.wcs
+    ccd_data.data = np_array(ccd_data.data)
     new_ccd = wcs_project(ccd_data, target_wcs)
 
     # Make sure new image has correct WCS.
@@ -987,6 +994,8 @@ def test_wcs_project_onto_same_wcs_remove_headers():
     ccd_data.wcs = wcs_for_testing(ccd_data.shape)
     ccd_data.header = ccd_data.wcs.to_header()
 
+    # Ugly hack for numpy-specific check in astropy.wcs
+    ccd_data.data = np_array(ccd_data.data)
     new_ccd = wcs_project(ccd_data, target_wcs)
 
     for k in ccd_data.wcs.to_header():
@@ -1004,6 +1013,8 @@ def test_wcs_project_onto_shifted_wcs():
 
     ccd_data.mask = RNG().choice([0, 1], size=ccd_data.shape)
 
+    # Ugly hack for numpy-specific check in astropy.wcs
+    ccd_data.data = np_array(ccd_data.data)
     new_ccd = wcs_project(ccd_data, target_wcs)
 
     # Make sure new image has correct WCS.
@@ -1054,6 +1065,8 @@ def test_wcs_project_onto_scale_wcs():
     target_shape = 2 * np.array(ccd_data.shape) + 1
     target_wcs.wcs.crpix = 2 * target_wcs.wcs.crpix + 1 + 0.5
 
+    # Ugly hack for numpy-specific check in astropy.wcs
+    ccd_data.data = np_array(ccd_data.data)
     # Explicitly set the interpolation method so we know what to
     # expect for the mass.
     new_ccd = wcs_project(
