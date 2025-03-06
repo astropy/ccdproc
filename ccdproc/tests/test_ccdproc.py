@@ -1021,9 +1021,7 @@ def test_wcs_project_onto_shifted_wcs():
 
     # Make sure data matches within some reasonable tolerance, keeping in mind
     # that the pixels should all be shifted.
-    masked_input = np.ma.array(ccd_data.data, mask=ccd_data.mask)
-    masked_output = np.ma.array(new_ccd.data, mask=new_ccd.mask)
-    np_testing.assert_allclose(masked_input[:-1, :-1], masked_output[1:, 1:], rtol=1e-5)
+    np_testing.assert_allclose(ccd_data.data[:-1, :-1], new_ccd[1:, 1:], rtol=1e-5)
 
     # The masks should all be shifted too.
     np_testing.assert_array_equal(ccd_data.mask[:-1, :-1], new_ccd.mask[1:, 1:])
@@ -1035,7 +1033,7 @@ def test_wcs_project_onto_shifted_wcs():
     # In the case of a shift, one row and one column should be nan, and they
     # will share one common nan where they intersect, so we know how many nan
     # there should be.
-    assert np.isnan(new_ccd.data).sum() == np.sum(new_ccd.shape) - 1
+    assert np.sum(np.isnan(new_ccd.data)) == np.sum(np.array(new_ccd.shape)) - 1
 
 
 # Use an odd number of pixels to make a well-defined center pixel
