@@ -1142,7 +1142,9 @@ def test_ccd_process_parameters_are_appropriate():
 def test_ccd_process():
     # Test the through ccd_process
     ccd_data = CCDData(10.0 * np.ones((100, 100)), unit=u.adu)
-    ccd_data.data[:, -10:] = 2
+    # Rewrite to not change data in-place.
+    ccd_data.data = np.concat([ccd_data.data[:, :-10], 2 * np.ones((100, 10))], axis=1)
+
     ccd_data.meta["testkw"] = 100
 
     mask = np.zeros((100, 90))
@@ -1187,7 +1189,9 @@ def test_ccd_process():
 def test_ccd_process_gain_corrected():
     # Test the through ccd_process with gain_corrected as False
     ccd_data = CCDData(10.0 * np.ones((100, 100)), unit=u.adu)
-    ccd_data.data[:, -10:] = 2
+
+    # Rewrite to not change data in-place.
+    ccd_data.data = np.concat([ccd_data.data[:, :-10], 2 * np.ones((100, 10))], axis=1)
     ccd_data.meta["testkw"] = 100
 
     mask = np.zeros((100, 90))
