@@ -1,5 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import warnings
+
 # import array_api_compat
 import astropy
 import astropy.units as u
@@ -891,10 +893,7 @@ def test_cosmicray_median_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     error = np.zeros_like(ccd_data)
-    with np.errstate(invalid="ignore", divide="ignore"):
-        _ = cosmicray_median(
-            ccd_data, error_image=error, thresh=5, mbox=11, gbox=0, rbox=0
-        )
+    _ = cosmicray_median(ccd_data, error_image=error, thresh=5, mbox=11, gbox=0, rbox=0)
     np_testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
 
@@ -911,7 +910,8 @@ def test_flat_correct_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     flat = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
-    with np.errstate(invalid="ignore"):
+    # Ignore the divide by zero warning that is raised when the flat is zero.
+    with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
         _ = flat_correct(ccd_data, flat=flat)
     np_testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
@@ -945,8 +945,7 @@ def test_trim_image_does_not_change_input():
 def test_transform_image_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    with np.errstate(invalid="ignore"):
-        _ = transform_image(ccd_data, np.sqrt)
+    _ = transform_image(ccd_data, np.sqrt)
     np_testing.assert_allclose(original.data, ccd_data)
     assert original.unit == ccd_data.unit
 
