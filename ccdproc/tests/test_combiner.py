@@ -83,7 +83,7 @@ def test_combiner_create():
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     assert c.data_arr.shape == (3, 100, 100)
-    assert c.data_arr.mask.shape == (3, 100, 100)
+    assert c.data_arr_mask.shape == (3, 100, 100)
 
 
 # test if dtype matches the value that is passed
@@ -112,8 +112,8 @@ def test_combiner_mask():
     ccd_list = [ccd, ccd, ccd]
     c = Combiner(ccd_list)
     assert c.data_arr.shape == (3, 10, 10)
-    assert c.data_arr.mask.shape == (3, 10, 10)
-    assert not c.data_arr.mask[0, 5, 5]
+    assert c.data_arr_mask.shape == (3, 10, 10)
+    assert not c.data_arr_mask[0, 5, 5]
 
 
 def test_weights():
@@ -185,7 +185,7 @@ def test_combiner_minmax_max():
 
     c = Combiner(ccd_list)
     c.minmax_clipping(min_clip=None, max_clip=500)
-    assert c.data_arr[2].mask.all()
+    assert c.data_arr_mask[2].all()
 
 
 def test_combiner_minmax_min():
@@ -197,7 +197,7 @@ def test_combiner_minmax_min():
 
     c = Combiner(ccd_list)
     c.minmax_clipping(min_clip=-500, max_clip=None)
-    assert c.data_arr[1].mask.all()
+    assert c.data_arr_mask[1].all()
 
 
 def test_combiner_sigmaclip_high():
@@ -213,7 +213,7 @@ def test_combiner_sigmaclip_high():
     c = Combiner(ccd_list)
     # using mad for more robust statistics vs. std
     c.sigma_clipping(high_thresh=3, low_thresh=None, func=np.ma.median, dev_func=mad)
-    assert c.data_arr[5].mask.all()
+    assert c.data_arr_mask[5].all()
 
 
 def test_combiner_sigmaclip_single_pix():
@@ -234,7 +234,7 @@ def test_combiner_sigmaclip_single_pix():
     c.data_arr[3, 5, 5] = -5
     c.data_arr[4, 5, 5] = 25
     c.sigma_clipping(high_thresh=3, low_thresh=None, func=np.ma.median, dev_func=mad)
-    assert c.data_arr.mask[4, 5, 5]
+    assert c.data_arr_mask[4, 5, 5]
 
 
 def test_combiner_sigmaclip_low():
@@ -250,7 +250,7 @@ def test_combiner_sigmaclip_low():
     c = Combiner(ccd_list)
     # using mad for more robust statistics vs. std
     c.sigma_clipping(high_thresh=None, low_thresh=3, func=np.ma.median, dev_func=mad)
-    assert c.data_arr[5].mask.all()
+    assert c.data_arr_mask[5].all()
 
 
 # test that the median combination works and returns a ccddata object
@@ -334,6 +334,7 @@ def test_combiner_mask_average():
     # are masked?!
     # assert ccd.data[0, 0] == 0
     assert ccd.data[5, 5] == 1
+    # THE LINE BELOW IS CATCHING A REAL ERROR
     assert ccd.mask[0, 0]
     assert not ccd.mask[5, 5]
 
@@ -623,7 +624,11 @@ def test_combine_result_uncertainty_and_mask(comb_func, mask_point):
     if mask_point:
         # Make one pixel really negative so we can clip it and guarantee a resulting
         # pixel is masked.
-        ccd_data.data[0, 0] = -1000
+        # Handle case where array is immutable
+        try:
+            ccd_data.data[0, 0] = -1000
+        except TypeError:
+            ccd_data.data = ccd_data.data.at[0, 0].set(-1000)
 
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
@@ -889,9 +894,9 @@ def test_clip_extrema_with_other_rejection():
     ccdlist[1].data[2, 0] = 100.1
     c = Combiner(ccdlist)
     # Reject ccdlist[1].data[1,2] by other means
-    c.data_arr.mask[1, 1, 2] = True
+    c.data_arr_mask[1, 1, 2] = True
     # Reject ccdlist[1].data[1,2] by other means
-    c.data_arr.mask[3, 0, 0] = True
+    c.data_arr_mask[3, 0, 0] = True
 
     c.clip_extrema(nlow=1, nhigh=1)
     result = c.average_combine()
@@ -934,7 +939,7 @@ def test_combiner_gen():
 
     c = Combiner(create_gen())
     assert c.data_arr.shape == (3, 100, 100)
-    assert c.data_arr.mask.shape == (3, 100, 100)
+    assert c.data_arr_mask.shape == (3, 100, 100)
 
 
 @pytest.mark.parametrize(
@@ -996,16 +1001,17 @@ def test_user_supplied_combine_func_that_relies_on_masks(comb_func):
 
     if comb_func == "sum_combine":
         expected_result = 3 * data
-        actual_result = c.sum_combine(sum_func=np.ma.sum)
+        actual_result = c.sum_combine(sum_func=np.sum)
     elif comb_func == "average_combine":
         expected_result = data
-        actual_result = c.average_combine(scale_func=np.ma.mean)
+        actual_result = c.average_combine(scale_func=np.mean)
     elif comb_func == "median_combine":
         expected_result = data
-        actual_result = c.median_combine(median_func=np.ma.median)
+        actual_result = c.median_combine(median_func=np.median)
 
     # Two of the three values are masked, so no matter what the combination
     # method is the result in this pixel should be 2.
     expected_result[5, 5] = 2
 
+    # THIS IS A REAL TEST FAILURE!!!
     np.testing.assert_almost_equal(expected_result, actual_result)

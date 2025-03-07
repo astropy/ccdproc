@@ -3,7 +3,8 @@
 """This module implements the combiner class."""
 
 import numpy as np
-from numpy import ma
+
+# from numpy import ma
 
 try:
     import bottleneck as bn
@@ -12,6 +13,7 @@ except ImportError:
 else:
     HAS_BOTTLENECK = True
 
+import array_api_compat
 from astropy import log
 from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import sigma_clip
@@ -105,9 +107,6 @@ class Combiner:
                 "ccd_iter should be a list or a generator of CCDData objects."
             )
 
-        if dtype is None:
-            dtype = np.float64
-
         default_shape = None
         default_unit = None
 
@@ -132,22 +131,28 @@ class Combiner:
                 if not (default_unit == ccd.unit):
                     raise TypeError("CCDData objects don't have the same unit.")
 
+        # Set array namespace
+        xp = array_api_compat.array_namespace(ccd_list[0].data)
+        if dtype is None:
+            dtype = xp.float64
         self.ccd_list = ccd_list
         self.unit = default_unit
         self.weights = None
         self._dtype = dtype
 
         # set up the data array
-        new_shape = (len(ccd_list),) + default_shape
-        self.data_arr = ma.masked_all(new_shape, dtype=dtype)
+        # new_shape = (len(ccd_list),) + default_shape
+        self.data_arr = xp.array([ccd.data for ccd in ccd_list], dtype=dtype)
 
         # populate self.data_arr
-        for i, ccd in enumerate(ccd_list):
-            self.data_arr[i] = ccd.data
+        mask_list = []
+        for ccd in ccd_list:
             if ccd.mask is not None:
-                self.data_arr.mask[i] = ccd.mask
+                mask_list.append(ccd.mask)
             else:
-                self.data_arr.mask[i] = ma.zeros(default_shape)
+                mask_list.append(xp.zeros(default_shape))
+
+        self.data_arr_mask = xp.array(mask_list, dtype=bool)
 
         # Must be after self.data_arr is defined because it checks the
         # length of the data array.
@@ -173,20 +178,23 @@ class Combiner:
     @weights.setter
     def weights(self, value):
         if value is not None:
-            if isinstance(value, np.ndarray):
-                if value.shape != self.data_arr.data.shape:
-                    if value.ndim != 1:
-                        raise ValueError(
-                            "1D weights expected when shapes of the "
-                            "data and weights differ."
-                        )
-                    if value.shape[0] != self.data_arr.data.shape[0]:
-                        raise ValueError(
-                            "Length of weights not compatible with specified axis."
-                        )
-                self._weights = value
-            else:
-                raise TypeError("weights must be a numpy.ndarray.")
+            try:
+                _ = array_api_compat.array_namespace(value)
+            except TypeError as err:
+                raise TypeError("weights must be an array.") from err
+
+            if value.shape != self.data_arr.shape:
+                if value.ndim != 1:
+                    raise ValueError(
+                        "1D weights expected when shapes of the "
+                        "data and weights differ."
+                    )
+                if value.shape[0] != self.data_arr.shape[0]:
+                    raise ValueError(
+                        "Length of weights not compatible with specified axis."
+                    )
+            self._weights = value
+
         else:
             self._weights = None
 
@@ -207,13 +215,14 @@ class Combiner:
 
     @scaling.setter
     def scaling(self, value):
+        xp = array_api_compat.array_namespace(self.data_arr)
         if value is None:
             self._scaling = value
         else:
-            n_images = self.data_arr.data.shape[0]
+            n_images = self.data_arr.shape[0]
             if callable(value):
                 self._scaling = [value(self.data_arr[i]) for i in range(n_images)]
-                self._scaling = np.array(self._scaling)
+                self._scaling = xp.array(self._scaling)
             else:
                 try:
                     len(value)
@@ -227,10 +236,10 @@ class Combiner:
                         "scaling must be a function or an array "
                         "the same length as the number of images."
                     )
-                self._scaling = np.array(value)
+                self._scaling = xp.array(value)
             # reshape so that broadcasting occurs properly
-            for _ in range(len(self.data_arr.data.shape) - 1):
-                self._scaling = self.scaling[:, np.newaxis]
+            for _ in range(len(self.data_arr.shape) - 1):
+                self._scaling = self.scaling[:, xp.newaxis]
 
     # set up IRAF-like minmax clipping
     def clip_extrema(self, nlow=0, nhigh=0):
@@ -275,20 +284,20 @@ class Combiner:
         .. [0] image.imcombine help text.
            http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?imcombine
         """
-
+        xp = array_api_compat.array_namespace(self.data_arr)
         if nlow is None:
             nlow = 0
         if nhigh is None:
             nhigh = 0
 
-        argsorted = np.argsort(self.data_arr.data, axis=0)
-        mg = np.mgrid[
+        argsorted = xp.argsort(self.data_arr, axis=0)
+        mg = xp.mgrid[
             [slice(ndim) for i, ndim in enumerate(self.data_arr.shape) if i > 0]
         ]
         for i in range(-1 * nhigh, nlow):
             # create a tuple with the indices
             where = tuple([argsorted[i, :, :].ravel()] + [i.ravel() for i in mg])
-            self.data_arr.mask[where] = True
+            self.data_arr_mask[where] = True
 
     # set up min/max clipping algorithms
     def minmax_clipping(self, min_clip=None, max_clip=None):
@@ -306,10 +315,12 @@ class Combiner:
         """
         if min_clip is not None:
             mask = self.data_arr < min_clip
-            self.data_arr.mask[mask] = True
+            # Written to avoid in-place modification of array
+            self.data_arr_mask = self.data_arr_mask | mask
         if max_clip is not None:
             mask = self.data_arr > max_clip
-            self.data_arr.mask[mask] = True
+            # Written to avoid in-place modification of array
+            self.data_arr_mask = self.data_arr_mask | mask
 
     # set up sigma  clipping algorithms
     @deprecated_renamed_argument(
@@ -368,18 +379,21 @@ class Combiner:
         # Remove in 3.0
         _ = kwd.pop("use_astropy", True)
 
-        self.data_arr.mask |= sigma_clip(
-            self.data_arr.data,
-            sigma_lower=low_thresh,
-            sigma_upper=high_thresh,
-            axis=kwd.get("axis", 0),
-            copy=kwd.get("copy", False),
-            maxiters=kwd.get("maxiters", 1),
-            cenfunc=func,
-            stdfunc=dev_func,
-            masked=True,
-            **kwd,
-        ).mask
+        self.data_arr_mask = (
+            self.data_arr_mask
+            | sigma_clip(
+                self.data_arr,
+                sigma_lower=low_thresh,
+                sigma_upper=high_thresh,
+                axis=kwd.get("axis", 0),
+                copy=kwd.get("copy", False),
+                maxiters=kwd.get("maxiters", 1),
+                cenfunc=func,
+                stdfunc=dev_func,
+                masked=True,
+                **kwd,
+            ).mask
+        )
 
     def _get_scaled_data(self, scale_arg):
         if scale_arg is not None:
@@ -389,11 +403,17 @@ class Combiner:
         return self.data_arr
 
     def _get_nan_substituted_data(self, data):
+        xp = array_api_compat.array_namespace(self.data_arr)
+
         # Get the data as an unmasked array with masked values filled as NaN
-        if self.data_arr.mask.any():
-            data = np.ma.filled(data, fill_value=np.nan)
+        if self.data_arr_mask.any():
+            # Workaround for array libraries that do not allow in-=place modification
+            try:
+                data[self.data_arr_mask] = xp.nan
+            except TypeError:
+                data = data.at[self.data_arr_mask].set(xp.nan)
         else:
-            data = data.data
+            data = data
         return data
 
     def _combination_setup(self, user_func, default_func, scale_to):
@@ -401,16 +421,16 @@ class Combiner:
         Handle the common pieces of image combination data/mask setup.
         """
         data = self._get_scaled_data(scale_to)
-
+        xp = array_api_compat.array_namespace(data)
         # Play it safe for now and only do the nan thing if the user is using
         # the default combination function.
         if user_func is None:
             combo_func = default_func
             # Subtitute NaN for masked entries
             data = self._get_nan_substituted_data(data)
-            masked_values = np.isnan(data).sum(axis=0)
+            masked_values = xp.isnan(data).sum(axis=0)
         else:
-            masked_values = self.data_arr.mask.sum(axis=0)
+            masked_values = self.data_arr_mask.sum(axis=0)
             combo_func = user_func
 
         return data, masked_values, combo_func
@@ -458,7 +478,7 @@ class Combiner:
         data, masked_values, median_func = self._combination_setup(
             median_func, _default_median(), scale_to
         )
-
+        xp = array_api_compat.array_namespace(data)
         medianed = median_func(data, axis=0)
 
         # set the mask
@@ -476,17 +496,17 @@ class Combiner:
         else:
             uncertainty = uncertainty_func(data, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= np.sqrt(len(self.data_arr) - masked_values)
+        uncertainty /= xp.sqrt(len(self.data_arr) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
         # There is no need to care about potential masks because the
         # uncertainty was calculated based on the data so potential masked
         # elements are also masked in the data. No need to keep two identical
         # masks.
-        uncertainty = np.asarray(uncertainty)
+        uncertainty = xp.asarray(uncertainty)
 
         # create the combined image with a dtype matching the combiner
         combined_image = CCDData(
-            np.asarray(medianed, dtype=self.dtype),
+            xp.asarray(medianed, dtype=self.dtype),
             mask=mask,
             unit=self.unit,
             uncertainty=StdDevUncertainty(uncertainty),
@@ -503,9 +523,10 @@ class Combiner:
         Perform weighted sum, used by both ``sum_combine`` and in some cases
         by ``average_combine``.
         """
+        xp = array_api_compat.array_namespace(data)
         if self.weights.shape != data.shape:
             # Add extra axes to the weights for broadcasting
-            weights = np.reshape(self.weights, [len(self.weights), 1, 1])
+            weights = xp.reshape(self.weights, [len(self.weights), 1, 1])
         else:
             weights = self.weights
 
@@ -560,6 +581,8 @@ class Combiner:
             scale_func, _default_average(), scale_to
         )
 
+        xp = array_api_compat.array_namespace(data)
+
         # Do NOT modify data after this -- we need it to be intact when we
         # we get to the uncertainty calculation.
         if self.weights is not None:
@@ -575,13 +598,13 @@ class Combiner:
         # set up the deviation
         uncertainty = uncertainty_func(data, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= np.sqrt(len(data) - masked_values)
+        uncertainty /= xp.sqrt(len(data) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
-        uncertainty = np.asarray(uncertainty)
+        uncertainty = xp.asarray(uncertainty)
 
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(
-            np.asarray(mean, dtype=self.dtype),
+            xp.asarray(mean, dtype=self.dtype),
             mask=mask,
             unit=self.unit,
             uncertainty=StdDevUncertainty(uncertainty),
@@ -633,6 +656,8 @@ class Combiner:
             sum_func, _default_sum(), scale_to
         )
 
+        xp = array_api_compat.array_namespace(data)
+
         if self.weights is not None:
             summed, weights = self._weighted_sum(data, sum_func)
         else:
@@ -644,15 +669,15 @@ class Combiner:
         # set up the deviation
         uncertainty = uncertainty_func(data, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= np.sqrt(len(data) - masked_values)
+        uncertainty /= xp.sqrt(len(data) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
-        uncertainty = np.asarray(uncertainty)
+        uncertainty = xp.asarray(uncertainty)
         # Multiply uncertainty by square root of the number of images
         uncertainty *= len(data) - masked_values
 
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(
-            np.asarray(summed, dtype=self.dtype),
+            xp.asarray(summed, dtype=self.dtype),
             mask=mask,
             unit=self.unit,
             uncertainty=StdDevUncertainty(uncertainty),
@@ -696,8 +721,9 @@ def _calculate_size_of_image(ccd, combine_uncertainty_function):
     # If uncertainty_func is given for combine this will create an uncertainty
     # even if the originals did not have one. In that case we need to create
     # an empty placeholder.
+    xp = array_api_compat.array_namespace(ccd.data)
     if ccd.uncertainty is None and combine_uncertainty_function is not None:
-        ccd.uncertainty = StdDevUncertainty(np.zeros(ccd.data.shape))
+        ccd.uncertainty = StdDevUncertainty(xp.zeros(ccd.data.shape))
 
     size_of_an_img = ccd.data.nbytes
     try:
@@ -737,8 +763,8 @@ def combine(
     sigma_clip=False,
     sigma_clip_low_thresh=3,
     sigma_clip_high_thresh=3,
-    sigma_clip_func=ma.mean,
-    sigma_clip_dev_func=ma.std,
+    sigma_clip_func=None,
+    sigma_clip_dev_func=None,
     dtype=None,
     combine_uncertainty_function=None,
     overwrite_output=False,
@@ -852,21 +878,30 @@ def combine(
     combined_image : `~astropy.nddata.CCDData`
         CCDData object based on the combined input of CCDData objects.
     """
+    # Handle case where the input is an array of file names first
     if not isinstance(img_list, list):
-        # If not a list, check whether it is a numpy ndarray or string of
-        # filenames separated by comma
-        if isinstance(img_list, np.ndarray):
-            img_list = img_list.tolist()
-        elif isinstance(img_list, str) and ("," in img_list):
-            img_list = img_list.split(",")
+        try:
+            _ = array_api_compat.array_namespace(img_list)
+        except TypeError:
+            pass
         else:
-            try:
-                # Maybe the input can be made into a list, so try that
-                img_list = list(img_list)
-            except TypeError as err:
-                raise ValueError(
-                    "unrecognised input for list of images to combine."
-                ) from err
+            # If it is an array, convert it to a list
+            img_list = list(img_list)
+    if (
+        not isinstance(img_list, list)
+        and isinstance(img_list, str)
+        and ("," in img_list)
+    ):
+        # Handle case where the input is a string of file names separated by comma
+        img_list = img_list.split(",")
+    else:
+        try:
+            # Maybe the input can be made into a list, so try that
+            img_list = list(img_list)
+        except TypeError as err:
+            raise ValueError(
+                "unrecognised input for list of images to combine."
+            ) from err
 
     # Select Combine function to call in Combiner
     if method == "average":
@@ -885,24 +920,32 @@ def combine(
         # User has provided fits filenames to read from
         ccd = CCDData.read(img_list[0], **ccdkwargs)
 
+    # Get the array namespace
+    xp = array_api_compat.array_namespace(ccd.data)
+
     if dtype is None:
-        dtype = np.float64
+        dtype = xp.float64
+
+    if sigma_clip_func is None:
+        sigma_clip_func = xp.mean
+    if sigma_clip_dev_func is None:
+        sigma_clip_dev_func = xp.std
 
     # Convert the master image to the appropriate dtype so when overwriting it
     # later the data is not downcast and the memory consumption calculation
     # uses the internally used dtype instead of the original dtype. #391
     if ccd.data.dtype != dtype:
-        ccd.data = ccd.data.astype(dtype)
+        ccd.data = xp.astype(ccd.data, dtype)
 
     # If the template image doesn't have an uncertainty, add one, because the
     # result always has an uncertainty.
     if ccd.uncertainty is None:
-        ccd.uncertainty = StdDevUncertainty(np.zeros_like(ccd.data))
+        ccd.uncertainty = StdDevUncertainty(xp.zeros_like(ccd.data))
 
     # If the template doesn't have a mask, add one, because the result may have
     # a mask
     if ccd.mask is None:
-        ccd.mask = np.zeros_like(ccd.data, dtype=bool)
+        ccd.mask = xp.zeros_like(ccd.data, dtype=bool)
 
     size_of_an_img = _calculate_size_of_image(ccd, combine_uncertainty_function)
 
@@ -951,7 +994,7 @@ def combine(
 
                 scalevalues.append(scale(imgccd.data))
 
-            to_set_in_combiner["scaling"] = np.array(scalevalues)
+            to_set_in_combiner["scaling"] = xp.array(scalevalues)
         else:
             to_set_in_combiner["scaling"] = scale
 
@@ -1008,11 +1051,32 @@ def combine(
             comb_tile = getattr(tile_combiner, combine_function)(**combine_kwds)
 
             # add it back into the master image
-            ccd.data[x:xend, y:yend] = comb_tile.data
+            # The try/except below is to handle array libraries that may not
+            # allow in-place operations.
+            try:
+                ccd.data[x:xend, y:yend] = comb_tile.data
+            except TypeError:
+                ccd.data = ccd.data.at[x:xend, y:yend].set(comb_tile.data)
+
             if ccd.mask is not None:
-                ccd.mask[x:xend, y:yend] = comb_tile.mask
+                # Maybe temporary workaround for the mask not being writeable...
+                ccd.mask = ccd.mask.copy()
+                # The try/except below is to handle array libraries that may not
+                # allow in-place operations.
+                try:
+                    ccd.mask[x:xend, y:yend] = comb_tile.mask
+                except (TypeError, ValueError):
+                    ccd.mask = ccd.mask.at[x:xend, y:yend].set(comb_tile.mask)
+
             if ccd.uncertainty is not None:
-                ccd.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
+                # The try/except below is to handle array libraries that may not
+                # allow in-place operations.
+                try:
+                    ccd.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
+                except TypeError:
+                    ccd.uncertainty.array = ccd.uncertainty.array.at[
+                        x:xend, y:yend
+                    ].set(comb_tile.uncertainty.array)
             # Free up memory to try to stay under user's limit
             del comb_tile
             del tile_combiner
