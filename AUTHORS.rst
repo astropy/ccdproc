@@ -9,12 +9,12 @@ Project Coordinators
 --------------------
 
 * Matt Craig (@mwcraig)
-* Steve Crawford (@crawfordsm)
 
 Coordinators Emeritus
 ---------------------
 
 * Michael Seifert (@MSeifert04)
+* Steve Crawford (@crawfordsm)
 
 Alphabetical list of code contributors
 --------------------------------------

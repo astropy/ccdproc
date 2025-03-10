@@ -12,6 +12,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
   SETUP_XVFB: True  # avoid issues if mpl tries to open a GUI window
   TOXARGS: '-v'
@@ -77,10 +80,10 @@ jobs:
             python: '3.12'
             tox_env: 'build_docs'
 
-          - name: 'ubuntu-py312-test-alldeps-devdeps'
+          - name: 'ubuntu-py313-test-alldeps-devdeps'
             os: ubuntu-latest
-            python: '3.12'
-            tox_env: 'py312-test-alldeps-devdeps'
+            python: '3.13'
+            tox_env: 'py313-test-alldeps-devdeps'
 
     steps:
     - name: Check out repository

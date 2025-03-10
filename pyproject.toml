@@ -1,6 +1,5 @@
 [build-system]
-requires = ["hatchling",
-"hatch-vcs"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
@@ -38,7 +37,7 @@ test = [
 ]
 
 [project.urls]
-Homepage = "http://ccdproc.readthedocs.io/"
+Homepage = "https://ccdproc.readthedocs.io/"
 
 [tool.hatch.version]
 source = "vcs"
@@ -70,7 +69,6 @@ extend-exclude = '''
     source = ["ccdproc"]
     omit = [
         "*/ccdproc/__init__*",
-        "*/ccdproc/conftest.py",
         "*/ccdproc/*setup*",
         "*/ccdproc/*/tests/*",
         "*/ccdproc/tests/*",

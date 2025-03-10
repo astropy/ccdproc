@@ -63,7 +63,7 @@ class Combiner:
     and weighting used for combining frames.
 
     Parameters
-    -----------
+    ----------
     ccd_iter : list or generator
         A list or generator of CCDData objects that will be combined together.
 
@@ -241,7 +241,7 @@ class Combiner:
         Nimages-nlow-nhigh pixel values instead of the combination of Nimages.
 
         Parameters
-        -----------
+        ----------
         nlow : int or None, optional
             If not None, the number of low values to reject from the
             combination.
@@ -295,7 +295,7 @@ class Combiner:
         """Mask all pixels that are below min_clip or above max_clip.
 
         Parameters
-        -----------
+        ----------
         min_clip : float or None, optional
             If not None, all pixels with values below min_clip will be masked.
             Default is ``None``.
@@ -332,8 +332,7 @@ class Combiner:
         high_thresh or lower than that set by low_thresh will be rejected.
 
         Parameters
-        -----------
-
+        ----------
         low_thresh : positive float or None, optional
             Threshold for rejecting pixels that deviate below the baseline
             value. If negative value, then will be convert to a positive
@@ -749,7 +748,7 @@ def combine(
     Convenience function for combining multiple images.
 
     Parameters
-    -----------
+    ----------
     img_list : `numpy.ndarray`, list or str
         A list of fits filenames or `~astropy.nddata.CCDData` objects that will be
         combined together. Or a string of fits filenames separated by comma
@@ -799,7 +798,6 @@ def combine(
 
         - ``nlow`` : int or None, optional
         - ``nhigh`` : int or None, optional
-
 
     minmax_clip : bool, optional
         Set to True if you want to mask all pixels that are below
