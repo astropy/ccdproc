@@ -5,18 +5,12 @@ include LICENSE.rst
 include README.rst
 include pyproject.toml
 
-include ccdproc/tests/coveragerc
-
-include setup.cfg
-
 recursive-include ccdproc *.pyx *.c *.pxd
 recursive-include docs *
 recursive-include licenses *
-recursive-include scripts *
 
 prune build
 prune docs/_build
 prune docs/api
-
 
 global-exclude *.pyc *.o

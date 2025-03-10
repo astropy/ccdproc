@@ -10,6 +10,7 @@ Other Changes and Additions
 - Removed the unused private function `_blkavg`. [#869]
 - Elements of the data array in a flat image that are masked are set to 1
   instead of 0.
+- Removed unused ``ccdproc.test()``. Use ``pytest --pyargs ccdproc`` instead. [#880]
 
 Bug Fixes
 ^^^^^^^^^

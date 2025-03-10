@@ -4,13 +4,10 @@ The ccdproc package is a collection of code that will be helpful in basic CCD
 processing. These steps will allow reduction of basic CCD data as either a
 stand-alone processing or as part of a pipeline.
 """
-
-# Affiliated packages may add whatever they like to this file, but
-# should keep this content at the top.
-# ----------------------------------------------------------------------------
-from ._astropy_init import *  # noqa
-
-# ----------------------------------------------------------------------------
+try:
+    from .version import version as __version__
+except ImportError:
+    __version__ = ""
 
 # set up namespace
 from .core import *  # noqa

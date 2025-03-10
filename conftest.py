@@ -4,8 +4,6 @@
 # by importing them here in conftest.py they are discoverable by py.test
 # no matter how it is invoked within the source tree.
 
-import os
-
 try:
     # When the pytest_astropy_header package is installed
     from pytest_astropy_header.display import PYTEST_HEADER_MODULES, TESTED_VERSIONS
@@ -18,23 +16,18 @@ except ImportError:
     TESTED_VERSIONS = {}
 
 
-from .tests.pytest_fixtures import triage_setup  # noqa: F401 this is used in tests
+from ccdproc.tests.pytest_fixtures import triage_setup  # noqa: F401 this is used in tests
 
 # This is to figure out ccdproc version, rather than using Astropy's
 try:
-    from .version import version
+    from ccdproc import __version__ as version
 except ImportError:
     version = "dev"
 
-packagename = os.path.basename(os.path.dirname(__file__))
-TESTED_VERSIONS[packagename] = version
+TESTED_VERSIONS["ccdproc"] = version
 
 # Add astropy to test header information and remove unused packages.
-
-try:
-    PYTEST_HEADER_MODULES["Astropy"] = "astropy"
-    PYTEST_HEADER_MODULES["astroscrappy"] = "astroscrappy"
-    PYTEST_HEADER_MODULES["reproject"] = "reproject"
-    del PYTEST_HEADER_MODULES["h5py"]
-except KeyError:
-    pass
+PYTEST_HEADER_MODULES["Astropy"] = "astropy"
+PYTEST_HEADER_MODULES["astroscrappy"] = "astroscrappy"
+PYTEST_HEADER_MODULES["reproject"] = "reproject"
+PYTEST_HEADER_MODULES.pop("h5py", None)

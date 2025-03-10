@@ -1,3 +1,0 @@
--e .  # install ccdproc itself (and its dependencies)
-numpydoc
-sphinx-astropy
