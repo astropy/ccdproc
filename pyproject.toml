@@ -43,7 +43,7 @@ Homepage = "https://ccdproc.readthedocs.io/"
 source = "vcs"
 
 [tool.hatch.build.hooks.vcs]
-version-file = "_version.py"
+version-file = "ccdproc/_version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
