@@ -1,6 +1,5 @@
 [build-system]
-requires = ["hatchling",
-"hatch-vcs"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
@@ -44,7 +43,7 @@ Homepage = "https://ccdproc.readthedocs.io/"
 source = "vcs"
 
 [tool.hatch.build.hooks.vcs]
-version-file = "ccdproc/_version.py"
+version-file = "_version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
