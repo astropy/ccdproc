@@ -16,7 +16,9 @@ except ImportError:
     TESTED_VERSIONS = {}
 
 
-from ccdproc.tests.pytest_fixtures import triage_setup  # noqa: F401 this is used in tests
+from ccdproc.tests.pytest_fixtures import (
+    triage_setup,  # noqa: F401 this is used in tests
+)
 
 # This is to figure out ccdproc version, rather than using Astropy's
 try:
