@@ -1,4 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+import array_api_compat
 import astropy
 import astropy.units as u
 import numpy as np
@@ -1000,8 +1001,23 @@ def test_user_supplied_combine_func_that_relies_on_masks(comb_func):
     c = Combiner(ccd_list)
 
     if comb_func == "sum_combine":
+
+        def my_summer(data, mask, axis=None):
+            xp = array_api_compat.array_namespace(data)
+            new_data = []
+            for i in range(data.shape[0]):
+                if mask[i] is not None:
+                    new_data.append(data[i] * ~mask[i])
+                else:
+                    new_data.append(xp.zeros_like(data[i]))
+
+            new_data = xp.array(new_data)
+
+            def sum_func(_, axis=axis):
+                return xp.sum(new_data, axis=axis)
+
         expected_result = 3 * data
-        actual_result = c.sum_combine(sum_func=np.sum)
+        actual_result = c.sum_combine(sum_func=my_summer(c.data_arr, c.data_arr_mask))
     elif comb_func == "average_combine":
         expected_result = data
         actual_result = c.average_combine(scale_func=np.mean)
