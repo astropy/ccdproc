@@ -48,6 +48,8 @@ version-file = "ccdproc/_version.py"
 [tool.hatch.build.targets.sdist]
 include = [
     "/ccdproc",
+    "/docs",
+    "/licenses",
 ]
 
 [tool.black]
@@ -72,6 +74,8 @@ extend-exclude = '''
         "*/ccdproc/*setup*",
         "*/ccdproc/*/tests/*",
         "*/ccdproc/tests/*",
+        "*/conftest.py",
+        "*/ccdproc/conftest.py"
     ]
 
     [tool.coverage.report]
