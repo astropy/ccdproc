@@ -15,6 +15,7 @@ authors = [
     { name = "and Michael Seifert" },
 ]
 dependencies = [
+    "array_api_compat",
     "astropy>=5.0.1",
     "astroscrappy>=1.1.0",
     "numpy>=1.24",
@@ -34,6 +35,7 @@ test = [
     "pre-commit",
     "pytest-astropy>=0.10.0",
     "ruff",
+    "jax",
 ]
 
 [project.urls]
