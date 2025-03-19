@@ -74,6 +74,8 @@ extend-exclude = '''
         "*/ccdproc/*setup*",
         "*/ccdproc/*/tests/*",
         "*/ccdproc/tests/*",
+        "*/conftest.py",
+        "*/ccdproc/conftest.py"
     ]
 
     [tool.coverage.report]
