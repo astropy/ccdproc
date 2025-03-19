@@ -252,7 +252,7 @@ def test_cosmicray_median_masked():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    data = np_ma_array(ccd_data.data, (ccd_data.data > -1e6))
+    data = np_ma_array(ccd_data.data, mask=(ccd_data.data > -1e6))
     ndata, crarr = cosmicray_median(data, thresh=5, mbox=11, error_image=DATA_SCALE)
 
     # check the number of cosmic rays detected
@@ -278,7 +278,7 @@ def test_cosmicray_median_gbox():
     data, crarr = cosmicray_median(
         ccd_data.data, error_image=error, thresh=5, mbox=11, rbox=0, gbox=5
     )
-    data = np_ma_array(data, crarr)
+    data = np_ma_array(data, mask=crarr)
     assert crarr.sum() > NCRAYS
     assert abs(data.std() - scale) < 0.1
 
