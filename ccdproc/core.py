@@ -1904,7 +1904,10 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
             # bother with it.
             # data = np.ma.masked_array(data, (crarr == 1))
             mdata = ndimage.median_filter(data, rbox)
-            ndata[crarr == 1] = mdata[crarr == 1]
+            try:
+                ndata[crarr == 1] = mdata[crarr == 1]
+            except TypeError:
+                ndata = ndata.at[crarr == 1].set(mdata[crarr == 1])
 
         return ndata, crarr
     elif isinstance(ccd, CCDData):
