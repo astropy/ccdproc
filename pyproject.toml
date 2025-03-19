@@ -48,6 +48,8 @@ version-file = "ccdproc/_version.py"
 [tool.hatch.build.targets.sdist]
 include = [
     "/ccdproc",
+    "/docs",
+    "/licenses",
 ]
 
 [tool.black]
