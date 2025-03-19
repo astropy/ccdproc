@@ -15,11 +15,6 @@ except ImportError:
     PYTEST_HEADER_MODULES = {}
     TESTED_VERSIONS = {}
 
-
-from ccdproc.tests.pytest_fixtures import (
-    triage_setup,  # noqa: F401 this is used in tests
-)
-
 # This is to figure out ccdproc version, rather than using Astropy's
 try:
     from ccdproc import __version__ as version
