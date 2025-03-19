@@ -69,6 +69,7 @@ Alphabetical list of code contributors
 * Benjamin Weiner (@bjweiner)
 * Kyle B. Westfall (@kbwestfall)
 * Jiyong Youn (@hletrd)
+* Michael Gully-Santiago (@gully)
 
 Additional contributors
 -----------------------
