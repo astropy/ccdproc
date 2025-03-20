@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Astropy affiliated package"
 readme = "README.rst"
 license = { text = "BSD-3-Clause" }
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Steve Crawford", email = "ccdproc@gmail.com" },
     { name = "Matt Craig" },
@@ -16,10 +16,10 @@ authors = [
 ]
 dependencies = [
     "array_api_compat",
-    "astropy>=5.0.1",
+    "astropy>=6.0.1",
     "astroscrappy>=1.1.0",
-    "numpy>=1.24",
-    "reproject>=0.7",
+    "numpy>=1.26",
+    "reproject>=0.9.1",
     "scikit-image",
     "scipy",
 ]
