@@ -39,11 +39,6 @@ jobs:
             python: '3.12'
             tox_env: 'py312-test-alldeps-bottleneck-cov'
 
-          - name: 'ubuntu-py310'
-            os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'py310-test-alldeps-numpy124'
-
           - name: 'ubuntu-py311'
             os: ubuntu-latest
             python: '3.11'
