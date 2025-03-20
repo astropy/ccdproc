@@ -27,11 +27,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: 'ubuntu-py310-oldestdeps'
+          - name: 'ubuntu-py311-oldestdeps'
             os: ubuntu-latest
-            python: '3.10'
+            python: '3.11'
             # Test the oldest supported dependencies on the oldest supported Python
-            tox_env: 'py310-test-oldestdeps'
+            tox_env: 'py311-test-oldestdeps'
 
 
           - name: 'ubuntu-py312-bottleneck'
