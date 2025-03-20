@@ -147,6 +147,7 @@ filterwarnings= [
     "ignore:numpy\\.ufunc size changed:RuntimeWarning",
     "ignore:numpy.ndarray size changed:RuntimeWarning",
     "ignore:`np.bool` is a deprecated alias for the builtin `bool`:DeprecationWarning",
+    "ignore:invalid value encountered in sqrt:RuntimeWarning",
 ]
 markers = [
     "data_size(N): set dimension of square data array for ccd_data fixture",
