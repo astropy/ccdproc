@@ -102,7 +102,7 @@ def log_to_metadata(func):
                 # been called as keywords.
                 positional_args = original_args[: len(args)]
 
-                all_args = chain(zip(positional_args, args), kwd.items())
+                all_args = chain(zip(positional_args, args, strict=True), kwd.items())
                 all_args = [
                     f"{name}={_replace_array_with_placeholder(val)}"
                     for name, val in all_args
@@ -134,7 +134,7 @@ def _replace_array_with_placeholder(value):
     return_type_not_value = False
     if isinstance(value, u.Quantity):
         return_type_not_value = not value.isscalar
-    elif isinstance(value, (NDData, np.ndarray)):
+    elif isinstance(value, NDData | np.ndarray):
         try:
             length = len(value)
         except TypeError:
