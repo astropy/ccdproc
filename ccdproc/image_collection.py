@@ -696,7 +696,7 @@ class ImageFileCollection:
             use_info = self._fits_summary(header_keywords=keywords)
 
         matches = np.ones(len(use_info), dtype=bool)
-        for key, value in zip(keywords, values):
+        for key, value in zip(keywords, values, strict=True):
             logger.debug("key %s, value %s", key, value)
             logger.debug("value in table %s", use_info[key])
             value_missing = use_info[key].mask

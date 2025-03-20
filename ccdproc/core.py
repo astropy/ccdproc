@@ -1299,7 +1299,10 @@ def rebin(ccd, newshape):
         if len(ccd.shape) != len(newshape):
             raise ValueError("newshape does not have the same dimensions as " "ccd.")
 
-        slices = [slice(0, old, old / new) for old, new in zip(ccd.shape, newshape)]
+        slices = [
+            slice(0, old, old / new)
+            for old, new in zip(ccd.shape, newshape, strict=True)
+        ]
         coordinates = xp.mgrid[slices]
         indices = coordinates.astype("i")
         return ccd[tuple(indices)]
