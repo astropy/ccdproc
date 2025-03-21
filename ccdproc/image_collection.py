@@ -8,12 +8,19 @@ from collections import OrderedDict
 from os import listdir, path
 
 import astropy.io.fits as fits
-import numpy as np
+import numpy as np  # see numpy comment below
 import numpy.ma as ma
 from astropy.table import MaskedColumn, Table
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .ccddata import _recognized_fits_file_extensions, fits_ccddata_reader
+
+# ==> numpy comment <==
+# numpy is used internally to keep track of masking in the summary
+# table.  It is not used for any CCD processing, so there is no need
+# to implement the array API here. In other words, ImageFileCollection
+# is fine to implement its internal tables however it wantrs, regardless
+# of what the user is using for their data arrays.
 
 logger = logging.getLogger(__name__)
 
