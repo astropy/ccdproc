@@ -11,6 +11,7 @@ Other Changes and Additions
 - Elements of the data array in a flat image that are masked are set to 1
   instead of 0.
 - Removed unused ``ccdproc.test()``. Use ``pytest --pyargs ccdproc`` instead. [#880]
+- Removed bundled copy of bitfield handling and use the one from astropy. [#886]
 
 Bug Fixes
 ^^^^^^^^^

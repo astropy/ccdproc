@@ -12,13 +12,15 @@ from astropy import nddata, stats
 from astropy import units as u
 from astropy.modeling import fitting
 from astropy.nddata import CCDData, StdDevUncertainty
+from astropy.nddata.bitmask import (
+    bitfield_to_boolean_mask as _bitfield_to_boolean_mask,
+)
 from astropy.units.quantity import Quantity
 from astropy.utils import deprecated, deprecated_renamed_argument
 from astropy.wcs.utils import proj_plane_pixel_area
 from packaging import version as pkgversion
 from scipy import ndimage
 
-from .extern.bitfield import bitfield_to_boolean_mask as _bitfield_to_boolean_mask
 from .log_meta import log_to_metadata
 from .utils.slices import slice_from_string
 
