@@ -2,10 +2,6 @@
 
 """This module implements the combiner class."""
 
-import numpy as np
-
-# from numpy import ma
-
 try:
     import bottleneck as bn
 except ImportError:
@@ -24,32 +20,68 @@ from .core import sigma_func
 __all__ = ["Combiner", "combine"]
 
 
-def _default_median():  # pragma: no cover
+def _default_median(xp=None):  # pragma: no cover
     if HAS_BOTTLENECK:
         return bn.nanmedian
     else:
-        return np.nanmedian
+        if xp is None:
+            return None
+
+    # No bottleneck, but we have a namespace.
+    try:
+        return xp.nanmedian
+    except AttributeError as e:
+        raise RuntimeError(
+            "No NaN-aware median function available. Please install bottleneck."
+        ) from e
 
 
-def _default_average():  # pragma: no cover
+def _default_average(xp=None):  # pragma: no cover
     if HAS_BOTTLENECK:
         return bn.nanmean
     else:
-        return np.nanmean
+        if xp is None:
+            return None
+
+    # No bottleneck, but we have a namespace.
+    try:
+        return xp.nanmean
+    except AttributeError as e:
+        raise RuntimeError(
+            "No NaN-aware mean function available. Please install bottleneck."
+        ) from e
 
 
-def _default_sum():  # pragma: no cover
+def _default_sum(xp=None):  # pragma: no cover
     if HAS_BOTTLENECK:
         return bn.nansum
     else:
-        return np.nansum
+        if xp is None:
+            return None
+
+    # No bottleneck, but we have a namespace.
+    try:
+        return xp.nansum
+    except AttributeError as e:
+        raise RuntimeError(
+            "No NaN-aware sum function available. Please install bottleneck."
+        ) from e
 
 
-def _default_std():  # pragma: no cover
+def _default_std(xp=None):  # pragma: no cover
     if HAS_BOTTLENECK:
         return bn.nanstd
     else:
-        return np.nanstd
+        if xp is None:
+            return None
+
+    # No bottleneck, but we have a namespace.
+    try:
+        return xp.nanstd
+    except AttributeError as e:
+        raise RuntimeError(
+            "No NaN-aware std function available. Please install bottleneck."
+        ) from e
 
 
 _default_sum_func = _default_sum()
@@ -474,11 +506,14 @@ class Combiner:
         The uncertainty currently calculated using the median absolute
         deviation does not account for rejected pixels.
         """
+        xp = array_api_compat.array_namespace(self.data_arr)
+
+        _default_median_func = _default_median(xp=xp)
 
         data, masked_values, median_func = self._combination_setup(
-            median_func, _default_median(), scale_to
+            median_func, _default_median_func, scale_to
         )
-        xp = array_api_compat.array_namespace(data)
+
         medianed = median_func(data, axis=0)
 
         # set the mask
@@ -577,11 +612,19 @@ class Combiner:
         combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
-        data, masked_values, scale_func = self._combination_setup(
-            scale_func, _default_average(), scale_to
-        )
+        xp = array_api_compat.array_namespace(self.data_arr)
 
-        xp = array_api_compat.array_namespace(data)
+        _default_average_func = _default_average(xp=xp)
+
+        if sum_func is None:
+            sum_func = _default_sum(xp=xp)
+
+        if uncertainty_func is None:
+            uncertainty_func = _default_std(xp=xp)
+
+        data, masked_values, scale_func = self._combination_setup(
+            scale_func, _default_average_func, scale_to
+        )
 
         # Do NOT modify data after this -- we need it to be intact when we
         # we get to the uncertainty calculation.
@@ -652,11 +695,16 @@ class Combiner:
             CCDData object based on the combined input of CCDData objects.
         """
 
-        data, masked_values, sum_func = self._combination_setup(
-            sum_func, _default_sum(), scale_to
-        )
+        xp = array_api_compat.array_namespace(self.data_arr)
 
-        xp = array_api_compat.array_namespace(data)
+        _default_sum_func = _default_sum(xp=xp)
+
+        if uncertainty_func is None:
+            uncertainty_func = _default_std(xp=xp)
+
+        data, masked_values, sum_func = self._combination_setup(
+            sum_func, _default_sum_func, scale_to
+        )
 
         if self.weights is not None:
             summed, weights = self._weighted_sum(data, sum_func)
