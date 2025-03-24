@@ -973,13 +973,14 @@ def test_combiner_with_scaling_uncertainty(comb_func):
     avg_ccd = getattr(combiner, comb_func)()
 
     if comb_func != "median_combine":
-        uncertainty_func = _default_std()
+        xp = array_api_compat.array_namespace(ccd_data.data)
+        uncertainty_func = _default_std(xp=xp)
     else:
         uncertainty_func = sigma_func
 
     expected_unc = uncertainty_func(scaled_ccds, axis=0)
 
-    np.testing.assert_almost_equal(avg_ccd.uncertainty.array, expected_unc)
+    np.testing.assert_allclose(avg_ccd.uncertainty.array, expected_unc, atol=1e-10)
 
 
 @pytest.mark.parametrize(
