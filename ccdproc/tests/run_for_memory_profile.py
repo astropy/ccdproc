@@ -109,7 +109,7 @@ def run_memory_profile(
         )
 
     ccd = CCDData.read(files[0])
-    expected_img_size = _calculate_size_of_image(ccd, None)
+    expected_img_size = _calculate_size_of_image(ccd)
 
     if memory_limit:
         kwargs["mem_limit"] = memory_limit

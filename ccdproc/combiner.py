@@ -763,13 +763,10 @@ def _calculate_step_sizes(x_size, y_size, num_chunks):
     return xstep, ystep
 
 
-def _calculate_size_of_image(ccd, combine_uncertainty_function):
+def _calculate_size_of_image(ccd):
     # If uncertainty_func is given for combine this will create an uncertainty
     # even if the originals did not have one. In that case we need to create
     # an empty placeholder.
-    xp = array_api_compat.array_namespace(ccd.data)
-    if ccd.uncertainty is None and combine_uncertainty_function is not None:
-        ccd.uncertainty = StdDevUncertainty(xp.zeros(ccd.data.shape))
 
     size_of_an_img = ccd.data.nbytes
     try:
@@ -993,7 +990,7 @@ def combine(
     if ccd.mask is None:
         ccd.mask = xp.zeros_like(ccd.data, dtype=bool)
 
-    size_of_an_img = _calculate_size_of_image(ccd, combine_uncertainty_function)
+    size_of_an_img = _calculate_size_of_image(ccd)
 
     no_of_img = len(img_list)
 
