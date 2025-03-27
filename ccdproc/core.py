@@ -1907,7 +1907,9 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
             # Fun fact: scipy.ndimage ignores the mask, so may as well not
             # bother with it.
             # data = np.ma.masked_array(data, (crarr == 1))
-            mdata = ndimage.median_filter(data, rbox)
+
+            # make sure that mdata is the same type as data
+            mdata = xp.asarray(ndimage.median_filter(data, rbox))
             ndata = xpx.at(ndata)[crarr == 1].set(mdata[crarr == 1])
 
         return ndata, crarr
