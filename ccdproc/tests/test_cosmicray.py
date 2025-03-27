@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import array_api_compat
+import array_api_extra as xpx
 import pytest
 from astropy import units as u
 from astropy.utils.exceptions import AstropyDeprecationWarning
@@ -35,13 +36,7 @@ def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
     crflux = 10 * scale * rng.random(ncrays) + (threshold + 15) * scale
     for i in range(ncrays):
         y, x = crrays[i]
-        try:
-            data.data[y, x] = crflux[i]
-        except TypeError as e:
-            try:
-                data.data = data.data.at[y, x].set(crflux[i])
-            except AttributeError as other_e:
-                raise other_e from e
+        data.data = xpx.at(data.data)[y, x].set(crflux[i])
 
 
 def test_cosmicray_lacosmic():

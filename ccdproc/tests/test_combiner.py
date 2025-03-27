@@ -1,5 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 import array_api_compat
+import array_api_extra as xpx
 import astropy
 import astropy.units as u
 import numpy as np
@@ -625,11 +626,9 @@ def test_combine_result_uncertainty_and_mask(comb_func, mask_point):
     if mask_point:
         # Make one pixel really negative so we can clip it and guarantee a resulting
         # pixel is masked.
-        # Handle case where array is immutable
-        try:
-            ccd_data.data[0, 0] = -1000
-        except TypeError:
-            ccd_data.data = ccd_data.data.at[0, 0].set(-1000)
+        # Handle case where array is immutable by using array_api_extra,
+        # which provides at for all array libraries.
+        ccd_data.data = xpx.at(ccd_data.data)[0, 0].set(-1000)
 
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)

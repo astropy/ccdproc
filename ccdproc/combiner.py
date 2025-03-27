@@ -10,6 +10,7 @@ else:
     HAS_BOTTLENECK = True
 
 import array_api_compat
+import array_api_extra as xpx
 from astropy import log
 from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import sigma_clip
@@ -439,11 +440,8 @@ class Combiner:
 
         # Get the data as an unmasked array with masked values filled as NaN
         if self.data_arr_mask.any():
-            # Workaround for array libraries that do not allow in-=place modification
-            try:
-                data[self.data_arr_mask] = xp.nan
-            except TypeError:
-                data = data.at[self.data_arr_mask].set(xp.nan)
+            # Use array_api_extra so that we can use at with all array libraries
+            data = xpx.at(data)[self.data_arr_mask].set(xp.nan)
         else:
             data = data
         return data
@@ -1099,12 +1097,8 @@ def combine(
             comb_tile = getattr(tile_combiner, combine_function)(**combine_kwds)
 
             # add it back into the master image
-            # The try/except below is to handle array libraries that may not
-            # allow in-place operations.
-            try:
-                ccd.data[x:xend, y:yend] = comb_tile.data
-            except TypeError:
-                ccd.data = ccd.data.at[x:xend, y:yend].set(comb_tile.data)
+            # Use array_api_extra so that we can use at with all array libraries
+            ccd.data = xpx.at(ccd.data)[x:xend, y:yend].set(comb_tile.data)
 
             if ccd.mask is not None:
                 # Maybe temporary workaround for the mask not being writeable...
