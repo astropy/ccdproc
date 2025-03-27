@@ -91,7 +91,9 @@ def _is_array(arr):
     return True
 
 
-def _percentile_fallback(array, percentiles):
+# Ideally this would eventually be covered by tests. Looks like Sparse
+# could be used to test this, since it has no percentile...
+def _percentile_fallback(array, percentiles):  # pragma: no cover
     """
     Try calculating percentile using namespace, otherwise fall back to
     an implmentation that uses sort. As of the 2023 version of the array API
