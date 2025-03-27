@@ -495,8 +495,13 @@ def test_combine_image_file_collection_input(tmp_path):
 
     comb_ccds = combine(ifc.ccds(), method="average")
 
+    comb_string = combine(
+        ",".join(ifc.files_filtered(include_path=True)), method="average"
+    )
+
     np.testing.assert_allclose(ccd.data, comb_files.data)
     np.testing.assert_allclose(ccd.data, comb_ccds.data)
+    np.testing.assert_allclose(ccd.data, comb_string.data)
 
     with pytest.raises(FileNotFoundError):
         # This should fail because the test is not running in the
