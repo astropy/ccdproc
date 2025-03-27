@@ -27,13 +27,14 @@ NCRAYS = 30
 def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
     size = data.shape[0]
     rng = default_rng(99)
-    crrays = rng.integers(0, size, size=(ncrays, 2))
+    xp = array_api_compat.array_namespace(data.data)
+    crrays = xp.asarray(rng.integers(0, size, size=(ncrays, 2)))
     # use (threshold + 15) below to make sure cosmic ray is well above the
     # threshold no matter what the random number generator returns
     # add_cosmicrays is highly sensitive to the seed
     # ideally threshold should be set so it is not sensitive to seed, but
     # this is not working right now
-    crflux = 10 * scale * rng.random(ncrays) + (threshold + 15) * scale
+    crflux = xp.asarray(10 * scale * rng.random(ncrays) + (threshold + 15) * scale)
     for i in range(ncrays):
         y, x = crrays[i]
         data.data = xpx.at(data.data)[y, x].set(crflux[i])
