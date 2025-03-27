@@ -1103,22 +1103,14 @@ def combine(
             if ccd.mask is not None:
                 # Maybe temporary workaround for the mask not being writeable...
                 ccd.mask = ccd.mask.copy()
-                # The try/except below is to handle array libraries that may not
-                # allow in-place operations.
-                try:
-                    ccd.mask[x:xend, y:yend] = comb_tile.mask
-                except (TypeError, ValueError):
-                    ccd.mask = ccd.mask.at[x:xend, y:yend].set(comb_tile.mask)
+                # Handle immutable arrays with array_api_extra
+                ccd.mask = xpx.at(ccd.mask)[x:xend, y:yend].set(comb_tile.mask)
 
             if ccd.uncertainty is not None:
-                # The try/except below is to handle array libraries that may not
-                # allow in-place operations.
-                try:
-                    ccd.uncertainty.array[x:xend, y:yend] = comb_tile.uncertainty.array
-                except TypeError:
-                    ccd.uncertainty.array = ccd.uncertainty.array.at[
-                        x:xend, y:yend
-                    ].set(comb_tile.uncertainty.array)
+                # Handle immutable arrays with array_api_extra
+                ccd.uncertainty.array = xpx.at(ccd.uncertainty.array)[
+                    x:xend, y:yend
+                ].set(comb_tile.uncertainty.array)
             # Free up memory to try to stay under user's limit
             del comb_tile
             del tile_combiner
