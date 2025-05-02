@@ -39,10 +39,7 @@ except ImportError:
     )
     sys.exit(1)
 
-if sys.version_info < (3, 11):
-    import tomli as tomllib
-else:
-    import tomllib
+import tomllib
 
 # Grab minversion from pyproject.toml
 with (Path(__file__).parents[1] / "pyproject.toml").open("rb") as f:

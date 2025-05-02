@@ -15,6 +15,13 @@ except ImportError:
 else:
     memory_profile_present = True
 
+try:
+    import jax  # noqa
+except ImportError:
+    JAX_PRESENT = False
+else:
+    JAX_PRESENT = True
+
 image_size = 2000  # Square image, so 4000 x 4000
 num_files = 10
 
@@ -30,8 +37,10 @@ def teardown_module():
             fil.unlink()
 
 
+@pytest.mark.skipif(JAX_PRESENT, reason="JAX is present, and does not allow os.fork")
 @pytest.mark.skipif(
-    not platform.startswith("linux"), reason="memory tests only work on linux"
+    not platform.startswith("linux"),
+    reason="memory tests only work on linux",
 )
 @pytest.mark.skipif(not memory_profile_present, reason="memory_profiler not installed")
 @pytest.mark.parametrize("combine_method", ["average", "sum", "median"])
