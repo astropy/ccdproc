@@ -7,7 +7,8 @@ import math
 import numbers
 import warnings
 
-import numpy as np
+import array_api_compat
+import array_api_extra as xpx
 from astropy import nddata, stats
 from astropy import units as u
 from astropy.modeling import fitting
@@ -66,6 +67,62 @@ _short_names = {
     "transform_image": "tranim",
     "wcs_project": "wcsproj",
 }
+
+
+def _is_array(arr):
+    """
+    Check whether an object is an array by tring to find a namespace
+    for it.
+
+    Parameters
+    ----------
+    arr : object
+        Object to be tested.
+
+    Returns
+    -------
+    is_array : bool
+        ``True`` if arr is an array, ``False`` otherwise.
+    """
+    try:
+        array_api_compat.array_namespace(arr)
+    except TypeError:
+        return False
+    return True
+
+
+# Ideally this would eventually be covered by tests. Looks like Sparse
+# could be used to test this, since it has no percentile...
+def _percentile_fallback(array, percentiles):  # pragma: no cover
+    """
+    Try calculating percentile using namespace, otherwise fall back to
+    an implmentation that uses sort. As of the 2023 version of the array API
+    there is no percentile function in the API but there is a sort function.
+
+    Parameters
+    ----------
+    array : array-like
+        Array from which to calculate the percentile.
+
+    percentiles : float or list-like
+        Percentile to calculate.
+
+    Returns
+    -------
+    percentile : float or list-like
+        Calculated percentile.
+    """
+    xp = array_api_compat.array_namespace(array)
+    try:
+        return xp.percentile(array, percentiles)
+    except AttributeError:
+        pass
+
+    # Fall back to using sort
+    sorted_array = xp.sort(array)
+
+    indexes = xp.astype(len(sorted_array) * xp.asarray(percentiles), int)
+    return sorted_array[indexes]
 
 
 @log_to_metadata
@@ -222,6 +279,9 @@ def ccd_process(
     # make a copy of the object
     nccd = ccd.copy()
 
+    # Set array namespace
+    xp = array_api_compat.array_namespace(nccd.data)
+
     # apply the overscan correction
     if isinstance(oscan, CCDData):
         nccd = subtract_overscan(
@@ -251,12 +311,13 @@ def ccd_process(
         raise ValueError("gain and readnoise must be specified to create error frame.")
 
     # apply the bad pixel mask
-    if isinstance(bad_pixel_mask, np.ndarray):
-        nccd.mask = bad_pixel_mask
-    elif bad_pixel_mask is None:
+    if bad_pixel_mask is None:
+        # Handle this simple case first....
         pass
+    elif _is_array(bad_pixel_mask):
+        nccd.mask = xp.asarray(bad_pixel_mask, dtype=bool)
     else:
-        raise TypeError("bad_pixel_mask is not None or numpy.ndarray.")
+        raise TypeError("bad_pixel_mask is not None or an array.")
 
     # apply the gain correction
     if not (gain is None or isinstance(gain, Quantity)):
@@ -347,6 +408,8 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
         units as the data in the parameter ``ccd_data``.
 
     """
+    # Get array namespace
+    xp = array_api_compat.array_namespace(ccd_data.data)
     if gain is not None and not isinstance(gain, Quantity):
         raise TypeError("gain must be a astropy.units.Quantity.")
 
@@ -370,14 +433,15 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
     # remove values that might be negative or treat as nan
     data = gain_value * ccd_data.data
     mask = data < 0
+
     if disregard_nan:
-        data[mask] = 0
+        data = data * ~mask
     else:
-        data[mask] = np.nan
+        # data[mask] = xp.nan
         logging.warning("Negative values in array will be replaced with nan")
 
     # calculate the deviation
-    var = (data + readnoise_value**2) ** 0.5
+    var = (xp.sqrt(data) ** 2 + readnoise_value**2) ** 0.5
 
     # ensure uncertainty and image data have same unit
     ccd = ccd_data.copy()
@@ -480,10 +544,13 @@ def subtract_overscan(
     if not isinstance(ccd, CCDData):
         raise TypeError("ccddata is not a CCDData object.")
 
+    # Set array namespace
+    xp = array_api_compat.array_namespace(ccd.data)
+
     if (overscan is not None and fits_section is not None) or (
         overscan is None and fits_section is None
     ):
-        raise TypeError("specify either overscan or fits_section, but not " "both.")
+        raise TypeError("specify either overscan or fits_section, but not both.")
 
     if (overscan is not None) and (not isinstance(overscan, CCDData)):
         raise TypeError("overscan is not a CCDData object.")
@@ -498,24 +565,24 @@ def subtract_overscan(
         overscan_axis = 0 if overscan.shape[1] > overscan.shape[0] else 1
 
     if median:
-        oscan = np.median(overscan.data, axis=overscan_axis)
+        oscan = xp.median(overscan.data, axis=overscan_axis)
     else:
-        oscan = np.mean(overscan.data, axis=overscan_axis)
+        oscan = xp.mean(overscan.data, axis=overscan_axis)
 
     if model is not None:
         of = fitting.LinearLSQFitter()
-        yarr = np.arange(len(oscan))
+        yarr = xp.arange(len(oscan))
         oscan = of(model, yarr, oscan)
         oscan = oscan(yarr)
         if overscan_axis == 1:
-            oscan = np.reshape(oscan, (oscan.size, 1))
+            oscan = xp.reshape(oscan, (oscan.size, 1))
         else:
-            oscan = np.reshape(oscan, (1, oscan.size))
+            oscan = xp.reshape(oscan, (1, oscan.size))
     else:
         if overscan_axis == 1:
-            oscan = np.reshape(oscan, oscan.shape + (1,))
+            oscan = xp.reshape(oscan, oscan.shape + (1,))
         else:
-            oscan = np.reshape(oscan, (1,) + oscan.shape)
+            oscan = xp.reshape(oscan, (1,) + oscan.shape)
 
     subtracted = ccd.copy()
 
@@ -968,6 +1035,9 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear"):
     from astropy.nddata.ccddata import _generate_wcs_and_update_header
     from reproject import reproject_interp
 
+    # Set array namespace
+    xp = array_api_compat.array_namespace(ccd.data)
+
     if not (ccd.wcs.is_celestial and target_wcs.is_celestial):
         raise ValueError("one or both WCS is not celestial.")
 
@@ -990,7 +1060,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear"):
 
     # The reprojection will contain nan for any pixels for which the source
     # was outside the original image. Those should be masked also.
-    output_mask = np.isnan(projected_image_raw)
+    output_mask = xp.isnan(projected_image_raw)
 
     if reprojected_mask is not None:
         output_mask = output_mask | reprojected_mask
@@ -1216,14 +1286,27 @@ def rebin(ccd, newshape):
         rebin(arr1, (20,20))
     """
     # check to see that is in a nddata type
-    if isinstance(ccd, np.ndarray):
+    try:
+        xp = array_api_compat.array_namespace(ccd)
+    except TypeError:
+        try:
+            # This will also raise a TypeError if ccd.data isn't an array
+            # but that is fine.
+            xp = array_api_compat.array_namespace(ccd.data)
+        except AttributeError as e:
+            raise TypeError("ccd is not an ndarray or a CCDData object.") from e
+
+    if isinstance(ccd, xp.ndarray):
 
         # check to see that the two arrays are going to be the same length
         if len(ccd.shape) != len(newshape):
             raise ValueError("newshape does not have the same dimensions as " "ccd.")
 
-        slices = [slice(0, old, old / new) for old, new in zip(ccd.shape, newshape)]
-        coordinates = np.mgrid[slices]
+        slices = [
+            slice(0, old, old / new)
+            for old, new in zip(ccd.shape, newshape, strict=True)
+        ]
+        coordinates = xp.mgrid[slices]
         indices = coordinates.astype("i")
         return ccd[tuple(indices)]
 
@@ -1249,8 +1332,11 @@ def rebin(ccd, newshape):
         raise TypeError("ccd is not an ndarray or a CCDData object.")
 
 
-def block_reduce(ccd, block_size, func=np.sum):
+def block_reduce(ccd, block_size, func=None):
     """Thin wrapper around `astropy.nddata.block_reduce`."""
+    if func is None:
+        xp = array_api_compat.array_namespace(ccd.data)
+        func = xp.sum
     data = nddata.block_reduce(ccd, block_size, func)
     if isinstance(ccd, CCDData):
         # unit and meta "should" be unaffected by the change of shape and can
@@ -1261,7 +1347,10 @@ def block_reduce(ccd, block_size, func=np.sum):
 
 def block_average(ccd, block_size):
     """Like `block_reduce` but with predefined ``func=np.mean``."""
-    data = nddata.block_reduce(ccd, block_size, np.mean)
+
+    xp = array_api_compat.array_namespace(ccd.data)
+
+    data = nddata.block_reduce(ccd, block_size, xp.mean)
     # Like in block_reduce:
     if isinstance(ccd, CCDData):
         data = CCDData(data, unit=ccd.unit, meta=ccd.meta.copy())
@@ -1573,39 +1662,7 @@ def cosmicray_lacosmic(
 
         asy_background_kwargs = dict(inbkg=inbkg, invar=invar)
 
-    if isinstance(ccd, np.ndarray):
-        data = ccd
-
-        crmask, cleanarr = detect_cosmics(
-            data + data_offset,
-            inmask=None,
-            sigclip=sigclip,
-            sigfrac=sigfrac,
-            objlim=objlim,
-            gain=gain.value,
-            readnoise=readnoise.value,
-            satlevel=satlevel,
-            niter=niter,
-            sepmed=sepmed,
-            cleantype=cleantype,
-            fsmode=fsmode,
-            psfmodel=psfmodel,
-            psffwhm=psffwhm,
-            psfsize=psfsize,
-            psfk=psfk,
-            psfbeta=psfbeta,
-            verbose=verbose,
-            **asy_background_kwargs,
-        )
-
-        cleanarr = cleanarr - data_offset
-        cleanarr = _astroscrappy_gain_apply_helper(
-            cleanarr, gain.value, gain_apply, old_astroscrappy_interface
-        )
-
-        return cleanarr, crmask
-
-    elif isinstance(ccd, CCDData):
+    if isinstance(ccd, CCDData):
         # Start with a check for a special case: ccd is in electron, and
         # gain and readnoise have no units. In that case we issue a warning
         # instead of raising an error to avoid crashing user's pipelines.
@@ -1672,6 +1729,37 @@ def cosmicray_lacosmic(
             nccd.mask = nccd.mask + crmask
 
         return nccd
+    elif _is_array(ccd):
+        data = ccd
+
+        crmask, cleanarr = detect_cosmics(
+            data + data_offset,
+            inmask=None,
+            sigclip=sigclip,
+            sigfrac=sigfrac,
+            objlim=objlim,
+            gain=gain.value,
+            readnoise=readnoise.value,
+            satlevel=satlevel,
+            niter=niter,
+            sepmed=sepmed,
+            cleantype=cleantype,
+            fsmode=fsmode,
+            psfmodel=psfmodel,
+            psffwhm=psffwhm,
+            psfsize=psfsize,
+            psfk=psfk,
+            psfbeta=psfbeta,
+            verbose=verbose,
+            **asy_background_kwargs,
+        )
+
+        cleanarr = cleanarr - data_offset
+        cleanarr = _astroscrappy_gain_apply_helper(
+            cleanarr, gain.value, gain_apply, old_astroscrappy_interface
+        )
+
+        return cleanarr, crmask
 
     else:
         raise TypeError("ccd is not a CCDData or ndarray object.")
@@ -1785,21 +1873,25 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
        mask of the object will be created if it did not previously exist or be
        updated with the detected cosmic rays.
     """
-    if isinstance(ccd, np.ndarray):
-        data = ccd
+    if _is_array(ccd):
+        xp = array_api_compat.array_namespace(ccd)
+
+        # Masked data is not part of the array API so remove mask if present.
+        # Only look at the data array, guessing that if there is a .mask then
+        # there is also a .data.
+        if hasattr(ccd, "mask"):
+            data = ccd.data
+
+        data = xp.asarray(ccd)
 
         if error_image is None:
-            error_image = data.std()
-        else:
-            if not isinstance(error_image, (float, np.ndarray)):
+            error_image = xp.std(data)
+        elif not isinstance(error_image, float):
+            if not _is_array(error_image):
                 raise TypeError("error_image is not a float or ndarray.")
 
         # create the median image
         marr = ndimage.median_filter(data, size=(mbox, mbox))
-
-        # Only look at the data array
-        if isinstance(data, np.ma.MaskedArray):
-            data = data.data
 
         # Find the residual image
         rarr = (data - marr) / error_image
@@ -1814,9 +1906,13 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
         # replace bad pixels in the image
         ndata = data.copy()
         if rbox > 0:
-            data = np.ma.masked_array(data, (crarr == 1))
-            mdata = ndimage.median_filter(data, rbox)
-            ndata[crarr == 1] = mdata[crarr == 1]
+            # Fun fact: scipy.ndimage ignores the mask, so may as well not
+            # bother with it.
+            # data = np.ma.masked_array(data, (crarr == 1))
+
+            # make sure that mdata is the same type as data
+            mdata = xp.asarray(ndimage.median_filter(data, rbox))
+            ndata = xpx.at(ndata)[crarr == 1].set(mdata[crarr == 1])
 
         return ndata, crarr
     elif isinstance(ccd, CCDData):
@@ -1972,13 +2068,16 @@ def ccdmask(
         # No data attribute or data has no shape attribute.
         raise ValueError('"ratio" should be a "CCDData".') from err
 
+    # Get array namespace
+    xp = array_api_compat.array_namespace(ratio.data)
+
     def _sigma_mask(baseline, one_sigma_value, lower_sigma, upper_sigma):
         """Helper function to mask values outside of the specified sigma range."""
         return (baseline < -lower_sigma * one_sigma_value) | (
             baseline > upper_sigma * one_sigma_value
         )
 
-    mask = ~np.isfinite(ratio.data)
+    mask = ~xp.isfinite(ratio.data)
     medsub = ratio.data - ndimage.median_filter(ratio.data, size=(nlmed, ncmed))
 
     if byblocks:
@@ -1991,18 +2090,40 @@ def ccdmask(
                 c1 = j * ncsig
                 c2 = min((j + 1) * ncsig, ncols)
                 block = medsub[l1:l2, c1:c2]
-                high = np.percentile(block.ravel(), 69.1)
-                low = np.percentile(block.ravel(), 30.9)
+                # The array API has no percentile function, so we use a small
+                # function that first tries percentile in case a particular
+                # array package has it but otherwise falls back to a sort.
+                # This is the case at least as of the 2023.12 API.
+                high = _percentile_fallback(
+                    xp.reshape(block, (xp.prod(block.shape),)), 69.1
+                )
+                low = _percentile_fallback(
+                    xp.reshape(block, (xp.prod(block.shape),)), 30.9
+                )
                 block_sigma = (high - low) / 2.0
                 block_mask = _sigma_mask(block, block_sigma, lsigma, hsigma)
-                mblock = np.ma.MaskedArray(block, mask=block_mask, copy=False)
+                # mblock = np.ma.MaskedArray(block, mask=block_mask, copy=False)
 
                 if findbadcolumns:
-                    csum = np.ma.sum(mblock, axis=0)
+                    # Not clear yet what the right solution to masking is in the array
+                    # API, so we'll use a boolean index to get the elements we want
+                    # and sum them....unfortunately, we'll need to do this in a loop
+                    # as far as I can tell.
+                    csum = []
+                    all_masked = []
+                    for k in range(block.shape[1]):
+                        subset = block[:, k]
+                        csum.append(xp.sum(subset[~block_mask[:, k]]))
+                        all_masked.append(xp.all(block_mask[:, k]))
+                    csum = xp.array(csum)
                     csum[csum <= 0] = 0
-                    csum_sigma = np.ma.MaskedArray(np.sqrt(c2 - c1 - csum))
-                    colmask = _sigma_mask(csum.filled(1), csum_sigma, lsigma, hsigma)
-                    block_mask[:, :] |= colmask[np.newaxis, :]
+                    csum_sigma = xp.array(xp.sqrt(c2 - c1 - csum))
+                    # The prior code filled the csum array with the value 1, which
+                    # only affects those cases where all of the input values to
+                    # the csum were masked, so we fill those with 1.
+                    csum[all_masked] = 1
+                    colmask = _sigma_mask(csum, csum_sigma, lsigma, hsigma)
+                    block_mask[:, :] |= colmask[xp.newaxis, :]
 
                 mask[l1:l2, c1:c2] = block_mask
     else:
@@ -2020,7 +2141,7 @@ def ccdmask(
                 if mask[line, col]:
                     for i in range(2, ngood + 2):
                         lend = line + i
-                        if mask[lend, col] and not np.all(mask[line : lend + 1, col]):
+                        if mask[lend, col] and not xp.all(mask[line : lend + 1, col]):
                             mask[line:lend, col] = True
     return mask
 
