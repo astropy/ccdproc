@@ -11,6 +11,7 @@ from astropy.nddata import NDData
 
 import ccdproc  # Really only need Keyword from ccdproc
 
+
 __all__ = []
 
 _LOG_ARGUMENT = "add_keyword"
