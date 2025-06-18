@@ -41,10 +41,11 @@ jobs:
             python: '3.12'
             tox_env: 'py312-test-alldeps-cov'
 
-          - name: 'ubuntu-py311'
+          # Run at least one non-numpy array library
+          - name: 'ubuntu-py313-jax'
             os: ubuntu-latest
-            python: '3.11'
-            tox_env: 'py311-test-alldeps-numpy124'
+            python: '3.13'
+            tox_env: 'py313-jax'
 
           # Move bottleneck test a test without coverage
           - name: 'ubuntu-py312-bottleneck'

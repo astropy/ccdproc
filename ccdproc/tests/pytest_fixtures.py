@@ -2,8 +2,6 @@
 
 from shutil import rmtree
 
-# import dask.array as da
-import jax.numpy as jnp
 import numpy as np
 import pytest
 from astropy import units as u
@@ -51,6 +49,9 @@ def ccd_data(
     The mean can be changed with the marker @pytest.marker.scale(m) on the
     test function, where m is the desired mean.
     """
+    # Need the import here to avoid circular import issues
+    from ..conftest import testing_array_library as array_library
+
     size = data_size
     scale = data_scale
     mean = data_mean
@@ -61,7 +62,7 @@ def ccd_data(
     data = rng.normal(loc=mean, size=[size, size], scale=scale)
 
     fake_meta = {"my_key": 42, "your_key": "not 42"}
-    ccd = CCDData(jnp.array(data), unit=u.adu)
+    ccd = CCDData(array_library.array(data), unit=u.adu)
     ccd.header = fake_meta
     return ccd
 

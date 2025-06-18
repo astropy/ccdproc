@@ -15,12 +15,12 @@ except ImportError:
 else:
     memory_profile_present = True
 
-try:
-    import jax  # noqa
-except ImportError:
-    JAX_PRESENT = False
-else:
-    JAX_PRESENT = True
+
+# Only run memory tests if numpy is the testing array library
+from ccdproc.conftest import testing_array_library
+
+USING_NUMPY_ARRAY_LIBRARY = testing_array_library.__name__ == "numpy"
+
 
 image_size = 2000  # Square image, so 4000 x 4000
 num_files = 10
@@ -37,7 +37,9 @@ def teardown_module():
             fil.unlink()
 
 
-@pytest.mark.skipif(JAX_PRESENT, reason="JAX is present, and does not allow os.fork")
+@pytest.mark.skipif(
+    not USING_NUMPY_ARRAY_LIBRARY, reason="Memory test only done with numpy"
+)
 @pytest.mark.skipif(
     not platform.startswith("linux"),
     reason="memory tests only work on linux",
