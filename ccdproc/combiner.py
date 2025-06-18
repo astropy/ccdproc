@@ -330,7 +330,7 @@ class Combiner:
         for i in range(-1 * nhigh, nlow):
             # create a tuple with the indices
             where = tuple([argsorted[i, :, :].ravel()] + [i.ravel() for i in mg])
-            self.data_arr_mask[where] = True
+            self.data_arr_mask = xpx.at(self.data_arr_mask)[where].set(True)
 
     # set up min/max clipping algorithms
     def minmax_clipping(self, min_clip=None, max_clip=None):
@@ -1107,7 +1107,7 @@ def combine(
                 # Handle immutable arrays with array_api_extra
                 ccd.uncertainty.array = xpx.at(ccd.uncertainty.array)[
                     x:xend, y:yend
-                ].set(comb_tile.uncertainty.array)
+                ].set(xp.astype(comb_tile.uncertainty.array, ccd.dtype))
             # Free up memory to try to stay under user's limit
             del comb_tile
             del tile_combiner
