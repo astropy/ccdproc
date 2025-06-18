@@ -5,7 +5,6 @@ import warnings
 # import array_api_compat
 import astropy
 import astropy.units as u
-import jax.numpy as np
 import pytest
 import skimage
 from astropy.io import fits
@@ -18,6 +17,7 @@ from numpy import array as np_array
 from numpy import random as np_random
 from numpy import testing as np_testing
 
+from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import (
     Keyword,
     ccd_process,
@@ -42,7 +42,7 @@ try:
 except ImportError:
     HAS_BLOCK_X_FUNCS = False
 
-_NUMPY_COPY_IF_NEEDED = None  # False if np.__version__.startswith("1.") else None
+_NUMPY_COPY_IF_NEEDED = None  # False if xp.__version__.startswith("1.") else None
 
 RNG = np_random.default_rng
 
@@ -80,11 +80,11 @@ def test_create_deviation(u_image, u_gain, u_readnoise, expect_success):
         ccd_var = create_deviation(ccd_data, gain=gain, readnoise=readnoise)
         assert ccd_var.uncertainty.array.shape == (10, 10)
         assert ccd_var.uncertainty.array.size == 100
-        assert np.isdtype(ccd_var.uncertainty.array.dtype, "real floating")
+        assert xp.isdtype(ccd_var.uncertainty.array.dtype, "real floating")
         if gain is not None:
-            expected_var = np.sqrt(2 * ccd_data.data + 5**2) / 2
+            expected_var = xp.sqrt(2 * ccd_data.data + 5**2) / 2
         else:
-            expected_var = np.sqrt(ccd_data.data + 5**2)
+            expected_var = xp.sqrt(ccd_data.data + 5**2)
         np_testing.assert_allclose(ccd_var.uncertainty.array, expected_var)
         assert ccd_var.unit == ccd_data.unit
         # Uncertainty should *not* have any units -- does it?
@@ -103,7 +103,7 @@ def test_create_deviation_from_negative():
         ccd_data, gain=None, readnoise=readnoise, disregard_nan=False
     )
     np_testing.assert_array_equal(
-        ccd_data.data < 0, np.isnan(ccd_var.uncertainty.array)
+        ccd_data.data < 0, xp.isnan(ccd_var.uncertainty.array)
     )
 
 
@@ -119,7 +119,7 @@ def test_create_deviation_from_negative_2():
     # In-place replacement of values does not work in some array
     # libraries.
     ccd_data.data = ccd_data.data * ~mask
-    expected_var = np.sqrt(ccd_data.data + readnoise.value**2)
+    expected_var = xp.sqrt(ccd_data.data + readnoise.value**2)
     np_testing.assert_allclose(ccd_var.uncertainty.array, expected_var)
 
 
@@ -178,7 +178,7 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     science_data = science_data + oscan + sky
 
     # Reconstruct the full image
-    ccd_data.data = np.concat([overscan_data, science_data], axis=overscan_axis)
+    ccd_data.data = xp.concat([overscan_data, science_data], axis=overscan_axis)
     # Test once using the overscan argument to specify the overscan region
     ccd_data_overscan = subtract_overscan(
         ccd_data,
@@ -280,7 +280,7 @@ def test_subtract_overscan_model(transpose):
     oscan_region = (slice(None), slice(0, 10))
     science_region = (slice(None), slice(10, None))
 
-    yscan, xscan = np.mgrid[0:size, 0:size] / 10.0 + 300.0
+    yscan, xscan = xp.mgrid[0:size, 0:size] / 10.0 + 300.0
 
     if transpose:
         oscan_region = oscan_region[::-1]
@@ -298,7 +298,7 @@ def test_subtract_overscan_model(transpose):
     # image, so we need to do this before we add the new overscan.
     overscan_data = 0 * ccd_data.data[oscan_region].copy()
     # Reconstruct the full image
-    ccd_data.data = np.concat([overscan_data, science_data], axis=overscan_axis) + scan
+    ccd_data.data = xp.concat([overscan_data, science_data], axis=overscan_axis) + scan
 
     ccd_data = subtract_overscan(
         ccd_data,
@@ -328,10 +328,10 @@ def test_subtract_overscan_fails():
     ccd_data = ccd_data_func()
     # Do we get an error if the *image* is neither CCDData nor an array?
     with pytest.raises(TypeError):
-        subtract_overscan(3, np.zeros((5, 5)))
+        subtract_overscan(3, xp.zeros((5, 5)))
     # Do we get an error if the *overscan* is not an image or an array?
     with pytest.raises(TypeError):
-        subtract_overscan(np.zeros((10, 10)), 3, median=False, model=None)
+        subtract_overscan(xp.zeros((10, 10)), 3, median=False, model=None)
     # Do we get an error if we specify both overscan and fits_section?
     with pytest.raises(TypeError):
         subtract_overscan(ccd_data, overscan=ccd_data[0:10], fits_section="[1:10]")
@@ -343,7 +343,7 @@ def test_subtract_overscan_fails():
         subtract_overscan(ccd_data, fits_section=5)
     # Do we raise an error if the input is a plain array?
     with pytest.raises(TypeError):
-        subtract_overscan(np.zeros((10, 10)), fits_section="[1:10]")
+        subtract_overscan(xp.zeros((10, 10)), fits_section="[1:10]")
 
 
 def test_trim_image_fits_section_requires_string():
@@ -356,7 +356,7 @@ def test_trim_image_fits_section_requires_string():
 def test_trim_image_fits_section(mask_data, uncertainty):
     ccd_data = ccd_data_func(data_size=50)
     if mask_data:
-        ccd_data.mask = np.zeros_like(ccd_data)
+        ccd_data.mask = xp.zeros_like(ccd_data)
     if uncertainty:
         err = RNG().normal(size=ccd_data.shape)
         ccd_data.uncertainty = StdDevUncertainty(err)
@@ -382,8 +382,8 @@ def test_trim_with_wcs_alters_wcs():
     ccd_data = ccd_data_func()
     # WCS construction example pulled form astropy.wcs docs
     wcs = WCS(naxis=2)
-    wcs.wcs.crpix = np.array(ccd_data.shape) / 2
-    wcs.wcs.cdelt = np.array([-0.066667, 0.066667])
+    wcs.wcs.crpix = xp.array(ccd_data.shape) / 2
+    wcs.wcs.cdelt = xp.array([-0.066667, 0.066667])
     wcs.wcs.crval = [0, -90]
     wcs.wcs.ctype = ["RA---AIR", "DEC--AIR"]
     wcs.wcs.set_pv([(2, 1, 45.0)])
@@ -401,7 +401,7 @@ def test_subtract_bias():
     bias_level = 5.0
     ccd_data.data = ccd_data.data + bias_level
     ccd_data.header["key"] = "value"
-    master_bias_array = np.zeros_like(ccd_data.data) + bias_level
+    master_bias_array = xp.zeros_like(ccd_data.data) + bias_level
     master_bias = CCDData(master_bias_array, unit=ccd_data.unit)
     no_bias = subtract_bias(ccd_data, master_bias, add_keyword=None)
     # Does the data we are left with have the correct average?
@@ -416,11 +416,11 @@ def test_subtract_bias():
 def test_subtract_bias_fails():
     ccd_data = ccd_data_func(data_size=50)
     # Should fail if shapes don't match
-    bias = CCDData(np.array([200, 200]), unit=u.adu)
+    bias = CCDData(xp.array([200, 200]), unit=u.adu)
     with pytest.raises(ValueError):
         subtract_bias(ccd_data, bias)
     # Should fail because units don't match
-    bias = CCDData(np.zeros_like(ccd_data), unit=u.meter)
+    bias = CCDData(xp.zeros_like(ccd_data), unit=u.meter)
     with pytest.raises(u.UnitsError):
         subtract_bias(ccd_data, bias)
 
@@ -434,7 +434,7 @@ def test_subtract_dark(explicit_times, scale, exposure_keyword):
     exptime_key = "exposure"
     exposure_unit = u.second
     dark_level = 1.7
-    master_dark_data = np.zeros_like(ccd_data.data) + dark_level
+    master_dark_data = xp.zeros_like(ccd_data.data) + dark_level
     master_dark = CCDData(master_dark_data, unit=u.adu)
     master_dark.header[exptime_key] = 2 * exptime
     dark_exptime = master_dark.header[exptime_key]
@@ -531,7 +531,7 @@ def test_subtract_dark_fails():
     # Fail when the arrays are not the same size
     with pytest.raises(ValueError):
         small_master = CCDData(ccd_data)
-        small_master.data = np.zeros((1, 1))
+        small_master.data = xp.zeros((1, 1))
         subtract_dark(ccd_data, small_master)
 
 
@@ -669,7 +669,7 @@ def test_flat_correct_deviation():
     ccd_data.unit = u.electron
     ccd_data = create_deviation(ccd_data, readnoise=5 * u.electron)
     # Create the flat
-    data = 2 * np.ones((size, size))
+    data = 2 * xp.ones((size, size))
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat = create_deviation(flat, readnoise=0.5 * u.electron)
     ccd_data = flat_correct(ccd_data, flat)
@@ -681,10 +681,10 @@ def test_flat_correct_data_uncertainty():
     # Temporarily work around the fact that NDUncertainty explicitly checks
     # whether the value is a numpy array.
     dat = CCDData(
-        np.ones([100, 100]), unit="adu", uncertainty=np_array(np.ones([100, 100]))
+        xp.ones([100, 100]), unit="adu", uncertainty=np_array(xp.ones([100, 100]))
     )
     # Note flat is set to 10, error, if present, is set to one.
-    flat = CCDData(10 * np.ones([100, 100]), unit="adu")
+    flat = CCDData(10 * xp.ones([100, 100]), unit="adu")
     res = flat_correct(dat, flat)
     assert (res.data == dat.data).all()
     assert (res.uncertainty.array == dat.uncertainty.array).all()
@@ -742,7 +742,7 @@ def test_catch_transform_wcs_warning():
 def test_transform_image(mask_data, uncertainty):
     ccd_data = ccd_data_func(data_size=50)
     if mask_data:
-        ccd_data.mask = np.zeros_like(ccd_data)
+        ccd_data.mask = xp.zeros_like(ccd_data)
         ccd_data.mask[10, 10] = 1
     if uncertainty:
         err = RNG().normal(size=ccd_data.shape)
@@ -767,23 +767,23 @@ def test_transform_image(mask_data, uncertainty):
 # Test block_reduce and block_replicate wrapper
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
 @pytest.mark.skipif(
-    (skimage.__version__ < "0.14.2") and ("dev" in np.__version__),
+    (skimage.__version__ < "0.14.2") and ("dev" in xp.__version__),
     reason="Incompatibility between scikit-image " "and numpy 1.16",
 )
 def test_block_reduce():
     ccd = CCDData(
-        np.ones((4, 4)),
+        xp.ones((4, 4)),
         unit="adu",
         meta={"testkw": 1},
-        mask=np.zeros((4, 4), dtype=bool),
-        uncertainty=StdDevUncertainty(np.ones((4, 4))),
+        mask=xp.zeros((4, 4), dtype=bool),
+        uncertainty=StdDevUncertainty(xp.ones((4, 4))),
     )
     with pytest.warns(AstropyUserWarning) as w:
         ccd_summed = block_reduce(ccd, (2, 2))
     assert len(w) == 1
     assert "following attributes were set" in str(w[0].message)
     assert isinstance(ccd_summed, CCDData)
-    assert np.all(ccd_summed.data == 4)
+    assert xp.all(ccd_summed.data == 4)
     assert ccd_summed.data.shape == (2, 2)
     assert ccd_summed.unit == u.adu
     # Other attributes are set to None. In case the function is modified to
@@ -799,11 +799,11 @@ def test_block_reduce():
 
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
 @pytest.mark.skipif(
-    (skimage.__version__ < "0.14.2") and ("dev" in np.__version__),
+    (skimage.__version__ < "0.14.2") and ("dev" in xp.__version__),
     reason="Incompatibility between scikit-image " "and numpy 1.16",
 )
 def test_block_average():
-    data = np.array(
+    data = xp.array(
         [
             [2.0, 1.0, 2.0, 1.0],
             [1.0, 1.0, 1.0, 1.0],
@@ -815,8 +815,8 @@ def test_block_average():
         data,
         unit="adu",
         meta={"testkw": 1},
-        mask=np.zeros((4, 4), dtype=bool),
-        uncertainty=StdDevUncertainty(np.ones((4, 4))),
+        mask=xp.zeros((4, 4), dtype=bool),
+        uncertainty=StdDevUncertainty(xp.ones((4, 4))),
     )
 
     with pytest.warns(AstropyUserWarning) as w:
@@ -825,7 +825,7 @@ def test_block_average():
     assert "following attributes were set" in str(w[0].message)
 
     assert isinstance(ccd_avgd, CCDData)
-    assert np.all(ccd_avgd.data == 1.25)
+    assert xp.all(ccd_avgd.data == 1.25)
     assert ccd_avgd.data.shape == (2, 2)
     assert ccd_avgd.unit == u.adu
     # Other attributes are set to None. In case the function is modified to
@@ -843,11 +843,11 @@ def test_block_average():
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
 def test_block_replicate():
     ccd = CCDData(
-        np.ones((4, 4)),
+        xp.ones((4, 4)),
         unit="adu",
         meta={"testkw": 1},
-        mask=np.zeros((4, 4), dtype=bool),
-        uncertainty=StdDevUncertainty(np.ones((4, 4))),
+        mask=xp.zeros((4, 4), dtype=bool),
+        uncertainty=StdDevUncertainty(xp.ones((4, 4))),
     )
     with pytest.warns(AstropyUserWarning) as w:
         ccd_repl = block_replicate(ccd, (2, 2))
@@ -855,7 +855,7 @@ def test_block_replicate():
     assert "following attributes were set" in str(w[0].message)
 
     assert isinstance(ccd_repl, CCDData)
-    assert np.all(ccd_repl.data == 0.25)
+    assert xp.all(ccd_repl.data == 0.25)
     assert ccd_repl.data.shape == (8, 8)
     assert ccd_repl.unit == u.adu
     # Other attributes are set to None. In case the function is modified to
@@ -875,7 +875,7 @@ def test__overscan_schange():
     ccd_data = ccd_data_func()
     old_data = ccd_data.copy()
     new_data = subtract_overscan(ccd_data, overscan=ccd_data[:, 1], overscan_axis=0)
-    assert not np.allclose(old_data.data, new_data.data)
+    assert not xp.allclose(old_data.data, new_data.data)
     np_testing.assert_allclose(old_data.data, ccd_data.data)
 
 
@@ -892,7 +892,7 @@ def test_create_deviation_does_not_change_input():
 def test_cosmicray_median_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    error = np.zeros_like(ccd_data)
+    error = xp.ones_like(ccd_data)
     _ = cosmicray_median(ccd_data, error_image=error, thresh=5, mbox=11, gbox=0, rbox=0)
     np_testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
@@ -909,7 +909,7 @@ def test_cosmicray_lacosmic_does_not_change_input():
 def test_flat_correct_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    flat = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
+    flat = CCDData(xp.zeros_like(ccd_data), unit=ccd_data.unit)
     # Ignore the divide by zero warning that is raised when the flat is zero.
     with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
         _ = flat_correct(ccd_data, flat=flat)
@@ -928,7 +928,7 @@ def test_gain_correct_does_not_change_input():
 def test_subtract_bias_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    master_frame = CCDData(np.zeros_like(ccd_data), unit=ccd_data.unit)
+    master_frame = CCDData(xp.zeros_like(ccd_data), unit=ccd_data.unit)
     _ = subtract_bias(ccd_data, master=master_frame)
     np_testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
@@ -945,7 +945,7 @@ def test_trim_image_does_not_change_input():
 def test_transform_image_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    _ = transform_image(ccd_data, np.sqrt)
+    _ = transform_image(ccd_data, xp.sqrt)
     np_testing.assert_allclose(original.data, ccd_data)
     assert original.unit == ccd_data.unit
 
@@ -961,7 +961,7 @@ def wcs_for_testing(shape):
     # Set up an "Airy's zenithal" projection
     # Vector properties may be set with Python lists, or Numpy arrays
     w.wcs.crpix = [shape[0] // 2, shape[1] // 2]
-    w.wcs.cdelt = np.array([-0.066667, 0.066667])
+    w.wcs.cdelt = xp.array([-0.066667, 0.066667])
     w.wcs.crval = [0, -90]
     w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
     w.wcs.set_pv([(2, 1, 45.0)])
@@ -1033,7 +1033,7 @@ def test_wcs_project_onto_shifted_wcs():
     # In the case of a shift, one row and one column should be nan, and they
     # will share one common nan where they intersect, so we know how many nan
     # there should be.
-    assert np.sum(np.isnan(new_ccd.data)) == np.sum(np.array(new_ccd.shape)) - 1
+    assert xp.sum(xp.isnan(new_ccd.data)) == xp.sum(xp.array(new_ccd.shape)) - 1
 
 
 # Use an odd number of pixels to make a well-defined center pixel
@@ -1048,10 +1048,10 @@ def test_wcs_project_onto_scale_wcs():
     ccd_data.wcs.wcs.crpix += 0.5
 
     # Use uniform input data value for simplicity.
-    ccd_data.data = np.ones_like(ccd_data.data)
+    ccd_data.data = xp.ones_like(ccd_data.data)
 
     # Make mask zero...
-    ccd_data.mask = np.zeros_like(ccd_data.data)
+    ccd_data.mask = xp.zeros_like(ccd_data.data)
     # ...except the center pixel, which is one.
     ccd_data.mask[int(ccd_data.wcs.wcs.crpix[0]), int(ccd_data.wcs.wcs.crpix[1])] = 1
 
@@ -1059,7 +1059,7 @@ def test_wcs_project_onto_scale_wcs():
     target_wcs.wcs.cdelt /= 2
 
     # Choice below ensures we are really at the center pixel of an odd range.
-    target_shape = 2 * np.array(ccd_data.shape) + 1
+    target_shape = 2 * xp.array(ccd_data.shape) + 1
     target_wcs.wcs.crpix = 2 * target_wcs.wcs.crpix + 1 + 0.5
 
     # Ugly hack for numpy-specific check in astropy.wcs
@@ -1074,8 +1074,8 @@ def test_wcs_project_onto_scale_wcs():
     assert new_ccd.wcs.wcs.compare(target_wcs.wcs)
 
     # Define a cutout from the new array that should match the old.
-    new_lower_bound = (np.array(new_ccd.shape) - np.array(ccd_data.shape)) // 2
-    new_upper_bound = (np.array(new_ccd.shape) + np.array(ccd_data.shape)) // 2
+    new_lower_bound = (xp.array(new_ccd.shape) - xp.array(ccd_data.shape)) // 2
+    new_upper_bound = (xp.array(new_ccd.shape) + xp.array(ccd_data.shape)) // 2
     data_cutout = new_ccd.data[
         new_lower_bound[0] : new_upper_bound[0], new_lower_bound[1] : new_upper_bound[1]
     ]
@@ -1086,8 +1086,8 @@ def test_wcs_project_onto_scale_wcs():
 
     # Mask should be true for four pixels (all nearest neighbors)
     # of the single pixel we masked initially.
-    new_center = np.array(new_ccd.wcs.wcs.crpix, dtype=int, copy=_NUMPY_COPY_IF_NEEDED)
-    assert np.all(
+    new_center = xp.array(new_ccd.wcs.wcs.crpix, dtype=int, copy=_NUMPY_COPY_IF_NEEDED)
+    assert xp.all(
         new_ccd.mask[
             new_center[0] : new_center[0] + 2, new_center[1] : new_center[1] + 2
         ]
@@ -1096,7 +1096,7 @@ def test_wcs_project_onto_scale_wcs():
     # Those four, and any that reproject made nan because they draw on
     # pixels outside the footprint of the original image, are the only
     # pixels that should be masked.
-    assert new_ccd.mask.sum() == 4 + np.isnan(new_ccd.data).sum()
+    assert new_ccd.mask.sum() == 4 + xp.isnan(new_ccd.data).sum()
 
 
 def test_ccd_process_does_not_change_input():
@@ -1141,22 +1141,22 @@ def test_ccd_process_parameters_are_appropriate():
 
 def test_ccd_process():
     # Test the through ccd_process
-    ccd_data = CCDData(10.0 * np.ones((100, 100)), unit=u.adu)
+    ccd_data = CCDData(10.0 * xp.ones((100, 100)), unit=u.adu)
     # Rewrite to not change data in-place.
-    ccd_data.data = np.concat([ccd_data.data[:, :-10], 2 * np.ones((100, 10))], axis=1)
+    ccd_data.data = xp.concat([ccd_data.data[:, :-10], 2 * xp.ones((100, 10))], axis=1)
 
     ccd_data.meta["testkw"] = 100
 
-    mask = np.zeros((100, 90))
+    mask = xp.zeros((100, 90))
 
-    masterbias = CCDData(2.0 * np.ones((100, 90)), unit=u.electron)
-    masterbias.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+    masterbias = CCDData(2.0 * xp.ones((100, 90)), unit=u.electron)
+    masterbias.uncertainty = StdDevUncertainty(xp.zeros((100, 90)))
 
-    dark_frame = CCDData(0.0 * np.ones((100, 90)), unit=u.electron)
-    dark_frame.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+    dark_frame = CCDData(0.0 * xp.ones((100, 90)), unit=u.electron)
+    dark_frame.uncertainty = StdDevUncertainty(xp.zeros((100, 90)))
 
-    masterflat = CCDData(10.0 * np.ones((100, 90)), unit=u.electron)
-    masterflat.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+    masterflat = CCDData(10.0 * xp.ones((100, 90)), unit=u.electron)
+    masterflat.uncertainty = StdDevUncertainty(xp.zeros((100, 90)))
 
     occd = ccd_process(
         ccd_data,
@@ -1178,8 +1178,8 @@ def test_ccd_process():
     # Final results should be (10 - 2) / 2.0 - 2 = 2
     # Error should be (4 + 5)**0.5 / 0.5  = 3.0
 
-    np_testing.assert_allclose(2.0 * np.ones((100, 90)), occd.data)
-    np_testing.assert_allclose(3.0 * np.ones((100, 90)), occd.uncertainty.array)
+    np_testing.assert_allclose(2.0 * xp.ones((100, 90)), occd.data)
+    np_testing.assert_allclose(3.0 * xp.ones((100, 90)), occd.uncertainty.array)
     np_testing.assert_array_equal(mask, occd.mask)
     assert occd.unit == u.electron
     # Make sure the original keyword is still present. Regression test for #401
@@ -1188,22 +1188,22 @@ def test_ccd_process():
 
 def test_ccd_process_gain_corrected():
     # Test the through ccd_process with gain_corrected as False
-    ccd_data = CCDData(10.0 * np.ones((100, 100)), unit=u.adu)
+    ccd_data = CCDData(10.0 * xp.ones((100, 100)), unit=u.adu)
 
     # Rewrite to not change data in-place.
-    ccd_data.data = np.concat([ccd_data.data[:, :-10], 2 * np.ones((100, 10))], axis=1)
+    ccd_data.data = xp.concat([ccd_data.data[:, :-10], 2 * xp.ones((100, 10))], axis=1)
     ccd_data.meta["testkw"] = 100
 
-    mask = np.zeros((100, 90))
+    mask = xp.zeros((100, 90))
 
-    masterbias = CCDData(4.0 * np.ones((100, 90)), unit=u.adu)
-    masterbias.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+    masterbias = CCDData(4.0 * xp.ones((100, 90)), unit=u.adu)
+    masterbias.uncertainty = StdDevUncertainty(xp.zeros((100, 90)))
 
-    dark_frame = CCDData(0.0 * np.ones((100, 90)), unit=u.adu)
-    dark_frame.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+    dark_frame = CCDData(0.0 * xp.ones((100, 90)), unit=u.adu)
+    dark_frame.uncertainty = StdDevUncertainty(xp.zeros((100, 90)))
 
-    masterflat = CCDData(5.0 * np.ones((100, 90)), unit=u.adu)
-    masterflat.uncertainty = StdDevUncertainty(np.zeros((100, 90)))
+    masterflat = CCDData(5.0 * xp.ones((100, 90)), unit=u.adu)
+    masterflat.uncertainty = StdDevUncertainty(xp.zeros((100, 90)))
 
     occd = ccd_process(
         ccd_data,
@@ -1226,8 +1226,8 @@ def test_ccd_process_gain_corrected():
     # Final results should be (10 - 2) / 2.0 - 2 = 2
     # Error should be (4 + 5)**0.5 / 0.5  = 3.0
 
-    np_testing.assert_allclose(2.0 * np.ones((100, 90)), occd.data)
-    np_testing.assert_allclose(3.0 * np.ones((100, 90)), occd.uncertainty.array)
+    np_testing.assert_allclose(2.0 * xp.ones((100, 90)), occd.data)
+    np_testing.assert_allclose(3.0 * xp.ones((100, 90)), occd.uncertainty.array)
     np_testing.assert_array_equal(mask, occd.mask)
     assert occd.unit == u.electron
     # Make sure the original keyword is still present. Regression test for #401
