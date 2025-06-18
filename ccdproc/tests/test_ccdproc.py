@@ -42,8 +42,6 @@ try:
 except ImportError:
     HAS_BLOCK_X_FUNCS = False
 
-_NUMPY_COPY_IF_NEEDED = None  # False if xp.__version__.startswith("1.") else None
-
 RNG = np_random.default_rng
 
 # import dask.array as da
@@ -1086,7 +1084,7 @@ def test_wcs_project_onto_scale_wcs():
 
     # Mask should be true for four pixels (all nearest neighbors)
     # of the single pixel we masked initially.
-    new_center = xp.array(new_ccd.wcs.wcs.crpix, dtype=int, copy=_NUMPY_COPY_IF_NEEDED)
+    new_center = xp.array(new_ccd.wcs.wcs.crpix, dtype=int)
     assert xp.all(
         new_ccd.mask[
             new_center[0] : new_center[0] + 2, new_center[1] : new_center[1] + 2
