@@ -5,6 +5,8 @@
 # no matter how it is invoked within the source tree.
 import os
 
+import array_api_compat  # noqa: F401
+
 try:
     # When the pytest_astropy_header package is installed
     from pytest_astropy_header.display import PYTEST_HEADER_MODULES, TESTED_VERSIONS
@@ -41,7 +43,7 @@ array_library = os.environ.get("CCDPROC_ARRAY_LIBRARY", "numpy").lower()
 
 match array_library:
     case "numpy":
-        import numpy as testing_array_library  # noqa: F401
+        import array_api_compat.numpy as testing_array_library  # noqa: F401
 
     case "jax":
         import jax.numpy as testing_array_library  # noqa: F401
