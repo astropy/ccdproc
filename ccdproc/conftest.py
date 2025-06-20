@@ -50,6 +50,11 @@ match array_library:
 
         PYTEST_HEADER_MODULES["jax"] = "jax"
 
+    case "dask":
+        import array_api_compat.dask.array as testing_array_library  # noqa: F401
+
+        PYTEST_HEADER_MODULES["dask"] = "dask"
+
     case _:
         raise ValueError(
             f"Unsupported array library: {array_library}. "

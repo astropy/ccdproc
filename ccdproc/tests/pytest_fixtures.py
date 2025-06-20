@@ -62,7 +62,7 @@ def ccd_data(
     data = rng.normal(loc=mean, size=[size, size], scale=scale)
 
     fake_meta = {"my_key": 42, "your_key": "not 42"}
-    ccd = CCDData(array_library.array(data), unit=u.adu)
+    ccd = CCDData(array_library.asarray(data), unit=u.adu)
     ccd.header = fake_meta
     return ccd
 

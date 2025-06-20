@@ -15,6 +15,8 @@ from astropy import log
 from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
+from numpy import mgrid as np_mgrid
+from numpy import ravel_multi_index as np_ravel_multi_index
 
 from .core import sigma_func
 
@@ -324,13 +326,25 @@ class Combiner:
             nhigh = 0
 
         argsorted = xp.argsort(self.data_arr, axis=0)
-        mg = xp.mgrid[
-            [slice(ndim) for i, ndim in enumerate(self.data_arr.shape) if i > 0]
-        ]
+        # Not every array package has mgrid, so make it in numpy and convert it to the
+        # array package used for the data.
+        mg = xp.asarray(
+            np_mgrid[
+                [slice(ndim) for i, ndim in enumerate(self.data_arr.shape) if i > 0]
+            ]
+        )
         for i in range(-1 * nhigh, nlow):
             # create a tuple with the indices
-            where = tuple([argsorted[i, :, :].ravel()] + [i.ravel() for i in mg])
-            self.data_arr_mask = xpx.at(self.data_arr_mask)[where].set(True)
+            where = tuple([argsorted[i, :, :].ravel()] + [v.ravel() for v in mg])
+            # Some array libraries don't support indexing with arrays in multiple
+            # dimensions, so we need to flatten the mask array, set the mask
+            # values for a flattened array, and then reshape it back to the
+            # original shape.
+            flat_index = np_ravel_multi_index(where, self.data_arr.shape)
+            self.data_arr_mask = xp.reshape(
+                xpx.at(xp.reshape(self.data_arr_mask, (-1,)))[flat_index].set(True),
+                self.data_arr.shape,
+            )
 
     # set up min/max clipping algorithms
     def minmax_clipping(self, min_clip=None, max_clip=None):
@@ -528,6 +542,9 @@ class Combiner:
             uncertainty = uncertainty_func(data, axis=0, ignore_nan=True)
         else:
             uncertainty = uncertainty_func(data, axis=0)
+        # Depending on how the uncertainty ws calculated it may or may not
+        # be an array of the same class as the data, so make sure it is
+        uncertainty = xp.asarray(uncertainty)
         # Divide uncertainty by the number of pixel (#309)
         uncertainty /= xp.sqrt(len(self.data_arr) - masked_values)
         # Convert uncertainty to plain numpy array (#351)

@@ -1,7 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import array_api_compat
-import array_api_extra as xpx
 import pytest
 from astropy import units as u
 from astropy.utils.exceptions import AstropyDeprecationWarning
@@ -35,9 +34,14 @@ def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
     # ideally threshold should be set so it is not sensitive to seed, but
     # this is not working right now
     crflux = xp.asarray(10 * scale * rng.random(ncrays) + (threshold + 15) * scale)
+
+    # Some array libraris (Dask) do not support setting individual elements,
+    # so use nuympy.
+    data_as_np = np_array(data.data)
     for i in range(ncrays):
         y, x = crrays[i]
-        data.data = xpx.at(data.data)[y, x].set(crflux[i])
+        data_as_np[y, x] = crflux[i]
+    data.data = xp.asarray(data_as_np)
 
 
 def test_cosmicray_lacosmic():
