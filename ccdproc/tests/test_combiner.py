@@ -365,10 +365,12 @@ def test_combiner_with_scaling():
     # because dask just adds a median to its task list/compute graph thingy
     # and then tries to evaluate it itself?
 
+    med_ccd = median_ccd.data
+    med_inp_data = ccd_data.data
     # Try doing a compute on the data first, and if that fails it is no big deal
     try:
-        med_ccd = median_ccd.data.compute()
-        med_inp_data = ccd_data.data.compute()
+        med_ccd = med_ccd.compute()
+        med_inp_data = med_inp_data.compute()
     except AttributeError:
         pass
 
@@ -480,7 +482,7 @@ def test_combiner_result_dtype():
     np_testing.assert_allclose(res.data, ref)
     res = combine([ccd, ccd.multiply(2), ccd.multiply(3)], dtype=int)
     # The result dtype should be integer:
-    assert xp.isdtype(res.data, "integral")
+    assert xp.isdtype(res.data.dtype, "integral")
     ref = xp.ones((3, 3)) * 2
     np_testing.assert_allclose(res.data, ref)
 
@@ -823,9 +825,11 @@ def test_3d_combiner_with_scaling():
     median_ccd = combiner.median_combine()
     # Does median also scale to the correct value?
     # Once again, use numpy to find the median
+    med_ccd = median_ccd.data
+    med_inp_data = ccd_data.data
     try:
-        med_ccd = median_ccd.data.compute()
-        med_inp_data = ccd_data.data.compute()
+        med_ccd = med_ccd.compute()
+        med_inp_data = med_inp_data.compute()
     except AttributeError:
         pass
 
