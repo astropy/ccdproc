@@ -53,10 +53,10 @@ jobs:
             python: '3.12'
             tox_env: 'py312-test-alldeps-numpy126'
 
-          - name: 'macos-py312'
+          - name: 'macos-py312-dask'
             os: macos-latest
             python: '3.12'
-            tox_env: 'py312-test-alldeps'
+            tox_env: 'py312-alldeps-dask'
 
           - name: 'windows-py312'
             os: windows-latest
