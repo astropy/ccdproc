@@ -14,6 +14,7 @@ from astropy.units.quantity import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from numpy import array as np_array
+from numpy import mgrid as np_mgrid
 from numpy import random as np_random
 from numpy import testing as np_testing
 
@@ -278,7 +279,7 @@ def test_subtract_overscan_model(transpose):
     oscan_region = (slice(None), slice(0, 10))
     science_region = (slice(None), slice(10, None))
 
-    yscan, xscan = xp.mgrid[0:size, 0:size] / 10.0 + 300.0
+    yscan, xscan = xp.asarray(np_mgrid[0:size, 0:size]) / 10.0 + 300.0
 
     if transpose:
         oscan_region = oscan_region[::-1]
@@ -907,7 +908,7 @@ def test_cosmicray_lacosmic_does_not_change_input():
 def test_flat_correct_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    flat = CCDData(xp.zeros_like(ccd_data), unit=ccd_data.unit)
+    flat = CCDData(xp.zeros_like(ccd_data.data), unit=ccd_data.unit)
     # Ignore the divide by zero warning that is raised when the flat is zero.
     with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
         _ = flat_correct(ccd_data, flat=flat)

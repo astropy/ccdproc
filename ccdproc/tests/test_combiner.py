@@ -7,6 +7,7 @@ import pytest
 from astropy.nddata import CCDData
 from astropy.stats import median_absolute_deviation as mad
 from astropy.utils.data import get_pkg_data_filename
+from numpy import median as np_median
 from numpy import testing as np_testing
 
 from ccdproc.combiner import (
@@ -357,7 +358,21 @@ def test_combiner_with_scaling():
     assert avg_ccd.shape == ccd_data.shape
     median_ccd = combiner.median_combine()
     # Does median also scale to the correct value?
-    np_testing.assert_allclose(xp.median(median_ccd.data), xp.median(ccd_data.data))
+    # Some array libraries do not have a median, and median is not part of the
+    # standard array API, so we use numpy's median here.
+    # Odd; for dask, which does not have a full median, even falling back to numpy does
+    # not work. For some reason the call to np_median fails. I suppose this is maybe
+    # because dask just adds a median to its task list/compute graph thingy
+    # and then tries to evaluate it itself?
+
+    # Try doing a compute on the data first, and if that fails it is no big deal
+    try:
+        med_ccd = median_ccd.data.compute()
+        med_inp_data = ccd_data.data.compute()
+    except AttributeError:
+        pass
+
+    np_testing.assert_allclose(np_median(med_ccd), np_median(med_inp_data))
 
     # Set the scaling manually...
     combiner.scaling = [scale_by_mean(combiner.data_arr[i]) for i in range(3)]
@@ -465,7 +480,7 @@ def test_combiner_result_dtype():
     np_testing.assert_allclose(res.data, ref)
     res = combine([ccd, ccd.multiply(2), ccd.multiply(3)], dtype=int)
     # The result dtype should be integer:
-    assert res.data.dtype == xp.int_
+    assert xp.isdtype(res.data, "integral")
     ref = xp.ones((3, 3)) * 2
     np_testing.assert_allclose(res.data, ref)
 
@@ -608,10 +623,12 @@ def test_sum_combine_uncertainty():
     np_testing.assert_allclose(ccd.uncertainty.array, ccd2.uncertainty.array)
 
 
-# Ignore warnings generated because most values are masked
+# Ignore warnings generated because most values are masked and we divide
+# by zero in at least one place
 @pytest.mark.filterwarnings(
     "ignore:Mean of empty slice:RuntimeWarning",
     "ignore:Degrees of freedom <= 0:RuntimeWarning",
+    "ignore:invalid value encountered in divide:RuntimeWarning",
 )
 @pytest.mark.parametrize("mask_point", [True, False])
 @pytest.mark.parametrize(
@@ -741,9 +758,12 @@ def test_combiner_uncertainty_median_mask():
     ref_uncertainty = xp.ones((10, 10)) * mad_to_sigma * mad([1, 2, 3])
     # Correction because we combined two images.
     ref_uncertainty /= xp.sqrt(3)  # 0.855980789955
-    ref_uncertainty = xpx.at(ref_uncertainty)[5, 5].set(
-        mad_to_sigma * mad([2, 3]) / xp.sqrt(2)
-    )  # 0.524179041254
+    # It turns out that the expression below evaluates to a np.float64, which
+    # introduces numpy into the array namespace, which raises an error
+    # when arrat_api_compat tries to figure out the namespace. Casting
+    # it to a regular float fixes that.
+    med_value = float(mad_to_sigma * mad([2, 3]) / xp.sqrt(2))
+    ref_uncertainty = xpx.at(ref_uncertainty)[5, 5].set(med_value)  # 0.524179041254
     np_testing.assert_allclose(ccd.uncertainty.array, ref_uncertainty)
 
 
@@ -802,7 +822,14 @@ def test_3d_combiner_with_scaling():
     assert avg_ccd.shape == ccd_data.shape
     median_ccd = combiner.median_combine()
     # Does median also scale to the correct value?
-    np_testing.assert_allclose(xp.median(median_ccd.data), xp.median(ccd_data.data))
+    # Once again, use numpy to find the median
+    try:
+        med_ccd = median_ccd.data.compute()
+        med_inp_data = ccd_data.data.compute()
+    except AttributeError:
+        pass
+
+    np_testing.assert_allclose(np_median(med_ccd), np_median(med_inp_data))
 
     # Set the scaling manually...
     combiner.scaling = [scale_by_mean(combiner.data_arr[i]) for i in range(3)]
@@ -841,7 +868,7 @@ def test_writeable_after_combine(tmpdir, comb_func):
     ccd2.write(tmp_file.strpath)
 
 
-def test_clip_extrema():
+def test_clip_extrema_moo():
     ccdlist = [
         CCDData(xp.ones((3, 5)) * 90.0, unit="adu"),
         CCDData(xp.ones((3, 5)) * 20.0, unit="adu"),

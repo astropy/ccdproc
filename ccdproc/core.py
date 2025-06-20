@@ -8,7 +8,6 @@ import numbers
 import warnings
 
 import array_api_compat
-import array_api_extra as xpx
 from astropy import nddata, stats
 from astropy import units as u
 from astropy.modeling import fitting
@@ -19,6 +18,7 @@ from astropy.nddata.bitmask import (
 from astropy.units.quantity import Quantity
 from astropy.utils import deprecated, deprecated_renamed_argument
 from astropy.wcs.utils import proj_plane_pixel_area
+from numpy import mgrid as np_mgrid
 from packaging import version as pkgversion
 from scipy import ndimage
 
@@ -573,7 +573,9 @@ def subtract_overscan(
         of = fitting.LinearLSQFitter()
         yarr = xp.arange(len(oscan))
         oscan = of(model, yarr, oscan)
-        oscan = oscan(yarr)
+        # The model will return something array-like but it may not be the same array
+        # library that we started with, so convert it back to the original
+        oscan = xp.asarray(oscan(yarr))
         if overscan_axis == 1:
             oscan = xp.reshape(oscan, (oscan.size, 1))
         else:
@@ -878,6 +880,8 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None):
     ccd : `~astropy.nddata.CCDData`
         CCDData object with flat corrected.
     """
+    # Get the array namespace
+    xp = array_api_compat.array_namespace(ccd.data)
     # Use the min_value to replace any values in the flat
     use_flat = flat
     if min_value is not None:
@@ -895,7 +899,7 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None):
         raise ValueError("norm_value must be greater than zero.")
     else:
         # norm_value was not set, use mean of the image.
-        flat_mean = use_flat.data.mean() * use_flat.unit
+        flat_mean = xp.mean(use_flat.data) * use_flat.unit
 
     # Normalize the flat.
     flat_normed = use_flat.divide(flat_mean)
@@ -1296,21 +1300,7 @@ def rebin(ccd, newshape):
         except AttributeError as e:
             raise TypeError("ccd is not an ndarray or a CCDData object.") from e
 
-    if isinstance(ccd, xp.ndarray):
-
-        # check to see that the two arrays are going to be the same length
-        if len(ccd.shape) != len(newshape):
-            raise ValueError("newshape does not have the same dimensions as " "ccd.")
-
-        slices = [
-            slice(0, old, old / new)
-            for old, new in zip(ccd.shape, newshape, strict=True)
-        ]
-        coordinates = xp.mgrid[slices]
-        indices = coordinates.astype("i")
-        return ccd[tuple(indices)]
-
-    elif isinstance(ccd, CCDData):
+    if isinstance(ccd, CCDData):
         # check to see that the two arrays are going to be the same length
         if len(ccd.shape) != len(newshape):
             raise ValueError("newshape does not have the same dimensions as ccd.")
@@ -1329,7 +1319,29 @@ def rebin(ccd, newshape):
 
         return nccd
     else:
-        raise TypeError("ccd is not an ndarray or a CCDData object.")
+        # check to see that the two arrays are going to be the same length
+        if len(ccd.shape) != len(newshape):
+            raise ValueError("newshape does not have the same dimensions as " "ccd.")
+
+        slices = [
+            slice(0, old, old / new)
+            for old, new in zip(ccd.shape, newshape, strict=True)
+        ]
+
+        # Not every array package has mgrid, so we do the mgrid with
+        # numpy and convert to the array package used by ccd.data.
+
+        coordinates = xp.asarray(np_mgrid[slices])
+        indices = coordinates.astype("i")
+
+        try:
+            result = ccd[tuple(indices)]
+        except Exception as e:
+            raise TypeError(
+                f"The array library {xp.__name__} does not support this method of "
+                "rebinning. Please use block_reduce or block_replicate instead."
+            ) from e
+        return result
 
 
 def block_reduce(ccd, block_size, func=None):
@@ -1912,7 +1924,8 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
 
             # make sure that mdata is the same type as data
             mdata = xp.asarray(ndimage.median_filter(data, rbox))
-            ndata = xpx.at(ndata)[crarr == 1].set(mdata[crarr == 1])
+            ndata = xp.where(crarr == 1, mdata, data)
+            # ndata = xpx.at(ndata)[crarr == 1].set(mdata[crarr == 1])
 
         return ndata, crarr
     elif isinstance(ccd, CCDData):
