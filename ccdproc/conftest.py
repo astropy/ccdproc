@@ -55,6 +55,11 @@ match array_library:
 
         PYTEST_HEADER_MODULES["dask"] = "dask"
 
+    case "cupy":
+        import array_api_compat.cupy as testing_array_library  # noqa: F401
+
+        PYTEST_HEADER_MODULES["cupy"] = "cupy"
+
     case _:
         raise ValueError(
             f"Unsupported array library: {array_library}. "
