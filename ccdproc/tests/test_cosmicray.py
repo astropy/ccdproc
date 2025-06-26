@@ -35,8 +35,8 @@ def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
     # this is not working right now
     crflux = xp.asarray(10 * scale * rng.random(ncrays) + (threshold + 15) * scale)
 
-    # Some array libraris (Dask) do not support setting individual elements,
-    # so use nuympy.
+    # Some array libraries (Dask) do not support setting individual elements,
+    # so use NumPy.
     data_as_np = np_array(data.data)
     for i in range(ncrays):
         y, x = crrays[i]
