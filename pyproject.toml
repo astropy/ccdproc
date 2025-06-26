@@ -148,6 +148,9 @@ filterwarnings= [
     "ignore:numpy\\.ufunc size changed:RuntimeWarning",
     "ignore:numpy.ndarray size changed:RuntimeWarning",
     "ignore:`np.bool` is a deprecated alias for the builtin `bool`:DeprecationWarning",
+    # This is here because dask can end up generating this warning much
+    # later when the spot in create_deviation where a square root is
+    # calculated.
     "ignore:invalid value encountered in sqrt:RuntimeWarning",
 ]
 markers = [

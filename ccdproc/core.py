@@ -441,7 +441,13 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
         logging.warning("Negative values in array will be replaced with nan")
 
     # calculate the deviation
-    var = (xp.sqrt(data) ** 2 + readnoise_value**2) ** 0.5
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="invalid value encountered in sqrt",
+            category=RuntimeWarning,
+        )
+        var = (xp.sqrt(data) ** 2 + readnoise_value**2) ** 0.5
 
     # ensure uncertainty and image data have same unit
     ccd = ccd_data.copy()
