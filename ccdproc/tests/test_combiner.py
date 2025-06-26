@@ -872,7 +872,7 @@ def test_writeable_after_combine(tmpdir, comb_func):
     ccd2.write(tmp_file.strpath)
 
 
-def test_clip_extrema_moo():
+def test_clip_extrema_alone():
     ccdlist = [
         CCDData(xp.ones((3, 5)) * 90.0, unit="adu"),
         CCDData(xp.ones((3, 5)) * 20.0, unit="adu"),

@@ -944,7 +944,10 @@ def test_trim_image_does_not_change_input():
 def test_transform_image_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    _ = transform_image(ccd_data, xp.sqrt)
+    # Using a function here that is really unlikely to produce
+    # an invalid value (like square root does) to avoid
+    # warning messages.
+    _ = transform_image(ccd_data, xp.positive)
     np_testing.assert_allclose(original.data, ccd_data)
     assert original.unit == ccd_data.unit
 
