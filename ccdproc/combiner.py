@@ -180,13 +180,10 @@ class Combiner:
         self.data_arr = xp.array([ccd.data for ccd in ccd_list], dtype=dtype)
 
         # populate self.data_arr
-        mask_list = []
-        for ccd in ccd_list:
-            if ccd.mask is not None:
-                mask_list.append(ccd.mask)
-            else:
-                mask_list.append(xp.zeros(default_shape))
-
+        mask_list = [
+            ccd.mask if ccd.mask is not None else xp.zeros(default_shape)
+            for ccd in ccd_list
+        ]
         self.data_arr_mask = xp.array(mask_list, dtype=bool)
 
         # Must be after self.data_arr is defined because it checks the
