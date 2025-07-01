@@ -447,7 +447,11 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
             message="invalid value encountered in sqrt",
             category=RuntimeWarning,
         )
-        var = xp.sqrt(xp.abs(data) + readnoise_value**2)
+        # The term below in which the square root of the data is calulated
+        # and then squared MUST stay the way it is so that negative values
+        # in the data end up as NaN. Do not replace it with an absolute
+        # value.
+        var = xp.sqrt(xp.sqrt(data) ** 2 + readnoise_value**2)
 
     # ensure uncertainty and image data have same unit
     ccd = ccd_data.copy()
