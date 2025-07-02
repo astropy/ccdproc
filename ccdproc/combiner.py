@@ -109,6 +109,12 @@ class Combiner:
         description. If ``None`` it uses ``np.float64``.
         Default is ``None``.
 
+    xp : array namespace, optional
+        The array namespace to use for the data. If not provided, it will
+        be inferred from the first `~astropy.nddata.CCDData` object in
+        ``ccd_iter``.
+        Default is ``None``.
+
     Raises
     ------
     TypeError
@@ -136,7 +142,7 @@ class Combiner:
                  [ 0.66666667,  0.66666667,  0.66666667,  0.66666667]]...)
     """
 
-    def __init__(self, ccd_iter, dtype=None):
+    def __init__(self, ccd_iter, dtype=None, xp=None):
         if ccd_iter is None:
             raise TypeError(
                 "ccd_iter should be a list or a generator of CCDData objects."
@@ -167,7 +173,8 @@ class Combiner:
                     raise TypeError("CCDData objects don't have the same unit.")
 
         # Set array namespace
-        xp = array_api_compat.array_namespace(ccd_list[0].data)
+        xp = xp or array_api_compat.array_namespace(ccd_list[0].data)
+        self._xp = xp
         if dtype is None:
             dtype = xp.float64
         self.ccd_list = ccd_list
@@ -247,7 +254,7 @@ class Combiner:
 
     @scaling.setter
     def scaling(self, value):
-        xp = array_api_compat.array_namespace(self.data_arr)
+        xp = self._xp
         if value is None:
             self._scaling = value
         else:
@@ -316,7 +323,7 @@ class Combiner:
         .. [0] image.imcombine help text.
            http://stsdas.stsci.edu/cgi-bin/gethelp.cgi?imcombine
         """
-        xp = array_api_compat.array_namespace(self.data_arr)
+        xp = self._xp
         if nlow is None:
             nlow = 0
         if nhigh is None:
@@ -447,7 +454,7 @@ class Combiner:
         return self.data_arr
 
     def _get_nan_substituted_data(self, data):
-        xp = array_api_compat.array_namespace(self.data_arr)
+        xp = self._xp
 
         # Get the data as an unmasked array with masked values filled as NaN
         if self.data_arr_mask.any():
@@ -462,7 +469,7 @@ class Combiner:
         Handle the common pieces of image combination data/mask setup.
         """
         data = self._get_scaled_data(scale_to)
-        xp = array_api_compat.array_namespace(data)
+        xp = self._xp
         # Play it safe for now and only do the nan thing if the user is using
         # the default combination function.
         if user_func is None:
@@ -515,7 +522,7 @@ class Combiner:
         The uncertainty currently calculated using the median absolute
         deviation does not account for rejected pixels.
         """
-        xp = array_api_compat.array_namespace(self.data_arr)
+        xp = self._xp
 
         _default_median_func = _default_median(xp=xp)
 
@@ -565,12 +572,12 @@ class Combiner:
         # return the combined image
         return combined_image
 
-    def _weighted_sum(self, data, sum_func):
+    def _weighted_sum(self, data, sum_func, xp=None):
         """
         Perform weighted sum, used by both ``sum_combine`` and in some cases
         by ``average_combine``.
         """
-        xp = array_api_compat.array_namespace(data)
+        xp = xp or array_api_compat.array_namespace(data)
         if self.weights.shape != data.shape:
             # Add extra axes to the weights for broadcasting
             weights = xp.reshape(self.weights, [len(self.weights), 1, 1])
@@ -624,7 +631,7 @@ class Combiner:
         combined_image: `~astropy.nddata.CCDData`
             CCDData object based on the combined input of CCDData objects.
         """
-        xp = array_api_compat.array_namespace(self.data_arr)
+        xp = self._xp
 
         _default_average_func = _default_average(xp=xp)
 
@@ -641,7 +648,7 @@ class Combiner:
         # Do NOT modify data after this -- we need it to be intact when we
         # we get to the uncertainty calculation.
         if self.weights is not None:
-            weighted_sum, weights = self._weighted_sum(data, sum_func)
+            weighted_sum, weights = self._weighted_sum(data, sum_func, xp=xp)
             mean = weighted_sum / sum_func(weights, axis=0)
         else:
             mean = scale_func(data, axis=0)
@@ -707,7 +714,7 @@ class Combiner:
             CCDData object based on the combined input of CCDData objects.
         """
 
-        xp = array_api_compat.array_namespace(self.data_arr)
+        xp = self._xp
 
         _default_sum_func = _default_sum(xp=xp)
 
@@ -719,7 +726,7 @@ class Combiner:
         )
 
         if self.weights is not None:
-            summed, weights = self._weighted_sum(data, sum_func)
+            summed, weights = self._weighted_sum(data, sum_func, xp=xp)
         else:
             summed = sum_func(data, axis=0)
 
