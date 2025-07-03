@@ -1,4 +1,4 @@
-2.5.0 (unreleased)
+2.5.0 (2025-07-03)
 ------------------
 
 New Features
@@ -18,7 +18,7 @@ Bug Fixes
 
 - Do not allow the first argument of ``subtract_overscan`` to be a plain numpy
   array. [#867]
-- ``Combiner.sigma_clipping`` no longer overwrites the existing mask.
+- ``Combiner.sigma_clipping`` no longer overwrites the existing mask. [#873]
 
 2.4.3 (2025-01-15)
 ------------------
