@@ -1249,9 +1249,7 @@ def background_deviation_box(data, bbox, xp=None):
     for i in range(int(0.5 * bbox), xlen, bbox):
         for j in range(int(0.5 * bbox), ylen, bbox):
             x1, x2, y1, y2 = setbox(i, j, bbox, xlen, ylen)
-            xpx.at(barr)[y1:y2, x1:x2].set(
-                xp.astype(sigma_func(data[y1:y2, x1:x2]), data.dtype)
-            )
+            xpx.at(barr)[y1:y2, x1:x2].set(float(sigma_func(data[y1:y2, x1:x2])))
 
     return barr
 
