@@ -1,6 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-import array_api_compat
 import pytest
 from astropy import units as u
 from astropy.utils.exceptions import AstropyDeprecationWarning
@@ -9,6 +8,8 @@ from numpy.ma import array as np_ma_array
 from numpy.random import default_rng
 from numpy.testing import assert_allclose
 
+# Set up the array library to be used in tests
+from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import (
     background_deviation_box,
     background_deviation_filter,
@@ -26,7 +27,6 @@ NCRAYS = 30
 def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
     size = data.shape[0]
     rng = default_rng(99)
-    xp = array_api_compat.array_namespace(data.data)
     crrays = xp.asarray(rng.integers(0, size, size=(ncrays, 2)))
     # use (threshold + 15) below to make sure cosmic ray is well above the
     # threshold no matter what the random number generator returns
@@ -58,7 +58,6 @@ def test_cosmicray_lacosmic():
 
 def test_cosmicray_lacosmic_ccddata():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    xp = array_api_compat.array_namespace(ccd_data.data)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * xp.ones_like(ccd_data.data)
@@ -75,7 +74,6 @@ def test_cosmicray_lacosmic_ccddata():
 
 def test_cosmicray_lacosmic_check_data():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    xp = array_api_compat.array_namespace(ccd_data.data)
     with pytest.raises(TypeError):
         noise = DATA_SCALE * xp.ones_like(ccd_data.data)
         cosmicray_lacosmic(10, noise)
@@ -90,7 +88,6 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
     # data and returns that gain corrected data. That is not the
     # intent...
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    xp = array_api_compat.array_namespace(ccd_data.data)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * xp.ones_like(ccd_data.data)
@@ -123,7 +120,6 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
 
 def test_cosmicray_lacosmic_accepts_quantity_gain():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    xp = array_api_compat.array_namespace(ccd_data.data)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * xp.ones_like(ccd_data.data)
@@ -138,7 +134,6 @@ def test_cosmicray_lacosmic_accepts_quantity_gain():
 
 def test_cosmicray_lacosmic_accepts_quantity_readnoise():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    xp = array_api_compat.array_namespace(ccd_data.data)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * xp.ones_like(ccd_data.data)
@@ -156,7 +151,6 @@ def test_cosmicray_lacosmic_detects_inconsistent_units():
     # of adu, a readnoise in electrons and a gain in adu / electron.
     # That is not internally inconsistent.
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    xp = array_api_compat.array_namespace(ccd_data.data)
     ccd_data.unit = "adu"
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
@@ -176,7 +170,6 @@ def test_cosmicray_lacosmic_detects_inconsistent_units():
 def test_cosmicray_lacosmic_warns_on_ccd_in_electrons():
     # Check that an input ccd in electrons raises a warning.
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    xp = array_api_compat.array_namespace(ccd_data.data)
     # The unit below is important for the test; this unit on
     # input is supposed to raise an error.
     ccd_data.unit = u.electron
@@ -206,7 +199,6 @@ def test_cosmicray_lacosmic_invar_inbkg(new_args):
     # that calling with the new keyword arguments to astroscrappy
     # 1.1.0 raises no error.
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    xp = array_api_compat.array_namespace(ccd_data.data)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * xp.ones_like(ccd_data.data)
@@ -304,28 +296,28 @@ def test_cosmicray_median_background_deviation():
 
 def test_background_deviation_box():
     scale = 5.3
-    cd = default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale)
+    cd = xp.asarray(default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale))
     bd = background_deviation_box(cd, 25)
     assert abs(bd.mean() - scale) < 0.10
 
 
 def test_background_deviation_box_fail():
     scale = 5.3
-    cd = default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale)
+    cd = xp.asarray(default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale))
     with pytest.raises(ValueError):
         background_deviation_box(cd, 0.5)
 
 
 def test_background_deviation_filter():
     scale = 5.3
-    cd = default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale)
+    cd = xp.asarray(default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale))
     bd = background_deviation_filter(cd, 25)
     assert abs(bd.mean() - scale) < 0.10
 
 
 def test_background_deviation_filter_fail():
     scale = 5.3
-    cd = default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale)
+    cd = xp.asarray(default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale))
     with pytest.raises(ValueError):
         background_deviation_filter(cd, 0.5)
 
@@ -356,7 +348,6 @@ def test_cosmicray_lacosmic_pssl_does_not_fail():
     # to make sure that passing in pssl does not lead to an error
     # since the new interface does not include pssl.
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
-    xp = array_api_compat.array_namespace(ccd_data.data)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
     noise = DATA_SCALE * xp.ones_like(ccd_data.data)

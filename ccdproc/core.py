@@ -8,6 +8,7 @@ import numbers
 import warnings
 
 import array_api_compat
+import array_api_extra as xpx
 from astropy import nddata, stats
 from astropy import units as u
 from astropy.modeling import fitting
@@ -101,7 +102,7 @@ def _percentile_fallback(array, percentiles, xp=None):  # pragma: no cover
 
     Parameters
     ----------
-    array : array-like
+    array : array_like
         Array from which to calculate the percentile.
 
     percentiles : float or list-like
@@ -1205,7 +1206,7 @@ def setbox(x, y, mbox, xmax, ymax):
     return x1, x2, y1, y2
 
 
-def background_deviation_box(data, bbox):
+def background_deviation_box(data, bbox, xp=None):
     """
     Determine the background deviation with a box size of bbox. The algorithm
     steps through the image and calculates the deviation within each box.
@@ -1214,11 +1215,15 @@ def background_deviation_box(data, bbox):
 
     Parameters
     ----------
-    data : `numpy.ndarray` or `numpy.ma.MaskedArray`
+    data : `numpy.ndarray` or other array_like
         Data to measure background deviation.
 
     bbox : int
         Box size for calculating background deviation.
+
+    xp : array namespace, optional
+        Array namespace to use for calculations. If not provided, the
+        namespace will be determined from the array.
 
     Raises
     ------
@@ -1227,7 +1232,7 @@ def background_deviation_box(data, bbox):
 
     Returns
     -------
-    background : `numpy.ndarray` or `numpy.ma.MaskedArray`
+    background : array_like
         An array with the measured background deviation in each pixel.
     """
     # Check to make sure the background box is an appropriate size
@@ -1235,13 +1240,18 @@ def background_deviation_box(data, bbox):
     if bbox < 1:
         raise ValueError("bbox must be greater than 1.")
 
+    if xp is None:
+        # Get the array namespace
+        xp = array_api_compat.array_namespace(data)
     # make the background image
-    barr = data * 0.0 + data.std()
+    barr = data * 0.0 + xp.std(data)
     ylen, xlen = data.shape
     for i in range(int(0.5 * bbox), xlen, bbox):
         for j in range(int(0.5 * bbox), ylen, bbox):
             x1, x2, y1, y2 = setbox(i, j, bbox, xlen, ylen)
-            barr[y1:y2, x1:x2] = sigma_func(data[y1:y2, x1:x2])
+            xpx.at(barr)[y1:y2, x1:x2].set(
+                xp.astype(sigma_func(data[y1:y2, x1:x2]), data.dtype)
+            )
 
     return barr
 
@@ -1266,7 +1276,7 @@ def background_deviation_filter(data, bbox):
 
     Returns
     -------
-    background : `numpy.ndarray` or `numpy.ma.MaskedArray`
+    background : `numpy.ndarray`
         An array with the measured background deviation in each pixel.
     """
     # Check to make sure the background box is an appropriate size
@@ -1861,7 +1871,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0, x
 
     Parameters
     ----------
-    ccd : `~astropy.nddata.CCDData`, `numpy.ndarray` or `numpy.ma.MaskedArray`
+    ccd : `~astropy.nddata.CCDData`, `numpy.ndarray` or other array_like
         Data to have cosmic ray cleaned.
 
     thresh : float, optional
@@ -2079,7 +2089,7 @@ def ccdmask(
     -------
     mask : `numpy.ndarray`
         A boolean ndarray where the bad pixels have a value of 1 (True) and
-        valid pixels 0 (False), following the numpy.ma conventions.
+        valid pixels 0 (False), following the numpy convention for masking.
 
     Notes
     -----
@@ -2235,8 +2245,7 @@ def bitfield_to_boolean_mask(bitfield, ignore_bits=0, flip_bits=None):
     Returns
     -------
     mask : `numpy.ndarray` of boolean dtype
-        The bitfield converted to a boolean mask that can be used for
-        `numpy.ma.MaskedArray` or `~astropy.nddata.CCDData`.
+        The bitfield converted to a boolean mask.
 
     Examples
     --------

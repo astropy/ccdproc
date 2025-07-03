@@ -500,8 +500,7 @@ class Combiner:
         Parameters
         ----------
         median_func : function, optional
-            Function that calculates median of a `numpy.ma.MaskedArray`.
-            Default is `numpy.ma.median`.
+            Function that calculates median of an array.
 
         scale_to : float or None, optional
             Scaling factor used in the average combined image. If given,
@@ -612,19 +611,18 @@ class Combiner:
         Parameters
         ----------
         scale_func : function, optional
-            Function to calculate the average. Defaults to
-            `numpy.nanmean`.
+            Function to calculate the average.
 
         scale_to : float or None, optional
             Scaling factor used in the average combined image. If given,
             it overrides `scaling`. Defaults to ``None``.
 
         uncertainty_func : function, optional
-            Function to calculate uncertainty. Defaults to `numpy.ma.std`.
+            Function to calculate uncertainty.
 
         sum_func : function, optional
             Function used to calculate sums, including the one done to
-            find the weighted average. Defaults to `numpy.nansum`.
+            find the weighted average.
 
         Returns
         -------
@@ -706,7 +704,7 @@ class Combiner:
             it overrides `scaling`. Defaults to ``None``.
 
         uncertainty_func : function, optional
-            Function to calculate uncertainty. Defaults to `numpy.ma.std`.
+            Function to calculate uncertainty.
 
         Returns
         -------
