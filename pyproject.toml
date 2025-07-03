@@ -118,7 +118,7 @@ select = [
 "docs/conf.py" = ["F405"]
 
 [tool.pytest.ini_options]
-minversion = 7.0
+minversion = "7.0"
 testpaths = [
     "ccdproc",
     "docs",
@@ -138,7 +138,7 @@ addopts = [
     "--strict-markers",
     "-ra",
 ]
-log_cli_level = "info"
+log_cli_level = "INFO"
 xfail_strict = true
 filterwarnings= [
     "error",
