@@ -1,4 +1,4 @@
-2.5.1 (unreleased)
+2.5.1 (2025-07-05)
 ------------------
 
 Other Changes and Additions
