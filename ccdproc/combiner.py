@@ -199,7 +199,19 @@ class Combiner:
 
     @property
     def dtype(self):
+        """The dtype of the data array to be combined."""
         return self._dtype
+
+    @property
+    def data(self):
+        """The data array to be combined."""
+        return self._data_arr
+
+    @property
+    def mask(self):
+        """The mask array to be used in image combination. This is *not* the mask
+        of the combined image, but the mask of the data array to be combined."""
+        return self._data_arr_mask
 
     @property
     def weights(self):

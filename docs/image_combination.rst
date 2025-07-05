@@ -104,11 +104,11 @@ To clip iteratively, continuing the clipping process until no more pixels are
 rejected, loop in the code calling the clipping method:
 
     >>> old_n_masked = 0  # dummy value to make loop execute at least once
-    >>> new_n_masked = combiner.data_arr_mask.sum()
+    >>> new_n_masked = combiner.mask.sum()
     >>> while (new_n_masked > old_n_masked):
     ...     combiner.sigma_clipping(func=np.ma.median)
     ...     old_n_masked = new_n_masked
-    ...     new_n_masked = combiner.data_arr_mask.sum()
+    ...     new_n_masked = combiner.mask.sum()
 
 Note that the default values for the high and low thresholds for rejection are
 3 standard deviations.
