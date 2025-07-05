@@ -1,15 +1,10 @@
 2.5.1 (unreleased)
 ------------------
 
-New Features
-^^^^^^^^^^^^
-
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Bug Fixes
-^^^^^^^^^
-
+- Remove superfluous license file from the package. [#899]
 
 2.5.0 (2025-07-03)
 ------------------
