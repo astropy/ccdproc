@@ -110,10 +110,10 @@ class Combiner:
         Default is ``None``.
 
     xp : array namespace, optional
-        The array namespace to use for the data. If not provided, it will
+        The array namespace to use for the data. If `None` or not provided, it will
         be inferred from the first `~astropy.nddata.CCDData` object in
         ``ccd_iter``.
-        Default is ``None``.
+        Default is `None`.
 
     Raises
     ------

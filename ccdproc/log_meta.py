@@ -134,7 +134,7 @@ def _replace_array_with_placeholder(value):
     return_type_not_value = False
     if isinstance(value, u.Quantity):
         return_type_not_value = not value.isscalar
-    elif isinstance(value, NDData | np.ndarray):
+    elif isinstance(value, (NDData, np.ndarray)):
         try:
             length = len(value)
         except TypeError:
