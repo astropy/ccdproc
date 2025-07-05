@@ -184,14 +184,14 @@ class Combiner:
 
         # set up the data array
         # new_shape = (len(ccd_list),) + default_shape
-        self.data_arr = xp.array([ccd.data for ccd in ccd_list], dtype=dtype)
+        self._data_arr = xp.array([ccd.data for ccd in ccd_list], dtype=dtype)
 
         # populate self.data_arr
         mask_list = [
             ccd.mask if ccd.mask is not None else xp.zeros(default_shape)
             for ccd in ccd_list
         ]
-        self.data_arr_mask = xp.array(mask_list, dtype=bool)
+        self._data_arr_mask = xp.array(mask_list, dtype=bool)
 
         # Must be after self.data_arr is defined because it checks the
         # length of the data array.
@@ -222,13 +222,13 @@ class Combiner:
             except TypeError as err:
                 raise TypeError("weights must be an array.") from err
 
-            if value.shape != self.data_arr.shape:
+            if value.shape != self._data_arr.shape:
                 if value.ndim != 1:
                     raise ValueError(
                         "1D weights expected when shapes of the "
                         "data and weights differ."
                     )
-                if value.shape[0] != self.data_arr.shape[0]:
+                if value.shape[0] != self._data_arr.shape[0]:
                     raise ValueError(
                         "Length of weights not compatible with specified axis."
                     )
@@ -258,9 +258,9 @@ class Combiner:
         if value is None:
             self._scaling = value
         else:
-            n_images = self.data_arr.shape[0]
+            n_images = self._data_arr.shape[0]
             if callable(value):
-                self._scaling = [value(self.data_arr[i]) for i in range(n_images)]
+                self._scaling = [value(self._data_arr[i]) for i in range(n_images)]
                 self._scaling = xp.array(self._scaling)
             else:
                 try:
@@ -277,7 +277,7 @@ class Combiner:
                     )
                 self._scaling = xp.array(value)
             # reshape so that broadcasting occurs properly
-            for _ in range(len(self.data_arr.shape) - 1):
+            for _ in range(len(self._data_arr.shape) - 1):
                 self._scaling = self.scaling[:, xp.newaxis]
 
     # set up IRAF-like minmax clipping
@@ -329,12 +329,12 @@ class Combiner:
         if nhigh is None:
             nhigh = 0
 
-        argsorted = xp.argsort(self.data_arr, axis=0)
+        argsorted = xp.argsort(self._data_arr, axis=0)
         # Not every array package has mgrid, so make it in numpy and convert it to the
         # array package used for the data.
         mg = xp.asarray(
             np_mgrid[
-                [slice(ndim) for i, ndim in enumerate(self.data_arr.shape) if i > 0]
+                [slice(ndim) for i, ndim in enumerate(self._data_arr.shape) if i > 0]
             ]
         )
         for i in range(-1 * nhigh, nlow):
@@ -344,10 +344,10 @@ class Combiner:
             # dimensions, so we need to flatten the mask array, set the mask
             # values for a flattened array, and then reshape it back to the
             # original shape.
-            flat_index = np_ravel_multi_index(where, self.data_arr.shape)
-            self.data_arr_mask = xp.reshape(
-                xpx.at(xp.reshape(self.data_arr_mask, (-1,)))[flat_index].set(True),
-                self.data_arr.shape,
+            flat_index = np_ravel_multi_index(where, self._data_arr.shape)
+            self._data_arr_mask = xp.reshape(
+                xpx.at(xp.reshape(self._data_arr_mask, (-1,)))[flat_index].set(True),
+                self._data_arr.shape,
             )
 
     # set up min/max clipping algorithms
@@ -365,13 +365,13 @@ class Combiner:
             Default is ``None``.
         """
         if min_clip is not None:
-            mask = self.data_arr < min_clip
+            mask = self._data_arr < min_clip
             # Written to avoid in-place modification of array
-            self.data_arr_mask = self.data_arr_mask | mask
+            self._data_arr_mask = self._data_arr_mask | mask
         if max_clip is not None:
-            mask = self.data_arr > max_clip
+            mask = self._data_arr > max_clip
             # Written to avoid in-place modification of array
-            self.data_arr_mask = self.data_arr_mask | mask
+            self._data_arr_mask = self._data_arr_mask | mask
 
     # set up sigma  clipping algorithms
     @deprecated_renamed_argument(
@@ -430,10 +430,10 @@ class Combiner:
         # Remove in 3.0
         _ = kwd.pop("use_astropy", True)
 
-        self.data_arr_mask = (
-            self.data_arr_mask
+        self._data_arr_mask = (
+            self._data_arr_mask
             | sigma_clip(
-                self.data_arr,
+                self._data_arr,
                 sigma_lower=low_thresh,
                 sigma_upper=high_thresh,
                 axis=kwd.get("axis", 0),
@@ -448,18 +448,18 @@ class Combiner:
 
     def _get_scaled_data(self, scale_arg):
         if scale_arg is not None:
-            return self.data_arr * scale_arg
+            return self._data_arr * scale_arg
         if self.scaling is not None:
-            return self.data_arr * self.scaling
-        return self.data_arr
+            return self._data_arr * self.scaling
+        return self._data_arr
 
     def _get_nan_substituted_data(self, data):
         xp = self._xp
 
         # Get the data as an unmasked array with masked values filled as NaN
-        if self.data_arr_mask.any():
+        if self._data_arr_mask.any():
             # Use array_api_extra so that we can use at with all array libraries
-            data = xpx.at(data)[self.data_arr_mask].set(xp.nan)
+            data = xpx.at(data)[self._data_arr_mask].set(xp.nan)
         else:
             data = data
         return data
@@ -478,7 +478,7 @@ class Combiner:
             data = self._get_nan_substituted_data(data)
             masked_values = xp.isnan(data).sum(axis=0)
         else:
-            masked_values = self.data_arr_mask.sum(axis=0)
+            masked_values = self._data_arr_mask.sum(axis=0)
             combo_func = user_func
 
         return data, masked_values, combo_func
@@ -532,7 +532,7 @@ class Combiner:
         medianed = median_func(data, axis=0)
 
         # set the mask
-        mask = masked_values == len(self.data_arr)
+        mask = masked_values == len(self._data_arr)
 
         # set the uncertainty
 
@@ -549,7 +549,7 @@ class Combiner:
         # be an array of the same class as the data, so make sure it is
         uncertainty = xp.asarray(uncertainty)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= xp.sqrt(len(self.data_arr) - masked_values)
+        uncertainty /= xp.sqrt(len(self._data_arr) - masked_values)
         # Convert uncertainty to plain numpy array (#351)
         # There is no need to care about potential masks because the
         # uncertainty was calculated based on the data so potential masked
@@ -566,7 +566,7 @@ class Combiner:
         )
 
         # update the meta data
-        combined_image.meta["NCOMBINE"] = len(self.data_arr)
+        combined_image.meta["NCOMBINE"] = len(self._data_arr)
 
         # return the combined image
         return combined_image
@@ -653,7 +653,7 @@ class Combiner:
 
         # calculate the mask
 
-        mask = masked_values == len(self.data_arr)
+        mask = masked_values == len(self._data_arr)
 
         # set up the deviation
         uncertainty = uncertainty_func(data, axis=0)
@@ -729,7 +729,7 @@ class Combiner:
             summed = sum_func(data, axis=0)
 
         # set up the mask
-        mask = masked_values == len(self.data_arr)
+        mask = masked_values == len(self._data_arr)
 
         # set up the deviation
         uncertainty = uncertainty_func(data, axis=0)
@@ -749,7 +749,7 @@ class Combiner:
         )
 
         # update the meta data
-        combined_image.meta["NCOMBINE"] = len(self.data_arr)
+        combined_image.meta["NCOMBINE"] = len(self._data_arr)
 
         # return the combined image
         return combined_image
