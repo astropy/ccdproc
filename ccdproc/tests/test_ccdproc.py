@@ -219,7 +219,8 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     # Do both ways of subtracting overscan give exactly the same result?
     assert xp.all(
         xpx.isclose(
-            ccd_data_overscan[science_region], ccd_data_fits_section[science_region]
+            ccd_data_overscan.data[science_region],
+            ccd_data_fits_section.data[science_region],
         )
     )
 
@@ -275,7 +276,9 @@ def test_subtract_overscan(median, transpose, data_rectangle):
             median=median,
             model=None,
         )
-        assert xp.all(xpx.isclose(ccd_data_square_overscan_auto, ccd_data_square))
+        assert xp.all(
+            xpx.isclose(ccd_data_square_overscan_auto.data, ccd_data_square.data)
+        )
 
 
 # A more substantial test of overscan modeling
@@ -372,7 +375,7 @@ def test_trim_image_fits_section(mask_data, uncertainty):
     trimmed = trim_image(ccd_data, fits_section="[20:40,:]")
     # FITS reverse order, bounds are inclusive and starting index is 1-based
     assert trimmed.shape == (50, 21)
-    assert xp.all(xpx.isclose(trimmed.data, ccd_data[:, 19:40]))
+    assert xp.all(xpx.isclose(trimmed.data, ccd_data.data[:, 19:40]))
     if mask_data:
         assert trimmed.shape == trimmed.mask.shape
     if uncertainty:
@@ -383,7 +386,7 @@ def test_trim_image_no_section():
     ccd_data = ccd_data_func(data_size=50)
     trimmed = trim_image(ccd_data[:, 19:40])
     assert trimmed.shape == (50, 21)
-    assert xp.all(xpx.isclose(trimmed.data, ccd_data[:, 19:40]))
+    assert xp.all(xpx.isclose(trimmed.data, ccd_data.data[:, 19:40]))
 
 
 def test_trim_with_wcs_alters_wcs():
@@ -967,7 +970,7 @@ def test_transform_image_does_not_change_input():
     # an invalid value (like square root does) to avoid
     # warning messages.
     _ = transform_image(ccd_data, xp.positive)
-    assert xp.all(xpx.isclose(original.data, ccd_data))
+    assert xp.all(xpx.isclose(original.data, ccd_data.data))
     assert original.unit == ccd_data.unit
 
 
@@ -1042,7 +1045,7 @@ def test_wcs_project_onto_shifted_wcs():
 
     # Make sure data matches within some reasonable tolerance, keeping in mind
     # that the pixels should all be shifted.
-    assert xp.all(xpx.isclose(ccd_data.data[:-1, :-1], new_ccd[1:, 1:], rtol=1e-5))
+    assert xp.all(xpx.isclose(ccd_data.data[:-1, :-1], new_ccd.data[1:, 1:], rtol=1e-5))
 
     # The masks should all be shifted too.
     assert xp.all(xpx.isclose(ccd_data.mask[:-1, :-1], new_ccd.mask[1:, 1:]))
