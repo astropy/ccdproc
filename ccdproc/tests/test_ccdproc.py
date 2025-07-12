@@ -2,7 +2,7 @@
 
 import warnings
 
-# import array_api_compat
+import array_api_extra as xpx
 import astropy
 import astropy.units as u
 import pytest
@@ -16,7 +16,6 @@ from astropy.wcs import WCS
 from numpy import array as np_array
 from numpy import mgrid as np_mgrid
 from numpy import random as np_random
-from numpy import testing as np_testing
 
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import (
@@ -84,7 +83,7 @@ def test_create_deviation(u_image, u_gain, u_readnoise, expect_success):
             expected_var = xp.sqrt(2 * ccd_data.data + 5**2) / 2
         else:
             expected_var = xp.sqrt(ccd_data.data + 5**2)
-        np_testing.assert_allclose(ccd_var.uncertainty.array, expected_var)
+        assert xp.all(xpx.isclose(ccd_var.uncertainty.array, expected_var))
         assert ccd_var.unit == ccd_data.unit
         # Uncertainty should *not* have any units -- does it?
         with pytest.raises(AttributeError):
@@ -101,9 +100,7 @@ def test_create_deviation_from_negative():
     ccd_var = create_deviation(
         ccd_data, gain=None, readnoise=readnoise, disregard_nan=False
     )
-    np_testing.assert_array_equal(
-        ccd_data.data < 0, xp.isnan(ccd_var.uncertainty.array)
-    )
+    assert xp.all(xpx.isclose(ccd_data.data < 0, xp.isnan(ccd_var.uncertainty.array)))
 
 
 def test_create_deviation_from_negative_2():
@@ -119,7 +116,7 @@ def test_create_deviation_from_negative_2():
     # libraries.
     ccd_data.data = ccd_data.data * ~mask
     expected_var = xp.sqrt(ccd_data.data + readnoise.value**2)
-    np_testing.assert_allclose(ccd_var.uncertainty.array, expected_var)
+    assert xp.all(xpx.isclose(ccd_var.uncertainty.array, expected_var))
 
 
 def test_create_deviation_keywords_must_have_unit():
@@ -188,8 +185,12 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     )
     # Is the mean of the "science" region the sum of sky and the mean the
     # "science" section had before backgrounds were added?
-    np_testing.assert_allclose(
-        ccd_data_overscan.data[science_region].mean(), sky + original_mean, rtol=1e-6
+    assert xp.all(
+        xpx.isclose(
+            ccd_data_overscan.data[science_region].mean(),
+            sky + original_mean,
+            rtol=1e-6,
+        )
     )
     # Is the overscan region zero?
     assert (ccd_data_overscan.data[oscan_region] == 0).all()
@@ -205,17 +206,21 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     )
     # Is the mean of the "science" region the sum of sky and the mean the
     # "science" section had before backgrounds were added?
-    np_testing.assert_allclose(
-        ccd_data_fits_section.data[science_region].mean(),
-        sky + original_mean,
-        rtol=1e-6,
+    assert xp.all(
+        xpx.isclose(
+            ccd_data_fits_section.data[science_region].mean(),
+            sky + original_mean,
+            rtol=1e-6,
+        )
     )
     # Is the overscan region zero?
     assert (ccd_data_fits_section.data[oscan_region] == 0).all()
 
     # Do both ways of subtracting overscan give exactly the same result?
-    np_testing.assert_allclose(
-        ccd_data_overscan[science_region], ccd_data_fits_section[science_region]
+    assert xp.all(
+        xpx.isclose(
+            ccd_data_overscan[science_region], ccd_data_fits_section[science_region]
+        )
     )
 
     # Set overscan_axis to None, and let the routine figure out the axis.
@@ -227,10 +232,12 @@ def test_subtract_overscan(median, transpose, data_rectangle):
         median=median,
         model=None,
     )
-    np_testing.assert_allclose(
-        ccd_data_overscan_auto.data[science_region].mean(),
-        sky + original_mean,
-        rtol=1e-6,
+    assert xp.all(
+        xpx.isclose(
+            ccd_data_overscan_auto.data[science_region].mean(),
+            sky + original_mean,
+            rtol=1e-6,
+        )
     )
     # Use overscan_axis=None with a FITS section
     ccd_data_fits_section_overscan_auto = subtract_overscan(
@@ -240,10 +247,12 @@ def test_subtract_overscan(median, transpose, data_rectangle):
         median=median,
         model=None,
     )
-    np_testing.assert_allclose(
-        ccd_data_fits_section_overscan_auto.data[science_region].mean(),
-        sky + original_mean,
-        rtol=1e-6,
+    assert xp.all(
+        xpx.isclose(
+            ccd_data_fits_section_overscan_auto.data[science_region].mean(),
+            sky + original_mean,
+            rtol=1e-6,
+        )
     )
     # Overscan_axis should be 1 for a square overscan region
     # This test only works for a non-square data region, but the
@@ -266,7 +275,7 @@ def test_subtract_overscan(median, transpose, data_rectangle):
             median=median,
             model=None,
         )
-        np_testing.assert_allclose(ccd_data_square_overscan_auto, ccd_data_square)
+        assert xp.all(xpx.isclose(ccd_data_square_overscan_auto, ccd_data_square))
 
 
 # A more substantial test of overscan modeling
@@ -306,8 +315,8 @@ def test_subtract_overscan_model(transpose):
         median=False,
         model=models.Polynomial1D(2),
     )
-    np_testing.assert_allclose(
-        ccd_data.data[science_region].mean(), original_mean, atol=1e-5
+    assert xp.all(
+        xpx.isclose(ccd_data.data[science_region].mean(), original_mean, atol=1e-5)
     )
     # Set the overscan_axis explicitly to None, and let the routine
     # figure it out.
@@ -318,8 +327,8 @@ def test_subtract_overscan_model(transpose):
         median=False,
         model=models.Polynomial1D(2),
     )
-    np_testing.assert_allclose(
-        ccd_data.data[science_region].mean(), original_mean, atol=1e-5
+    assert xp.all(
+        xpx.isclose(ccd_data.data[science_region].mean(), original_mean, atol=1e-5)
     )
 
 
@@ -363,7 +372,7 @@ def test_trim_image_fits_section(mask_data, uncertainty):
     trimmed = trim_image(ccd_data, fits_section="[20:40,:]")
     # FITS reverse order, bounds are inclusive and starting index is 1-based
     assert trimmed.shape == (50, 21)
-    np_testing.assert_allclose(trimmed.data, ccd_data[:, 19:40])
+    assert xp.all(xpx.isclose(trimmed.data, ccd_data[:, 19:40]))
     if mask_data:
         assert trimmed.shape == trimmed.mask.shape
     if uncertainty:
@@ -374,7 +383,7 @@ def test_trim_image_no_section():
     ccd_data = ccd_data_func(data_size=50)
     trimmed = trim_image(ccd_data[:, 19:40])
     assert trimmed.shape == (50, 21)
-    np_testing.assert_allclose(trimmed.data, ccd_data[:, 19:40])
+    assert xp.all(xpx.isclose(trimmed.data, ccd_data[:, 19:40]))
 
 
 def test_trim_with_wcs_alters_wcs():
@@ -404,7 +413,7 @@ def test_subtract_bias():
     master_bias = CCDData(master_bias_array, unit=ccd_data.unit)
     no_bias = subtract_bias(ccd_data, master_bias, add_keyword=None)
     # Does the data we are left with have the correct average?
-    np_testing.assert_allclose(no_bias.data.mean(), data_avg)
+    assert xp.all(xpx.isclose(no_bias.data.mean(), data_avg))
     # With logging turned off, metadata should not change
     assert no_bias.header == ccd_data.header
     del no_bias.header["key"]
@@ -471,8 +480,8 @@ def test_subtract_dark(explicit_times, scale, exposure_keyword):
             (exptime / dark_exptime) * (exposure_unit / dark_exposure_unit)
         )
 
-    np_testing.assert_allclose(
-        ccd_data.data - dark_scale * dark_level, dark_sub.data, rtol=1e-6
+    assert xp.all(
+        xpx.isclose(ccd_data.data - dark_scale * dark_level, dark_sub.data, rtol=1e-6)
     )
     # Headers should have the same content...do they?
     assert dark_sub.header == ccd_data.header
@@ -574,15 +583,19 @@ def test_flat_correct():
     # Check that the flat was normalized
     # Should be the case that flat * flat_data = ccd_data * flat.data.mean
     # if the normalization was done correctly.
-    np_testing.assert_allclose(
-        (flat_data.data * flat.data).mean(),
-        ccd_data.data.mean() * flat.data.mean(),
-        rtol=1e-6,
+    assert xp.all(
+        xpx.isclose(
+            (flat_data.data * flat.data).mean(),
+            ccd_data.data.mean() * flat.data.mean(),
+            rtol=1e-6,
+        )
     )
-    np_testing.assert_allclose(
-        ccd_data.data / flat_data.data,
-        flat.data / flat.data.mean(),
-        rtol=1e-6,
+    assert xp.all(
+        xpx.isclose(
+            ccd_data.data / flat_data.data,
+            flat.data / flat.data.mean(),
+            rtol=1e-6,
+        )
     )
 
     # Check that metadata is unchanged (since logging is turned off)
@@ -606,15 +619,19 @@ def test_flat_correct_min_value():
     # Check that the flat was normalized. The asserts below, which look a
     # little odd, are correctly testing that
     #    flat_corrected_data = ccd_data / (flat_with_min / mean(flat_with_min))
-    np_testing.assert_allclose(
-        (flat_corrected_data.data * flat_with_min.data).mean(),
-        (ccd_data.data * flat_with_min.data.mean()).mean(),
-        rtol=1e-6,
+    assert xp.all(
+        xpx.isclose(
+            (flat_corrected_data.data * flat_with_min.data).mean(),
+            (ccd_data.data * flat_with_min.data.mean()).mean(),
+            rtol=1e-6,
+        )
     )
-    np_testing.assert_allclose(
-        ccd_data.data / flat_corrected_data.data,
-        flat_with_min.data / flat_with_min.data.mean(),
-        rtol=1e-6,
+    assert xp.all(
+        xpx.isclose(
+            ccd_data.data / flat_corrected_data.data,
+            flat_with_min.data / flat_with_min.data.mean(),
+            rtol=1e-6,
+        )
     )
 
     # Test that flat is not modified.
@@ -638,13 +655,15 @@ def test_flat_correct_norm_value():
     # Check that the flat was normalized
     # Should be the case that flat * flat_data = ccd_data * flat_mean
     # if the normalization was done correctly.
-    np_testing.assert_allclose(
-        (flat_data.data * flat.data).mean(),
-        ccd_data.data.mean() * flat_mean,
-        rtol=1e-6,
+    assert xp.all(
+        xpx.isclose(
+            (flat_data.data * flat.data).mean(),
+            ccd_data.data.mean() * flat_mean,
+            rtol=1e-6,
+        )
     )
-    np_testing.assert_allclose(
-        ccd_data.data / flat_data.data, flat.data / flat_mean, rtol=1e-6
+    assert xp.all(
+        xpx.isclose(ccd_data.data / flat_data.data, flat.data / flat_mean, rtol=1e-6)
     )
 
 
@@ -694,7 +713,7 @@ def test_gain_correct():
     ccd_data = ccd_data_func()
     init_data = ccd_data.data
     gain_data = gain_correct(ccd_data, gain=3, add_keyword=None)
-    np_testing.assert_allclose(gain_data.data, 3 * init_data)
+    assert xp.all(xpx.isclose(gain_data.data, 3 * init_data))
     assert ccd_data.meta == gain_data.meta
 
 
@@ -704,7 +723,7 @@ def test_gain_correct_quantity():
     g = Quantity(3, u.electron / u.adu)
     ccd_data = gain_correct(ccd_data, gain=g)
 
-    np_testing.assert_allclose(ccd_data.data, 3 * init_data)
+    assert xp.all(xpx.isclose(ccd_data.data, 3 * init_data))
     assert ccd_data.unit == u.electron
 
 
@@ -752,14 +771,14 @@ def test_transform_image(mask_data, uncertainty):
 
     tran = transform_image(ccd_data, tran)
 
-    np_testing.assert_allclose(10 * ccd_data.data, tran.data)
+    assert xp.all(xpx.isclose(10 * ccd_data.data, tran.data))
     if mask_data:
         assert tran.shape == tran.mask.shape
-        np_testing.assert_allclose(ccd_data.mask, tran.mask)
+        assert xp.all(xpx.isclose(ccd_data.mask, tran.mask))
     if uncertainty:
         assert tran.shape == tran.uncertainty.array.shape
-        np_testing.assert_allclose(
-            10 * ccd_data.uncertainty.array, tran.uncertainty.array
+        assert xp.all(
+            xpx.isclose(10 * ccd_data.uncertainty.array, tran.uncertainty.array)
         )
 
 
@@ -875,7 +894,7 @@ def test__overscan_schange():
     old_data = ccd_data.copy()
     new_data = subtract_overscan(ccd_data, overscan=ccd_data[:, 1], overscan_axis=0)
     assert not xp.allclose(old_data.data, new_data.data)
-    np_testing.assert_allclose(old_data.data, ccd_data.data)
+    assert xp.all(xpx.isclose(old_data.data, ccd_data.data))
 
 
 def test_create_deviation_does_not_change_input():
@@ -884,7 +903,7 @@ def test_create_deviation_does_not_change_input():
     _ = create_deviation(
         ccd_data, gain=5 * u.electron / u.adu, readnoise=10 * u.electron
     )
-    np_testing.assert_allclose(original.data, ccd_data.data)
+    assert xp.all(xpx.isclose(original.data, ccd_data.data))
     assert original.unit == ccd_data.unit
 
 
@@ -893,7 +912,7 @@ def test_cosmicray_median_does_not_change_input():
     original = ccd_data.copy()
     error = xp.ones_like(ccd_data)
     _ = cosmicray_median(ccd_data, error_image=error, thresh=5, mbox=11, gbox=0, rbox=0)
-    np_testing.assert_allclose(original.data, ccd_data.data)
+    assert xp.all(xpx.isclose(original.data, ccd_data.data))
     assert original.unit == ccd_data.unit
 
 
@@ -901,7 +920,7 @@ def test_cosmicray_lacosmic_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     _ = cosmicray_lacosmic(ccd_data)
-    np_testing.assert_allclose(original.data, ccd_data.data)
+    assert xp.all(xpx.isclose(original.data, ccd_data.data))
     assert original.unit == ccd_data.unit
 
 
@@ -912,7 +931,7 @@ def test_flat_correct_does_not_change_input():
     # Ignore the divide by zero warning that is raised when the flat is zero.
     with warnings.catch_warnings(action="ignore", category=RuntimeWarning):
         _ = flat_correct(ccd_data, flat=flat)
-    np_testing.assert_allclose(original.data, ccd_data.data)
+    assert xp.all(xpx.isclose(original.data, ccd_data.data))
     assert original.unit == ccd_data.unit
 
 
@@ -920,7 +939,7 @@ def test_gain_correct_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     _ = gain_correct(ccd_data, gain=1, gain_unit=ccd_data.unit)
-    np_testing.assert_allclose(original.data, ccd_data.data)
+    assert xp.all(xpx.isclose(original.data, ccd_data.data))
     assert original.unit == ccd_data.unit
 
 
@@ -929,7 +948,7 @@ def test_subtract_bias_does_not_change_input():
     original = ccd_data.copy()
     master_frame = CCDData(xp.zeros_like(ccd_data), unit=ccd_data.unit)
     _ = subtract_bias(ccd_data, master=master_frame)
-    np_testing.assert_allclose(original.data, ccd_data.data)
+    assert xp.all(xpx.isclose(original.data, ccd_data.data))
     assert original.unit == ccd_data.unit
 
 
@@ -937,7 +956,7 @@ def test_trim_image_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     _ = trim_image(ccd_data, fits_section=None)
-    np_testing.assert_allclose(original.data, ccd_data.data)
+    assert xp.all(xpx.isclose(original.data, ccd_data.data))
     assert original.unit == ccd_data.unit
 
 
@@ -948,7 +967,7 @@ def test_transform_image_does_not_change_input():
     # an invalid value (like square root does) to avoid
     # warning messages.
     _ = transform_image(ccd_data, xp.positive)
-    np_testing.assert_allclose(original.data, ccd_data)
+    assert xp.all(xpx.isclose(original.data, ccd_data))
     assert original.unit == ccd_data.unit
 
 
@@ -985,7 +1004,7 @@ def test_wcs_project_onto_same_wcs():
     assert new_ccd.wcs.wcs.compare(target_wcs.wcs)
 
     # Make sure data matches within some reasonable tolerance.
-    np_testing.assert_allclose(ccd_data.data, new_ccd.data, rtol=1e-5)
+    assert xp.all(xpx.isclose(ccd_data.data, new_ccd.data, rtol=1e-5))
 
 
 def test_wcs_project_onto_same_wcs_remove_headers():
@@ -1023,10 +1042,10 @@ def test_wcs_project_onto_shifted_wcs():
 
     # Make sure data matches within some reasonable tolerance, keeping in mind
     # that the pixels should all be shifted.
-    np_testing.assert_allclose(ccd_data.data[:-1, :-1], new_ccd[1:, 1:], rtol=1e-5)
+    assert xp.all(xpx.isclose(ccd_data.data[:-1, :-1], new_ccd[1:, 1:], rtol=1e-5))
 
     # The masks should all be shifted too.
-    np_testing.assert_array_equal(ccd_data.mask[:-1, :-1], new_ccd.mask[1:, 1:])
+    assert xp.all(xpx.isclose(ccd_data.mask[:-1, :-1], new_ccd.mask[1:, 1:]))
 
     # We should have more values that are masked in the output array
     # than on input because some on output were not in the footprint
@@ -1084,7 +1103,7 @@ def test_wcs_project_onto_scale_wcs():
 
     # Make sure data matches within some reasonable tolerance, keeping in mind
     # that the pixels have been scaled.
-    np_testing.assert_allclose(ccd_data.data / 4, data_cutout, rtol=1e-5)
+    assert xp.all(xpx.isclose(ccd_data.data / 4, data_cutout, rtol=1e-5))
 
     # Mask should be true for four pixels (all nearest neighbors)
     # of the single pixel we masked initially.
@@ -1105,7 +1124,7 @@ def test_ccd_process_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
     _ = ccd_process(ccd_data, gain=5 * u.electron / u.adu, readnoise=10 * u.electron)
-    np_testing.assert_allclose(original.data, ccd_data.data)
+    assert xp.all(xpx.isclose(original.data, ccd_data.data))
     assert original.unit == ccd_data.unit
 
 
@@ -1180,9 +1199,9 @@ def test_ccd_process():
     # Final results should be (10 - 2) / 2.0 - 2 = 2
     # Error should be (4 + 5)**0.5 / 0.5  = 3.0
 
-    np_testing.assert_allclose(2.0 * xp.ones((100, 90)), occd.data)
-    np_testing.assert_allclose(3.0 * xp.ones((100, 90)), occd.uncertainty.array)
-    np_testing.assert_array_equal(mask, occd.mask)
+    assert xp.all(xpx.isclose(2.0 * xp.ones((100, 90)), occd.data))
+    assert xp.all(xpx.isclose(3.0 * xp.ones((100, 90)), occd.uncertainty.array))
+    assert xp.all(xpx.isclose(mask, occd.mask))
     assert occd.unit == u.electron
     # Make sure the original keyword is still present. Regression test for #401
     assert occd.meta["testkw"] == 100
@@ -1228,9 +1247,9 @@ def test_ccd_process_gain_corrected():
     # Final results should be (10 - 2) / 2.0 - 2 = 2
     # Error should be (4 + 5)**0.5 / 0.5  = 3.0
 
-    np_testing.assert_allclose(2.0 * xp.ones((100, 90)), occd.data)
-    np_testing.assert_allclose(3.0 * xp.ones((100, 90)), occd.uncertainty.array)
-    np_testing.assert_array_equal(mask, occd.mask)
+    assert xp.all(xpx.isclose(2.0 * xp.ones((100, 90)), occd.data))
+    assert xp.all(xpx.isclose(3.0 * xp.ones((100, 90)), occd.uncertainty.array))
+    assert xp.all(xpx.isclose(mask, occd.mask))
     assert occd.unit == u.electron
     # Make sure the original keyword is still present. Regression test for #401
     assert occd.meta["testkw"] == 100
