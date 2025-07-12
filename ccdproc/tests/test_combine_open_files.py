@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -36,7 +37,9 @@ def test_open_files_combine_no_chunks():
     # Make a copy
     args = list(common_args)
     args.extend(["--open-by", "combine-nochunk", NUM_FILE_LIMIT])
-    p = subprocess.run(args=args, cwd=str(subprocess_dir))
+    p = subprocess.run(args=args, cwd=str(subprocess_dir), capture_output=True)
+    if re.search(r".*No module named .*psutil.*", str(p.stderr)):
+        pytest.skip("psutil is not installed, skipping test")
     # If we have succeeded the test passes. We are only checking that
     # we don't have too many files open.
     assert p.returncode == 0
@@ -55,7 +58,9 @@ def test_open_files_combine_chunks():
     # Make a copy
     args = list(common_args)
     args.extend(["--open-by", "combine-chunk", NUM_FILE_LIMIT])
-    p = subprocess.run(args=args, cwd=str(subprocess_dir))
+    p = subprocess.run(args=args, cwd=str(subprocess_dir), capture_output=True)
+    if re.search(r".*No module named .*psutil.*", str(p.stderr)):
+        pytest.skip("psutil is not installed, skipping test")
     # If we have succeeded the test passes. We are only checking that
     # we don't have too many files open.
     assert p.returncode == 0
