@@ -408,7 +408,7 @@ def test_trim_with_wcs_alters_wcs():
 
 def test_subtract_bias():
     ccd_data = ccd_data_func()
-    data_avg = ccd_data.data.mean()
+    data_avg = xp.mean(ccd_data.data)
     bias_level = 5.0
     ccd_data.data = ccd_data.data + bias_level
     ccd_data.header["key"] = "value"
@@ -416,7 +416,7 @@ def test_subtract_bias():
     master_bias = CCDData(master_bias_array, unit=ccd_data.unit)
     no_bias = subtract_bias(ccd_data, master_bias, add_keyword=None)
     # Does the data we are left with have the correct average?
-    assert xp.all(xpx.isclose(no_bias.data.mean(), data_avg))
+    assert xp.all(xpx.isclose(xp.mean(no_bias.data), data_avg))
     # With logging turned off, metadata should not change
     assert no_bias.header == ccd_data.header
     del no_bias.header["key"]
@@ -580,7 +580,7 @@ def test_flat_correct():
     size = ccd_data.shape[0]
     # create the flat, with some scatter
     data = 2 * RNG().normal(loc=1.0, scale=0.05, size=(size, size))
-    flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
+    flat = CCDData(xp.asarray(data), meta=fits.header.Header(), unit=ccd_data.unit)
     flat_data = flat_correct(ccd_data, flat, add_keyword=None)
 
     # Check that the flat was normalized
@@ -588,11 +588,12 @@ def test_flat_correct():
     # if the normalization was done correctly.
     assert xp.all(
         xpx.isclose(
-            (flat_data.data * flat.data).mean(),
-            ccd_data.data.mean() * flat.data.mean(),
+            xp.mean(flat_data.data * flat.data),
+            xp.mean(ccd_data.data) * xp.mean(flat.data),
             rtol=1e-6,
         )
     )
+
     assert xp.all(
         xpx.isclose(
             ccd_data.data / flat_data.data,
@@ -612,7 +613,7 @@ def test_flat_correct_min_value():
 
     # Create the flat
     data = 2 * RNG().normal(loc=1.0, scale=0.05, size=(size, size))
-    flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
+    flat = CCDData(xp.asarray(data), meta=fits.header.Header(), unit=ccd_data.unit)
     flat_orig_data = flat.data.copy()
     min_value = 2.1  # Should replace some, but not all, values
     flat_corrected_data = flat_correct(ccd_data, flat, min_value=min_value)
@@ -622,13 +623,12 @@ def test_flat_correct_min_value():
     # Check that the flat was normalized. The asserts below, which look a
     # little odd, are correctly testing that
     #    flat_corrected_data = ccd_data / (flat_with_min / mean(flat_with_min))
-    assert xp.all(
-        xpx.isclose(
-            (flat_corrected_data.data * flat_with_min.data).mean(),
-            (ccd_data.data * flat_with_min.data.mean()).mean(),
-            rtol=1e-6,
-        )
+    # This first one is just comparing two numbers, so use pytest.approx
+    assert (flat_corrected_data.data * flat_with_min.data).mean() == pytest.approx(
+        ccd_data.data.mean() * flat_with_min.data.mean(),
+        rel=1e-6,
     )
+
     assert xp.all(
         xpx.isclose(
             ccd_data.data / flat_corrected_data.data,
@@ -652,7 +652,7 @@ def test_flat_correct_norm_value():
     # the mean of the flat data.
     flat_mean = 5.0
     data = RNG().normal(loc=1.0, scale=0.05, size=ccd_data.shape)
-    flat = CCDData(data, meta=fits.Header(), unit=ccd_data.unit)
+    flat = CCDData(xp.asarray(data), meta=fits.Header(), unit=ccd_data.unit)
     flat_data = flat_correct(ccd_data, flat, add_keyword=None, norm_value=flat_mean)
 
     # Check that the flat was normalized
@@ -660,7 +660,7 @@ def test_flat_correct_norm_value():
     # if the normalization was done correctly.
     assert xp.all(
         xpx.isclose(
-            (flat_data.data * flat.data).mean(),
+            float((flat_data.data * flat.data).mean()),
             ccd_data.data.mean() * flat_mean,
             rtol=1e-6,
         )

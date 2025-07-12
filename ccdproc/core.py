@@ -321,7 +321,10 @@ def ccd_process(
         # Handle this simple case first....
         pass
     elif _is_array(bad_pixel_mask):
-        nccd.mask = xp.asarray(bad_pixel_mask, dtype=bool)
+        # TODO: the private _mask attribute is set here to avoid the
+        # mask.setter than sets the mask to a numpy array. This can be
+        # removed when CCDData supports array namespaces.
+        nccd._mask = xp.asarray(bad_pixel_mask, dtype=bool)
     else:
         raise TypeError("bad_pixel_mask is not None or an array.")
 
@@ -331,7 +334,7 @@ def ccd_process(
 
     if gain is not None and gain_corrected:
         # No need for xp here because gain_correct does not need the namespace
-        nccd = gain_correct(nccd, gain)
+        nccd = gain_correct(nccd, gain, xp=xp)
 
     # subtracting the master bias
     if isinstance(master_bias, CCDData):
@@ -735,6 +738,7 @@ def subtract_dark(
     exposure_time=None,
     exposure_unit=None,
     scale=False,
+    xp=None,
 ):
     """
     Subtract dark current from an image.
@@ -786,6 +790,9 @@ def subtract_dark(
 
     if not (isinstance(ccd, CCDData) and isinstance(master, CCDData)):
         raise TypeError("ccd and master must both be CCDData objects.")
+
+    # Do this after the type check above
+    xp = xp or array_api_compat.array_namespace(ccd.data)
 
     if (
         data_exposure is not None
@@ -840,12 +847,17 @@ def subtract_dark(
             "image"
         ) from err
 
+    # TODO: Workaround for the fact that CCDData currently uses numpy
+    # for arithmetic operations.
+    result.data = xp.asarray(result.data)
+    if result.mask is not None:
+        result._mask = xp.asarray(result.mask)
     result.meta = ccd.meta.copy()
     return result
 
 
 @log_to_metadata
-def gain_correct(ccd, gain, gain_unit=None):
+def gain_correct(ccd, gain, gain_unit=None, xp=None):
     """Correct the gain in the image.
 
     Parameters
@@ -868,6 +880,7 @@ def gain_correct(ccd, gain, gain_unit=None):
     result : `~astropy.nddata.CCDData`
       CCDData object with gain corrected.
     """
+    xp = xp or array_api_compat.array_namespace(ccd.data)
     if isinstance(gain, Keyword):
         gain_value = gain.value_from(ccd.header)
     elif isinstance(gain, numbers.Number) and gain_unit is not None:
@@ -876,6 +889,14 @@ def gain_correct(ccd, gain, gain_unit=None):
         gain_value = gain
 
     result = ccd.multiply(gain_value)
+    # TODO: Workaround for the fact that CCDData currently uses numpy
+    # for arithmetic operations.
+    result.data = xp.asarray(result.data)
+    if result.mask is not None:
+        # The private _mask attribute is set here to avoid the mask.setter
+        # that sets the mask to a numpy array. This can be removed when CCDData
+        # supports array namespaces.
+        result._mask = xp.asarray(result.mask)
     result.meta = ccd.meta.copy()
     return result
 
@@ -951,6 +972,11 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None, xp=None):
     # divide through the flat
     flat_corrected = ccd.divide(flat_normed)
 
+    # TODO: Workaround for the fact that CCDData currently uses numpy
+    # for arithmetic operations.
+    flat_corrected.data = xp.asarray(flat_corrected.data)
+    if flat_corrected.mask is not None:
+        flat_corrected._mask = xp.asarray(flat_corrected.mask)
     flat_corrected.meta = ccd.meta.copy()
     return flat_corrected
 
