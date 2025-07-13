@@ -419,7 +419,7 @@ class ImageFileCollection:
             treated as regular expression patterns and matching is done by
             regular expression search. The search is always
             **case insensitive**.
-
+        
         **kwd :
             ``**kwd`` is dict of keywords and values the files must have.
             The value '*' represents any value.
@@ -432,8 +432,10 @@ class ImageFileCollection:
             A new collection with the files matched by the arguments
             to filter.
         """
+        
         files = self.files_filtered(include_path=True, **kwd)
-        return ImageFileCollection(filenames=files, keywords=self.keywords)
+     
+        return ImageFileCollection(filenames=files, keywords=self.keywords, ext = self._ext)
 
     def _get_files(self):
         """Helper method which checks whether ``files`` should be set
@@ -463,7 +465,7 @@ class ImageFileCollection:
                     for file in files
                     if not fnmatch.fnmatch(file, self.glob_exclude)
                 ]
-
+     
         return files
 
     def _dict_from_fits_header(
