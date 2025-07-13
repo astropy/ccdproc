@@ -1152,3 +1152,17 @@ class TestImageFileCollection:
             new_ic = ic.filter(regex_fl=kw)
             assert len(new_ic.files) == 1
             assert kw in new_ic.summary["regex_fl"]
+
+    def test_filter_on_check_ext(self, tmp_path):
+        """
+        Testing the 814 error
+        """
+        hdul = fits.HDUList(
+            [fits.PrimaryHDU(np.ones((10, 10))), fits.ImageHDU(np.ones((10, 10)))]
+        )
+        hdul.writeto(tmp_path / "mef.fits")
+        ifc = ImageFileCollection(tmp_path, ext=1)
+        assert len(ifc.summary) > 0
+        ifc2 = ifc.filter()
+        assert len(ifc2.summary) > 0
+        assert ifc2.ext == 1

@@ -432,8 +432,12 @@ class ImageFileCollection:
             A new collection with the files matched by the arguments
             to filter.
         """
+
         files = self.files_filtered(include_path=True, **kwd)
-        return ImageFileCollection(filenames=files, keywords=self.keywords)
+
+        return ImageFileCollection(
+            filenames=files, keywords=self.keywords, ext=self._ext
+        )
 
     def _get_files(self):
         """Helper method which checks whether ``files`` should be set

@@ -46,6 +46,7 @@ Alphabetical list of code contributors
 * Pey Lian Lim (@pllim)
 * James McCormac (@jmccormac01)
 * Abigale Moen (@AbigaleMoen)
+* Evelyn Montes Sobal (@EvelynMS1)
 * Stefan Nelson (@stefannelson)
 * Alex Niemi (@AlexN1234)
 * Joe Philip Ninan (@indiajoe)
