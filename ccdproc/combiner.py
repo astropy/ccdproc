@@ -184,7 +184,7 @@ class Combiner:
 
         # set up the data array
         # new_shape = (len(ccd_list),) + default_shape
-        self._data_arr = xp.array([ccd.data for ccd in ccd_list], dtype=dtype)
+        self._data_arr = xp.asarray([ccd.data for ccd in ccd_list], dtype=dtype)
 
         # populate self.data_arr
         mask_list = [

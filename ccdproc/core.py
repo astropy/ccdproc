@@ -473,7 +473,9 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False, x
     # ensure uncertainty and image data have same unit
     ccd = ccd_data.copy()
     var /= gain_value
+
     ccd.uncertainty = StdDevUncertainty(var)
+
     return ccd
 
 
