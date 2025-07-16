@@ -2,6 +2,7 @@
 
 import warnings
 
+import array_api_compat
 import array_api_extra as xpx
 import astropy
 import astropy.units as u
@@ -144,6 +145,7 @@ def test_create_deviation_keywords_must_have_unit():
 )
 def test_subtract_overscan(median, transpose, data_rectangle):
     ccd_data = ccd_data_func()
+    xp = array_api_compat.array_namespace(ccd_data.data)
     # Make data non-square if desired
     if data_rectangle:
         ccd_data.data = ccd_data.data[:, :-30]
@@ -170,7 +172,7 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     # Add a fake sky background so the "science" part of the image has a
     # different average than the "overscan" part.
     sky = 10.0
-    original_mean = science_data.mean()
+    original_mean = xp.mean(science_data)
     science_data = science_data + oscan + sky
 
     # Reconstruct the full image
@@ -187,7 +189,7 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     # "science" section had before backgrounds were added?
     assert xp.all(
         xpx.isclose(
-            ccd_data_overscan.data[science_region].mean(),
+            xp.mean(ccd_data_overscan.data[science_region]),
             sky + original_mean,
             rtol=1e-6,
         )
@@ -208,7 +210,7 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     # "science" section had before backgrounds were added?
     assert xp.all(
         xpx.isclose(
-            ccd_data_fits_section.data[science_region].mean(),
+            xp.mean(ccd_data_fits_section.data[science_region]),
             sky + original_mean,
             rtol=1e-6,
         )
@@ -235,7 +237,7 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     )
     assert xp.all(
         xpx.isclose(
-            ccd_data_overscan_auto.data[science_region].mean(),
+            xp.mean(ccd_data_overscan_auto.data[science_region]),
             sky + original_mean,
             rtol=1e-6,
         )
@@ -250,7 +252,7 @@ def test_subtract_overscan(median, transpose, data_rectangle):
     )
     assert xp.all(
         xpx.isclose(
-            ccd_data_fits_section_overscan_auto.data[science_region].mean(),
+            xp.mean(ccd_data_fits_section_overscan_auto.data[science_region]),
             sky + original_mean,
             rtol=1e-6,
         )
@@ -302,7 +304,7 @@ def test_subtract_overscan_model(transpose):
         overscan_axis = 1
         scan = yscan
 
-    original_mean = ccd_data.data[science_region].mean()
+    original_mean = xp.mean(ccd_data.data[science_region])
 
     science_data = ccd_data.data[science_region].copy()
     # Set any existing overscan to zero. Overscan is stored for the entire
@@ -319,7 +321,7 @@ def test_subtract_overscan_model(transpose):
         model=models.Polynomial1D(2),
     )
     assert xp.all(
-        xpx.isclose(ccd_data.data[science_region].mean(), original_mean, atol=1e-5)
+        xpx.isclose(xp.mean(ccd_data.data[science_region]), original_mean, atol=1e-5)
     )
     # Set the overscan_axis explicitly to None, and let the routine
     # figure it out.
@@ -331,7 +333,7 @@ def test_subtract_overscan_model(transpose):
         model=models.Polynomial1D(2),
     )
     assert xp.all(
-        xpx.isclose(ccd_data.data[science_region].mean(), original_mean, atol=1e-5)
+        xpx.isclose(xp.mean(ccd_data.data[science_region]), original_mean, atol=1e-5)
     )
 
 
@@ -597,7 +599,7 @@ def test_flat_correct():
     assert xp.all(
         xpx.isclose(
             ccd_data.data / flat_data.data,
-            flat.data / flat.data.mean(),
+            flat.data / xp.mean(flat.data),
             rtol=1e-6,
         )
     )
@@ -624,15 +626,15 @@ def test_flat_correct_min_value():
     # little odd, are correctly testing that
     #    flat_corrected_data = ccd_data / (flat_with_min / mean(flat_with_min))
     # This first one is just comparing two numbers, so use pytest.approx
-    assert (flat_corrected_data.data * flat_with_min.data).mean() == pytest.approx(
-        ccd_data.data.mean() * flat_with_min.data.mean(),
+    assert xp.mean(flat_corrected_data.data * flat_with_min.data) == pytest.approx(
+        xp.mean(ccd_data.data) * xp.mean(flat_with_min.data),
         rel=1e-6,
     )
 
     assert xp.all(
         xpx.isclose(
             ccd_data.data / flat_corrected_data.data,
-            flat_with_min.data / flat_with_min.data.mean(),
+            flat_with_min.data / xp.mean(flat_with_min.data),
             rtol=1e-6,
         )
     )
@@ -660,8 +662,8 @@ def test_flat_correct_norm_value():
     # if the normalization was done correctly.
     assert xp.all(
         xpx.isclose(
-            float((flat_data.data * flat.data).mean()),
-            ccd_data.data.mean() * flat_mean,
+            xp.mean(flat_data.data * flat.data),
+            xp.mean(ccd_data.data) * flat_mean,
             rtol=1e-6,
         )
     )
