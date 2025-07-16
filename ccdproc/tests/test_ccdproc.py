@@ -10,7 +10,12 @@ import pytest
 import skimage
 from astropy.io import fits
 from astropy.modeling import models
-from astropy.nddata import CCDData, StdDevUncertainty
+from astropy.nddata import (
+    CCDData,
+    InverseVariance,
+    StdDevUncertainty,
+    VarianceUncertainty,
+)
 from astropy.units.quantity import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
@@ -1165,10 +1170,15 @@ def test_ccd_process_parameters_are_appropriate():
         ccd_process(ccd_data, master_flat=3)
 
 
-def test_ccd_process():
+@pytest.mark.parametrize(
+    "uncertainty_type",
+    [StdDevUncertainty, VarianceUncertainty, InverseVariance],
+)
+def test_ccd_process(uncertainty_type):
     # Test the through ccd_process
+    # Data has value 10
     ccd_data = CCDData(10.0 * xp.ones((100, 100)), unit=u.adu)
-    # Rewrite to not change data in-place.
+    # Sets overscan to 2 without changing data in-place,
     ccd_data.data = xp.concat([ccd_data.data[:, :-10], 2 * xp.ones((100, 10))], axis=1)
 
     ccd_data.meta["testkw"] = 100
@@ -1176,19 +1186,51 @@ def test_ccd_process():
     mask = xp.zeros((100, 90))
 
     masterbias = CCDData(2.0 * xp.ones((100, 90)), unit=u.electron)
-    masterbias.uncertainty = StdDevUncertainty(xp.zeros((100, 90)))
+    masterbias.uncertainty = uncertainty_type(xp.zeros((100, 90)))
 
     dark_frame = CCDData(0.0 * xp.ones((100, 90)), unit=u.electron)
-    dark_frame.uncertainty = StdDevUncertainty(xp.zeros((100, 90)))
+    dark_frame.uncertainty = uncertainty_type(xp.zeros((100, 90)))
 
     masterflat = CCDData(10.0 * xp.ones((100, 90)), unit=u.electron)
-    masterflat.uncertainty = StdDevUncertainty(xp.zeros((100, 90)))
+    masterflat.uncertainty = uncertainty_type(xp.zeros((100, 90)))
+
+    match uncertainty_type.__name__:
+        case "StdDevUncertainty":
+            # Let create_deviation make a StdDevUncertainty
+            error = True
+            expected_error_factor = 3.0
+
+        case "VarianceUncertainty":
+            # We supply the uncertainty as a variance, equivalent to StdDevUncertainty
+            # with value 6.0.
+            error = False
+            # For the values of the data above (8 adu after subtracting overscan), the
+            # readnoise of 5**0.5 * u.electron and gain of 0.5 * u.electron / u.adu
+            # below, the variance prior to gain correction should be the square of
+            # sqrt(8 * 0.5 + 5) / 0.5 = 3.0.
+            ccd_data.uncertainty = VarianceUncertainty(xp.ones((100, 90)) * 6.0**2)
+            # Value below is just the square of the factor for standard deviation.
+            expected_error_factor = 3.0**2
+        case "InverseVariance":
+            # We supply the uncertainty as an inverse variance, equivalent to
+            # StdDevUncertainty with value 2.0.
+            error = False
+            ccd_data.uncertainty = InverseVariance(xp.ones((100, 90)) / (6.0**2))
+            # The value below is the inverse of the square of the factor for standard
+            # deviation.
+            expected_error_factor = 3.0**-2
+            # We cannot use zero for the InverseVariance uncertainties in this case in
+            # the master images since 1 / 0 is undefined, so we needset them all to
+            # none.
+            masterbias.uncertainty = None
+            dark_frame.uncertainty = None
+            masterflat.uncertainty = None
 
     occd = ccd_process(
         ccd_data,
         oscan=ccd_data[:, -10:],
         trim="[1:90,1:100]",
-        error=True,
+        error=error,
         master_bias=masterbias,
         master_flat=masterflat,
         dark_frame=dark_frame,
@@ -1205,7 +1247,9 @@ def test_ccd_process():
     # Error should be (4 + 5)**0.5 / 0.5  = 3.0
 
     assert xp.all(xpx.isclose(2.0 * xp.ones((100, 90)), occd.data))
-    assert xp.all(xpx.isclose(3.0 * xp.ones((100, 90)), occd.uncertainty.array))
+    assert xp.all(
+        xpx.isclose(expected_error_factor * xp.ones((100, 90)), occd.uncertainty.array)
+    )
     assert xp.all(xpx.isclose(mask, occd.mask))
     assert occd.unit == u.electron
     # Make sure the original keyword is still present. Regression test for #401
