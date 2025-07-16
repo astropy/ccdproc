@@ -23,6 +23,10 @@ from numpy import mgrid as np_mgrid
 from packaging import version as pkgversion
 from scipy import ndimage
 
+from ._ccddata_wrapper_for_array_api import (
+    _unwrap_ccddata_for_array_api,
+    _wrap_ccddata_for_array_api,
+)
 from .log_meta import log_to_metadata
 from .utils.slices import slice_from_string
 
@@ -695,7 +699,7 @@ def trim_image(ccd, fits_section=None):
 
 
 @log_to_metadata
-def subtract_bias(ccd, master):
+def subtract_bias(ccd, master, xp=None):
     """
     Subtract master bias from image.
 
@@ -714,9 +718,11 @@ def subtract_bias(ccd, master):
     result : `~astropy.nddata.CCDData`
         CCDData object with bias subtracted.
     """
-
+    xp = xp or array_api_compat.array_namespace(ccd.data)
+    _ccd = _wrap_ccddata_for_array_api(ccd)
+    _master = _wrap_ccddata_for_array_api(master)
     try:
-        result = ccd.subtract(master)
+        _result = _ccd.subtract(_master, handle_mask=xp.logical_or)
     except ValueError as err:
         if "operand units" in str(err):
             raise u.UnitsError(
@@ -726,7 +732,7 @@ def subtract_bias(ccd, master):
             ) from err
         else:
             raise err
-
+    result = _unwrap_ccddata_for_array_api(_result)
     result.meta = ccd.meta.copy()
     return result
 
@@ -796,6 +802,8 @@ def subtract_dark(
     # Do this after the type check above
     xp = xp or array_api_compat.array_namespace(ccd.data)
 
+    _ccd = _wrap_ccddata_for_array_api(ccd)
+    _master = _wrap_ccddata_for_array_api(master)
     if (
         data_exposure is not None
         and dark_exposure is not None
@@ -833,13 +841,18 @@ def subtract_dark(
 
     try:
         if scale:
-            master_scaled = master.copy()
+            _master_scaled = _master.copy()
             # data_exposure and dark_exposure are both quantities,
             # so we can just have subtract do the scaling
-            master_scaled = master_scaled.multiply(data_exposure / dark_exposure)
-            result = ccd.subtract(master_scaled)
+            # Make sure we have just a number for the scaling, or we will
+            # be forced to use numpy by astropy Quantity.
+            # The cast to float is needed because the result will be a np.float,
+            # which will mess up the array namespace.
+            scale_factor = float((data_exposure / dark_exposure).decompose().value)
+            _master_scaled = _master_scaled.multiply(scale_factor)
+            _result = _ccd.subtract(_master_scaled, handle_mask=xp.logical_or)
         else:
-            result = ccd.subtract(master)
+            _result = _ccd.subtract(_master, handle_mask=xp.logical_or)
     except (u.UnitsError, u.UnitConversionError, ValueError) as err:
         # Make the error message a little more explicit than what is returned
         # by default.
@@ -849,11 +862,7 @@ def subtract_dark(
             "image"
         ) from err
 
-    # TODO: Workaround for the fact that CCDData currently uses numpy
-    # for arithmetic operations.
-    result.data = xp.asarray(result.data)
-    if result.mask is not None:
-        result._mask = xp.asarray(result.mask)
+    result = _unwrap_ccddata_for_array_api(_result)
     result.meta = ccd.meta.copy()
     return result
 
@@ -882,24 +891,19 @@ def gain_correct(ccd, gain, gain_unit=None, xp=None):
     result : `~astropy.nddata.CCDData`
       CCDData object with gain corrected.
     """
-    xp = xp or array_api_compat.array_namespace(ccd.data)
+    _ccd = _wrap_ccddata_for_array_api(ccd)
+
+    xp = xp or array_api_compat.array_namespace(_ccd.data)
     if isinstance(gain, Keyword):
-        gain_value = gain.value_from(ccd.header)
+        gain_value = gain.value_from(_ccd.header)
     elif isinstance(gain, numbers.Number) and gain_unit is not None:
         gain_value = gain * u.Unit(gain_unit)
     else:
         gain_value = gain
 
-    result = ccd.multiply(gain_value)
-    # TODO: Workaround for the fact that CCDData currently uses numpy
-    # for arithmetic operations.
-    result.data = xp.asarray(result.data)
-    if result.mask is not None:
-        # The private _mask attribute is set here to avoid the mask.setter
-        # that sets the mask to a numpy array. This can be removed when CCDData
-        # supports array namespaces.
-        result._mask = xp.asarray(result.mask)
-    result.meta = ccd.meta.copy()
+    _result = _ccd.multiply(gain_value, xp=xp, handle_mask=xp.logical_or)
+    result = _unwrap_ccddata_for_array_api(_result)
+    result.meta = _ccd.meta.copy()
     return result
 
 
@@ -941,45 +945,57 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None, xp=None):
     ccd : `~astropy.nddata.CCDData`
         CCDData object with flat corrected.
     """
+
+    _ccd = _wrap_ccddata_for_array_api(ccd)
+    _flat = _wrap_ccddata_for_array_api(flat)
     # Get the array namespace
-    xp = xp or array_api_compat.array_namespace(ccd.data)
+    xp = xp or array_api_compat.array_namespace(_ccd.data)
+
     # Use the min_value to replace any values in the flat
-    use_flat = flat
+    _use_flat = _flat
     if min_value is not None:
-        flat_min = flat.copy()
-        flat_min.data[flat_min.data < min_value] = min_value
-        use_flat = flat_min
+        _flat_min = _flat.copy()
+        xpx.at(_flat_min.data)[_flat_min.data < min_value].set(min_value)
+        _use_flat = _flat_min
 
     # If a norm_value was input and is positive, use it to scale the flat
     if norm_value is not None and norm_value > 0:
         flat_mean = (
-            norm_value if hasattr(norm_value, "unit") else norm_value * use_flat.unit
+            norm_value if hasattr(norm_value, "unit") else norm_value * _use_flat.unit
         )
     elif norm_value is not None:
         # norm_value was set to a bad value
         raise ValueError("norm_value must be greater than zero.")
     else:
         # norm_value was not set, use mean of the image.
-        flat_mean = xp.mean(use_flat.data) * use_flat.unit
+        flat_mean = xp.mean(_use_flat.data) * _use_flat.unit
 
     # Normalize the flat.
-    flat_normed = use_flat.divide(flat_mean)
+    # Make sure flat_mean is a plain python float so that we
+    # can use it with the array namespace.
+    flat_mean_unit = flat_mean.unit
+    flat_mean = float(flat_mean.decompose().value)
+    _flat_normed = _use_flat.divide(flat_mean, xp=xp)
+
+    # We need to fix up the unit now wince we stripped the unit from
+    # the flat_mean above.
+    result_unit = ((1 * _use_flat.unit) / (1 * flat_mean_unit)).decompose().unit
+    _flat_normed.unit = result_unit
 
     # Set masked values to unity; the array element remains masked, but the data
     # value is set to unity to avoid runtime divide-by-zero errors that are due
     # to a masked value being set to 0.
-    if flat_normed.mask is not None and flat_normed.mask.any():
-        flat_normed.data[flat_normed.mask] = 1.0
+    if _flat_normed.mask is not None and _flat_normed.mask.any():
+        _flat_normed.data[_flat_normed.mask] = 1.0
 
     # divide through the flat
-    flat_corrected = ccd.divide(flat_normed)
+    _flat_corrected = _ccd.divide(_flat_normed, xp=xp, handle_mask=xp.logical_or)
 
+    flat_corrected = _unwrap_ccddata_for_array_api(_flat_corrected)
     # TODO: Workaround for the fact that CCDData currently uses numpy
     # for arithmetic operations.
-    flat_corrected.data = xp.asarray(flat_corrected.data)
-    if flat_corrected.mask is not None:
-        flat_corrected._mask = xp.asarray(flat_corrected.mask)
-    flat_corrected.meta = ccd.meta.copy()
+
+    flat_corrected.meta = _ccd.meta.copy()
     return flat_corrected
 
 
