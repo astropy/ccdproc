@@ -618,7 +618,7 @@ def test_flat_correct_min_value():
     min_value = 2.1  # Should replace some, but not all, values
     flat_corrected_data = flat_correct(ccd_data, flat, min_value=min_value)
     flat_with_min = flat.copy()
-    flat_with_min.data[flat_with_min.data < min_value] = min_value
+    xpx.at(flat_with_min.data)[flat_with_min.data < min_value].set(min_value)
 
     # Check that the flat was normalized. The asserts below, which look a
     # little odd, are correctly testing that
