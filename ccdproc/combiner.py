@@ -2,6 +2,8 @@
 
 """This module implements the combiner class."""
 
+from copy import deepcopy
+
 try:
     import bottleneck as bn
 except ImportError:
@@ -842,6 +844,7 @@ def combine(
     dtype=None,
     combine_uncertainty_function=None,
     overwrite_output=False,
+    array_package=None,
     **ccdkwargs,
 ):
     """
@@ -945,6 +948,18 @@ def combine(
         has no effect otherwise.
         Default is ``False``.
 
+    array_package : an array namespace, optional
+        The array package to use for the data if the data needs to be
+        read in from files. This argument is ignored if the input `ccd_list`
+        is already a list of `~astropy.nddata.CCDData` objects.
+
+        If not specified, the array package used will
+        be numpy. The array package can be specified either by passing in
+        an array namespace (e.g. output from ``array_api_compat.array_namespace``),
+        or an imported array package that follows the array API standard
+        (e.g. ``numpy`` or ``jax.numpy``), or an array whose namespace can be
+        determined (e.g. a `numpy.ndarray` or `jax.numpy.ndarray`).
+
     ccdkwargs : Other keyword arguments for `astropy.nddata.fits_ccddata_reader`.
 
     Returns
@@ -993,10 +1008,25 @@ def combine(
     else:
         # User has provided fits filenames to read from
         ccd = CCDData.read(img_list[0], **ccdkwargs)
+        # The ccd object will always read as numpy, so convert it to the
+        # requested namespace if there is one.
+        if array_package is not None:
+            try:
+                xp = array_api_compat.array_namespace(array_package)
+            except TypeError:
+                xp = array_package
 
-    # Get the array namespace
+            ccd.data = xp.asarray(ccd.data, dtype=ccd.data.dtype.type)
+            if ccd.uncertainty is not None:
+                ccd.uncertainty.array = xp.asarray(
+                    ccd.uncertainty.array, dtype=ccd.uncertainty.array.dtype.type
+                )
+            if ccd.mask is not None:
+                ccd.mask = xp.asarray(ccd.mask, dtype=bool)
+
+    # Get the array namespace; if array_package was not None and files were read in,
+    # then xp the ccd.data will be the same as the array_package.
     xp = array_api_compat.array_namespace(ccd.data)
-
     if dtype is None:
         dtype = xp.float64
 
@@ -1065,6 +1095,14 @@ def combine(
                     imgccd = image
                 else:
                     imgccd = CCDData.read(image, **ccdkwargs)
+                    if array_package is not None:
+                        imgccd.data = xp.asarray(imgccd.data, dtype=dtype)
+                        if imgccd.uncertainty is not None:
+                            imgccd.uncertainty.array = xp.asarray(
+                                imgccd.uncertainty.array, dtype=dtype
+                            )
+                        if imgccd.mask is not None:
+                            imgccd.mask = xp.asarray(imgccd.mask, dtype=bool)
 
                 scalevalues.append(scale(imgccd.data))
 
@@ -1100,13 +1138,21 @@ def combine(
                     imgccd = image
                 else:
                     imgccd = CCDData.read(image, **ccdkwargs)
+                    if array_package is not None:
+                        imgccd.data = xp.asarray(imgccd.data, dtype=dtype)
+                        if imgccd.uncertainty is not None:
+                            imgccd.uncertainty.array = xp.asarray(
+                                imgccd.uncertainty.array, dtype=dtype
+                            )
+                        if imgccd.mask is not None:
+                            imgccd.mask = xp.asarray(imgccd.mask, dtype=bool)
 
                 # Trim image and copy
                 # The copy is *essential* to avoid having a bunch
                 # of unused file references around if the files
                 # are memory-mapped. See this PR for details
                 # https://github.com/astropy/ccdproc/pull/630
-                ccd_list.append(imgccd[x:xend, y:yend].copy())
+                ccd_list.append(deepcopy(imgccd[x:xend, y:yend]))
 
             # Create Combiner for tile
             tile_combiner = Combiner(ccd_list, dtype=dtype)

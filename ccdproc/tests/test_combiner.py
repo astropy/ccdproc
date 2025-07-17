@@ -521,12 +521,16 @@ def test_combine_image_file_collection_input(tmp_path):
 
     ifc = ImageFileCollection(tmp_path)
 
-    comb_files = combine(ifc.files_filtered(include_path=True), method="average")
+    comb_files = combine(
+        ifc.files_filtered(include_path=True), method="average", array_package=xp
+    )
 
-    comb_ccds = combine(ifc.ccds(), method="average")
+    comb_ccds = combine(ifc.ccds(), method="average", array_package=xp)
 
     comb_string = combine(
-        ",".join(ifc.files_filtered(include_path=True)), method="average"
+        ",".join(ifc.files_filtered(include_path=True)),
+        method="average",
+        array_package=xp,
     )
 
     assert xp.all(xpx.isclose(ccd.data, comb_files.data))
