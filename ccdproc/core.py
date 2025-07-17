@@ -1198,7 +1198,12 @@ def sigma_func(arr, axis=None, ignore_nan=False):
     uncertainty : float
         uncertainty of array estimated from median absolute deviation.
     """
-    return (
+    if isinstance(arr, CCDData):
+        xp = array_api_compat.array_namespace(arr.data)
+    else:
+        xp = array_api_compat.array_namespace(arr)
+
+    return xp.asarray(
         stats.median_absolute_deviation(arr, axis=axis, ignore_nan=ignore_nan)
         * 1.482602218505602
     )
