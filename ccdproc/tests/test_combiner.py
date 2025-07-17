@@ -519,7 +519,7 @@ def test_combine_image_file_collection_input(tmp_path):
     for i in range(3):
         ccd.write(tmp_path / f"ccd-{i}.fits")
 
-    ifc = ImageFileCollection(tmp_path)
+    ifc = ImageFileCollection(tmp_path, array_package=xp)
 
     comb_files = combine(
         ifc.files_filtered(include_path=True), method="average", array_package=xp
@@ -703,7 +703,7 @@ def test_combine_result_uncertainty_and_mask(comb_func, mask_point):
 
 def test_combine_overwrite_output(tmp_path):
     """
-    The combiune function should *not* overwrite the result file
+    The combine function should *not* overwrite the result file
     unless the overwrite_output argument is True
     """
     output_file = tmp_path / "fake.fits"
@@ -722,7 +722,11 @@ def test_combine_overwrite_output(tmp_path):
         [ccd, ccd.multiply(2)], output_file=output_file, overwrite_output=True
     )
 
+    # Need to convert this to the array namespace.
     res_from_disk = CCDData.read(output_file)
+    res_from_disk.data = xp.asarray(
+        res_from_disk.data, dtype=res_from_disk.data.dtype.type
+    )
 
     # Data should be the same
     assert xp.all(xpx.isclose(res.data, res_from_disk.data))
