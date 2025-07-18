@@ -8,6 +8,8 @@ from shutil import rmtree
 from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 
 import astropy.io.fits as fits
+
+# Will continue to use np.testing here we are not testing array API
 import numpy as np
 import pytest
 from astropy.io.fits.verify import VerifyWarning

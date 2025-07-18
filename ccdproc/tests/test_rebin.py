@@ -1,5 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+# Not updating to array API in here because rebin will be removed
+# in version 3.0 of ccdproc.
 import numpy as np
 import pytest
 from astropy.nddata import StdDevUncertainty
