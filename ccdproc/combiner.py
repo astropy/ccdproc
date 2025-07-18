@@ -950,7 +950,7 @@ def combine(
 
     array_package : an array namespace, optional
         The array package to use for the data if the data needs to be
-        read in from files. This argument is ignored if the input `ccd_list`
+        read in from files. This argument is ignored if the input ``ccd_list``
         is already a list of `~astropy.nddata.CCDData` objects.
 
         If not specified, the array package used will
@@ -958,7 +958,7 @@ def combine(
         an array namespace (e.g. output from ``array_api_compat.array_namespace``),
         or an imported array package that follows the array API standard
         (e.g. ``numpy`` or ``jax.numpy``), or an array whose namespace can be
-        determined (e.g. a `numpy.ndarray` or `jax.numpy.ndarray`).
+        determined (e.g. a `numpy.ndarray` or ``jax.numpy.ndarray``).
 
     ccdkwargs : Other keyword arguments for `astropy.nddata.fits_ccddata_reader`.
 

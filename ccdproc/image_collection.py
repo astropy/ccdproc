@@ -90,7 +90,7 @@ class ImageFileCollection:
         an array namespace (e.g. output from ``array_api_compat.array_namespace``),
         or an imported array package that follows the array API standard
         (e.g. ``numpy`` or ``jax.numpy``), or an array whose namespace can be
-        determined (e.g. a `numpy.ndarray` or `jax.numpy.ndarray`).
+        determined (e.g. a `numpy.ndarray` or ``jax.numpy.ndarray``).
 
 
     Raises
