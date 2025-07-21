@@ -1,3 +1,7 @@
+# This file is a rough draft of the changes that will be needed
+# in astropy.nddata to adopt the array API. This does not cover all
+# of the changes that will be needed, but it is a start.
+
 import array_api_compat
 import numpy as np
 from astropy import units as u
