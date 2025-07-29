@@ -2235,9 +2235,9 @@ def ccdmask(
                         subset = block[:, k]
                         csum.append(xp.sum(subset[~block_mask[:, k]]))
                         all_masked.append(xp.all(block_mask[:, k]))
-                    csum = xp.array(csum)
+                    csum = xp.asarray(csum)
                     csum[csum <= 0] = 0
-                    csum_sigma = xp.array(xp.sqrt(c2 - c1 - csum))
+                    csum_sigma = xp.asarray(xp.sqrt(c2 - c1 - csum))
                     # The prior code filled the csum array with the value 1, which
                     # only affects those cases where all of the input values to
                     # the csum were masked, so we fill those with 1.

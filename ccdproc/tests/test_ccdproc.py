@@ -401,8 +401,8 @@ def test_trim_with_wcs_alters_wcs():
     ccd_data = ccd_data_func()
     # WCS construction example pulled form astropy.wcs docs
     wcs = WCS(naxis=2)
-    wcs.wcs.crpix = xp.array(ccd_data.shape) / 2
-    wcs.wcs.cdelt = xp.array([-0.066667, 0.066667])
+    wcs.wcs.crpix = xp.asarray(ccd_data.shape) / 2
+    wcs.wcs.cdelt = xp.asarray([-0.066667, 0.066667])
     wcs.wcs.crval = [0, -90]
     wcs.wcs.ctype = ["RA---AIR", "DEC--AIR"]
     wcs.wcs.set_pv([(2, 1, 45.0)])
@@ -435,7 +435,7 @@ def test_subtract_bias():
 def test_subtract_bias_fails():
     ccd_data = ccd_data_func(data_size=50)
     # Should fail if shapes don't match
-    bias = CCDData(xp.array([200, 200]), unit=u.adu)
+    bias = CCDData(xp.asarray([200, 200]), unit=u.adu)
     with pytest.raises(ValueError):
         subtract_bias(ccd_data, bias)
     # Should fail because units don't match
@@ -832,7 +832,7 @@ def test_block_reduce():
     reason="Incompatibility between scikit-image " "and numpy 1.16",
 )
 def test_block_average():
-    data = xp.array(
+    data = xp.asarray(
         [
             [2.0, 1.0, 2.0, 1.0],
             [1.0, 1.0, 1.0, 1.0],
@@ -993,7 +993,7 @@ def wcs_for_testing(shape):
     # Set up an "Airy's zenithal" projection
     # Vector properties may be set with Python lists, or Numpy arrays
     w.wcs.crpix = [shape[0] // 2, shape[1] // 2]
-    w.wcs.cdelt = xp.array([-0.066667, 0.066667])
+    w.wcs.cdelt = xp.asarray([-0.066667, 0.066667])
     w.wcs.crval = [0, -90]
     w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
     w.wcs.set_pv([(2, 1, 45.0)])
@@ -1065,7 +1065,7 @@ def test_wcs_project_onto_shifted_wcs():
     # In the case of a shift, one row and one column should be nan, and they
     # will share one common nan where they intersect, so we know how many nan
     # there should be.
-    assert xp.sum(xp.isnan(new_ccd.data)) == xp.sum(xp.array(new_ccd.shape)) - 1
+    assert xp.sum(xp.isnan(new_ccd.data)) == xp.sum(xp.asarray(new_ccd.shape)) - 1
 
 
 # Use an odd number of pixels to make a well-defined center pixel
@@ -1091,7 +1091,7 @@ def test_wcs_project_onto_scale_wcs():
     target_wcs.wcs.cdelt /= 2
 
     # Choice below ensures we are really at the center pixel of an odd range.
-    target_shape = 2 * xp.array(ccd_data.shape) + 1
+    target_shape = 2 * xp.asarray(ccd_data.shape) + 1
     target_wcs.wcs.crpix = 2 * target_wcs.wcs.crpix + 1 + 0.5
 
     # Ugly hack for numpy-specific check in astropy.wcs
@@ -1106,8 +1106,8 @@ def test_wcs_project_onto_scale_wcs():
     assert new_ccd.wcs.wcs.compare(target_wcs.wcs)
 
     # Define a cutout from the new array that should match the old.
-    new_lower_bound = (xp.array(new_ccd.shape) - xp.array(ccd_data.shape)) // 2
-    new_upper_bound = (xp.array(new_ccd.shape) + xp.array(ccd_data.shape)) // 2
+    new_lower_bound = (xp.asarray(new_ccd.shape) - xp.asarray(ccd_data.shape)) // 2
+    new_upper_bound = (xp.asarray(new_ccd.shape) + xp.asarray(ccd_data.shape)) // 2
     data_cutout = new_ccd.data[
         new_lower_bound[0] : new_upper_bound[0], new_lower_bound[1] : new_upper_bound[1]
     ]
@@ -1118,7 +1118,7 @@ def test_wcs_project_onto_scale_wcs():
 
     # Mask should be true for four pixels (all nearest neighbors)
     # of the single pixel we masked initially.
-    new_center = xp.array(new_ccd.wcs.wcs.crpix, dtype=int)
+    new_center = xp.asarray(new_ccd.wcs.wcs.crpix, dtype=int)
     assert xp.all(
         new_ccd.mask[
             new_center[0] : new_center[0] + 2, new_center[1] : new_center[1] + 2

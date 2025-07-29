@@ -108,8 +108,8 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
     # Fill masked locations with 0 since there is no simple relationship
     # between the original value and the corrected value.
     # Masking using numpy is a handy way to check the results here.
-    orig_data = xp.array(np_ma_array(ccd_data.data, mask=cr_mask).filled(0))
-    new_data = xp.array(np_ma_array(new_data.data, mask=cr_mask).filled(0))
+    orig_data = xp.asarray(np_ma_array(ccd_data.data, mask=cr_mask).filled(0))
+    new_data = xp.asarray(np_ma_array(new_data.data, mask=cr_mask).filled(0))
     if gain_correct_data:
         gain_for_test = gain
     else:

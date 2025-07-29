@@ -388,7 +388,7 @@ def test_combiner_with_scaling():
     # Scale by a float
     avg_ccd = combiner.average_combine(scale_to=2.0)
     expected_avg = 2 * xp.mean(
-        xp.array((ccd_data.data, ccd_data_lower.data, ccd_data_higher.data))
+        xp.asarray((ccd_data.data, ccd_data_lower.data, ccd_data_higher.data))
     )
     assert xp.all(xpx.isclose(xp.mean(avg_ccd.data), expected_avg))
     assert avg_ccd.shape == ccd_data.shape

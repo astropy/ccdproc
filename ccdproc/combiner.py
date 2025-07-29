@@ -193,7 +193,7 @@ class Combiner:
             ccd.mask if ccd.mask is not None else xp.zeros(default_shape)
             for ccd in ccd_list
         ]
-        self._data_arr_mask = xp.array(mask_list, dtype=bool)
+        self._data_arr_mask = xp.asarray(mask_list, dtype=bool)
 
         # Must be after self.data_arr is defined because it checks the
         # length of the data array.
@@ -275,7 +275,7 @@ class Combiner:
             n_images = self._data_arr.shape[0]
             if callable(value):
                 self._scaling = [value(self._data_arr[i]) for i in range(n_images)]
-                self._scaling = xp.array(self._scaling)
+                self._scaling = xp.asarray(self._scaling)
             else:
                 try:
                     len(value)
@@ -289,7 +289,7 @@ class Combiner:
                         "scaling must be a function or an array "
                         "the same length as the number of images."
                     )
-                self._scaling = xp.array(value)
+                self._scaling = xp.asarray(value)
             # reshape so that broadcasting occurs properly
             for _ in range(len(self._data_arr.shape) - 1):
                 self._scaling = self.scaling[:, xp.newaxis]
@@ -1106,7 +1106,7 @@ def combine(
 
                 scalevalues.append(scale(imgccd.data))
 
-            to_set_in_combiner["scaling"] = xp.array(scalevalues)
+            to_set_in_combiner["scaling"] = xp.asarray(scalevalues)
         else:
             to_set_in_combiner["scaling"] = scale
 
