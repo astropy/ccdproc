@@ -179,7 +179,7 @@ class Combiner:
         self._xp = xp
         if dtype is None:
             dtype = xp.float64
-        self.ccd_list = ccd_list
+
         self.unit = default_unit
         self.weights = None
         self._dtype = dtype
@@ -188,7 +188,7 @@ class Combiner:
         # new_shape = (len(ccd_list),) + default_shape
         self._data_arr = xp.asarray([ccd.data for ccd in ccd_list], dtype=dtype)
 
-        # populate self.data_arr
+        # populate self._data_arr_mask
         mask_list = [
             ccd.mask if ccd.mask is not None else xp.zeros(default_shape)
             for ccd in ccd_list
