@@ -32,6 +32,7 @@ from ccdproc.core import (
     create_deviation,
     flat_correct,
     gain_correct,
+    sigma_func,
     subtract_bias,
     subtract_dark,
     subtract_overscan,
@@ -1302,3 +1303,8 @@ def test_ccd_process_gain_corrected():
     assert occd.unit == u.electron
     # Make sure the original keyword is still present. Regression test for #401
     assert occd.meta["testkw"] == 100
+
+
+def test_sigma_func_for_ccddata():
+    ccd_data = ccd_data_func()
+    assert sigma_func(ccd_data) == sigma_func(ccd_data.data)

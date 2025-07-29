@@ -37,6 +37,7 @@ test = [
     "pytest-astropy>=0.10.0",
     "ruff",
     "jax",
+    "dask"
 ]
 
 [project.urls]

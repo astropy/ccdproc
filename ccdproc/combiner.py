@@ -4,11 +4,11 @@
 
 from copy import deepcopy
 
-try:
+try:  # pragma: no cover
     import bottleneck as bn
 except ImportError:
-    HAS_BOTTLENECK = False  # pragma: no cover
-else:
+    HAS_BOTTLENECK = False
+else:  # pragma: no cover
     HAS_BOTTLENECK = True
 
 import array_api_compat

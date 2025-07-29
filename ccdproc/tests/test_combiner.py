@@ -9,6 +9,7 @@ from astropy.stats import median_absolute_deviation as mad
 from astropy.utils.data import get_pkg_data_filename
 from numpy import median as np_median
 
+from ccdproc import create_deviation
 from ccdproc.combiner import (
     Combiner,
     _calculate_step_sizes,
@@ -86,6 +87,9 @@ def test_combiner_create():
     c = Combiner(ccd_list)
     assert c._data_arr.shape == (3, 100, 100)
     assert c._data_arr_mask.shape == (3, 100, 100)
+    # Also test the public properties
+    assert c.data.shape == c._data_arr.shape
+    assert c.mask.shape == c._data_arr_mask.shape
 
 
 # test if dtype matches the value that is passed
@@ -381,6 +385,14 @@ def test_combiner_with_scaling():
     assert xp.all(xpx.isclose(avg_ccd.data.mean(), ccd_data.data.mean()))
     assert avg_ccd.shape == ccd_data.shape
 
+    # Scale by a float
+    avg_ccd = combiner.average_combine(scale_to=2.0)
+    expected_avg = 2 * xp.mean(
+        xp.array((ccd_data.data, ccd_data_lower.data, ccd_data_higher.data))
+    )
+    assert xp.all(xpx.isclose(xp.mean(avg_ccd.data), expected_avg))
+    assert avg_ccd.shape == ccd_data.shape
+
 
 def test_combiner_scaling_fails():
     ccd_data = ccd_data_func()
@@ -641,6 +653,35 @@ def test_sum_combine_uncertainty():
     ccd2 = combine(ccd_list, method="sum", combine_uncertainty_function=xp.sum)
     assert xp.all(xpx.isclose(ccd.data, ccd2.data))
     assert xp.all(xpx.isclose(ccd.uncertainty.array, ccd2.uncertainty.array))
+
+
+@pytest.mark.parametrize("scale", ["function", "mean"])
+def test_combine_ccd_with_uncertainty_and_mask_from_fits(scale, tmp_path):
+    # Test initializing a CCDData object with uncertainty and mask in the
+    # combine function.
+    fitsfile = get_pkg_data_filename("data/a8280271.fits", package="ccdproc.tests")
+    ccd_data = CCDData.read(fitsfile, unit=u.adu)
+    ccd_data.data = xp.asarray(ccd_data.data, dtype=xp.float64)
+    # Set ._mask instead of .mask to avoid conversion to numpy array
+    ccd_data._mask = xp.zeros_like(ccd_data.data, dtype=bool)
+    if scale == "function":
+        scale_by_mean = _make_mean_scaler(ccd_data)
+    else:
+        scale_by_mean = [1.0, 1.0, 1.0]
+
+    ccd_data = create_deviation(
+        ccd_data, gain=1.0 * u.electron / u.adu, readnoise=5 * u.electron
+    )
+    fits_with_uncertainty = tmp_path / "test.fits"
+    ccd_data.write(fits_with_uncertainty)
+
+    ccd2 = combine(
+        [fits_with_uncertainty] * 3,
+        method="average",
+        array_package=xp,
+        scale=scale_by_mean,
+    )
+    assert xp.all(xpx.isclose(ccd2.data, ccd_data.data))
 
 
 # Ignore warnings generated because most values are masked and we divide
