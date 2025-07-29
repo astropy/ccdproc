@@ -36,7 +36,7 @@ test = [
     "pre-commit",
     "pytest-astropy>=0.10.0",
     "ruff",
-    "jax",
+    "jax>=0.6.3",
     "dask"
 ]
 
