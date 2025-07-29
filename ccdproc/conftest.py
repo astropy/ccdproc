@@ -63,5 +63,5 @@ match array_library:
     case _:
         raise ValueError(
             f"Unsupported array library: {array_library}. "
-            "Supported libraries are 'numpy' and 'jax'."
+            "Supported libraries are listed at https://ccdproc.readthedocs.io/en/latest/array_api.html."
         )
