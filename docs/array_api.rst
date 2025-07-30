@@ -28,10 +28,10 @@ on a GPU using `CuPy`_ should be
 
 Though the
 `sparse`_ array library supports the array API, `ccdproc`_ does not currently work
-with `sparse`_. A `pull request <https://github.com/astropy/ccdproc/pulls>`_ to FIX
-that would be a welcome contribution to the project.
+with `sparse`_. A `pull request <https://github.com/astropy/ccdproc/pulls>`_ to add
+support for `sparse`_ would be a welcome contribution to the project.
 
-What limitations shuold I be aware of?
+What limitations should I be aware of?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 + The ``median`` function is not part of the array API, but most array libraries

@@ -340,7 +340,7 @@ def test_combiner_mask_average():
     # are masked?!
     # assert ccd.data[0, 0] == 0
     assert ccd.data[5, 5] == 1
-    # THE LINE BELOW IS CATCHING A REAL ERROR
+    # Ensure that the mask is correctly applied to pixels that are fully masked
     assert ccd.mask[0, 0]
     assert not ccd.mask[5, 5]
 
