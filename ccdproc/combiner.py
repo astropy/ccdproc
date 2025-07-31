@@ -380,12 +380,12 @@ class Combiner:
         """
         if min_clip is not None:
             mask = self._data_arr < min_clip
-            # Written to avoid in-place modification of array
-            self._data_arr_mask = self._data_arr_mask | mask
+            # Do "or" in-place if possible...
+            self._data_arr_mask |= mask
         if max_clip is not None:
             mask = self._data_arr > max_clip
-            # Written to avoid in-place modification of array
-            self._data_arr_mask = self._data_arr_mask | mask
+            # Do "or" in-place if possible...
+            self._data_arr_mask |= mask
 
     # set up sigma  clipping algorithms
     @deprecated_renamed_argument(
