@@ -50,7 +50,7 @@ def ccd_data(
     test function, where m is the desired mean.
     """
     # Need the import here to avoid circular import issues
-    from ..conftest import testing_array_library as array_library
+    from ..conftest import testing_array_library as xp
 
     size = data_size
     scale = data_scale
@@ -62,7 +62,7 @@ def ccd_data(
     data = rng.normal(loc=mean, size=[size, size], scale=scale)
 
     fake_meta = {"my_key": 42, "your_key": "not 42"}
-    ccd = CCDData(array_library.asarray(data), unit=u.adu)
+    ccd = CCDData(xp.asarray(data), unit=u.adu)
     ccd.header = fake_meta
     return ccd
 

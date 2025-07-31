@@ -41,7 +41,7 @@ jobs:
             python: '3.12'
             tox_env: 'py312-test-alldeps-cov'
 
-          # Run at least one non-numpy array library
+          # Test non-numpy array libraries
           - name: 'ubuntu-py313-jax'
             os: ubuntu-latest
             python: '3.13'

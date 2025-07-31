@@ -707,7 +707,7 @@ def test_flat_correct_deviation():
 # Test the uncertainty on the data after flat correction
 def test_flat_correct_data_uncertainty():
     # Regression test for #345
-    # Temporarily work around the fact that NDUncertainty explicitly checks
+    # TODO: remove when fix that NDUncertainty explicitly checks
     # whether the value is a numpy array.
     dat = CCDData(
         xp.ones([100, 100]), unit="adu", uncertainty=np_array(xp.ones([100, 100]))
@@ -1007,7 +1007,7 @@ def test_wcs_project_onto_same_wcs():
     target_wcs = wcs_for_testing(ccd_data.shape)
     ccd_data.wcs = wcs_for_testing(ccd_data.shape)
 
-    # Ugly hack for numpy-specific check in astropy.wcs
+    # TODO: remove hack for numpy-specific check in astropy.wcs
     ccd_data.data = np_array(ccd_data.data)
     new_ccd = wcs_project(ccd_data, target_wcs)
 
@@ -1025,7 +1025,7 @@ def test_wcs_project_onto_same_wcs_remove_headers():
     ccd_data.wcs = wcs_for_testing(ccd_data.shape)
     ccd_data.header = ccd_data.wcs.to_header()
 
-    # Ugly hack for numpy-specific check in astropy.wcs
+    # TODO: remove hack for numpy-specific check in astropy.wcs
     ccd_data.data = np_array(ccd_data.data)
     new_ccd = wcs_project(ccd_data, target_wcs)
 
@@ -1044,7 +1044,7 @@ def test_wcs_project_onto_shifted_wcs():
 
     ccd_data.mask = RNG().choice([0, 1], size=ccd_data.shape)
 
-    # Ugly hack for numpy-specific check in astropy.wcs
+    # TODO: remove hack for numpy-specific check in astropy.wcs
     ccd_data.data = np_array(ccd_data.data)
     new_ccd = wcs_project(ccd_data, target_wcs)
 
@@ -1094,7 +1094,7 @@ def test_wcs_project_onto_scale_wcs():
     target_shape = 2 * xp.asarray(ccd_data.shape) + 1
     target_wcs.wcs.crpix = 2 * target_wcs.wcs.crpix + 1 + 0.5
 
-    # Ugly hack for numpy-specific check in astropy.wcs
+    # TODO: rm hack for numpy-specific check in astropy.wcs
     ccd_data.data = np_array(ccd_data.data)
     # Explicitly set the interpolation method so we know what to
     # expect for the mass.
@@ -1226,6 +1226,8 @@ def test_ccd_process(uncertainty_type):
             masterbias.uncertainty = None
             dark_frame.uncertainty = None
             masterflat.uncertainty = None
+        case _:
+            raise ValueError("something went seriously wrong")
 
     occd = ccd_process(
         ccd_data,
