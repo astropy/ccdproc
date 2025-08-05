@@ -1076,7 +1076,7 @@ def transform_image(ccd, transform_func, **kwargs):
     # Wrap the CCDData object to ensure it is compatible with array API
     _ccd = _wrap_ccddata_for_array_api(ccd)
     # make a copy of the object
-    _nccd = ccd.copy()
+    _nccd = _ccd.copy()
 
     # transform the image plane
     try:
