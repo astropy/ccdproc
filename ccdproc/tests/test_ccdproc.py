@@ -375,7 +375,7 @@ def test_trim_image_fits_section_requires_string():
 def test_trim_image_fits_section(mask_data, uncertainty):
     ccd_data = ccd_data_func(data_size=50)
     if mask_data:
-        ccd_data.mask = xp.zeros_like(ccd_data)
+        ccd_data.mask = xp.zeros_like(ccd_data.data)
     if uncertainty:
         err = RNG().normal(size=ccd_data.shape)
         ccd_data.uncertainty = StdDevUncertainty(err)
@@ -439,7 +439,7 @@ def test_subtract_bias_fails():
     with pytest.raises(ValueError):
         subtract_bias(ccd_data, bias)
     # Should fail because units don't match
-    bias = CCDData(xp.zeros_like(ccd_data), unit=u.meter)
+    bias = CCDData(xp.zeros_like(ccd_data.data), unit=u.meter)
     with pytest.raises(u.UnitsError):
         subtract_bias(ccd_data, bias)
 
@@ -771,7 +771,7 @@ def test_catch_transform_wcs_warning():
 def test_transform_image(mask_data, uncertainty):
     ccd_data = ccd_data_func(data_size=50)
     if mask_data:
-        ccd_data.mask = xp.zeros_like(ccd_data)
+        ccd_data.mask = xp.zeros_like(ccd_data.data)
         ccd_data.mask[10, 10] = 1
     if uncertainty:
         err = RNG().normal(size=ccd_data.shape)
@@ -957,7 +957,7 @@ def test_gain_correct_does_not_change_input():
 def test_subtract_bias_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    master_frame = CCDData(xp.zeros_like(ccd_data), unit=ccd_data.unit)
+    master_frame = CCDData(xp.zeros_like(ccd_data.data), unit=ccd_data.unit)
     _ = subtract_bias(ccd_data, master=master_frame)
     assert xp.all(xpx.isclose(original.data, ccd_data.data))
     assert original.unit == ccd_data.unit
