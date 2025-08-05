@@ -981,9 +981,9 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None, xp=None):
 
     # Normalize the flat.
     # Make sure flat_mean is a plain python float so that we
-    # can use it with the array namespace.
-    # flat_mean_unit = flat_mean.unit
-    _flat_normed = _use_flat.divide(flat_mean, xp=xp)
+    # can use it with the array namespace. -- actually, we need to cast
+    # flat_mean to the array namespace.
+    _flat_normed = _use_flat.divide(xp.asarray(flat_mean), xp=xp)
 
     # We need to fix up the unit now since we stripped the unit from
     # the flat_mean above.
