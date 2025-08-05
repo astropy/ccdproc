@@ -781,7 +781,7 @@ def test_transform_image(mask_data, uncertainty):
         xpx.at(ccd_data._mask)[10, 10].set(1)
     if uncertainty:
         err = RNG().normal(size=ccd_data.shape)
-        ccd_data.uncertainty = StdDevUncertainty(err)
+        ccd_data.uncertainty = StdDevUncertainty(xp.asarray(err))
 
     def tran(arr):
         return 10 * arr
