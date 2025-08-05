@@ -928,7 +928,7 @@ def test_create_deviation_does_not_change_input():
 def test_cosmicray_median_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
-    error = xp.ones_like(ccd_data)
+    error = xp.ones_like(ccd_data.data)
     _ = cosmicray_median(ccd_data, error_image=error, thresh=5, mbox=11, gbox=0, rbox=0)
     assert xp.all(xpx.isclose(original.data, ccd_data.data))
     assert original.unit == ccd_data.unit
