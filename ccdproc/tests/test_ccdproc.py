@@ -810,9 +810,10 @@ def test_block_reduce():
         xp.ones((4, 4)),
         unit="adu",
         meta={"testkw": 1},
-        mask=xp.zeros((4, 4), dtype=bool),
         uncertainty=StdDevUncertainty(xp.ones((4, 4))),
     )
+    # TODO: Set mask in caller above when CCDData is array-api compliant
+    ccd._mask = xp.zeros((4, 4), dtype=bool)
     with pytest.warns(AstropyUserWarning) as w:
         ccd_summed = block_reduce(ccd, (2, 2))
     assert len(w) == 1
