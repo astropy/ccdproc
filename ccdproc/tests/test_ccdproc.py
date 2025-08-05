@@ -632,10 +632,13 @@ def test_flat_correct_min_value():
     # Check that the flat was normalized. The asserts below, which look a
     # little odd, are correctly testing that
     #    flat_corrected_data = ccd_data / (flat_with_min / mean(flat_with_min))
-    # This first one is just comparing two numbers, so use pytest.approx
-    assert xp.mean(flat_corrected_data.data * flat_with_min.data) == pytest.approx(
+    # This first one is just comparing two numbers, so use pytest.approx...
+    # ...actually, not. pytest.approx converts its argument to numpy, whcih
+    # raises an error in cupy.
+    assert xpx.isclose(
+        xp.mean(flat_corrected_data.data * flat_with_min.data),
         xp.mean(ccd_data.data) * xp.mean(flat_with_min.data),
-        rel=1e-6,
+        rtol=1e-6,
     )
 
     assert xp.all(
