@@ -375,7 +375,8 @@ def test_trim_image_fits_section_requires_string():
 def test_trim_image_fits_section(mask_data, uncertainty):
     ccd_data = ccd_data_func(data_size=50)
     if mask_data:
-        ccd_data.mask = xp.zeros_like(ccd_data.data)
+        # TODO: Set .mask instead of ._mask when CCData is array-api compliant
+        ccd_data._mask = xp.zeros_like(ccd_data.data)
     if uncertainty:
         err = RNG().normal(size=ccd_data.shape)
         ccd_data.uncertainty = StdDevUncertainty(err)
