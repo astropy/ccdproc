@@ -904,7 +904,7 @@ def gain_correct(ccd, gain, gain_unit=None, xp=None):
     else:
         gain_value = gain
 
-    _result = _ccd.multiply(gain_value, xp=xp, handle_mask=xp.logical_or)
+    _result = _ccd.multiply(xp.asarray(gain_value), xp=xp, handle_mask=xp.logical_or)
     result = _unwrap_ccddata_for_array_api(_result)
     result.meta = _ccd.meta.copy()
     return result
