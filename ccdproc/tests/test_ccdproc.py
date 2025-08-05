@@ -778,7 +778,7 @@ def test_transform_image(mask_data, uncertainty):
         # Set the _mask rather than .mask to avoid issues with array-api
         # TODO: Fix this when CCDData is array-api compliant
         ccd_data._mask = xp.zeros_like(ccd_data.data)
-        xpx.at(ccd_data._mask)[10, 10].set_value(1)
+        xpx.at(ccd_data._mask)[10, 10].set(1)
     if uncertainty:
         err = RNG().normal(size=ccd_data.shape)
         ccd_data.uncertainty = StdDevUncertainty(err)
