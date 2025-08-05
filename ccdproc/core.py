@@ -1076,26 +1076,32 @@ def transform_image(ccd, transform_func, **kwargs):
     # make a copy of the object
     nccd = ccd.copy()
 
+    # Wrap the CCDData object to ensure it is compatible with array API
+    _nccd = _wrap_ccddata_for_array_api(nccd)
+
     # transform the image plane
     try:
-        nccd.data = transform_func(nccd.data, **kwargs)
+        _nccd.data = transform_func(_nccd.data, **kwargs)
     except TypeError as exc:
         if "is not callable" in str(exc):
             raise TypeError("transform_func is not a callable.") from exc
         raise
 
     # transform the uncertainty plane if it exists
-    if nccd.uncertainty is not None:
-        nccd.uncertainty.array = transform_func(nccd.uncertainty.array, **kwargs)
+    if _nccd.uncertainty is not None:
+        _nccd.uncertainty.array = transform_func(_nccd.uncertainty.array, **kwargs)
 
     # transform the mask plane
-    if nccd.mask is not None:
-        mask = transform_func(nccd.mask, **kwargs)
-        nccd.mask = mask > 0
+    if _nccd.mask is not None:
+        mask = transform_func(_nccd.mask, **kwargs)
+        _nccd.mask = mask > 0
 
-    if nccd.wcs is not None:
+    if _nccd.wcs is not None:
         warn = "WCS information may be incorrect as no transformation was applied to it"
         warnings.warn(warn, UserWarning, stacklevel=2)
+
+    # Unwrap the CCDData object to ensure it is compatible with array API
+    nccd = _unwrap_ccddata_for_array_api(_nccd)
 
     return nccd
 
