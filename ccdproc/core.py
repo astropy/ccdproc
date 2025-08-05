@@ -904,7 +904,14 @@ def gain_correct(ccd, gain, gain_unit=None, xp=None):
     else:
         gain_value = gain
 
+    # By this point, gain should have a unit, so separate it out
+    gain_unit = gain_value.unit if isinstance(gain_value, Quantity) else None
+    gain_value = (
+        gain_value.decompose().value if isinstance(gain_value, Quantity) else gain_value
+    )
     _result = _ccd.multiply(xp.asarray(gain_value), xp=xp, handle_mask=xp.logical_or)
+    if gain_unit:
+        _result.unit = _ccd.unit * gain_unit
     result = _unwrap_ccddata_for_array_api(_result)
     result.meta = _ccd.meta.copy()
     return result
