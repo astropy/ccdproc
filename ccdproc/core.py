@@ -1073,11 +1073,10 @@ def transform_image(ccd, transform_func, **kwargs):
     if not isinstance(ccd, CCDData):
         raise TypeError("ccd is not a CCDData.")
 
-    # make a copy of the object
-    nccd = ccd.copy()
-
     # Wrap the CCDData object to ensure it is compatible with array API
-    _nccd = _wrap_ccddata_for_array_api(nccd)
+    _ccd = _wrap_ccddata_for_array_api(ccd)
+    # make a copy of the object
+    _nccd = ccd.copy()
 
     # transform the image plane
     try:
