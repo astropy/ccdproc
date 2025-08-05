@@ -970,8 +970,12 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None, xp=None):
         # norm_value was set to a bad value
         raise ValueError("norm_value must be greater than zero.")
     else:
-        # norm_value was not set, use mean of the image.
-        flat_mean = xp.mean(_use_flat.data) * _use_flat.unit
+        # norm_value was not set, use mean of the image. Do NOT multiply this value by a
+        # unit. This converts the data to a numpy array somewhere in the Quantity
+        # machinery.
+        # TODO: Fix this when astropy supports array namespaces
+        flat_mean = xp.mean(_use_flat.data)
+        flat_mean_unit = _use_flat.unit
 
     # Normalize the flat.
     # Make sure flat_mean is a plain python float so that we
@@ -980,7 +984,7 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None, xp=None):
     flat_mean = float(flat_mean.decompose().value)
     _flat_normed = _use_flat.divide(flat_mean, xp=xp)
 
-    # We need to fix up the unit now wince we stripped the unit from
+    # We need to fix up the unit now since we stripped the unit from
     # the flat_mean above.
     result_unit = ((1 * _use_flat.unit) / (1 * flat_mean_unit)).decompose().unit
     _flat_normed.unit = result_unit
