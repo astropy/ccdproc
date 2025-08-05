@@ -1819,7 +1819,11 @@ def cosmicray_lacosmic(
                 gain = gain.value * u.one
             # Check unit consistency before taking the time to check for
             # cosmic rays.
-            if not (gain * ccd).unit.is_equivalent(readnoise.unit):
+            # Check this using the units, not the data, to avoid both an unnecessary
+            # array multiplication and a possible change of array namespace.
+            if not ((1.0 * gain.unit) * (1.0 * ccd.unit)).unit.is_equivalent(
+                readnoise.unit
+            ):
                 raise ValueError(
                     f"Inconsistent units for gain ({gain.unit}) "
                     + f" ccd ({ccd.unit}) and readnoise ({readnoise.unit})."
@@ -1848,7 +1852,9 @@ def cosmicray_lacosmic(
         )
 
         # create the new ccd data object
-        nccd = ccd.copy()
+        # Wrap the CCDData object to ensure it is compatible with array API
+        _ccd = _wrap_ccddata_for_array_api(ccd)
+        nccd = _ccd.copy()
 
         cleanarr = cleanarr - data_offset
         cleanarr = _astroscrappy_gain_apply_helper(
@@ -1856,14 +1862,18 @@ def cosmicray_lacosmic(
         )
 
         # Fix the units if the gain is being applied.
-        nccd.unit = ccd.unit * gain.unit
+        nccd.unit = _ccd.unit * gain.unit
 
-        nccd.data = cleanarr
+        xp = array_api_compat.array_namespace(_ccd.data)
+
+        nccd.data = xp.asarray(cleanarr)
         if nccd.mask is None:
             nccd.mask = crmask
         else:
             nccd.mask = nccd.mask + crmask
 
+        # Unwrap the CCDData object to ensure it is compatible with array API
+        nccd = _unwrap_ccddata_for_array_api(nccd)
         return nccd
     elif _is_array(ccd):
         data = ccd
