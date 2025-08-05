@@ -775,8 +775,10 @@ def test_catch_transform_wcs_warning():
 def test_transform_image(mask_data, uncertainty):
     ccd_data = ccd_data_func(data_size=50)
     if mask_data:
-        ccd_data.mask = xp.zeros_like(ccd_data.data)
-        ccd_data.mask[10, 10] = 1
+        # Set the _mask rather than .mask to avoid issues with array-api
+        # TODO: Fix this when CCDData is array-api compliant
+        ccd_data._mask = xp.zeros_like(ccd_data.data)
+        xpx.at(ccd_data._mask)[10, 10].set_value(1)
     if uncertainty:
         err = RNG().normal(size=ccd_data.shape)
         ccd_data.uncertainty = StdDevUncertainty(err)
@@ -1046,7 +1048,8 @@ def test_wcs_project_onto_shifted_wcs():
     target_wcs = wcs_for_testing(ccd_data.shape)
     target_wcs.wcs.crpix += [1, 1]
 
-    ccd_data.mask = RNG().choice([0, 1], size=ccd_data.shape)
+    # TODO: change back to .mask when CCDData is array-api complian
+    ccd_data._mask = RNG().choice([0, 1], size=ccd_data.shape)
 
     # TODO: remove hack for numpy-specific check in astropy.wcs
     ccd_data.data = np_array(ccd_data.data)
@@ -1087,7 +1090,8 @@ def test_wcs_project_onto_scale_wcs():
     ccd_data.data = xp.ones_like(ccd_data.data)
 
     # Make mask zero...
-    ccd_data.mask = xp.zeros_like(ccd_data.data)
+    # TODO: change back to .mask when CCDData is array-api compliant
+    ccd_data._mask = xp.zeros_like(ccd_data.data)
     # ...except the center pixel, which is one.
     ccd_data.mask[int(ccd_data.wcs.wcs.crpix[0]), int(ccd_data.wcs.wcs.crpix[1])] = 1
 
