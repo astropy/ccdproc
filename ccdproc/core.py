@@ -849,7 +849,10 @@ def subtract_dark(
             # The cast to float is needed because the result will be a np.float,
             # which will mess up the array namespace.
             scale_factor = float((data_exposure / dark_exposure).decompose().value)
-            _master_scaled = _master_scaled.multiply(scale_factor)
+            # The xp.asarray ensures that even the scale factor is an instance
+            # of the array class. Using a plain float leads (because of a conversion
+            # to numpy float) to numpy being used for the calculation.
+            _master_scaled = _master_scaled.multiply(xp.asarray(scale_factor))
             _result = _ccd.subtract(_master_scaled, handle_mask=xp.logical_or)
         else:
             _result = _ccd.subtract(_master, handle_mask=xp.logical_or)
