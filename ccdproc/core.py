@@ -690,11 +690,11 @@ def trim_image(ccd, fits_section=None):
     """
     if fits_section is not None and not isinstance(fits_section, str):
         raise TypeError("fits_section must be a string.")
-    trimmed = ccd.copy()
+    trimmed = _wrap_ccddata_for_array_api(ccd).copy()
     if fits_section:
         python_slice = slice_from_string(fits_section, fits_convention=True)
         trimmed = trimmed[python_slice]
-
+    trimmed = _unwrap_ccddata_for_array_api(trimmed)
     return trimmed
 
 
