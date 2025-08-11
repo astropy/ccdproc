@@ -34,6 +34,7 @@ Detailed, step-by-step guide
 
 In addition to the documentation here, a detailed guide to the topic of CCD
 data reduction using ``ccdproc`` and other `astropy`_ tools is available here:
+(TODO: FIX LINK BELOW)
 https://mwcraig.github.io/ccd-as-book/00-00-Preface
 
 Getting started
@@ -63,6 +64,7 @@ Using `ccdproc`
     reduction_toolbox
     image_management
     reduction_examples
+    array_api
     default_config
 
 .. toctree::
