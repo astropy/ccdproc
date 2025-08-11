@@ -3,7 +3,7 @@ exclude: 'ccdproc/extern/.*.py|.*\.fits?$'
   # | .*\.fits?$             # Ignore FITS files
 repos:
   -   repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v5.0.0
+      rev: v6.0.0
       hooks:
       -   id: check-yaml
       -   id: end-of-file-fixer
@@ -13,7 +13,7 @@ repos:
 # Per the ruff documentation, this should be before black
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: v0.12.2
+    rev: v0.12.8
     hooks:
       # Run the linter.
       - id: ruff
