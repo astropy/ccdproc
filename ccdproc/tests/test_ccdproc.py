@@ -1094,7 +1094,9 @@ def test_wcs_project_onto_scale_wcs():
     # TODO: change back to .mask when CCDData is array-api compliant
     ccd_data._mask = xp.zeros_like(ccd_data.data)
     # ...except the center pixel, which is one.
-    ccd_data.mask[int(ccd_data.wcs.wcs.crpix[0]), int(ccd_data.wcs.wcs.crpix[1])] = 1
+    ccd_data._mask = xpx.at(ccd_data._mask)[
+        int(ccd_data.wcs.wcs.crpix[0]), int(ccd_data.wcs.wcs.crpix[1])
+    ].set(1)
 
     target_wcs = wcs_for_testing(ccd_data.shape)
     target_wcs.wcs.cdelt /= 2
@@ -1105,6 +1107,7 @@ def test_wcs_project_onto_scale_wcs():
 
     # TODO: rm hack for numpy-specific check in astropy.wcs
     ccd_data.data = np_array(ccd_data.data)
+    ccd_data._mask = np_array(ccd_data._mask)
     # Explicitly set the interpolation method so we know what to
     # expect for the mass.
     new_ccd = wcs_project(
