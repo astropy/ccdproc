@@ -106,6 +106,9 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
         new_ccd = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=gain_correct_data)
         new_data = new_ccd.data
         cr_mask = new_ccd.mask
+
+    # Turn the mask into array API compatible thing
+    cr_mask = xp.asarray(cr_mask)
     # Fill masked locations with 0 since there is no simple relationship
     # between the original value and the corrected value.
     orig_data = xpx.at(ccd_data.data)[cr_mask].set(0.0)
