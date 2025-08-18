@@ -1,5 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import array_api_extra as xpx
 import pytest
 from astropy import units as u
 from astropy.nddata import StdDevUncertainty
@@ -107,9 +108,9 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
         cr_mask = new_ccd.mask
     # Fill masked locations with 0 since there is no simple relationship
     # between the original value and the corrected value.
-    # Masking using numpy is a handy way to check the results here.
-    orig_data = xp.asarray(np_ma_array(ccd_data.data, mask=cr_mask).filled(0))
-    new_data = xp.asarray(np_ma_array(new_data.data, mask=cr_mask).filled(0))
+    orig_data = xpx.at(ccd_data.data)[cr_mask].set(0.0)
+    new_data = xpx.at(new_data)[cr_mask].set(0.0)
+
     if gain_correct_data:
         gain_for_test = gain
     else:
