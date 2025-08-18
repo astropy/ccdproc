@@ -229,6 +229,8 @@ def _wrap_ccddata_for_array_api(ccd):
     Wrap a CCDData object for use with array API backends.
     """
     if isinstance(ccd, _CCDDataWrapperForArrayAPI):
+        if isinstance(ccd.uncertainty, StdDevUncertainty):
+            ccd.uncertainty = _StdDevUncertaintyWrapper(ccd.uncertainty)
         return ccd
 
     _ccd = _CCDDataWrapperForArrayAPI(ccd)
