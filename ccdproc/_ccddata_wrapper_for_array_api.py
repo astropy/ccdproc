@@ -7,7 +7,9 @@ import numpy as np
 from astropy import units as u
 from astropy.nddata import (
     CCDData,
+    InverseVariance,
     StdDevUncertainty,
+    VarianceUncertainty,
 )
 from astropy.nddata.compat import NDDataArray
 from astropy.units import UnitsError
@@ -174,9 +176,98 @@ class _CCDDataWrapperForArrayAPI(CCDData):
             self._mask = np.ma.nomask
 
 
-class _StdDevUncertaintyWrapper(StdDevUncertainty):
+class _CupyOperationNamesMixin:
+    # Override the method below solely to allow CuPy operation names
+    def propagate(self, operation, other_nddata, result_data, correlation, axis=None):
+        """Calculate the resulting uncertainty given an operation on the data.
+
+        .. versionadded:: 1.2
+
+        Parameters
+        ----------
+        operation : callable
+            The operation that is performed on the `NDData`. Supported are
+            `numpy.add`, `numpy.subtract`, `numpy.multiply` and
+            `numpy.true_divide` (or `numpy.divide`).
+
+        other_nddata : `NDData` instance
+            The second operand in the arithmetic operation.
+
+        result_data : `~astropy.units.Quantity` or ndarray
+            The result of the arithmetic operations on the data.
+
+        correlation : `numpy.ndarray` or number
+            The correlation (rho) is defined between the uncertainties in
+            sigma_AB = sigma_A * sigma_B * rho. A value of ``0`` means
+            uncorrelated operands.
+
+        axis : int or tuple of ints, optional
+            Axis over which to perform a collapsing operation.
+
+        Returns
+        -------
+        resulting_uncertainty : `NDUncertainty` instance
+            Another instance of the same `NDUncertainty` subclass containing
+            the uncertainty of the result.
+
+        Raises
+        ------
+        ValueError
+            If the ``operation`` is not supported or if correlation is not zero
+            but the subclass does not support correlated uncertainties.
+
+        Notes
+        -----
+        First this method checks if a correlation is given and the subclass
+        implements propagation with correlated uncertainties.
+        Then the second uncertainty is converted (or an Exception is raised)
+        to the same class in order to do the propagation.
+        Then the appropriate propagation method is invoked and the result is
+        returned.
+        """
+        # Check if the subclass supports correlation
+        if not self.supports_correlated:
+            if isinstance(correlation, np.ndarray) or correlation != 0:
+                raise ValueError(
+                    f"{type(self).__name__} does not support uncertainty propagation"
+                    " with correlation."
+                )
+
+        if other_nddata is not None:
+            # Get the other uncertainty (and convert it to a matching one)
+            other_uncert = self._convert_uncertainty(other_nddata.uncertainty)
+
+            if operation.__name__ in ["add", "cupy_add"]:
+                result = self._propagate_add(other_uncert, result_data, correlation)
+            elif operation.__name__ in ["subtract", "cupy_subtract"]:
+                result = self._propagate_subtract(
+                    other_uncert, result_data, correlation
+                )
+            elif operation.__name__ in ["multiply", "cupy_multiply"]:
+                result = self._propagate_multiply(
+                    other_uncert, result_data, correlation
+                )
+            elif operation.__name__ in [
+                "true_divide",
+                "cupy_true_divide",
+                "divide",
+                "cupy_divide",
+            ]:
+                result = self._propagate_divide(other_uncert, result_data, correlation)
+            else:
+                raise ValueError(f"unsupported operation: {operation.__name__}")
+        else:
+            # assume this is a collapsing operation:
+            result = self._propagate_collapse(operation, axis)
+
+        return self.__class__(array=result, copy=False)
+
+
+class _StdDevUncertaintyWrapper(_CupyOperationNamesMixin, StdDevUncertainty):
     """
-    Override propagate methods to make sure they use the array API.
+    Override operation propagate methods to make sure they use the array API.
+
+    Override overall propagate method to allow cupy_-prefixed operation names.
     """
 
     def _propagate_add(self, other_uncert, result_data, correlation):
@@ -224,18 +315,58 @@ class _StdDevUncertaintyWrapper(StdDevUncertainty):
         )
 
 
+class _VarianceUncertaintyWrapper(_CupyOperationNamesMixin, VarianceUncertainty):
+    """This subclass is needed to allow CuPy operation names"""
+
+
+class _InverseVarianceWrapper(_CupyOperationNamesMixin, InverseVariance):
+    """This subclass is needed to allow CuPy operation names"""
+
+
+def _wrap_uncertainty(unc):
+    """
+    Wrap the uncertainty for a ccd
+    """
+    match unc:
+        case StdDevUncertainty():
+            return _StdDevUncertaintyWrapper(unc)
+        case VarianceUncertainty():
+            return _VarianceUncertaintyWrapper(unc)
+        case InverseVariance():
+            return _InverseVarianceWrapper(unc)
+        case _:
+            raise TypeError("Unsupported uncertainty type")
+
+
+def _unwrap_uncertainty(unc):
+    """
+    Unwrap the uncertainty for a ccd
+    """
+    # Unwrap using the uncertainty's .array so that the uncertainty
+    # setter will automatically handle the units for the uncertainty.
+    match unc:
+        case _StdDevUncertaintyWrapper():
+            return StdDevUncertainty(unc.array)
+        case _VarianceUncertaintyWrapper():
+            return VarianceUncertainty(unc.array)
+        case _InverseVarianceWrapper():
+            return InverseVariance(unc.array)
+        case _:
+            raise TypeError("Unsupported uncertainty type")
+
+
 def _wrap_ccddata_for_array_api(ccd):
     """
     Wrap a CCDData object for use with array API backends.
     """
     if isinstance(ccd, _CCDDataWrapperForArrayAPI):
-        if isinstance(ccd.uncertainty, StdDevUncertainty):
-            ccd.uncertainty = _StdDevUncertaintyWrapper(ccd.uncertainty)
+        if ccd.uncertainty is not None:
+            ccd.uncertainty = _wrap_uncertainty(ccd.uncertainty)
         return ccd
 
     _ccd = _CCDDataWrapperForArrayAPI(ccd)
-    if isinstance(_ccd.uncertainty, StdDevUncertainty):
-        _ccd.uncertainty = _StdDevUncertaintyWrapper(_ccd.uncertainty)
+    if _ccd.uncertainty is not None:
+        _ccd.uncertainty = _wrap_uncertainty(_ccd.uncertainty)
     return _ccd
 
 
@@ -244,8 +375,8 @@ def _unwrap_ccddata_for_array_api(ccd):
     Unwrap a CCDData object from array API backends to the original CCDData.
     """
 
-    if isinstance(ccd.uncertainty, _StdDevUncertaintyWrapper):
-        ccd.uncertainty = StdDevUncertainty(ccd.uncertainty.array)
+    if ccd.uncertainty is not None:
+        ccd.uncertainty = _unwrap_uncertainty(ccd.uncertainty)
 
     if isinstance(ccd, CCDData):
         return ccd
