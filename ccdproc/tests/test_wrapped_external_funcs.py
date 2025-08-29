@@ -1,5 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+# Not updating to array API here until the scipy package adopts the array API.
 import numpy as np
 from astropy.nddata import CCDData, StdDevUncertainty
 from scipy import ndimage

@@ -8,17 +8,19 @@ dynamic = ["version"]
 description = "Astropy affiliated package"
 readme = "README.rst"
 license = { text = "BSD-3-Clause" }
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 authors = [
     { name = "Steve Crawford", email = "ccdproc@gmail.com" },
     { name = "Matt Craig" },
     { name = "and Michael Seifert" },
 ]
 dependencies = [
-    "astropy>=5.0.1",
+    "array_api_compat>=1.12.0",
+    "array_api_extra>=0.7.0",
+    "astropy>=6.0.1",
     "astroscrappy>=1.1.0",
-    "numpy>=1.24",
-    "reproject>=0.7",
+    "numpy>=1.26",
+    "reproject>=0.9.1",
     "scikit-image",
     "scipy",
 ]
@@ -34,6 +36,8 @@ test = [
     "pre-commit",
     "pytest-astropy>=0.10.0",
     "ruff",
+    "jax>=0.6.3",
+    "dask"
 ]
 
 [project.urls]
@@ -54,7 +58,7 @@ include = [
 
 [tool.black]
 line-length = 88
-target-version = ['py310', 'py311', 'py312']
+target-version = ['py311', 'py312', 'py313']
 include = '\.pyi?$|\.ipynb$'
 # 'extend-exclude' excludes files or directories in addition to the defaults
 extend-exclude = '''
@@ -145,6 +149,10 @@ filterwarnings= [
     "ignore:numpy\\.ufunc size changed:RuntimeWarning",
     "ignore:numpy.ndarray size changed:RuntimeWarning",
     "ignore:`np.bool` is a deprecated alias for the builtin `bool`:DeprecationWarning",
+    # This is here because dask can end up generating this warning much
+    # later when the spot in create_deviation where a square root is
+    # calculated.
+    "ignore:invalid value encountered in sqrt:RuntimeWarning",
 ]
 markers = [
     "data_size(N): set dimension of square data array for ccd_data fixture",

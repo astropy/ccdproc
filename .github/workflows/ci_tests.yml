@@ -27,43 +27,36 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: 'ubuntu-py38-oldestdeps'
-            os: ubuntu-latest
-            python: '3.8'
-            # Test the oldest supported dependencies on the oldest supported Python
-            tox_env: 'py38-test-oldestdeps'
-
-          - name: 'macos-py310-astroscrappy11'
-            # Keep this test until astroscrappy 1.1.0 is the oldest supported
-            # version.
-            os: macos-latest
-            python: '3.10'
-            tox_env: 'py310-test-astroscrappy11'
-
-          - name: 'ubuntu-py312-bottleneck'
-            os: ubuntu-latest
-            python: '3.12'
-            tox_env: 'py312-test-alldeps-bottleneck-cov'
-
-          - name: 'ubuntu-py310'
-            os: ubuntu-latest
-            python: '3.10'
-            tox_env: 'py310-test-alldeps-numpy124'
-
-          - name: 'ubuntu-py311'
+          - name: 'ubuntu-py311-oldestdeps'
             os: ubuntu-latest
             python: '3.11'
-            tox_env: 'py311-test-alldeps-numpy124'
+            # Test the oldest supported dependencies on the oldest supported Python
+            tox_env: 'py311-test-oldestdeps'
 
-          - name: 'ubuntu-py312'
+          # Do not include bottleneck in this coverage test. By not including
+          # it we get a better measure of how we are covered when using the
+          # array API, which bottleneck short-circuits.
+          - name: 'ubuntu-py312-coverage'
+            os: ubuntu-latest
+            python: '3.12'
+            tox_env: 'py312-test-alldeps-cov'
+
+          # Test non-numpy array libraries
+          - name: 'ubuntu-py313-jax'
+            os: ubuntu-latest
+            python: '3.13'
+            tox_env: 'py313-jax'
+
+          # Move bottleneck test a test without coverage
+          - name: 'ubuntu-py312-bottleneck'
             os: ubuntu-latest
             python: '3.12'
             tox_env: 'py312-test-alldeps-numpy126'
 
-          - name: 'macos-py312'
+          - name: 'macos-py312-dask'
             os: macos-latest
             python: '3.12'
-            tox_env: 'py312-test-alldeps'
+            tox_env: 'py312-alldeps-dask'
 
           - name: 'windows-py312'
             os: windows-latest

@@ -15,6 +15,13 @@ except ImportError:
 else:
     memory_profile_present = True
 
+
+# Only run memory tests if numpy is the testing array library
+from ccdproc.conftest import testing_array_library
+
+USING_NUMPY_ARRAY_LIBRARY = testing_array_library.__name__ == "numpy"
+
+
 image_size = 2000  # Square image, so 4000 x 4000
 num_files = 10
 
@@ -31,7 +38,11 @@ def teardown_module():
 
 
 @pytest.mark.skipif(
-    not platform.startswith("linux"), reason="memory tests only work on linux"
+    not USING_NUMPY_ARRAY_LIBRARY, reason="Memory test only done with numpy"
+)
+@pytest.mark.skipif(
+    not platform.startswith("linux"),
+    reason="memory tests only work on linux",
 )
 @pytest.mark.skipif(not memory_profile_present, reason="memory_profiler not installed")
 @pytest.mark.parametrize("combine_method", ["average", "sum", "median"])
