@@ -7,13 +7,21 @@ import warnings
 from collections import OrderedDict
 from os import listdir, path
 
+import array_api_compat
 import astropy.io.fits as fits
-import numpy as np
+import numpy as np  # see numpy comment below
 import numpy.ma as ma
 from astropy.table import MaskedColumn, Table
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .ccddata import _recognized_fits_file_extensions, fits_ccddata_reader
+
+# ==> numpy comment <==
+# numpy is used internally to keep track of masking in the summary
+# table.  It is not used for any CCD processing, so there is no need
+# to implement the array API here. In other words, ImageFileCollection
+# is fine to implement its internal tables however it wantrs, regardless
+# of what the user is using for their data arrays.
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +80,19 @@ class ImageFileCollection:
         The extension from which the header and data will be read in all
         files.Default is ``0``.
 
+    array_package : an array namespace, optional
+        The array package to use for the data if the data is returned.
+        This argument is ignored if the returned item is ``header``. The
+        default is to use ``numpy`` for arrays.
+
+        If not specified, the array package used will
+        be numpy. The array package can be specified either by passing in
+        an array namespace (e.g. output from ``array_api_compat.array_namespace``),
+        or an imported array package that follows the array API standard
+        (e.g. ``numpy`` or ``jax.numpy``), or an array whose namespace can be
+        determined (e.g. a `numpy.ndarray` or ``jax.numpy.ndarray``).
+
+
     Raises
     ------
     ValueError
@@ -88,6 +109,7 @@ class ImageFileCollection:
         glob_include=None,
         glob_exclude=None,
         ext=0,
+        array_package=None,
     ):
         # Include or exclude files from the collection based on glob pattern
         # matching - has to go above call to _get_files()
@@ -126,6 +148,17 @@ class ImageFileCollection:
         self._all_keywords = False
 
         self._ext = ext
+
+        xp = None
+        if array_package is not None:
+            try:
+                # Maybe we got passed an array...
+                xp = array_api_compat.array_namespace(array_package)
+            except TypeError:
+                # Nope, got a type error, so assume we got passed
+                # an array namespace.
+                xp = array_package
+        self._xp = xp
 
         if keywords:
             self.keywords = keywords
@@ -700,7 +733,7 @@ class ImageFileCollection:
             use_info = self._fits_summary(header_keywords=keywords)
 
         matches = np.ones(len(use_info), dtype=bool)
-        for key, value in zip(keywords, values):
+        for key, value in zip(keywords, values, strict=True):
             logger.debug("key %s, value %s", key, value)
             logger.debug("value in table %s", use_info[key])
             value_missing = use_info[key].mask
@@ -890,6 +923,9 @@ class ImageFileCollection:
         if not self.summary:
             return
 
+        # Make sure xp is defined.
+        xp = self._xp
+
         current_mask = {}
         for col in self.summary.columns:
             current_mask[col] = self.summary[col].mask
@@ -911,16 +947,43 @@ class ImageFileCollection:
                 return_thing = fits.getheader(full_path, self.ext)
             elif return_type == "data":
                 return_thing = fits.getdata(full_path, self.ext, **add_kwargs)
+                # By default we will get a numpy array, but if the user
+                # specified an array package, we will convert it to that type.
+                if xp is not None:
+                    return_thing = xp.asarray(
+                        # Turns out only numpy understands dtypes like ">f8" so use
+                        # .type
+                        return_thing,
+                        dtype=return_thing.dtype.type,
+                    )
             elif return_type == "ccd":
                 return_thing = fits_ccddata_reader(
                     full_path, hdu=self.ext, **ccd_kwargs
                 )
+                if xp is not None:
+                    return_thing.data = xp.asarray(
+                        return_thing.data, dtype=return_thing.data.dtype.type
+                    )
+                    if return_thing.uncertainty is not None:
+                        return_thing.uncertainty.array = xp.asarray(
+                            return_thing.uncertainty.array,
+                            dtype=return_thing.uncertainty.array.dtype.type,
+                        )
+                    if return_thing.mask is not None:
+                        return_thing.mask = xp.asarray(return_thing.mask, dtype=bool)
+
             elif return_type == "hdu":
                 with fits.open(full_path, **add_kwargs) as hdulist:
                     ext_index = hdulist.index_of(self.ext)
                     # Need to copy the HDU to prevent lazy loading problems
                     # and "IO operations on closed file" errors
                     return_thing = hdulist[ext_index].copy()
+                    if xp is not None:
+                        # Convert the data to the specified array package
+                        return_thing.data = xp.asarray(
+                            return_thing.data, dtype=return_thing.data.dtype.type
+                        )
+
             else:
                 raise ValueError(f"no generator for {return_type}")
 

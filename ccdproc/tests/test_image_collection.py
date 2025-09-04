@@ -8,6 +8,8 @@ from shutil import rmtree
 from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 
 import astropy.io.fits as fits
+
+# Will continue to use np.testing here we are not testing array API
 import numpy as np
 import pytest
 from astropy.io.fits.verify import VerifyWarning
@@ -160,7 +162,7 @@ class TestImageFileCollection:
         plain_biases = list(plain_biases)
         # Same subset, but with full path.
         path_biases = ic.files_filtered(imagetyp="bias", include_path=True)
-        for path_b, plain_b in zip(path_biases, plain_biases):
+        for path_b, plain_b in zip(path_biases, plain_biases, strict=True):
             # If the path munging has been done properly, this will succeed.
             assert os.path.basename(path_b) == plain_b
 
@@ -207,7 +209,7 @@ class TestImageFileCollection:
             location=triage_setup.test_dir, keywords=["imagetyp"]
         )
 
-        for path, file_name in zip(collection._paths(), collection.files):
+        for path, file_name in zip(collection._paths(), collection.files, strict=True):
             assert path == os.path.join(triage_setup.test_dir, file_name)
 
     def test_hdus(self, triage_setup):
@@ -278,7 +280,7 @@ class TestImageFileCollection:
 
         ccd_kwargs = {"unit": "adu"}
         for data, hdr, hdu, ccd in zip(
-            ic2.data(), ic2.headers(), ic2.hdus(), ic2.ccds(ccd_kwargs)
+            ic2.data(), ic2.headers(), ic2.hdus(), ic2.ccds(ccd_kwargs), strict=True
         ):
             np.testing.assert_allclose(data, ext2.data)
             assert hdr == ext2.header

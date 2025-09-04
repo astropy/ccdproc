@@ -1,10 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-import numpy as np
+import array_api_extra as xpx
 import pytest
 from astropy import units as u
+from astropy.nddata import StdDevUncertainty
 from astropy.utils.exceptions import AstropyDeprecationWarning
+from numpy.ma import array as np_ma_array
+from numpy.random import default_rng
+from numpy.testing import assert_allclose
 
+# Set up the array library to be used in tests
+from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import (
     background_deviation_box,
     background_deviation_filter,
@@ -20,18 +26,25 @@ NCRAYS = 30
 
 
 def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
+    from numpy import array as np_array
+
     size = data.shape[0]
-    rng = np.random.default_rng(99)
+    rng = default_rng(99)
     crrays = rng.integers(0, size, size=(ncrays, 2))
     # use (threshold + 15) below to make sure cosmic ray is well above the
     # threshold no matter what the random number generator returns
     # add_cosmicrays is highly sensitive to the seed
     # ideally threshold should be set so it is not sensitive to seed, but
     # this is not working right now
-    crflux = 10 * scale * rng.random(NCRAYS) + (threshold + 15) * scale
+    crflux = np_array(10 * scale * rng.random(ncrays) + (threshold + 15) * scale)
+
+    # Some array libraries (Jax) do not support setting individual elements,
+    # so use NumPy.
+    data_as_np = np_array(data.data)
     for i in range(ncrays):
         y, x = crrays[i]
-        data.data[y, x] = crflux[i]
+        data_as_np[y, x] = crflux[i]
+    data.data = xp.asarray(data_as_np)
 
 
 def test_cosmicray_lacosmic():
@@ -50,8 +63,9 @@ def test_cosmicray_lacosmic_ccddata():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    noise = DATA_SCALE * np.ones_like(ccd_data.data)
-    ccd_data.uncertainty = noise
+    noise = DATA_SCALE * xp.ones_like(ccd_data.data)
+
+    ccd_data.uncertainty = StdDevUncertainty(noise)
     nccd_data = cosmicray_lacosmic(ccd_data, sigclip=5.9)
 
     # check the number of cosmic rays detected
@@ -63,7 +77,7 @@ def test_cosmicray_lacosmic_ccddata():
 def test_cosmicray_lacosmic_check_data():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     with pytest.raises(TypeError):
-        noise = DATA_SCALE * np.ones_like(ccd_data.data)
+        noise = DATA_SCALE * xp.ones_like(ccd_data.data)
         cosmicray_lacosmic(10, noise)
 
 
@@ -78,8 +92,9 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    noise = DATA_SCALE * np.ones_like(ccd_data.data)
-    ccd_data.uncertainty = noise
+    noise = DATA_SCALE * xp.ones_like(ccd_data.data)
+
+    ccd_data.uncertainty = StdDevUncertainty(noise)
     # No units here on purpose.
     gain = 2.0
 
@@ -91,24 +106,29 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
         new_ccd = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=gain_correct_data)
         new_data = new_ccd.data
         cr_mask = new_ccd.mask
+
+    # Turn the mask into array API compatible thing
+    cr_mask = xp.asarray(cr_mask)
     # Fill masked locations with 0 since there is no simple relationship
     # between the original value and the corrected value.
-    orig_data = np.ma.array(ccd_data.data, mask=cr_mask).filled(0)
-    new_data = np.ma.array(new_data.data, mask=cr_mask).filled(0)
+    orig_data = xpx.at(ccd_data.data)[cr_mask].set(0.0)
+    new_data = xpx.at(new_data)[cr_mask].set(0.0)
+
     if gain_correct_data:
         gain_for_test = gain
     else:
         gain_for_test = 1.0
 
-    np.testing.assert_allclose(gain_for_test * orig_data, new_data)
+    assert_allclose(gain_for_test * orig_data, new_data)
 
 
 def test_cosmicray_lacosmic_accepts_quantity_gain():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    noise = DATA_SCALE * np.ones_like(ccd_data.data)
-    ccd_data.uncertainty = noise
+    noise = DATA_SCALE * xp.ones_like(ccd_data.data)
+
+    ccd_data.uncertainty = StdDevUncertainty(noise)
     # The units below are the point of the test
     gain = 2.0 * u.electron / u.adu
 
@@ -119,8 +139,9 @@ def test_cosmicray_lacosmic_accepts_quantity_readnoise():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    noise = DATA_SCALE * np.ones_like(ccd_data.data)
-    ccd_data.uncertainty = noise
+    noise = DATA_SCALE * xp.ones_like(ccd_data.data)
+
+    ccd_data.uncertainty = StdDevUncertainty(noise)
     gain = 2.0 * u.electron / u.adu
     # The units below are the point of this test
     readnoise = 6.5 * u.electron
@@ -135,8 +156,9 @@ def test_cosmicray_lacosmic_detects_inconsistent_units():
     ccd_data.unit = "adu"
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    noise = DATA_SCALE * np.ones_like(ccd_data.data)
-    ccd_data.uncertainty = noise
+    noise = DATA_SCALE * xp.ones_like(ccd_data.data)
+
+    ccd_data.uncertainty = StdDevUncertainty(noise)
     readnoise = 6.5 * u.electron
 
     # The units below are deliberately incorrect.
@@ -154,8 +176,9 @@ def test_cosmicray_lacosmic_warns_on_ccd_in_electrons():
     ccd_data.unit = u.electron
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    noise = DATA_SCALE * np.ones_like(ccd_data.data)
-    ccd_data.uncertainty = noise
+    noise = DATA_SCALE * xp.ones_like(ccd_data.data)
+
+    ccd_data.uncertainty = StdDevUncertainty(noise)
     # No units here on purpose.
     gain = 2.0
     # Don't really need to set this (6.5 is the default value) but want to
@@ -178,8 +201,9 @@ def test_cosmicray_lacosmic_invar_inbkg(new_args):
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    noise = DATA_SCALE * np.ones_like(ccd_data.data)
-    ccd_data.uncertainty = noise
+    noise = DATA_SCALE * xp.ones_like(ccd_data.data)
+
+    ccd_data.uncertainty = StdDevUncertainty(noise)
 
     with pytest.raises(TypeError):
         cosmicray_lacosmic(ccd_data, sigclip=5.9, **new_args)
@@ -206,7 +230,8 @@ def test_cosmicray_median_ccddata():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    ccd_data.uncertainty = ccd_data.data * 0.0 + DATA_SCALE
+
+    ccd_data.uncertainty = StdDevUncertainty(ccd_data.data * 0.0 + DATA_SCALE)
     nccd = cosmicray_median(ccd_data, thresh=5, mbox=11, error_image=None)
 
     # check the number of cosmic rays detected
@@ -217,7 +242,7 @@ def test_cosmicray_median_masked():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    data = np.ma.masked_array(ccd_data.data, (ccd_data.data > -1e6))
+    data = np_ma_array(ccd_data.data, mask=(ccd_data.data > -1e6))
     ndata, crarr = cosmicray_median(data, thresh=5, mbox=11, error_image=DATA_SCALE)
 
     # check the number of cosmic rays detected
@@ -243,7 +268,7 @@ def test_cosmicray_median_gbox():
     data, crarr = cosmicray_median(
         ccd_data.data, error_image=error, thresh=5, mbox=11, rbox=0, gbox=5
     )
-    data = np.ma.masked_array(data, crarr)
+    data = np_ma_array(data, mask=crarr)
     assert crarr.sum() > NCRAYS
     assert abs(data.std() - scale) < 0.1
 
@@ -269,28 +294,28 @@ def test_cosmicray_median_background_deviation():
 
 def test_background_deviation_box():
     scale = 5.3
-    cd = np.random.default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale)
+    cd = xp.asarray(default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale))
     bd = background_deviation_box(cd, 25)
     assert abs(bd.mean() - scale) < 0.10
 
 
 def test_background_deviation_box_fail():
     scale = 5.3
-    cd = np.random.default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale)
+    cd = xp.asarray(default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale))
     with pytest.raises(ValueError):
         background_deviation_box(cd, 0.5)
 
 
 def test_background_deviation_filter():
     scale = 5.3
-    cd = np.random.default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale)
+    cd = xp.asarray(default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale))
     bd = background_deviation_filter(cd, 25)
     assert abs(bd.mean() - scale) < 0.10
 
 
 def test_background_deviation_filter_fail():
     scale = 5.3
-    cd = np.random.default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale)
+    cd = xp.asarray(default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale))
     with pytest.raises(ValueError):
         background_deviation_filter(cd, 0.5)
 
@@ -323,8 +348,8 @@ def test_cosmicray_lacosmic_pssl_does_not_fail():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    noise = DATA_SCALE * np.ones_like(ccd_data.data)
-    ccd_data.uncertainty = noise
+    noise = DATA_SCALE * xp.ones_like(ccd_data.data)
+    ccd_data.uncertainty = StdDevUncertainty(noise)
     with pytest.warns(AstropyDeprecationWarning):
         # The deprecation warning is expected and should be captured
         nccd_data = cosmicray_lacosmic(ccd_data, sigclip=5.9, pssl=0.0001)
