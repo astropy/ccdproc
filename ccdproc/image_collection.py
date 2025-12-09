@@ -662,6 +662,16 @@ class ImageFileCollection:
                 )
                 continue
 
+        ## Bugfix: Unfixable header keywords sometimes yield duplicate
+        # entries (probably arises the `_dict_from_fits_header` above)
+        # For now just check if there are more values than files and
+        # if so, fill with None for now.
+        if summary_dict is not None:
+            for key in summary_dict.keys():
+                if len(summary_dict[key]) > len(summary_dict['file']):
+                    logger.warning('malformed header keyword %s cannot be understood.',key)
+                    summary_dict[key] = [None]*len(summary_dict['file'])
+
         summary_table = Table(summary_dict, masked=True)
 
         for column in summary_table.colnames:

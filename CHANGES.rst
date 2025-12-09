@@ -176,6 +176,8 @@ Bug Fixes
 - Logging now preserves all of the arguments when the keyword argument
   names are not used. [#756]
 
+- Workaround malformed header keyword names  [#743]
+
 2.1.0 (2019-12-24)
 ------------------
 
