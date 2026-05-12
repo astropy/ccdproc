@@ -31,7 +31,7 @@ from os.path import join
 from pathlib import Path
 
 try:
-    from sphinx_astropy.conf.v1 import *  # noqa
+    from sphinx_astropy.conf.v3 import *  # noqa
 except ImportError:
     print(
         "ERROR: the documentation requires the sphinx-astropy "
@@ -93,30 +93,9 @@ if not dev:
 
 # -- Options for HTML output --------------------------------------------------
 
-# A NOTE ON HTML THEMES
-# The global astropy configuration uses a custom theme, 'bootstrap-astropy',
-# which is installed along with astropy. A different theme can be used or
-# the options for this theme can be modified by overriding some of the
-# variables set in the global configuration. The variables set in the
-# global configuration are listed below, commented out.
-
-
 # Add any paths that contain custom themes here, relative to this directory.
 # To use a different custom theme, add the directory containing the theme.
 # html_theme_path = []
-
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes. To override the custom theme, set this to the
-# name of a builtin theme or the name of a custom theme in html_theme_path.
-# html_theme = 'bootstrap-ccdproc'
-
-
-html_theme_options = {
-    "logotext1": "ccd",  # white, semi-bold
-    "logotext2": "proc",  # orange, light
-    "logotext3": ":docs",  # white, light
-}
-
 
 # Custom sidebar templates, maps document names to template names.
 # html_sidebars = {}
@@ -145,7 +124,8 @@ htmlhelp_basename = project + "doc"
 
 # Static files to copy after template files
 html_static_path = ["_static"]
-html_style = "ccdproc.css"
+
+html_logo = "_static/ccdproc.svg"
 
 # -- Options for LaTeX output -------------------------------------------------
 
