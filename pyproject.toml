@@ -28,7 +28,7 @@ dependencies = [
 [project.optional-dependencies]
 docs = [
     "matplotlib",
-    "sphinx-astropy",
+    "sphinx-astropy[confv3]",
 ]
 test = [
     "black",
