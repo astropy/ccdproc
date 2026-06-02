@@ -37,6 +37,7 @@ Alphabetical list of code contributors
 * Yash Gondhalekar (@Yash-10)
 * Hans Moritz Günther (@hamogu)
 * Nathan Heidt (@heidtha)
+* Karl Hill (@karlhillx)
 * Michael Hlabathe (@hlabathems)
 * Elias Holte (@Sondanaa)
 * Anthony Horton (@AnthonyHorton)
