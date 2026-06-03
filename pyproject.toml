@@ -21,7 +21,6 @@ dependencies = [
     "astroscrappy>=1.1.0",
     "numpy>=1.26",
     "reproject>=0.9.1",
-    "scikit-image",
     "scipy",
 ]
 

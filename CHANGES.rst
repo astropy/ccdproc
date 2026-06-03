@@ -5,6 +5,7 @@ Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - Remove superfluous license file from the package. [#899]
+- scikit-image is no longer a runtime dependency. [#921]
 
 2.5.0 (2025-07-03)
 ------------------

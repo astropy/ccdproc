@@ -7,7 +7,6 @@ import array_api_extra as xpx
 import astropy
 import astropy.units as u
 import pytest
-import skimage
 from astropy.io import fits
 from astropy.modeling import models
 from astropy.nddata import (
@@ -801,10 +800,6 @@ def test_transform_image(mask_data, uncertainty):
 
 # Test block_reduce and block_replicate wrapper
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
-@pytest.mark.skipif(
-    (skimage.__version__ < "0.14.2") and ("dev" in xp.__version__),
-    reason="Incompatibility between scikit-image " "and numpy 1.16",
-)
 def test_block_reduce():
     ccd = CCDData(
         xp.ones((4, 4)),
@@ -834,10 +829,6 @@ def test_block_reduce():
 
 
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
-@pytest.mark.skipif(
-    (skimage.__version__ < "0.14.2") and ("dev" in xp.__version__),
-    reason="Incompatibility between scikit-image " "and numpy 1.16",
-)
 def test_block_average():
     data = xp.asarray(
         [
