@@ -1,3 +1,14 @@
+2.5.2 (unreleased)
+------------------
+
+Bug Fixes
+^^^^^^^^^
+
+- Fix dtype conversion in ``Combiner._weighted_sum`` to use the array-API
+  namespace form ``xp.astype(weights, xp.float64)`` instead of the deprecated
+  string-based ``.astype("float64")``. This resolves the ``DeprecationWarning``
+  that was being promoted to a test failure in the JAX CI job. [#924]
+
 2.5.1 (2025-07-05)
 ------------------
 
