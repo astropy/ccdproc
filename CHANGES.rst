@@ -16,6 +16,10 @@ Bug Fixes
 
 - Exclude masked and clipped pixels, and their weights, when computing weighted
   average combinations. [#952]
+- Fix dtype conversion in ``Combiner._weighted_sum`` to use the array-API
+  namespace form ``xp.astype(weights, xp.float64)`` instead of the deprecated
+  string-based ``.astype("float64")``. This resolves the ``DeprecationWarning``
+  that was being promoted to a test failure in the JAX CI job. [#924]
 
 2.5.1 (2025-07-05)
 ------------------

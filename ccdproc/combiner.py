@@ -600,7 +600,7 @@ class Combiner:
         # Turns out bn.nansum has an implementation that is not
         # precise enough for float32 sums. Doing this should
         # ensure the sums are carried out as float64
-        weights = weights.astype("float64")
+        weights = xp.astype(weights, xp.float64)
         weighted_sum = sum_func(data * weights, axis=0)
         return weighted_sum, weights
 
