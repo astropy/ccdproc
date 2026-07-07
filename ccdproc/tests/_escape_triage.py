@@ -39,12 +39,20 @@ TRIAGE_ACTIVE = _env_truthy(os.environ.get("CCDPROC_TRIAGE_ESCAPES", ""))
 _ESCAPE_SITES = defaultdict(list)
 
 
+# Anchor frame classification on this file's actual location rather than
+# looking for "ccdproc" anywhere in the path: on CI the repository checkout
+# directory is itself named ccdproc, so a substring test would classify every
+# frame (including tox's site-packages) as a ccdproc frame.
+_TESTS_ROOT = os.path.dirname(os.path.abspath(__file__)) + os.sep
+_PACKAGE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + os.sep
+
+
 def _is_ccdproc_frame(filename):
-    return f"{os.sep}ccdproc{os.sep}" in filename
+    return os.path.abspath(filename).startswith(_PACKAGE_ROOT)
 
 
 def _is_ccdproc_test_frame(filename):
-    return f"{os.sep}ccdproc{os.sep}tests{os.sep}" in filename
+    return os.path.abspath(filename).startswith(_TESTS_ROOT)
 
 
 def locate_escape_site(frames):
