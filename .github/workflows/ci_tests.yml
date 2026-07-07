@@ -25,6 +25,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
     strategy:
+      # The strict array-API job is expected to fail until the remaining
+      # array-API bugs are fixed; don't let its failure cancel the other jobs.
+      fail-fast: false
       matrix:
         include:
           - name: 'ubuntu-py311-oldestdeps'
