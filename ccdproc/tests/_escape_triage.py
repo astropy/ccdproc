@@ -85,6 +85,15 @@ def locate_escape_site(frames):
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
+    """
+    Record the escape site of every failing test.
+
+    Runs as a wrapper around report generation for each test phase; only the
+    'call' phase (the test body itself, not setup/teardown) of failing tests
+    is recorded. The failure's traceback is reduced to its most informative
+    frame by locate_escape_site() and the test id is filed under that
+    (file, line, function) key for the end-of-session summary.
+    """
     outcome = yield
 
     if not TRIAGE_ACTIVE:
@@ -107,6 +116,13 @@ def pytest_runtest_makereport(item, call):
 
 
 def pytest_terminal_summary(terminalreporter):
+    """
+    Print the escape-site summary at the end of the test session.
+
+    One section listing each escape site with its failure count (most
+    common first) and up to five example test ids, so a large batch of
+    backend failures collapses to a short list of root-cause call sites.
+    """
     if not TRIAGE_ACTIVE or not _ESCAPE_SITES:
         return
 

@@ -4,16 +4,12 @@ Unreleased
 New Features
 ^^^^^^^^^^^^
 
-- Added support for testing against ``array-api-strict`` on a non-default
-  device, which serves as a CPU-only proxy for CuPy-style GPU device
-  behavior. Set ``CCDPROC_ARRAY_LIBRARY=array-api-strict`` (and optionally
-  ``CCDPROC_ARRAY_DEVICE``) to use it. [#937]
-- Added test-infrastructure tooling for triaging array-API backend
-  failures: ``@pytest.mark.backend_xfail``/``@pytest.mark.backend_skip``
-  markers for per-backend expected failures, an escape-site dedupe report
-  enabled with ``CCDPROC_TRIAGE_ESCAPES=1``, and an array-escape logger
-  enabled with ``CCDPROC_LOG_ARRAY_ESCAPES=1`` that flags silent conversion
-  of non-numpy arrays back to numpy. [#939]
+- Add ``array-api-strict`` (on a non-default device) as a test backend, a
+  CPU-only proxy for CuPy device behavior. [#937]
+- Add triage tooling for array-API backend failures: ``backend_xfail`` /
+  ``backend_skip`` markers, an escape-site report
+  (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
+  (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#939]
 
 2.5.1 (2025-07-05)
 ------------------

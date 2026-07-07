@@ -25,6 +25,7 @@ except ImportError:
 
 
 from .tests._escape_triage import (
+    _env_truthy,
     pytest_runtest_makereport,  # noqa: F401 pytest hook, used via attribute lookup
     pytest_terminal_summary,  # noqa: F401 pytest hook, used via attribute lookup
 )
@@ -52,10 +53,12 @@ array_library = os.environ.get("CCDPROC_ARRAY_LIBRARY", "numpy").lower()
 
 # Device to create test arrays on. This is only meaningful for backends that
 # support multiple devices (currently array-api-strict, as a CPU-only proxy
-# for testing non-default-device behavior like CuPy's GPU device). It can be
-# overridden with the CCDPROC_ARRAY_DEVICE environment variable, whose value
-# is passed to the array library's Device constructor. "default" (or leaving
-# it unset) means the library's usual default device.
+# for testing non-default-device behavior like CuPy's GPU device). Leaving
+# CCDPROC_ARRAY_DEVICE unset selects the backend's testing default: the
+# non-default "device1" for array-api-strict, None (the library's usual
+# device) for everything else. Setting it to "default" selects the library's
+# normal default device; any other value is passed to the library's Device
+# constructor.
 testing_array_device = None
 
 match array_library:
@@ -89,21 +92,18 @@ match array_library:
         # array-api-strict a convenient CPU-only proxy for catching the
         # "silent conversion to numpy" bugs that would otherwise only show up
         # on CuPy.
-        device_name = os.environ.get("CCDPROC_ARRAY_DEVICE", "default").lower()
-        if device_name != "default":
-            testing_array_device = testing_array_library.Device(device_name)
+        device_name = os.environ.get("CCDPROC_ARRAY_DEVICE", "device1")
+        if device_name.lower() == "default":
+            # The library's normal CPU device, on which np.asarray() succeeds.
+            testing_array_device = testing_array_library.Device("CPU_DEVICE")
         else:
-            testing_array_device = testing_array_library.Device("device1")
+            testing_array_device = testing_array_library.Device(device_name)
 
     case _:
         raise ValueError(
             f"Unsupported array library: {array_library}. "
             "Supported libraries are listed at https://ccdproc.readthedocs.io/en/latest/array_api.html."
         )
-
-
-def _env_truthy(value):
-    return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
 # ---------------------------------------------------------------------------
@@ -172,6 +172,17 @@ _NUMPY_LIKE_NAMESPACES = {np, array_api_compat.numpy}
 
 
 def _is_foreign_array(obj):
+    """
+    Return True if obj is an array from a non-numpy array-API library.
+
+    numpy arrays (including np.ma masked arrays) are never foreign. Anything
+    else that implements the array-API protocol marker __array_namespace__()
+    is foreign unless its namespace is numpy or array_api_compat's numpy
+    wrapper -- i.e. exactly the arrays whose conversion to numpy would fail
+    (CuPy on GPU) or silently densify/transfer (dask, jax). The try/except
+    guards against objects whose __array_namespace__() raises; those are
+    treated as not foreign so the logger never breaks the call it wraps.
+    """
     if isinstance(obj, np.ndarray):
         return False
 
