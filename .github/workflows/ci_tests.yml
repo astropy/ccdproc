@@ -24,10 +24,6 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
-    # Matrix entries with continue-on-error (currently the strict array-API
-    # job) are expected to fail until the remaining array-API bugs are fixed;
-    # their failure neither fails the workflow nor cancels the other jobs.
-    continue-on-error: ${{ matrix.continue-on-error || false }}
     strategy:
       matrix:
         include:
@@ -50,12 +46,6 @@ jobs:
             os: ubuntu-latest
             python: '3.13'
             tox_env: 'py313-jax'
-
-          - name: 'ubuntu-py313-strict'
-            os: ubuntu-latest
-            python: '3.13'
-            tox_env: 'py313-strict'
-            continue-on-error: true
 
           # Move bottleneck test a test without coverage
           - name: 'ubuntu-py312-bottleneck'
@@ -118,3 +108,39 @@ jobs:
     - name: Upload coverage to codecov
       if: "endsWith(matrix.tox_env, '-cov')"
       uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de  # v5.5.2
+
+  # The strict array-API job is in its own matrix so that its failures --
+  # expected until the remaining array-API bugs are fixed -- stay visible
+  # without cancelling the main test matrix above.
+  ci-tests-expected-failures:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
+    strategy:
+      matrix:
+        include:
+          - name: 'ubuntu-py313-strict'
+            os: ubuntu-latest
+            python: '3.13'
+            tox_env: 'py313-strict'
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      with:
+        fetch-depth: 0
+    - name: Set up Python ${{ matrix.python }}
+      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548  # v6.1.0
+      with:
+        python-version: ${{ matrix.python }}
+    - name: Install base dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install tox wheel
+    - name: Print Python env
+      run: |
+        python --version
+        python -m pip list
+    - name: Run tests
+      run: |
+        tox -e ${{ matrix.tox_env }} -- ${{ matrix.toxposargs }}
