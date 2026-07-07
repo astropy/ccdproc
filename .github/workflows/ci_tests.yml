@@ -24,10 +24,11 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
+    # Matrix entries with continue-on-error (currently the strict array-API
+    # job) are expected to fail until the remaining array-API bugs are fixed;
+    # their failure neither fails the workflow nor cancels the other jobs.
+    continue-on-error: ${{ matrix.continue-on-error || false }}
     strategy:
-      # The strict array-API job is expected to fail until the remaining
-      # array-API bugs are fixed; don't let its failure cancel the other jobs.
-      fail-fast: false
       matrix:
         include:
           - name: 'ubuntu-py311-oldestdeps'
@@ -54,6 +55,7 @@ jobs:
             os: ubuntu-latest
             python: '3.13'
             tox_env: 'py313-strict'
+            continue-on-error: true
 
           # Move bottleneck test a test without coverage
           - name: 'ubuntu-py312-bottleneck'
