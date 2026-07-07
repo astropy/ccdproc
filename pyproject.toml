@@ -157,4 +157,6 @@ markers = [
     "data_size(N): set dimension of square data array for ccd_data fixture",
     "data_scale(s): set the scale of the normal distribution used to generate data",
     "data_mean(m): set the center of the normal distribution used to generate data",
+    "backend_xfail(*backends, reason=...): mark test as an expected (non-strict) failure when the active CCDPROC_ARRAY_LIBRARY matches one of the named backends",
+    "backend_skip(*backends, reason=...): skip test when the active CCDPROC_ARRAY_LIBRARY matches one of the named backends",
 ]

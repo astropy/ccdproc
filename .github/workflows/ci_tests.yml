@@ -47,6 +47,11 @@ jobs:
             python: '3.13'
             tox_env: 'py313-jax'
 
+          - name: 'ubuntu-py313-strict'
+            os: ubuntu-latest
+            python: '3.13'
+            tox_env: 'py313-strict'
+
           # Move bottleneck test a test without coverage
           - name: 'ubuntu-py312-bottleneck'
             os: ubuntu-latest

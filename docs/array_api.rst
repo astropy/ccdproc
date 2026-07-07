@@ -31,6 +31,20 @@ Though the
 with `sparse`_. A `pull request <https://github.com/astropy/ccdproc/pulls>`_ to add
 support for `sparse`_ would be a welcome contribution to the project.
 
+For development purposes, `ccdproc`_'s test suite can also be run against
+`array-api-strict`_, a reference implementation of the array API that
+performs no computation itself but strictly validates array API usage. This
+is set with the environment variable ``CCDPROC_ARRAY_LIBRARY=array-api-strict``
+(``array_api_strict`` is also accepted). By default the test suite creates
+arrays on one of `array-api-strict`_'s non-default devices, which causes
+``numpy.asarray`` to raise an error, the same way it would on an array still
+resident on a `CuPy`_ GPU device. This makes `array-api-strict`_ a convenient
+CPU-only proxy for catching places where `ccdproc`_ silently (and
+incorrectly) converts a non-numpy array back to numpy. The device used can be
+overridden with the ``CCDPROC_ARRAY_DEVICE`` environment variable (its value
+is passed to ``array_api_strict.Device``); set it to ``default`` to use the
+library's normal CPU device instead.
+
 What limitations should I be aware of?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -104,6 +118,7 @@ There are two ways to use the array API in `ccdproc`_:
 
 .. _array API: https://data-apis.org/array-api/latest/index.html
 .. _array-api-compat: https://data-apis.org/array-api-compat
+.. _array-api-strict: https://data-apis.org/array-api-strict/
 .. _bottleneck: https://bottleneck.readthedocs.io/en/latest/
 .. _ccdproc: https://ccdproc.readthedocs.io/en/latest/
 .. _cupy: https://docs.cupy.dev/en/stable/
