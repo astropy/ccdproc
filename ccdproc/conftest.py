@@ -7,7 +7,7 @@ import logging
 import os
 import traceback
 
-import array_api_compat  # noqa: F401
+import array_api_compat
 import array_api_compat.numpy
 import numpy as np
 import pytest
@@ -153,8 +153,8 @@ def pytest_collection_modifyitems(items):
 # backends like dask and jax the conversion often succeeds silently, so the
 # bug is easy to miss. This monkeypatches np.asarray/np.asanyarray (and
 # np.ma.asanyarray) to log a warning, when active, any time they are handed
-# an array that reports its own `__array_namespace__` and that namespace is
-# not numpy.
+# an array whose array-API namespace (as resolved by
+# array_api_compat.array_namespace) is not numpy.
 #
 # Activated by setting the environment variable CCDPROC_LOG_ARRAY_ESCAPES to
 # a truthy value.
@@ -171,31 +171,31 @@ _LOG_ARRAY_ESCAPES = _env_truthy(os.environ.get("CCDPROC_LOG_ARRAY_ESCAPES", "")
 _NUMPY_LIKE_NAMESPACES = {np, array_api_compat.numpy}
 
 
-def _is_foreign_array(obj):
+def _foreign_namespace(obj):
     """
-    Return True if obj is an array from a non-numpy array-API library.
+    Return obj's array-API namespace if it is foreign, else None.
 
-    numpy arrays (including np.ma masked arrays) are never foreign. Anything
-    else that implements the array-API protocol marker __array_namespace__()
-    is foreign unless its namespace is numpy or array_api_compat's numpy
-    wrapper -- i.e. exactly the arrays whose conversion to numpy would fail
-    (CuPy on GPU) or silently densify/transfer (dask, jax). The try/except
-    guards against objects whose __array_namespace__() raises; those are
-    treated as not foreign so the logger never breaks the call it wraps.
+    numpy arrays (including np.ma masked arrays) are never foreign.
+    Detection goes through array_api_compat.array_namespace() rather than
+    the raw __array_namespace__ dunder because some backends (notably dask)
+    do not define the dunder on their array objects even though
+    array-api-compat can resolve a namespace for them. The namespace is
+    foreign unless it is numpy or array_api_compat's numpy wrapper -- i.e.
+    exactly the arrays whose conversion to numpy would fail (CuPy on GPU)
+    or silently densify/transfer (dask, jax). The try/except guards against
+    non-arrays and misbehaving objects (including unhashable namespaces);
+    those are treated as not foreign so the logger never breaks the call
+    it wraps.
     """
     if isinstance(obj, np.ndarray):
-        return False
-
-    get_namespace = getattr(obj, "__array_namespace__", None)
-    if get_namespace is None:
-        return False
-
+        return None
     try:
-        namespace = get_namespace()
+        namespace = array_api_compat.array_namespace(obj)
+        if namespace in _NUMPY_LIKE_NAMESPACES:
+            return None
     except Exception:
-        return False
-
-    return namespace not in _NUMPY_LIKE_NAMESPACES
+        return None
+    return namespace
 
 
 def _describe_escape_site():
@@ -227,14 +227,15 @@ def _make_escape_logging_wrapper(original, funcname, guard):
             guard.active = True
             try:
                 obj = args[0]
-                if _is_foreign_array(obj):
+                namespace = _foreign_namespace(obj)
+                if namespace is not None:
                     site = _describe_escape_site()
                     _escape_logger.warning(
                         "array-API escape: %s() called on a %r array "
                         "(namespace=%r) at %s",
                         funcname,
                         type(obj),
-                        obj.__array_namespace__(),
+                        namespace,
                         site,
                     )
             finally:

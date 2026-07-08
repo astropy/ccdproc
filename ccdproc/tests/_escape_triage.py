@@ -45,6 +45,7 @@ _ESCAPE_SITES = defaultdict(list)
 # frame (including tox's site-packages) as a ccdproc frame.
 _TESTS_ROOT = os.path.dirname(os.path.abspath(__file__)) + os.sep
 _PACKAGE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + os.sep
+_CONFTEST_PATH = os.path.join(_PACKAGE_ROOT, "conftest.py")
 
 
 def _is_ccdproc_frame(filename):
@@ -52,7 +53,11 @@ def _is_ccdproc_frame(filename):
 
 
 def _is_ccdproc_test_frame(filename):
-    return os.path.abspath(filename).startswith(_TESTS_ROOT)
+    # ccdproc/conftest.py hosts the escape-logger wrapper and other test
+    # infrastructure, so it counts as a test frame: it must never be
+    # reported as the escape site.
+    abspath = os.path.abspath(filename)
+    return abspath.startswith(_TESTS_ROOT) or abspath == _CONFTEST_PATH
 
 
 def locate_escape_site(frames):
@@ -91,36 +96,36 @@ def locate_escape_site(frames):
     return frames[-1]
 
 
-@pytest.hookimpl(hookwrapper=True)
+@pytest.hookimpl(wrapper=True)
 def pytest_runtest_makereport(item, call):
     """
     Record the escape site of every failing test.
 
     Runs as a wrapper around report generation for each test phase; only the
     'call' phase (the test body itself, not setup/teardown) of failing tests
-    is recorded. The failure's traceback is reduced to its most informative
-    frame by locate_escape_site() and the test id is filed under that
+    is recorded, so an escape that raises during fixture setup is not
+    triaged. That is a deliberate trade-off: fixtures in this test suite are
+    mostly plain array/CCDData construction, so escapes surface in the test
+    bodies. The failure's traceback is reduced to its most informative frame
+    by locate_escape_site() and the test id is filed under that
     (file, line, function) key for the end-of-session summary.
     """
-    outcome = yield
+    # With a new-style wrapper, yield hands back the TestReport itself
+    # (not a pluggy.Result), and the wrapper must return it.
+    report = yield
 
-    if not TRIAGE_ACTIVE:
-        return
+    if (
+        TRIAGE_ACTIVE
+        and report.when == "call"
+        and report.failed
+        and call.excinfo is not None
+    ):
+        site = locate_escape_site(traceback.extract_tb(call.excinfo.tb))
+        if site is not None:
+            key = (site.filename, site.lineno, site.name)
+            _ESCAPE_SITES[key].append(item.nodeid)
 
-    report = outcome.get_result()
-    if report.when != "call" or not report.failed:
-        return
-
-    excinfo = call.excinfo
-    if excinfo is None:
-        return
-
-    site = locate_escape_site(traceback.extract_tb(excinfo.tb))
-    if site is None:
-        return
-
-    key = (site.filename, site.lineno, site.name)
-    _ESCAPE_SITES[key].append(item.nodeid)
+    return report
 
 
 def pytest_terminal_summary(terminalreporter):

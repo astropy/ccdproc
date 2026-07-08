@@ -32,8 +32,9 @@ with `sparse`_. A `pull request <https://github.com/astropy/ccdproc/pulls>`_ to 
 support for `sparse`_ would be a welcome contribution to the project.
 
 For development purposes, `ccdproc`_'s test suite can also be run against
-`array-api-strict`_, a reference implementation of the array API that
-performs no computation itself but strictly validates array API usage. This
+`array-api-strict`_, a thin wrapper around `numpy`_ that strictly enforces
+the array API, rejecting any usage outside the standard, and simulates
+multiple devices. This
 is set with the environment variable ``CCDPROC_ARRAY_LIBRARY=array-api-strict``
 (``array_api_strict`` is also accepted). By default the test suite creates
 arrays on one of `array-api-strict`_'s non-default devices, which causes
@@ -44,6 +45,26 @@ incorrectly) converts a non-numpy array back to numpy. The device used can be
 overridden with the ``CCDPROC_ARRAY_DEVICE`` environment variable (its value
 is passed to ``array_api_strict.Device``); set it to ``default`` to use the
 library's normal CPU device instead.
+
+A few more developer tools help triage failures on non-numpy backends:
+
++ Setting ``CCDPROC_TRIAGE_ESCAPES=1`` prints a summary at the end of the
+  test session that groups failures by "escape site" -- the innermost frame
+  inside `ccdproc`_ (but outside its test suite) in each failure's
+  traceback -- so a large batch of backend failures collapses to a short
+  list of root-cause call sites.
++ Setting ``CCDPROC_LOG_ARRAY_ESCAPES=1`` logs a warning whenever a
+  non-numpy array-API array is passed to ``numpy.asarray``,
+  ``numpy.asanyarray`` or ``numpy.ma.asanyarray``. This catches backends
+  like `dask`_ and `jax`_ where the conversion succeeds silently and the
+  test passes anyway. Because the messages go through Python's ``logging``
+  and pytest only shows captured logs for *failing* tests, run with
+  ``-o log_cli=true`` to see escapes from passing tests (the log level is
+  already configured in ``pyproject.toml``).
++ The ``backend_xfail(*backends, reason=...)`` marker marks a test as an
+  expected (non-strict) failure only when ``CCDPROC_ARRAY_LIBRARY`` matches
+  one of the named backends. The ``backend_skip(*backends, reason=...)``
+  marker skips a test entirely for the named backends.
 
 What limitations should I be aware of?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
