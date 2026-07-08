@@ -79,7 +79,6 @@ class TestImageFileCollectionRepresentation:
         assert repr(ic) == ref
 
     def test_repr_ext(self, triage_setup):
-
         hdul = fits.HDUList(
             [fits.PrimaryHDU(np.ones((10, 10))), fits.ImageHDU(np.ones((10, 10)))]
         )
@@ -384,6 +383,11 @@ class TestImageFileCollection:
         for img in collection.data():
             assert isinstance(img, np.ndarray)
 
+    @pytest.mark.backend_xfail(
+        "jax",
+        reason="ccds() on the jax backend does not raise ValueError when "
+        "the files have no unit",
+    )
     def test_generator_ccds_without_unit(self, triage_setup):
         collection = ImageFileCollection(
             location=triage_setup.test_dir, keywords=["imagetyp"]
@@ -691,7 +695,7 @@ class TestImageFileCollection:
 
     @pytest.mark.skipif(
         "os.environ.get('APPVEYOR') or os.sys.platform == 'win32'",
-        reason="fails on Windows because file " "overwriting fails",
+        reason="fails on Windows because file overwriting fails",
     )
     def test_refresh_method_sees_added_keywords(self, triage_setup):
         ic = ImageFileCollection(triage_setup.test_dir, keywords="*")
