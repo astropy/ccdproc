@@ -58,6 +58,16 @@ jobs:
             python: '3.12'
             tox_env: 'py312-alldeps-dask'
 
+          # Regression gate: fail if a new array-API "escape" (a silent numpy
+          # coercion of a dask array in library code) appears that is not in
+          # the checked-in baseline, ccdproc/tests/array_escape_baseline.txt.
+          # No bottleneck here (as with the dask job above) so the numpy
+          # fallback paths are exercised.
+          - name: 'ubuntu-py312-dask-escape-baseline'
+            os: ubuntu-latest
+            python: '3.12'
+            tox_env: 'py312-alldeps-dask-enforce'
+
           - name: 'windows-py312'
             os: windows-latest
             python: '3.12'

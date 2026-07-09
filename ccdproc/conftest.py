@@ -27,7 +27,9 @@ except ImportError:
 from .tests._escape_triage import (
     _env_truthy,
     pytest_runtest_makereport,  # noqa: F401 pytest hook, used via attribute lookup
+    pytest_sessionfinish,  # noqa: F401 pytest hook, used via attribute lookup
     pytest_terminal_summary,  # noqa: F401 pytest hook, used via attribute lookup
+    record_escape_log,
 )
 from .tests.pytest_fixtures import (
     triage_setup,  # noqa: F401 this is used in tests
@@ -198,20 +200,24 @@ def _foreign_namespace(obj):
     return namespace
 
 
-def _describe_escape_site():
+def _escape_site_frame():
     """
-    Return a short "file:line function" string for the innermost stack
-    frame that is inside ccdproc but not inside ccdproc's own test suite,
-    for use in escape log messages.
+    Return the FrameSummary for the innermost stack frame that is inside
+    ccdproc but not inside ccdproc's own test suite -- the frame blamed for
+    an escape -- or None if there is no such frame. Frames in this module are
+    classified as test frames and are never chosen, so the exact call depth
+    here does not affect the result.
     """
     from .tests._escape_triage import locate_escape_site
 
-    # Drop this function's own frame before searching.
-    frames = traceback.extract_stack()[:-1]
-    site = locate_escape_site(frames)
-    if site is None:
+    return locate_escape_site(traceback.extract_stack())
+
+
+def _describe_escape_site(frame):
+    """Short "file:line function" string for an escape log message."""
+    if frame is None:
         return "<unknown location>"
-    return f"{site.filename}:{site.lineno} {site.name}"
+    return f"{frame.filename}:{frame.lineno} {frame.name}"
 
 
 class _ReentrancyGuard:
@@ -229,7 +235,8 @@ def _make_escape_logging_wrapper(original, funcname, guard):
                 obj = args[0]
                 namespace = _foreign_namespace(obj)
                 if namespace is not None:
-                    site = _describe_escape_site()
+                    frame = _escape_site_frame()
+                    site = _describe_escape_site(frame)
                     _escape_logger.warning(
                         "array-API escape: %s() called on a %r array "
                         "(namespace=%r) at %s",
@@ -238,6 +245,7 @@ def _make_escape_logging_wrapper(original, funcname, guard):
                         namespace,
                         site,
                     )
+                    record_escape_log(frame, funcname)
             finally:
                 guard.active = False
         return original(*args, **kwargs)

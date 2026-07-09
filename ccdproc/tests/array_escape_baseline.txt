@@ -1,0 +1,25 @@
+# Array-API escape baseline for non-numpy backends (dask/jax).
+# Columns: <file> <function> <coercion>  <reason/tag>
+#
+# The ratchet (CCDPROC_ENFORCE_ESCAPE_BASELINE=1) fails the session
+# if a library escape appears that is not listed here. Delete an
+# entry as you migrate that call site; this file only shrinks.
+# Regenerate with CCDPROC_WRITE_ESCAPE_BASELINE=1 (preserves tags).
+#
+# Tags are for humans, not the ratchet: TODO = still to migrate,
+# BOUNDARY = a numpy-only dependency (scipy/astroscrappy/reproject)
+# that will never leave. Verify/adjust the seeded tags by hand.
+#
+combiner.py  average_combine              numpy.asarray     BOUNDARY: result stored in astropy CCDData/StdDevUncertainty (numpy-backed)
+combiner.py  combine                      numpy.asarray     BOUNDARY: astropy CCDData mask/uncertainty attributes are numpy-backed
+combiner.py  median_combine               numpy.asarray     BOUNDARY: result stored in astropy CCDData/StdDevUncertainty (numpy-backed)
+combiner.py  sigma_clipping               numpy.asanyarray  BOUNDARY: astropy.stats.sigma_clip is numpy-only
+combiner.py  sum_combine                  numpy.asarray     BOUNDARY: result stored in astropy CCDData/StdDevUncertainty (numpy-backed)
+core.py      background_deviation_filter  numpy.asarray     BOUNDARY: scipy.ndimage.generic_filter is numpy-only
+core.py      block_average                numpy.asanyarray  BOUNDARY: astropy.nddata.block_reduce is numpy-only
+core.py      block_reduce                 numpy.asanyarray  BOUNDARY: astropy.nddata.block_reduce is numpy-only
+core.py      block_replicate              numpy.asanyarray  BOUNDARY: astropy.nddata.block_replicate is numpy-only
+core.py      cosmicray_median             numpy.asarray     BOUNDARY: scipy.ndimage median_filter/maximum_filter are numpy-only
+core.py      create_deviation             numpy.asarray     BOUNDARY: astropy CCDData.copy()/StdDevUncertainty are numpy-backed
+core.py      sigma_func                   numpy.asanyarray  BOUNDARY: astropy.stats.median_absolute_deviation is numpy-only
+core.py      subtract_overscan            numpy.asanyarray  BOUNDARY: astropy.modeling fit/evaluation (model= path) is numpy-only
