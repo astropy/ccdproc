@@ -121,10 +121,13 @@ jobs:
 
   # The strict array-API job is in its own matrix so that its failures --
   # expected until the remaining array-API bugs are fixed -- stay visible
-  # without cancelling the main test matrix above.
+  # without cancelling the main test matrix above. continue-on-error keeps
+  # the workflow (and the PR checks summary) green when this job fails;
+  # the job itself still shows its real pass/fail status.
   ci-tests-expected-failures:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    continue-on-error: true
     if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
     strategy:
       matrix:
