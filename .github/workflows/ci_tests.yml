@@ -121,13 +121,14 @@ jobs:
 
   # The strict array-API job is in its own matrix so that its failures --
   # expected until the remaining array-API bugs are fixed -- stay visible
-  # without cancelling the main test matrix above. continue-on-error keeps
-  # the workflow (and the PR checks summary) green when this job fails;
-  # the job itself still shows its real pass/fail status.
+  # without cancelling the main test matrix above. The test step uses
+  # continue-on-error so the job (and the PR checks rollup) stays green;
+  # the real outcome is reported as a warning annotation, in the step
+  # summary, and via the strict-job-outcome artifact that strict_status.yml
+  # turns into a neutral check run on the PR.
   ci-tests-expected-failures:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    continue-on-error: true
     if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
     strategy:
       matrix:
@@ -155,5 +156,21 @@ jobs:
         python --version
         python -m pip list
     - name: Run tests
+      id: tests
+      continue-on-error: true
       run: |
         tox -e ${{ matrix.tox_env }} -- ${{ matrix.toxposargs }}
+    - name: Record test outcome
+      run: |
+        echo "${{ steps.tests.outcome }}" > strict-outcome.txt
+        if [ "${{ steps.tests.outcome }}" = "failure" ]; then
+          echo "::warning::${{ matrix.tox_env }} tests failed (expected until the remaining array-API bugs are fixed)"
+          echo ":warning: **${{ matrix.name }}**: tests **failed** (expected until the remaining array-API bugs are fixed)" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo ":tada: **${{ matrix.name }}**: tests **passed** -- the expected-failures carve-out for this job can be retired" >> "$GITHUB_STEP_SUMMARY"
+        fi
+    - name: Upload test outcome
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # 6.0.0
+      with:
+        name: strict-job-outcome
+        path: strict-outcome.txt

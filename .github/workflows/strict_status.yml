@@ -1,0 +1,62 @@
+# Turn the outcome of the expected-failures strict array-API job into a
+# check run on the PR. This runs as a separate workflow_run workflow because
+# pull_request runs for fork PRs get a read-only GITHUB_TOKEN and cannot
+# create check runs themselves. A failure shows up as a neutral (grey) check
+# so the PR rollup stays green while the real status is still visible in the
+# checks list.
+#
+# Note: workflow_run workflows execute from the default branch, so changes to
+# this file only take effect once merged.
+name: Strict array API status
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  checks: write
+  actions: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download strict job outcome
+      id: download
+      # The artifact is missing when the strict job did not run (e.g. the CI
+      # run was skipped); tolerate that and skip the check run below.
+      continue-on-error: true
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # 7.0.0
+      with:
+        name: strict-job-outcome
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Create check run
+      if: steps.download.outcome == 'success'
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+      with:
+        script: |
+          const fs = require('fs');
+          const outcome = fs.readFileSync('strict-outcome.txt', 'utf8').trim();
+          const passed = outcome === 'success';
+          const run = context.payload.workflow_run;
+          await github.rest.checks.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            name: passed ? 'py313-strict: passing' : 'py313-strict: failing (expected)',
+            head_sha: run.head_sha,
+            status: 'completed',
+            conclusion: passed ? 'success' : 'neutral',
+            output: {
+              title: passed
+                ? 'Strict array-API tests passed'
+                : 'Strict array-API tests failed (expected)',
+              summary: passed
+                ? `The py313-strict job in [this CI run](${run.html_url}) passed. ` +
+                  'The expected-failures carve-out for it can be retired.'
+                : `The py313-strict job in [this CI run](${run.html_url}) failed. ` +
+                  'This is expected until the remaining array-API bugs are fixed; ' +
+                  'see the run log for details.',
+            },
+          });
