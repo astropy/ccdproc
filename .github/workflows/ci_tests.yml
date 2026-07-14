@@ -124,8 +124,8 @@ jobs:
   # without cancelling the main test matrix above. The test step uses
   # continue-on-error so the job (and the PR checks rollup) stays green;
   # the real outcome is reported as a warning annotation, in the step
-  # summary, and via the strict-job-outcome artifact that strict_status.yml
-  # turns into a neutral check run on the PR.
+  # summary, and via a per-matrix-entry strict-job-outcome-* artifact that
+  # strict_status.yml turns into a check run on the PR.
   ci-tests-expected-failures:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
@@ -160,17 +160,35 @@ jobs:
       continue-on-error: true
       run: |
         tox -e ${{ matrix.tox_env }} -- ${{ matrix.toxposargs }}
+    # always() so an outcome file is recorded even when an earlier step
+    # failed; a skipped/cancelled tests step is recorded as "error" (an
+    # infrastructure failure) rather than being conflated with an expected
+    # test failure. The JSON schema here is the contract with
+    # strict_status.yml: {"name": "<matrix name>", "state": "success" |
+    # "failure" | "error"}.
     - name: Record test outcome
+      if: always()
       run: |
-        echo "${{ steps.tests.outcome }}" > strict-outcome.txt
-        if [ "${{ steps.tests.outcome }}" = "failure" ]; then
+        case "${{ steps.tests.outcome }}" in
+          success) state='success' ;;
+          failure) state='failure' ;;
+          *) state='error' ;;
+        esac
+        printf '{"name": "%s", "state": "%s"}\n' '${{ matrix.name }}' "$state" > strict-outcome.json
+        if [ "$state" = "failure" ]; then
           echo "::warning::${{ matrix.tox_env }} tests failed (expected until the remaining array-API bugs are fixed)"
           echo ":warning: **${{ matrix.name }}**: tests **failed** (expected until the remaining array-API bugs are fixed)" >> "$GITHUB_STEP_SUMMARY"
-        else
+        elif [ "$state" = "success" ]; then
           echo ":tada: **${{ matrix.name }}**: tests **passed** -- the expected-failures carve-out for this job can be retired" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "::warning::${{ matrix.name }} job hit an infrastructure error before the tests step completed (outcome: ${{ steps.tests.outcome }})"
+          echo ":x: **${{ matrix.name }}**: job hit an **infrastructure error** before the tests step completed (outcome: ${{ steps.tests.outcome }})" >> "$GITHUB_STEP_SUMMARY"
         fi
     - name: Upload test outcome
+      if: always()
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # 6.0.0
       with:
-        name: strict-job-outcome
-        path: strict-outcome.txt
+        # Include the matrix entry name so the artifact names stay unique if
+        # this matrix grows (upload-artifact v4+ errors on duplicate names).
+        name: strict-job-outcome-${{ matrix.name }}
+        path: strict-outcome.json
