@@ -1,0 +1,121 @@
+# Turn the outcome of the expected-failures strict array-API jobs into
+# check runs on the PR. This runs as a separate workflow_run workflow because
+# pull_request runs for fork PRs get a read-only GITHUB_TOKEN and cannot
+# create check runs themselves. Each check uses a stable name (the matrix
+# entry name); the outcome is carried by the conclusion and output instead.
+# These checks are informational only (an expected test failure is reported
+# as neutral, so the PR rollup stays green) and are not intended to be
+# required checks while the failures are expected.
+#
+# Note: workflow_run workflows execute from the default branch, so changes to
+# this file only take effect once merged.
+name: Strict array API status
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  checks: write
+  actions: read
+
+jobs:
+  report:
+    # Only report on pull_request runs. CI also triggers on push (all
+    # branches) and schedule, so without this gate a same-repo PR branch gets
+    # two completed CI runs per push and this workflow would post duplicate
+    # (possibly contradictory) checks on the same head SHA.
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download strict job outcomes
+      id: download
+      # The artifacts are missing for CI runs from before the record/upload
+      # steps became `if: always()` (or when the whole CI run was skipped);
+      # tolerate that and skip the check runs below. Runs after that change
+      # should always upload an outcome artifact per matrix entry.
+      continue-on-error: true
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # 7.0.0
+      with:
+        pattern: strict-job-outcome-*
+        merge-multiple: false
+        path: strict-outcomes
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Create check runs
+      if: steps.download.outcome == 'success'
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          const run = context.payload.workflow_run;
+          const root = 'strict-outcomes';
+          // One directory per artifact, i.e. per expected-failures matrix
+          // entry. Each contains a strict-outcome.json written by ci_tests.yml
+          // with the schema {"name": "<matrix name>",
+          // "state": "success" | "failure" | "error"}.
+          let dirs = [];
+          try {
+            dirs = fs.readdirSync(root).filter((d) => d.startsWith('strict-job-outcome-'));
+          } catch (err) {
+            core.info(`No outcome artifacts downloaded (${err.message}); nothing to report.`);
+            return;
+          }
+          if (dirs.length === 0) {
+            core.info('No strict-job-outcome-* artifacts found; nothing to report.');
+            return;
+          }
+          for (const dir of dirs) {
+            // Fall back to the artifact name and an error state if the JSON
+            // is missing or malformed, so a broken upload still surfaces.
+            let name = dir.replace('strict-job-outcome-', '');
+            let state = 'error';
+            try {
+              const data = JSON.parse(fs.readFileSync(path.join(root, dir, 'strict-outcome.json'), 'utf8'));
+              if (typeof data.name === 'string' && data.name) {
+                name = data.name;
+              }
+              if (['success', 'failure', 'error'].includes(data.state)) {
+                state = data.state;
+              } else {
+                core.warning(`Unrecognized state ${JSON.stringify(data.state)} in ${dir}; reporting an error state.`);
+              }
+            } catch (err) {
+              core.warning(`Could not read outcome JSON in ${dir} (${err.message}); reporting an error state.`);
+            }
+            let conclusion;
+            let title;
+            let summary;
+            if (state === 'success') {
+              conclusion = 'success';
+              title = 'Strict array-API tests passed';
+              summary = `The ${name} job in [this CI run](${run.html_url}) passed. ` +
+                'The expected-failures carve-out for it can be retired.';
+            } else if (state === 'failure') {
+              conclusion = 'neutral';
+              title = 'Strict array-API tests failed (expected)';
+              summary = `The ${name} job in [this CI run](${run.html_url}) failed. ` +
+                'This is expected until the remaining array-API bugs are fixed; ' +
+                'see the run log for details.';
+            } else {
+              conclusion = 'failure';
+              title = 'Strict array-API job broke (infra error)';
+              summary = `The ${name} job in [this CI run](${run.html_url}) did not ` +
+                'complete its tests step. This is an infrastructure error in the ' +
+                'job itself, not a test failure; see the run log for details.';
+            }
+            // Stable check name (just the matrix entry name); the outcome
+            // lives in the conclusion and output so the checks UI does not
+            // accumulate differently-named checks per outcome.
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name,
+              head_sha: run.head_sha,
+              status: 'completed',
+              conclusion,
+              output: { title, summary },
+            });
+          }

@@ -345,6 +345,12 @@ def test_combiner_mask_average():
     assert not ccd.mask[5, 5]
 
 
+@pytest.mark.backend_xfail(
+    "jax",
+    reason="astropy nddata arithmetic passes a jax array as dtype=, "
+    "triggering jax's implicit-array-to-dtype DeprecationWarning, which "
+    "is an error under this test suite's warning filters",
+)
 def test_combiner_with_scaling():
     ccd_data = ccd_data_func()
     # The factors below are not particularly important; just avoid anything
@@ -480,6 +486,12 @@ def test_combine_numpyndarray():
     assert xp.all(xpx.isclose(avgccd.data, ccd_by_combiner.data))
 
 
+@pytest.mark.backend_xfail(
+    "jax",
+    reason="astropy nddata arithmetic passes a jax array as dtype=, "
+    "triggering jax's implicit-array-to-dtype DeprecationWarning, which "
+    "is an error under this test suite's warning filters",
+)
 def test_combiner_result_dtype():
     """Regression test: #391
 
@@ -742,6 +754,12 @@ def test_combine_result_uncertainty_and_mask(comb_func, mask_point):
     assert ccd_comb.mask.sum() == mask_point
 
 
+@pytest.mark.backend_xfail(
+    "jax",
+    reason="astropy nddata arithmetic passes a jax array as dtype=, "
+    "triggering jax's implicit-array-to-dtype DeprecationWarning, which "
+    "is an error under this test suite's warning filters",
+)
 def test_combine_overwrite_output(tmp_path):
     """
     The combine function should *not* overwrite the result file
@@ -1056,6 +1074,12 @@ def test_combiner_gen():
     assert c._data_arr_mask.shape == (3, 100, 100)
 
 
+@pytest.mark.backend_xfail(
+    "jax",
+    reason="astropy nddata arithmetic passes a jax array as dtype=, "
+    "triggering jax's implicit-array-to-dtype DeprecationWarning, which "
+    "is an error under this test suite's warning filters",
+)
 @pytest.mark.parametrize(
     "comb_func", ["average_combine", "median_combine", "sum_combine"]
 )

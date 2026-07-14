@@ -47,6 +47,11 @@ def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
     data.data = xp.asarray(data_as_np)
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
+    "and fails on a non-default device",
+)
 def test_cosmicray_lacosmic():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 10
@@ -59,6 +64,11 @@ def test_cosmicray_lacosmic():
     assert crarr.sum() == NCRAYS
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
+    "and fails on a non-default device",
+)
 def test_cosmicray_lacosmic_ccddata():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -81,6 +91,11 @@ def test_cosmicray_lacosmic_check_data():
         cosmicray_lacosmic(10, noise)
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
+    "and fails on a non-default device",
+)
 @pytest.mark.parametrize("array_input", [True, False])
 @pytest.mark.parametrize("gain_correct_data", [True, False])
 def test_cosmicray_gain_correct(array_input, gain_correct_data):
@@ -122,6 +137,11 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
     assert_allclose(gain_for_test * orig_data, new_data)
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
+    "and fails on a non-default device",
+)
 def test_cosmicray_lacosmic_accepts_quantity_gain():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -135,6 +155,11 @@ def test_cosmicray_lacosmic_accepts_quantity_gain():
     _ = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True)
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
+    "and fails on a non-default device",
+)
 def test_cosmicray_lacosmic_accepts_quantity_readnoise():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -148,6 +173,11 @@ def test_cosmicray_lacosmic_accepts_quantity_readnoise():
     _ = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True, readnoise=readnoise)
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
+    "and fails on a non-default device",
+)
 def test_cosmicray_lacosmic_detects_inconsistent_units():
     # This is intended to detect cases like a ccd with units
     # of adu, a readnoise in electrons and a gain in adu / electron.
@@ -168,6 +198,11 @@ def test_cosmicray_lacosmic_detects_inconsistent_units():
     assert "Inconsistent units" in str(e.value)
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
+    "and fails on a non-default device",
+)
 def test_cosmicray_lacosmic_warns_on_ccd_in_electrons():
     # Check that an input ccd in electrons raises a warning.
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
@@ -191,6 +226,11 @@ def test_cosmicray_lacosmic_warns_on_ccd_in_electrons():
 # The values for inbkg and invar are DELIBERATELY BAD. They are supposed to be
 # arrays, so if detect_cosmics is called with these bad values a ValueError
 # will be raised, which we can check for.
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
+    "and fails on a non-default device",
+)
 @pytest.mark.parametrize(
     "new_args", [dict(inbkg=5), dict(invar=5), dict(inbkg=5, invar=5)]
 )
@@ -214,6 +254,11 @@ def test_cosmicray_median_check_data():
         ndata, crarr = cosmicray_median(10, thresh=5, mbox=11, error_image=DATA_SCALE)
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
+    "requires numpy and fails on a non-default device",
+)
 def test_cosmicray_median():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -226,6 +271,11 @@ def test_cosmicray_median():
     assert crarr.sum() == NCRAYS
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
+    "requires numpy and fails on a non-default device",
+)
 def test_cosmicray_median_ccddata():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -238,6 +288,11 @@ def test_cosmicray_median_ccddata():
     assert nccd.mask.sum() == NCRAYS
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
+    "requires numpy and fails on a non-default device",
+)
 def test_cosmicray_median_masked():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -249,6 +304,11 @@ def test_cosmicray_median_masked():
     assert crarr.sum() == NCRAYS
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
+    "requires numpy and fails on a non-default device",
+)
 def test_cosmicray_median_background_None():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -259,6 +319,11 @@ def test_cosmicray_median_background_None():
     assert crarr.sum() == NCRAYS
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
+    "requires numpy and fails on a non-default device",
+)
 def test_cosmicray_median_gbox():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
@@ -273,6 +338,11 @@ def test_cosmicray_median_gbox():
     assert abs(data.std() - scale) < 0.1
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
+    "requires numpy and fails on a non-default device",
+)
 def test_cosmicray_median_rbox():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
@@ -322,6 +392,11 @@ def test_background_deviation_filter_fail():
 
 # This test can be removed in ccdproc 3.0 when support for old
 # astroscrappy is removed.
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
+    "and fails on a non-default device",
+)
 def test_cosmicray_lacosmic_pssl_deprecation_warning():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     with pytest.warns(AstropyDeprecationWarning):
@@ -339,6 +414,11 @@ def test_cosmicray_lacosmic_pssl_and_inbkg_fails():
     assert "pssl and inbkg" in str(err)
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
+    "and fails on a non-default device",
+)
 def test_cosmicray_lacosmic_pssl_does_not_fail():
     # This test is a copy/paste of test_cosmicray_lacosmic_ccddata
     # except with pssl=0.0001 as an argument. Subtracting nearly zero from

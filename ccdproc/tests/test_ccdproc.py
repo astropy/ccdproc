@@ -800,6 +800,11 @@ def test_transform_image(mask_data, uncertainty):
 
 # Test block_reduce and block_replicate wrapper
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="astropy.nddata.block_reduce is not array-API aware and "
+    "silently converts back to numpy, which fails on a non-default device",
+)
 def test_block_reduce():
     ccd = CCDData(
         xp.ones((4, 4)),
@@ -829,6 +834,11 @@ def test_block_reduce():
 
 
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="astropy.nddata.block_reduce is not array-API aware and "
+    "silently converts back to numpy, which fails on a non-default device",
+)
 def test_block_average():
     data = xp.asarray(
         [
@@ -868,6 +878,11 @@ def test_block_average():
 
 
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="astropy.nddata.block_replicate is not array-API aware and "
+    "silently converts back to numpy, which fails on a non-default device",
+)
 def test_block_replicate():
     ccd = CCDData(
         xp.ones((4, 4)),
@@ -916,6 +931,11 @@ def test_create_deviation_does_not_change_input():
     assert original.unit == ccd_data.unit
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
+    "requires numpy and fails on a non-default device",
+)
 def test_cosmicray_median_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
@@ -925,6 +945,11 @@ def test_cosmicray_median_does_not_change_input():
     assert original.unit == ccd_data.unit
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
+    "and fails on a non-default device",
+)
 def test_cosmicray_lacosmic_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
@@ -999,6 +1024,11 @@ def wcs_for_testing(shape):
     return w
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="wcs_project uses reproject.reproject_interp, which requires "
+    "numpy and fails on a non-default device",
+)
 def test_wcs_project_onto_same_wcs():
     ccd_data = ccd_data_func()
     # The trivial case, same WCS, no mask.
@@ -1016,6 +1046,11 @@ def test_wcs_project_onto_same_wcs():
     assert xp.all(xpx.isclose(ccd_data.data, new_ccd.data, rtol=1e-5))
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="wcs_project uses reproject.reproject_interp, which requires "
+    "numpy and fails on a non-default device",
+)
 def test_wcs_project_onto_same_wcs_remove_headers():
     ccd_data = ccd_data_func()
     # Remove an example WCS keyword from the header
@@ -1031,6 +1066,11 @@ def test_wcs_project_onto_same_wcs_remove_headers():
         assert k not in new_ccd.header
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="wcs_project uses reproject.reproject_interp, which requires "
+    "numpy and fails on a non-default device",
+)
 def test_wcs_project_onto_shifted_wcs():
     ccd_data = ccd_data_func()
     # Just make the target WCS the same as the initial with the center
@@ -1068,6 +1108,11 @@ def test_wcs_project_onto_shifted_wcs():
 
 
 # Use an odd number of pixels to make a well-defined center pixel
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="wcs_project uses reproject.reproject_interp, which requires "
+    "numpy and fails on a non-default device",
+)
 def test_wcs_project_onto_scale_wcs():
     # Make the target WCS with half the pixel scale and number of pixels
     # and the values should drop by a factor of 4.

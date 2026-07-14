@@ -58,6 +58,16 @@ jobs:
             python: '3.12'
             tox_env: 'py312-alldeps-dask'
 
+          # Regression gate: fail if a new array-API "escape" (a silent numpy
+          # coercion of a dask array in library code) appears that is not in
+          # the checked-in baseline, ccdproc/tests/array_escape_baseline.txt.
+          # No bottleneck here (as with the dask job above) so the numpy
+          # fallback paths are exercised.
+          - name: 'ubuntu-py312-dask-escape-baseline'
+            os: ubuntu-latest
+            python: '3.12'
+            tox_env: 'py312-alldeps-dask-enforce'
+
           - name: 'windows-py312'
             os: windows-latest
             python: '3.12'
@@ -108,3 +118,77 @@ jobs:
     - name: Upload coverage to codecov
       if: "endsWith(matrix.tox_env, '-cov')"
       uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de  # v5.5.2
+
+  # The strict array-API job is in its own matrix so that its failures --
+  # expected until the remaining array-API bugs are fixed -- stay visible
+  # without cancelling the main test matrix above. The test step uses
+  # continue-on-error so the job (and the PR checks rollup) stays green;
+  # the real outcome is reported as a warning annotation, in the step
+  # summary, and via a per-matrix-entry strict-job-outcome-* artifact that
+  # strict_status.yml turns into a check run on the PR.
+  ci-tests-expected-failures:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    if: "!(contains(github.event.head_commit.message, '[skip ci]') || contains(github.event.head_commit.message, '[ci skip]'))"
+    strategy:
+      matrix:
+        include:
+          - name: 'ubuntu-py313-strict'
+            os: ubuntu-latest
+            python: '3.13'
+            tox_env: 'py313-strict'
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      with:
+        fetch-depth: 0
+    - name: Set up Python ${{ matrix.python }}
+      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548  # v6.1.0
+      with:
+        python-version: ${{ matrix.python }}
+    - name: Install base dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install tox wheel
+    - name: Print Python env
+      run: |
+        python --version
+        python -m pip list
+    - name: Run tests
+      id: tests
+      continue-on-error: true
+      run: |
+        tox -e ${{ matrix.tox_env }} -- ${{ matrix.toxposargs }}
+    # always() so an outcome file is recorded even when an earlier step
+    # failed; a skipped/cancelled tests step is recorded as "error" (an
+    # infrastructure failure) rather than being conflated with an expected
+    # test failure. The JSON schema here is the contract with
+    # strict_status.yml: {"name": "<matrix name>", "state": "success" |
+    # "failure" | "error"}.
+    - name: Record test outcome
+      if: always()
+      run: |
+        case "${{ steps.tests.outcome }}" in
+          success) state='success' ;;
+          failure) state='failure' ;;
+          *) state='error' ;;
+        esac
+        printf '{"name": "%s", "state": "%s"}\n' '${{ matrix.name }}' "$state" > strict-outcome.json
+        if [ "$state" = "failure" ]; then
+          echo "::warning::${{ matrix.tox_env }} tests failed (expected until the remaining array-API bugs are fixed)"
+          echo ":warning: **${{ matrix.name }}**: tests **failed** (expected until the remaining array-API bugs are fixed)" >> "$GITHUB_STEP_SUMMARY"
+        elif [ "$state" = "success" ]; then
+          echo ":tada: **${{ matrix.name }}**: tests **passed** -- the expected-failures carve-out for this job can be retired" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "::warning::${{ matrix.name }} job hit an infrastructure error before the tests step completed (outcome: ${{ steps.tests.outcome }})"
+          echo ":x: **${{ matrix.name }}**: job hit an **infrastructure error** before the tests step completed (outcome: ${{ steps.tests.outcome }})" >> "$GITHUB_STEP_SUMMARY"
+        fi
+    - name: Upload test outcome
+      if: always()
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # 6.0.0
+      with:
+        # Include the matrix entry name so the artifact names stay unique if
+        # this matrix grows (upload-artifact v4+ errors on duplicate names).
+        name: strict-job-outcome-${{ matrix.name }}
+        path: strict-outcome.json
