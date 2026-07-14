@@ -84,7 +84,7 @@ jobs:
             }
           }
           if (outcomes.length === 0) {
-            core.info('No strict-job-outcome-* artifacts found; nothing to report.');
+            core.info('No strict-outcome.json files found in downloaded artifacts; nothing to report.');
             return;
           }
           for (const { jsonPath, fallbackName } of outcomes) {
