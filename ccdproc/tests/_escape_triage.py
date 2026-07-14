@@ -7,6 +7,13 @@ harmless on numpy itself, but will raise loudly on backends like CuPy
 (because the array lives on a GPU) and are the kind of bug this tooling is
 meant to help find on other backends too.
 
+The escape logger only sees Python-level module-attribute calls to
+``np.asarray``/``np.asanyarray``/``np.ma.asanyarray`` (they are
+monkeypatched in ``ccdproc/conftest.py``). C-level coercions inside
+compiled dependencies (scipy, astroscrappy, reproject) and names bound
+before the patch (``from numpy import asarray``) are invisible to it --
+structural false negatives, in the logger, the baseline and the ratchet.
+
 Activated by setting the environment variable ``CCDPROC_TRIAGE_ESCAPES`` to
 a truthy value ("1", "true", "yes", "on", case-insensitive). When active,
 every test failure's traceback is inspected to find the "escape site": the
@@ -455,14 +462,41 @@ def _report_escape_baseline_dropped(terminalreporter):
     )
 
 
-def pytest_sessionstart(session):  # noqa: ARG001 fixed pytest hook signature
+def _xdist_active(config):
     """
-    Fail fast on unusable env-var combinations. Both baseline modes read the
+    True when pytest-xdist is about to run the tests in worker processes.
+    ``_ESCAPE_LOG_COUNTS`` is a per-process global: under ``pytest -n`` the
+    workers do the tallying and the controller process (where sessionfinish
+    runs) sees an empty tally, so write mode would truncate the baseline and
+    enforce mode would pass without checking anything.
+    """
+    if not config.pluginmanager.hasplugin("xdist"):
+        return False
+    try:
+        numprocesses = config.getoption("numprocesses", None)
+    except (KeyError, ValueError):
+        return False
+    return bool(numprocesses)
+
+
+def pytest_sessionstart(session):
+    """
+    Fail fast on unusable configurations. Both baseline modes read the
     escape sites tallied by the live logger in ``conftest.py``, which only
     runs when CCDPROC_LOG_ARRAY_ESCAPES is truthy. Without it, write mode
     would observe nothing and truncate the baseline, and enforce mode would
     vacuously pass -- so reject either combination before any test runs.
+    The same failure modes occur under pytest-xdist (see ``_xdist_active``),
+    so both modes are rejected there too.
     """
+    if (WRITE_BASELINE or ENFORCE_BASELINE) and _xdist_active(session.config):
+        raise pytest.UsageError(
+            "CCDPROC_WRITE_ESCAPE_BASELINE / CCDPROC_ENFORCE_ESCAPE_BASELINE "
+            "cannot run under pytest-xdist: escape tallies live in each "
+            "worker process and never reach the controller, so the baseline "
+            "would be truncated or enforcement would pass vacuously. Re-run "
+            "without -n (or with -n0)."
+        )
     if WRITE_BASELINE and not LOG_ESCAPES:
         raise pytest.UsageError(
             "CCDPROC_WRITE_ESCAPE_BASELINE=1 requires the escape logger: "

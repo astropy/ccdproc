@@ -159,6 +159,12 @@ def pytest_collection_modifyitems(items):
 # an array whose array-API namespace (as resolved by
 # array_api_compat.array_namespace) is not numpy.
 #
+# Only Python-level calls through the module attributes are visible:
+# C-level coercions inside compiled dependencies (scipy, astroscrappy,
+# reproject) and references bound before the patch ("from numpy import
+# asarray") bypass the wrappers entirely, so absence of a warning is not
+# proof there was no conversion.
+#
 # Activated by setting the environment variable CCDPROC_LOG_ARRAY_ESCAPES to
 # a truthy value.
 # ---------------------------------------------------------------------------

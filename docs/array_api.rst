@@ -64,7 +64,16 @@ A few more developer tools help triage failures on non-numpy backends:
 + The ``backend_xfail(*backends, reason=...)`` marker marks a test as an
   expected (non-strict) failure only when ``CCDPROC_ARRAY_LIBRARY`` matches
   one of the named backends. The ``backend_skip(*backends, reason=...)``
-  marker skips a test entirely for the named backends.
+  marker skips a test entirely for the named backends. Because these
+  xfails are *non-strict* (unlike the suite-wide ``xfail_strict = true``
+  default), a backend bug that later gets fixed becomes a silent XPASS
+  rather than a failure, and the stale marker lingers forever -- check for
+  XPASSes occasionally (run the backend suite with ``-rX``) and prune the
+  markers that no longer fail. Before deleting one, confirm the XPASS in
+  the CI logs rather than only on your own machine: backend behavior can be
+  platform-dependent (see
+  `issue #943 <https://github.com/astropy/ccdproc/issues/943>`_, where a
+  jax-marked test passes on macOS but still fails on Linux CI).
 + Setting ``CCDPROC_ENFORCE_ESCAPE_BASELINE=1`` fails the test session if a
   new library escape site appears that is not in the checked-in baseline,
   and setting ``CCDPROC_WRITE_ESCAPE_BASELINE=1`` regenerates that baseline.
