@@ -1,15 +1,15 @@
-Unreleased
-----------
+2.6.0 (unreleased)
+------------------
 
 New Features
 ^^^^^^^^^^^^
 
 - Add ``array-api-strict`` (on a non-default device) as a test backend, a
-  CPU-only proxy for CuPy device behavior. [#937]
+  CPU-only proxy for CuPy device behavior. [#942]
 - Add triage tooling for array-API backend failures: ``backend_xfail`` /
   ``backend_skip`` markers, an escape-site report
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
-  (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#939]
+  (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#942]
 
 2.5.1 (2025-07-05)
 ------------------
