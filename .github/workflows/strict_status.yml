@@ -1,8 +1,9 @@
 # Turn the outcome of the expected-failures strict array-API jobs into
 # check runs on the PR. This runs as a separate workflow_run workflow because
 # pull_request runs for fork PRs get a read-only GITHUB_TOKEN and cannot
-# create check runs themselves. Each check uses a stable name (the matrix
-# entry name); the outcome is carried by the conclusion and output instead.
+# create check runs themselves. Each check uses a stable name ("strict-status
+# / " plus the matrix entry name); the outcome is carried by the conclusion
+# and output instead.
 # These checks are informational only (an expected test failure is reported
 # as neutral, so the PR rollup stays green) and are not intended to be
 # required checks while the failures are expected.
@@ -126,13 +127,16 @@ jobs:
                 'complete its tests step. This is an infrastructure error in the ' +
                 'job itself, not a test failure; see the run log for details.';
             }
-            // Stable check name (just the matrix entry name); the outcome
-            // lives in the conclusion and output so the checks UI does not
-            // accumulate differently-named checks per outcome.
+            // Stable check name; the outcome lives in the conclusion and
+            // output so the checks UI does not accumulate differently-named
+            // checks per outcome. The prefix keeps the name distinct from
+            // the CI job's own check (e.g. "ubuntu-py313-strict") -- the PR
+            // merge box shows only one check per name, so an identically
+            // named check run would be hidden behind the CI job entry.
             await github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              name,
+              name: `strict-status / ${name}`,
               head_sha: run.head_sha,
               status: 'completed',
               conclusion,
