@@ -22,7 +22,7 @@ What array libraries are supported?
 
 The best list of array libraries that implement the array API is at `array-api-compat`_.
 `ccdproc`_ is currently regularly tested against `numpy`_, `dask`_, and `jax`_. It
-is occasionally tested against `CuPy`_; any errors your encounter running `ccdproc`_
+is occasionally tested against `CuPy`_; any errors you encounter running `ccdproc`_
 on a GPU using `CuPy`_ should be
 `reported as an issue <https://github.com/astropy/ccdproc/issues>`_.
 
