@@ -28,6 +28,7 @@ from .tests._escape_triage import (
     _env_truthy,
     pytest_runtest_makereport,  # noqa: F401 pytest hook, used via attribute lookup
     pytest_sessionfinish,  # noqa: F401 pytest hook, used via attribute lookup
+    pytest_sessionstart,  # noqa: F401 pytest hook, used via attribute lookup
     pytest_terminal_summary,  # noqa: F401 pytest hook, used via attribute lookup
     record_escape_log,
 )

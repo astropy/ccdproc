@@ -42,6 +42,11 @@ ENFORCE_BASELINE = _env_truthy(os.environ.get("CCDPROC_ENFORCE_ESCAPE_BASELINE",
 #: instead of enforcing it. Use to seed or refresh the baseline.
 WRITE_BASELINE = _env_truthy(os.environ.get("CCDPROC_WRITE_ESCAPE_BASELINE", ""))
 
+#: Whether the live escape logger in ``conftest.py`` is active. Both baseline
+#: modes read the sites the logger tallies into ``_ESCAPE_LOG_COUNTS``, so
+#: neither can do anything meaningful without it (see pytest_sessionstart).
+LOG_ESCAPES = _env_truthy(os.environ.get("CCDPROC_LOG_ARRAY_ESCAPES", ""))
+
 #: Maps a (filename, lineno, function) escape site to a list of test node
 #: ids that failed with that site as their innermost non-test ccdproc frame.
 _ESCAPE_SITES = defaultdict(list)
@@ -167,14 +172,33 @@ def _stale_baseline_entries():
     return sorted(set(_load_escape_baseline()) - _observed_library_sites())
 
 
+#: Baseline entries dropped by the last _write_escape_baseline() call --
+#: entries in the old file that were not observed this run. Stashed so the
+#: terminal summary can make the shrink visible (a subset run drops entries
+#: for code it simply never exercised).
+_BASELINE_DROPPED = []
+
+
 def _write_escape_baseline():
     """
     (Re)write the baseline file from the library escapes observed this run.
     Reasons/tags already present in the file are preserved for sites that are
-    still observed, so hand-annotations survive a refresh.
+    still observed, so hand-annotations survive a refresh. Refuses to write
+    (raises UsageError) if no library escapes were observed at all: that
+    means the run could not have exercised the escapes (numpy backend, or a
+    subset run that hits none) and writing would truncate the baseline.
     """
     sites = sorted(_observed_library_sites())
+    if not sites:
+        raise pytest.UsageError(
+            "CCDPROC_WRITE_ESCAPE_BASELINE=1: no library escapes were "
+            "observed this run, refusing to truncate "
+            f"{_relpath(_BASELINE_PATH)}. Regenerate the baseline with "
+            "CCDPROC_LOG_ARRAY_ESCAPES=1, a non-numpy CCDPROC_ARRAY_LIBRARY "
+            "(e.g. dask), and a full-suite run."
+        )
     existing = _load_escape_baseline()
+    _BASELINE_DROPPED[:] = sorted(set(existing) - set(sites))
     header = [
         "# Array-API escape baseline for non-numpy backends (dask/jax).",
         "# Columns: <file> <function> <coercion>  <reason/tag>",
@@ -182,16 +206,16 @@ def _write_escape_baseline():
         "# The ratchet (CCDPROC_ENFORCE_ESCAPE_BASELINE=1) fails the session",
         "# if a library escape appears that is not listed here. Delete an",
         "# entry as you migrate that call site; this file only shrinks.",
-        "# Regenerate with CCDPROC_WRITE_ESCAPE_BASELINE=1 (preserves tags).",
+        "# Regenerate with CCDPROC_WRITE_ESCAPE_BASELINE=1 (preserves tags);",
+        "# that requires CCDPROC_LOG_ARRAY_ESCAPES=1, a non-numpy",
+        "# CCDPROC_ARRAY_LIBRARY (e.g. dask), and a *full* test-suite run --",
+        "# a subset run drops the entries its tests never exercise.",
         "#",
         "# Tags are for humans, not the ratchet: TODO = still to migrate,",
         "# BOUNDARY = a numpy-only dependency (scipy/astroscrappy/reproject)",
         "# that will never leave. Verify/adjust the seeded tags by hand.",
         "#",
     ]
-    if not sites:
-        _write_lines(header + ["# (no library escapes observed this run)"])
-        return
     w_file = max(len(f) for f, _, _ in sites)
     w_func = max(len(fn) for _, fn, _ in sites)
     w_co = max(len(c) for _, _, c in sites)
@@ -293,6 +317,7 @@ def pytest_terminal_summary(terminalreporter):
     _report_escape_failures(terminalreporter)
     _report_escape_log_counts(terminalreporter)
     _report_escape_baseline(terminalreporter)
+    _report_escape_baseline_dropped(terminalreporter)
 
 
 def _report_escape_failures(terminalreporter):
@@ -365,13 +390,16 @@ def _report_escape_baseline(terminalreporter):
     if not ENFORCE_BASELINE:
         return
 
-    # No foreign arrays seen at all means the logger ran on a numpy backend
-    # (or was never installed). The baseline is about non-numpy backends, so
+    # No foreign arrays seen at all means the logger ran but nothing tripped
+    # it -- a numpy backend, or a subset run that exercises no escape site.
+    # (Enforce mode with the logger *off* is rejected outright in
+    # pytest_sessionstart.) The baseline is about non-numpy backends, so
     # don't report every entry as "stale" and tempt someone to delete it.
     if not _observed_library_sites():
         terminalreporter.section("ccdproc array-API escape baseline")
         terminalreporter.write_line(
-            "No foreign-array escapes observed (numpy backend?); "
+            "Escape logger was active but observed no foreign-array escapes "
+            "(numpy backend, or a subset run exercising no escape site); "
             "baseline not checked."
         )
         return
@@ -399,12 +427,67 @@ def _report_escape_baseline(terminalreporter):
             terminalreporter.write_line(f"    - {relfile}  {function}  {coercion}")
 
 
+def _report_escape_baseline_dropped(terminalreporter):
+    """
+    After a baseline rewrite, warn loudly about any entries the rewrite
+    dropped (present in the old file, not observed this run). On a full-suite
+    run dropping stale entries is the point of a refresh, but on a subset run
+    the drop just means those tests never ran -- either way it must be
+    visible, not a silent shrink of the ratchet.
+    """
+    if not WRITE_BASELINE or not _BASELINE_DROPPED:
+        return
+
+    terminalreporter.section("ccdproc array-API escape baseline (rewritten)")
+    terminalreporter.write_line(
+        f"WARNING: rewrite DROPPED {len(_BASELINE_DROPPED)} entr"
+        f"{'y' if len(_BASELINE_DROPPED) == 1 else 'ies'} present in the old "
+        "baseline but not observed this run:",
+        red=True,
+        bold=True,
+    )
+    for relfile, function, coercion in _BASELINE_DROPPED:
+        terminalreporter.write_line(f"    - {relfile}  {function}  {coercion}")
+    terminalreporter.write_line(
+        "If this was not a full-suite run these entries were dropped only "
+        "because their tests never ran -- restore the file (git checkout) "
+        "and regenerate from a full run."
+    )
+
+
+def pytest_sessionstart(session):  # noqa: ARG001 fixed pytest hook signature
+    """
+    Fail fast on unusable env-var combinations. Both baseline modes read the
+    escape sites tallied by the live logger in ``conftest.py``, which only
+    runs when CCDPROC_LOG_ARRAY_ESCAPES is truthy. Without it, write mode
+    would observe nothing and truncate the baseline, and enforce mode would
+    vacuously pass -- so reject either combination before any test runs.
+    """
+    if WRITE_BASELINE and not LOG_ESCAPES:
+        raise pytest.UsageError(
+            "CCDPROC_WRITE_ESCAPE_BASELINE=1 requires the escape logger: "
+            "without CCDPROC_LOG_ARRAY_ESCAPES=1 no escapes are observed and "
+            "the baseline would be wiped. Set CCDPROC_LOG_ARRAY_ESCAPES=1 and "
+            "a non-numpy CCDPROC_ARRAY_LIBRARY (e.g. dask) and run the full "
+            "test suite."
+        )
+    if ENFORCE_BASELINE and not LOG_ESCAPES:
+        raise pytest.UsageError(
+            "CCDPROC_ENFORCE_ESCAPE_BASELINE=1 requires the escape logger: "
+            "without CCDPROC_LOG_ARRAY_ESCAPES=1 no escapes are observed and "
+            "enforcement would pass without checking anything. Set "
+            "CCDPROC_LOG_ARRAY_ESCAPES=1 (and a non-numpy "
+            "CCDPROC_ARRAY_LIBRARY, e.g. dask)."
+        )
+
+
 def pytest_sessionfinish(session, exitstatus):
     """
     Baseline ratchet regeneration / enforcement.
 
     In write mode (CCDPROC_WRITE_ESCAPE_BASELINE) the baseline file is
-    rewritten from the escapes observed this run. In enforce mode
+    rewritten from the escapes observed this run (refusing, with a
+    UsageError, to truncate it if nothing was observed). In enforce mode
     (CCDPROC_ENFORCE_ESCAPE_BASELINE) the session exit status is forced
     nonzero when a new library escape appeared, so CI fails on a regression.
     A pre-existing nonzero status (real test failures) is left untouched.

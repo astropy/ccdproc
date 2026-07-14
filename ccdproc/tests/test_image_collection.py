@@ -383,11 +383,6 @@ class TestImageFileCollection:
         for img in collection.data():
             assert isinstance(img, np.ndarray)
 
-    @pytest.mark.backend_xfail(
-        "jax",
-        reason="ccds() on the jax backend does not raise ValueError when "
-        "the files have no unit",
-    )
     def test_generator_ccds_without_unit(self, triage_setup):
         collection = ImageFileCollection(
             location=triage_setup.test_dir, keywords=["imagetyp"]
