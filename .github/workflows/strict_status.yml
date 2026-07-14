@@ -1,12 +1,21 @@
 # Turn the outcome of the expected-failures strict array-API jobs into
-# check runs on the PR. This runs as a separate workflow_run workflow because
-# pull_request runs for fork PRs get a read-only GITHUB_TOKEN and cannot
-# create check runs themselves. Each check uses a stable name ("strict-status
-# / " plus the matrix entry name); the outcome is carried by the conclusion
-# and output instead.
-# These checks are informational only (an expected test failure is reported
-# as neutral, so the PR rollup stays green) and are not intended to be
-# required checks while the failures are expected.
+# commit statuses on the PR head. This runs as a separate workflow_run
+# workflow because pull_request runs for fork PRs get a read-only
+# GITHUB_TOKEN and cannot post statuses themselves.
+#
+# Commit statuses are used rather than check runs because check runs
+# created with the Actions token get attached to the oldest github-actions
+# check suite for the SHA, and the PR merge box renders only the newest
+# suite per workflow -- so on any PR with more than one CI run (any push or
+# close/reopen) the check vanished from the merge box. Statuses attach
+# directly to the SHA and always render there.
+#
+# Each status uses a stable context ("strict-status/" plus the matrix entry
+# name); the outcome is carried by the state and description. An expected
+# test failure is reported as success (the statuses API has no neutral
+# state) with a description saying so, so the PR rollup stays green. These
+# statuses are informational only and are not intended to be required
+# checks while the failures are expected.
 #
 # Note: workflow_run workflows execute from the default branch, so changes to
 # this file only take effect once merged.
@@ -18,7 +27,7 @@ on:
     types: [completed]
 
 permissions:
-  checks: write
+  statuses: write
   actions: read
 
 jobs:
@@ -44,7 +53,7 @@ jobs:
         path: strict-outcomes
         run-id: ${{ github.event.workflow_run.id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Create check runs
+    - name: Post commit statuses
       if: steps.download.outcome == 'success'
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
       with:
@@ -106,40 +115,33 @@ jobs:
             } catch (err) {
               core.warning(`Could not read outcome JSON at ${jsonPath} (${err.message}); reporting an error state.`);
             }
-            let conclusion;
-            let title;
-            let summary;
+            // Descriptions must stay under the statuses API's 140-character
+            // limit; the target_url links to the CI run for details.
+            let statusState;
+            let description;
             if (state === 'success') {
-              conclusion = 'success';
-              title = 'Strict array-API tests passed';
-              summary = `The ${name} job in [this CI run](${run.html_url}) passed. ` +
-                'The expected-failures carve-out for it can be retired.';
+              statusState = 'success';
+              description = 'Strict array-API tests passed; ' +
+                'the expected-failures carve-out for this job can be retired.';
             } else if (state === 'failure') {
-              conclusion = 'neutral';
-              title = 'Strict array-API tests failed (expected)';
-              summary = `The ${name} job in [this CI run](${run.html_url}) failed. ` +
-                'This is expected until the remaining array-API bugs are fixed; ' +
-                'see the run log for details.';
+              statusState = 'success';
+              description = 'Strict array-API tests failed (expected until ' +
+                'the remaining array-API bugs are fixed).';
             } else {
-              conclusion = 'failure';
-              title = 'Strict array-API job broke (infra error)';
-              summary = `The ${name} job in [this CI run](${run.html_url}) did not ` +
-                'complete its tests step. This is an infrastructure error in the ' +
-                'job itself, not a test failure; see the run log for details.';
+              statusState = 'error';
+              description = 'Strict job did not complete its tests step; ' +
+                'infrastructure error, not a test failure.';
             }
-            // Stable check name; the outcome lives in the conclusion and
-            // output so the checks UI does not accumulate differently-named
-            // checks per outcome. The prefix keeps the name distinct from
-            // the CI job's own check (e.g. "ubuntu-py313-strict") -- the PR
-            // merge box shows only one check per name, so an identically
-            // named check run would be hidden behind the CI job entry.
-            await github.rest.checks.create({
+            // Stable context; the outcome lives in the state and
+            // description so the merge box does not accumulate
+            // differently-named statuses per outcome.
+            await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              name: `strict-status / ${name}`,
-              head_sha: run.head_sha,
-              status: 'completed',
-              conclusion,
-              output: { title, summary },
+              sha: run.head_sha,
+              state: statusState,
+              target_url: run.html_url,
+              description,
+              context: `strict-status/${name}`,
             });
           }
