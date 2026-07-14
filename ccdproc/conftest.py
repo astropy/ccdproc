@@ -129,6 +129,17 @@ _ACTIVE_BACKEND = _normalize_backend_name(array_library)
 
 
 def pytest_collection_modifyitems(items):
+    """
+    Apply the ``backend_skip`` / ``backend_xfail`` markers at collection
+    time. For each collected test, the backends named in a marker's
+    positional args (normalized, so ``array_api_strict`` and
+    ``array-api-strict`` match) are compared against the active backend from
+    ``CCDPROC_ARRAY_LIBRARY``; on a match the corresponding standard pytest
+    marker is attached -- a plain skip, or a *non-strict* xfail so a test
+    that starts passing XPASSes instead of failing the run (see the "prune
+    on XPASS" note in docs/array_api.rst). Tests without a matching marker,
+    including everything in the default numpy run, are untouched.
+    """
     for item in items:
         for marker in item.iter_markers(name="backend_skip"):
             backends = {_normalize_backend_name(b) for b in marker.args}
@@ -137,6 +148,7 @@ def pytest_collection_modifyitems(items):
                     "reason", f"skipped for array backend {_ACTIVE_BACKEND!r}"
                 )
                 item.add_marker(pytest.mark.skip(reason=reason))
+                # One matching marker decides the outcome; skip the rest.
                 break
 
         for marker in item.iter_markers(name="backend_xfail"):
@@ -235,13 +247,31 @@ class _ReentrancyGuard:
 
 
 def _make_escape_logging_wrapper(original, funcname, guard):
+    """
+    Build the replacement for one numpy coercion entry point (``original`` is
+    the real ``np.asarray``, ``np.asanyarray`` or ``np.ma.asanyarray``).
+    The wrapper logs and tallies an "array-API escape" whenever its first
+    positional argument is an array from a non-numpy array-API library, then
+    always finishes by calling ``original`` -- behavior is unchanged, escapes
+    are only observed. ``funcname`` is the dotted numpy name (e.g.
+    ``numpy.asarray``) recorded with each escape. ``guard`` breaks recursion:
+    the namespace detection and stack extraction below can themselves end up
+    calling the patched functions.
+    """
+
     def wrapper(*args, **kwargs):
+        # Do nothing extra on re-entrant calls (guard held) or when there is
+        # no positional argument to inspect.
         if not guard.active and args:
             guard.active = True
             try:
                 obj = args[0]
                 namespace = _foreign_namespace(obj)
                 if namespace is not None:
+                    # A foreign array is about to be coerced to numpy: warn
+                    # with the innermost non-test ccdproc frame to blame, and
+                    # tally the site for the end-of-session summary and the
+                    # baseline ratchet.
                     frame = _escape_site_frame()
                     site = _describe_escape_site(frame)
                     _escape_logger.warning(

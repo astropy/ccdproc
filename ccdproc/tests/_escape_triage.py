@@ -223,9 +223,12 @@ def _write_escape_baseline():
         "# that will never leave. Verify/adjust the seeded tags by hand.",
         "#",
     ]
-    w_file = max(len(f) for f, _, _ in sites)
-    w_func = max(len(fn) for _, fn, _ in sites)
-    w_co = max(len(c) for _, _, c in sites)
+    # Per-column widths for aligned output; sites is non-empty here (the
+    # empty-observation case raised above), so max() cannot see an empty
+    # sequence.
+    w_file, w_func, w_co = (
+        max(len(s) for s in col) for col in zip(*sites, strict=True)
+    )
     body = []
     for key in sites:
         relfile, function, coercion = key
