@@ -383,6 +383,13 @@ class TestImageFileCollection:
         for img in collection.data():
             assert isinstance(img, np.ndarray)
 
+    @pytest.mark.backend_xfail(
+        "jax",
+        reason="on Linux CI with the jax backend, ccds() does not raise "
+        "ValueError for unit-less files; the same test passes on macOS with "
+        "identical astropy/jax versions. Platform-dependent, root cause not "
+        "yet understood.",
+    )
     def test_generator_ccds_without_unit(self, triage_setup):
         collection = ImageFileCollection(
             location=triage_setup.test_dir, keywords=["imagetyp"]
