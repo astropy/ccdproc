@@ -52,38 +52,58 @@ jobs:
           const path = require('path');
           const run = context.payload.workflow_run;
           const root = 'strict-outcomes';
-          // One directory per artifact, i.e. per expected-failures matrix
-          // entry. Each contains a strict-outcome.json written by ci_tests.yml
-          // with the schema {"name": "<matrix name>",
-          // "state": "success" | "failure" | "error"}.
-          let dirs = [];
+          // One artifact per expected-failures matrix entry, each holding a
+          // strict-outcome.json written by ci_tests.yml with the schema
+          // {"name": "<matrix name>", "state": "success"|"failure"|"error"}.
+          // download-artifact extracts each artifact into its own
+          // strict-job-outcome-* subdirectory when the pattern matches
+          // several artifacts, but flattens a single match directly into the
+          // root -- scan for the JSON files so both layouts work.
+          let entries = [];
           try {
-            dirs = fs.readdirSync(root).filter((d) => d.startsWith('strict-job-outcome-'));
+            entries = fs.readdirSync(root, { withFileTypes: true });
           } catch (err) {
             core.info(`No outcome artifacts downloaded (${err.message}); nothing to report.`);
             return;
           }
-          if (dirs.length === 0) {
+          const outcomes = [];
+          if (entries.some((e) => e.isFile() && e.name === 'strict-outcome.json')) {
+            outcomes.push({
+              jsonPath: path.join(root, 'strict-outcome.json'),
+              // The flat layout loses the artifact name; the JSON inside
+              // normally supplies the real one.
+              fallbackName: 'strict-job',
+            });
+          }
+          for (const entry of entries) {
+            if (entry.isDirectory() && entry.name.startsWith('strict-job-outcome-')) {
+              outcomes.push({
+                jsonPath: path.join(root, entry.name, 'strict-outcome.json'),
+                fallbackName: entry.name.replace('strict-job-outcome-', ''),
+              });
+            }
+          }
+          if (outcomes.length === 0) {
             core.info('No strict-job-outcome-* artifacts found; nothing to report.');
             return;
           }
-          for (const dir of dirs) {
+          for (const { jsonPath, fallbackName } of outcomes) {
             // Fall back to the artifact name and an error state if the JSON
             // is missing or malformed, so a broken upload still surfaces.
-            let name = dir.replace('strict-job-outcome-', '');
+            let name = fallbackName;
             let state = 'error';
             try {
-              const data = JSON.parse(fs.readFileSync(path.join(root, dir, 'strict-outcome.json'), 'utf8'));
+              const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
               if (typeof data.name === 'string' && data.name) {
                 name = data.name;
               }
               if (['success', 'failure', 'error'].includes(data.state)) {
                 state = data.state;
               } else {
-                core.warning(`Unrecognized state ${JSON.stringify(data.state)} in ${dir}; reporting an error state.`);
+                core.warning(`Unrecognized state ${JSON.stringify(data.state)} in ${jsonPath}; reporting an error state.`);
               }
             } catch (err) {
-              core.warning(`Could not read outcome JSON in ${dir} (${err.message}); reporting an error state.`);
+              core.warning(`Could not read outcome JSON at ${jsonPath} (${err.message}); reporting an error state.`);
             }
             let conclusion;
             let title;
