@@ -20,6 +20,8 @@ Bug Fixes
   namespace form ``xp.astype(weights, xp.float64)`` instead of the deprecated
   string-based ``.astype("float64")``. This resolves the ``DeprecationWarning``
   that was being promoted to a test failure in the JAX CI job. [#924]
+- Return plain ``CCDData`` objects from array-API wrapper-copy paths, and
+  public uncertainty types from arithmetic paths. [#953]
 
 2.5.1 (2025-07-05)
 ------------------
