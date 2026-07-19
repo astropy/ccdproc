@@ -11,6 +11,12 @@ New Features
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
   (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#942]
 
+Bug Fixes
+^^^^^^^^^
+
+- Return plain ``CCDData`` objects from array-API wrapper-copy paths, and
+  public uncertainty types from arithmetic paths. [#953]
+
 2.5.1 (2025-07-05)
 ------------------
 
