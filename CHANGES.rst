@@ -16,7 +16,7 @@ Bug Fixes
 
 - Keep ``Combiner.clip_extrema`` index arithmetic in the selected array
   namespace so GPU-backed arrays do not require an implicit conversion to
-  NumPy.
+  NumPy. [#954]
 
 2.5.1 (2025-07-05)
 ------------------
