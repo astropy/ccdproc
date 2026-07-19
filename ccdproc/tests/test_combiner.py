@@ -13,7 +13,10 @@ from ccdproc import create_deviation
 from ccdproc.combiner import (
     Combiner,
     _calculate_step_sizes,
+    _default_average,
+    _default_median,
     _default_std,
+    _default_sum,
     combine,
     sigma_func,
 )
@@ -90,6 +93,45 @@ def test_combiner_create():
     # Also test the public properties
     assert c.data.shape == c._data_arr.shape
     assert c.mask.shape == c._data_arr_mask.shape
+
+
+@pytest.mark.parametrize(
+    ("default_func", "function_name"),
+    [
+        (_default_median, "nanmedian"),
+        (_default_average, "nanmean"),
+        (_default_sum, "nansum"),
+        (_default_std, "nanstd"),
+    ],
+)
+def test_bottleneck_defaults_respect_array_namespace(default_func, function_name):
+    bottleneck = pytest.importorskip("bottleneck")
+
+    default = default_func(xp=xp)
+
+    if array_api_compat.is_numpy_namespace(xp):
+        expected = getattr(bottleneck, function_name)
+    else:
+        expected = getattr(xp, function_name)
+    assert default is expected
+
+
+@pytest.mark.parametrize(
+    ("combine_method", "expected"),
+    [("average_combine", 2.0), ("sum_combine", 6.0)],
+)
+def test_bottleneck_combination_defaults_respect_array_namespace(
+    combine_method, expected
+):
+    pytest.importorskip("bottleneck")
+    ccd_list = [
+        CCDData(xp.full((2, 2), value), unit=u.adu) for value in (1.0, 2.0, 3.0)
+    ]
+
+    result = getattr(Combiner(ccd_list), combine_method)()
+
+    assert array_api_compat.array_namespace(result.data) is xp
+    assert xp.all(xpx.isclose(result.data, expected))
 
 
 # test if dtype matches the value that is passed

@@ -51,12 +51,17 @@ jobs:
           - name: 'ubuntu-py312-bottleneck'
             os: ubuntu-latest
             python: '3.12'
-            tox_env: 'py312-test-alldeps-numpy126'
+            tox_env: 'py312-test-alldeps-numpy126-bottleneck'
 
           - name: 'macos-py312-dask'
             os: macos-latest
             python: '3.12'
             tox_env: 'py312-alldeps-dask'
+
+          - name: 'ubuntu-py312-dask-bottleneck'
+            os: ubuntu-latest
+            python: '3.12'
+            tox_env: 'py312-alldeps-dask-bottleneck'
 
           # Regression gate: fail if a new array-API "escape" (a silent numpy
           # coercion of a dask array in library code) appears that is not in

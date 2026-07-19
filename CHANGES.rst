@@ -25,6 +25,9 @@ Bug Fixes
 - Return plain ``CCDData`` objects from array-API wrapper-copy paths, and
   public uncertainty types from arithmetic paths. [#953]
 
+- Use Bottleneck combination functions only with NumPy arrays, preserving the
+  selected Array API namespace for other backends. [#904]
+
 2.5.1 (2025-07-05)
 ------------------
 
