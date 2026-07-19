@@ -26,7 +26,7 @@ Bug Fixes
   public uncertainty types from arithmetic paths. [#953]
 
 - Use Bottleneck combination functions only with NumPy arrays, preserving the
-  selected Array API namespace for other backends. [#904]
+  selected Array API namespace for other backends. [#904, #959]
 
 2.5.1 (2025-07-05)
 ------------------
