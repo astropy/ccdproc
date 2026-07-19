@@ -24,6 +24,9 @@ Bug Fixes
   that was being promoted to a test failure in the JAX CI job. [#924]
 - Return plain ``CCDData`` objects from array-API wrapper-copy paths, and
   public uncertainty types from arithmetic paths. [#953]
+- Propagate gain correction to CCDData uncertainties in
+  ``cosmicray_lacosmic``, and preserve data and uncertainty units when gain
+  correction is disabled. [#729]
 
 2.5.1 (2025-07-05)
 ------------------

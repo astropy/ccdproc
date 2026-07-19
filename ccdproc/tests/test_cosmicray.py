@@ -3,7 +3,11 @@
 import array_api_extra as xpx
 import pytest
 from astropy import units as u
-from astropy.nddata import StdDevUncertainty
+from astropy.nddata import (
+    InverseVariance,
+    StdDevUncertainty,
+    VarianceUncertainty,
+)
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.ma import array as np_ma_array
 from numpy.random import default_rng
@@ -135,6 +139,54 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
         gain_for_test = 1.0
 
     assert_allclose(gain_for_test * orig_data, new_data)
+
+
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
+    "and fails on a non-default device",
+)
+@pytest.mark.parametrize(
+    ("uncertainty_type", "gain_power"),
+    [
+        (StdDevUncertainty, 1),
+        (VarianceUncertainty, 2),
+        (InverseVariance, -2),
+    ],
+)
+@pytest.mark.parametrize("gain_apply", [True, False])
+def test_cosmicray_gain_correct_uncertainty(
+    monkeypatch, uncertainty_type, gain_power, gain_apply
+):
+    def no_cosmics(data, **_kwargs):
+        return xp.zeros_like(data, dtype=xp.bool), data
+
+    monkeypatch.setattr("astroscrappy.detect_cosmics", no_cosmics)
+
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    uncertainty = DATA_SCALE**gain_power * xp.ones_like(ccd_data.data)
+    ccd_data.uncertainty = uncertainty_type(uncertainty)
+    original_data = xp.asarray(ccd_data.data, copy=True)
+    original_uncertainty = xp.asarray(ccd_data.uncertainty.array, copy=True)
+    original_uncertainty_unit = ccd_data.uncertainty.unit
+    gain = 2.0
+
+    result = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=gain_apply)
+
+    gain_factor = gain**gain_power if gain_apply else 1.0
+    expected_unit = u.electron if gain_apply else u.adu
+    expected_uncertainty_unit = result.uncertainty._data_unit_to_uncertainty_unit(
+        expected_unit
+    )
+    assert type(result.uncertainty) is uncertainty_type
+    assert result.unit == expected_unit
+    assert result.uncertainty.unit == expected_uncertainty_unit
+    assert_allclose(result.data, (gain if gain_apply else 1.0) * original_data)
+    assert_allclose(result.uncertainty.array, gain_factor * original_uncertainty)
+    assert_allclose(ccd_data.data, original_data)
+    assert_allclose(ccd_data.uncertainty.array, original_uncertainty)
+    assert ccd_data.unit == u.adu
+    assert ccd_data.uncertainty.unit == original_uncertainty_unit
 
 
 @pytest.mark.backend_xfail(
