@@ -897,6 +897,7 @@ class ImageFileCollection:
             See `~astropy.nddata.fits_ccddata_reader` for a complete list of
             parameters that can be passed through ``ccd_kwargs``.
 
+        {ccd_extension}
 
         regex_match : bool, keyword-only
             If ``True``, then string values in the ``**kwd`` dictionary are
@@ -933,7 +934,8 @@ class ImageFileCollection:
         if kwd:
             self._find_keywords_by_values(**kwd)
 
-        ccd_kwargs = ccd_kwargs or {}
+        ccd_kwargs = dict(ccd_kwargs or {})
+        ccd_hdu = ccd_kwargs.pop("hdu", self.ext)
 
         for full_path in self._paths():
             add_kwargs = {"do_not_scale_image_data": do_not_scale_image_data}
@@ -957,9 +959,7 @@ class ImageFileCollection:
                         dtype=return_thing.dtype.type,
                     )
             elif return_type == "ccd":
-                return_thing = fits_ccddata_reader(
-                    full_path, hdu=self.ext, **ccd_kwargs
-                )
+                return_thing = fits_ccddata_reader(full_path, hdu=ccd_hdu, **ccd_kwargs)
                 if xp is not None:
                     return_thing.data = xp.asarray(
                         return_thing.data, dtype=return_thing.data.dtype.type
@@ -1039,7 +1039,10 @@ class ImageFileCollection:
         )
 
     headers.__doc__ = _generator.__doc__.format(
-        name="header", default_scaling="True", return_type="astropy.io.fits.Header"
+        name="header",
+        default_scaling="True",
+        return_type="astropy.io.fits.Header",
+        ccd_extension="",
     )
 
     def hdus(self, do_not_scale_image_data=False, **kwd):
@@ -1053,6 +1056,7 @@ class ImageFileCollection:
         return_type="`, ` ".join(
             ("astropy.io.fits.PrimaryHDU", "astropy.io.fits.ImageHDU")
         ),
+        ccd_extension="",
     )
 
     def data(self, do_not_scale_image_data=False, **kwd):
@@ -1061,10 +1065,18 @@ class ImageFileCollection:
         )
 
     data.__doc__ = _generator.__doc__.format(
-        name="image", default_scaling="False", return_type="numpy.ndarray"
+        name="image",
+        default_scaling="False",
+        return_type="numpy.ndarray",
+        ccd_extension="",
     )
 
-    def ccds(self, ccd_kwargs=None, **kwd):
+    def ccds(self, ccd_kwargs=None, ext=None, **kwd):
+        if ext is not None:
+            if ccd_kwargs is not None and "hdu" in ccd_kwargs:
+                raise ValueError("ext and ccd_kwargs['hdu'] cannot both be specified.")
+            ccd_kwargs = dict(ccd_kwargs or {})
+            ccd_kwargs["hdu"] = ext
         if (clobber := kwd.get("clobber")) is not None:
             warnings.warn(
                 "The 'clobber' keyword argument is a deprecated alias for 'overwrite'",
@@ -1077,5 +1089,15 @@ class ImageFileCollection:
         return self._generator("ccd", ccd_kwargs=ccd_kwargs, **kwd)
 
     ccds.__doc__ = _generator.__doc__.format(
-        name="CCDData", default_scaling="True", return_type="astropy.nddata.CCDData"
+        name="CCDData",
+        default_scaling="True",
+        return_type="astropy.nddata.CCDData",
+        ccd_extension=(
+            "ext : int, str, or tuple, optional\n"
+            "    FITS extension from which to read the CCDData. This overrides the\n"
+            "    collection's extension for this generator only. If omitted,\n"
+            "    ``ccd_kwargs['hdu']`` is used when present, otherwise the\n"
+            "    collection's extension is used. ``ext`` and\n"
+            "    ``ccd_kwargs['hdu']`` cannot both be specified."
+        ),
     )
