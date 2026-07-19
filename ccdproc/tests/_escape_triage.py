@@ -29,6 +29,7 @@ batch of failures.
 import os
 import traceback
 from collections import defaultdict
+from threading import Lock
 
 import pytest
 
@@ -69,6 +70,7 @@ _ESCAPE_SITES = defaultdict(list)
 #: collapse the streamed warnings into a summary, and it is the observed-set
 #: input to the baseline ratchet.
 _ESCAPE_LOG_COUNTS = defaultdict(int)
+_ESCAPE_LOG_COUNTS_LOCK = Lock()
 
 
 def record_escape_log(frame, funcname):
@@ -81,7 +83,8 @@ def record_escape_log(frame, funcname):
         key = ("<unknown location>", 0, "", funcname)
     else:
         key = (_relpath(frame.filename), frame.lineno, frame.name, funcname)
-    _ESCAPE_LOG_COUNTS[key] += 1
+    with _ESCAPE_LOG_COUNTS_LOCK:
+        _ESCAPE_LOG_COUNTS[key] += 1
 
 
 # Anchor frame classification on this file's actual location rather than
