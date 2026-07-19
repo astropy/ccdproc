@@ -11,6 +11,12 @@ New Features
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
   (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#942]
 
+Bug Fixes
+^^^^^^^^^
+
+- Use Bottleneck combination functions only with NumPy arrays, preserving the
+  selected Array API namespace for other backends. [#904]
+
 2.5.1 (2025-07-05)
 ------------------
 
