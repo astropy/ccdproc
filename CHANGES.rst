@@ -16,6 +16,8 @@ Bug Fixes
 
 - Exclude masked and clipped pixels, and their weights, when computing weighted
   average combinations. [#952]
+- Make ``flat_correct`` and ``ccdmask`` use functional array updates so they
+  support immutable array-API backends. [#956]
 - Fix dtype conversion in ``Combiner._weighted_sum`` to use the array-API
   namespace form ``xp.astype(weights, xp.float64)`` instead of the deprecated
   string-based ``.astype("float64")``. This resolves the ``DeprecationWarning``

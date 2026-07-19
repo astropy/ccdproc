@@ -5,7 +5,35 @@ import pytest
 from astropy.nddata import CCDData
 from numpy.testing import assert_array_equal
 
+from ccdproc.conftest import testing_array_device as xp_device
+from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import ccdmask
+
+
+def _ccdmask_in_active_namespace(data, **kwargs):
+    ratio = CCDData(xp.asarray(data, device=xp_device), unit="adu")
+    data_before = xp.asarray(data, device=xp_device, copy=True)
+
+    result = ccdmask(ratio, xp=xp, **kwargs)
+
+    assert xp.all(ratio.data == data_before)
+    return result
+
+
+def _ones_like_filter(data, size):
+    assert size
+    return xp.ones_like(data)
+
+
+def _zeros_like_percentile_filter(data, percentile, size):
+    assert percentile
+    assert size
+    return xp.zeros_like(data)
+
+
+def _zero_percentile(array, percentiles):
+    assert percentiles
+    return array[0] * 0
 
 
 def test_ccdmask_no_ccddata():
@@ -215,3 +243,65 @@ def test_ccdmask_pixels():
     mask = ccdmask(ratio, ncsig=11, nlsig=15, findbadcolumns=True)
     target_mask[:, 2] = True
     assert_array_equal(mask, target_mask)
+
+
+@pytest.mark.parametrize("findbadcolumns", [False, True])
+def test_ccdmask_byblocks_with_immutable_array(monkeypatch, findbadcolumns):
+    monkeypatch.setattr(
+        "ccdproc.core.ndimage.median_filter",
+        _ones_like_filter,
+    )
+    monkeypatch.setattr(
+        "ccdproc.core._percentile_fallback",
+        _zero_percentile,
+    )
+    data = np.ones((8, 8))
+    data[:4, 2] = 1000
+
+    mask = _ccdmask_in_active_namespace(
+        data,
+        byblocks=True,
+        findbadcolumns=findbadcolumns,
+        ncsig=4,
+        nlsig=4,
+        ncmed=3,
+        nlmed=3,
+        lsigma=3,
+        hsigma=3,
+        ngood=3,
+    )
+
+    expected = np.zeros(data.shape, dtype=bool)
+    expected[:4, 2] = True
+    assert xp.all(mask == xp.asarray(expected, device=xp_device))
+
+
+def test_ccdmask_column_gap_with_immutable_array(monkeypatch):
+    monkeypatch.setattr(
+        "ccdproc.core.ndimage.median_filter",
+        _ones_like_filter,
+    )
+    monkeypatch.setattr(
+        "ccdproc.core.ndimage.percentile_filter",
+        _zeros_like_percentile_filter,
+    )
+    data = np.ones((8, 8))
+    data[1, 3] = 1000
+    data[3, 3] = 1000
+
+    mask = _ccdmask_in_active_namespace(
+        data,
+        byblocks=False,
+        findbadcolumns=True,
+        ncsig=3,
+        nlsig=3,
+        ncmed=3,
+        nlmed=3,
+        lsigma=3,
+        hsigma=3,
+        ngood=4,
+    )
+
+    expected = np.zeros(data.shape, dtype=bool)
+    expected[1:4, 3] = True
+    assert xp.all(mask == xp.asarray(expected, device=xp_device))
