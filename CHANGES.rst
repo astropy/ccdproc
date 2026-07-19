@@ -15,7 +15,7 @@ Bug Fixes
 ^^^^^^^^^
 
 - Make array-API escape logging thread-safe so concurrent worker escapes are
-  not missed.
+  not missed. [#955]
 
 2.5.1 (2025-07-05)
 ------------------
