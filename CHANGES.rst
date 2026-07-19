@@ -15,7 +15,7 @@ Bug Fixes
 ^^^^^^^^^
 
 - Make ``flat_correct`` and ``ccdmask`` use functional array updates so they
-  support immutable array-API backends.
+  support immutable array-API backends. [#956]
 
 2.5.1 (2025-07-05)
 ------------------
