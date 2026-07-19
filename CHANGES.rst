@@ -11,6 +11,12 @@ New Features
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
   (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#942]
 
+Bug Fixes
+^^^^^^^^^
+
+- Exclude masked and clipped pixels, and their weights, when computing weighted
+  average combinations. [#952]
+
 2.5.1 (2025-07-05)
 ------------------
 
