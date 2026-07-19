@@ -12,7 +12,7 @@ New Features
   (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#942]
 
 - Allow ``ImageFileCollection.ccds`` to read a per-call FITS extension while
-  retaining the collection extension for summaries and filtering. [#817]
+  retaining the collection extension for summaries and filtering. [#960]
 
 2.5.1 (2025-07-05)
 ------------------
