@@ -20,6 +20,8 @@ Bug Fixes
   support immutable array-API backends. [#956]
 - Fix the fallback percentile calculation for array namespaces that do not
   provide ``percentile``. [#957]
+- Make array-API escape logging thread-safe so concurrent worker escapes are
+  not missed. [#955]
 - Fix dtype conversion in ``Combiner._weighted_sum`` to use the array-API
   namespace form ``xp.astype(weights, xp.float64)`` instead of the deprecated
   string-based ``.astype("float64")``. This resolves the ``DeprecationWarning``
