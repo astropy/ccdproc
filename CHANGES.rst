@@ -15,7 +15,7 @@ Bug Fixes
 ^^^^^^^^^
 
 - Fix the fallback percentile calculation for array namespaces that do not
-  provide ``percentile``. [#888]
+  provide ``percentile``. [#957]
 
 2.5.1 (2025-07-05)
 ------------------
