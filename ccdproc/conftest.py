@@ -5,6 +5,7 @@
 # no matter how it is invoked within the source tree.
 import logging
 import os
+import threading
 import traceback
 
 import array_api_compat
@@ -239,7 +240,7 @@ def _describe_escape_site(frame):
     return f"{frame.filename}:{frame.lineno} {frame.name}"
 
 
-class _ReentrancyGuard:
+class _ReentrancyGuard(threading.local):
     """Small helper to keep our wrappers from recursing into themselves."""
 
     def __init__(self):
