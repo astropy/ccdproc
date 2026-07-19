@@ -26,7 +26,7 @@ Bug Fixes
   public uncertainty types from arithmetic paths. [#953]
 - Propagate gain correction to CCDData uncertainties in
   ``cosmicray_lacosmic``, and preserve data and uncertainty units when gain
-  correction is disabled. [#729]
+  correction is disabled. [#958, #729]
 
 2.5.1 (2025-07-05)
 ------------------
