@@ -11,6 +11,13 @@ New Features
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
   (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#942]
 
+Bug Fixes
+^^^^^^^^^
+
+- Keep ``Combiner.clip_extrema`` index arithmetic in the selected array
+  namespace so GPU-backed arrays do not require an implicit conversion to
+  NumPy. [#954]
+
 2.5.1 (2025-07-05)
 ------------------
 
