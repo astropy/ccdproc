@@ -653,6 +653,7 @@ class Combiner:
         if uncertainty_func is None:
             uncertainty_func = _default_std(xp=xp)
 
+        use_default_scale_func = scale_func is None
         data, masked_values, scale_func = self._combination_setup(
             scale_func, _default_average_func, scale_to
         )
@@ -661,6 +662,8 @@ class Combiner:
         # we get to the uncertainty calculation.
         if self.weights is not None:
             weighted_sum, weights = self._weighted_sum(data, sum_func, xp=xp)
+            if use_default_scale_func and masked_values.any():
+                weights = xp.where(xp.isnan(data), xp.zeros_like(weights), weights)
             mean = weighted_sum / sum_func(weights, axis=0)
         else:
             mean = scale_func(data, axis=0)
