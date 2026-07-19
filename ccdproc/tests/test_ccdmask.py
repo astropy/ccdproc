@@ -5,7 +5,27 @@ import pytest
 from astropy.nddata import CCDData
 from numpy.testing import assert_array_equal
 
-from ccdproc.core import ccdmask
+from ccdproc.conftest import testing_array_device as xp_device
+from ccdproc.conftest import testing_array_library as xp
+from ccdproc.core import _percentile_fallback, ccdmask
+
+
+@pytest.mark.parametrize(("percentile", "expected"), [(30.9, 1.0), (69.1, 9.0)])
+def test_percentile_fallback(percentile, expected):
+    if xp.__name__ != "array_api_strict":
+        pytest.skip("array-api-strict exercises the percentile fallback")
+
+    values_list = [1.0] * 40 + [9.0] * 40 + [5.0] * 20
+    values = xp.asarray(values_list, device=xp_device)
+    original = xp.asarray(values_list, device=xp_device)
+
+    result = _percentile_fallback(values, percentile)
+
+    assert result.shape == ()
+    assert result.device == values.device
+    expected = xp.asarray(expected, dtype=values.dtype, device=xp_device)
+    assert xp.all(result == expected)
+    assert xp.all(values == original)
 
 
 def test_ccdmask_no_ccddata():

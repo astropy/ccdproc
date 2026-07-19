@@ -11,6 +11,12 @@ New Features
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
   (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#942]
 
+Bug Fixes
+^^^^^^^^^
+
+- Fix the fallback percentile calculation for array namespaces that do not
+  provide ``percentile``. [#957]
+
 2.5.1 (2025-07-05)
 ------------------
 
