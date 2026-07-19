@@ -1855,16 +1855,27 @@ def cosmicray_lacosmic(
         # Wrap the CCDData object to ensure it is compatible with array API
         _ccd = _wrap_ccddata_for_array_api(ccd)
         nccd = _ccd.copy()
+        xp = array_api_compat.array_namespace(_ccd.data)
 
         cleanarr = cleanarr - data_offset
         cleanarr = _astroscrappy_gain_apply_helper(
             cleanarr, gain.value, gain_apply, old_astroscrappy_interface
         )
 
-        # Fix the units if the gain is being applied.
-        nccd.unit = _ccd.unit * gain.unit
-
-        xp = array_api_compat.array_namespace(_ccd.data)
+        if gain_apply:
+            if nccd.uncertainty is not None:
+                gain_value = xp.asarray(
+                    gain.value, device=array_api_compat.device(_ccd.data)
+                )
+                gain_corrected = _ccd.multiply(
+                    gain_value, xp=xp, handle_mask=xp.logical_or
+                )
+                nccd.uncertainty = gain_corrected.uncertainty
+            nccd.unit = _ccd.unit * gain.unit
+            if nccd.uncertainty is not None:
+                nccd.uncertainty.unit = nccd.uncertainty._data_unit_to_uncertainty_unit(
+                    nccd.unit
+                )
 
         nccd.data = xp.asarray(cleanarr)
         if nccd.mask is None:

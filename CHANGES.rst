@@ -11,6 +11,13 @@ New Features
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
   (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#942]
 
+Bug Fixes
+^^^^^^^^^
+
+- Propagate gain correction to CCDData uncertainties in
+  ``cosmicray_lacosmic``, and preserve data and uncertainty units when gain
+  correction is disabled. [#729]
+
 2.5.1 (2025-07-05)
 ------------------
 
