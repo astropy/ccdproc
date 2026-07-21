@@ -90,11 +90,11 @@ jobs:
 
     steps:
     - name: Check out repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       with:
         fetch-depth: 0
     - name: Set up Python ${{ matrix.python }}
-      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548  # v6.1.0
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
       with:
         python-version: ${{ matrix.python }}
     - name: Install base dependencies
@@ -117,7 +117,7 @@ jobs:
     #   run: tox -e ${{ matrix.tox_env }} -- --remote-data=any
     - name: Upload coverage to codecov
       if: "endsWith(matrix.tox_env, '-cov')"
-      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de  # v5.5.2
+      uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v7.0.0
 
   # The strict array-API job is in its own matrix so that its failures --
   # expected until the remaining array-API bugs are fixed -- stay visible
@@ -140,11 +140,11 @@ jobs:
 
     steps:
     - name: Check out repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       with:
         fetch-depth: 0
     - name: Set up Python ${{ matrix.python }}
-      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548  # v6.1.0
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
       with:
         python-version: ${{ matrix.python }}
     - name: Install base dependencies
@@ -186,7 +186,7 @@ jobs:
         fi
     - name: Upload test outcome
       if: always()
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # 6.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # 7.0.1
       with:
         # Include the matrix entry name so the artifact names stay unique if
         # this matrix grows (upload-artifact v4+ errors on duplicate names).
