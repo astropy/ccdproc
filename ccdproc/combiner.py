@@ -662,7 +662,7 @@ class Combiner:
         # we get to the uncertainty calculation.
         if self.weights is not None:
             weighted_sum, weights = self._weighted_sum(data, sum_func, xp=xp)
-            if use_default_scale_func and masked_values.any():
+            if use_default_scale_func and xp.any(masked_values):
                 weights = xp.where(xp.isnan(data), xp.zeros_like(weights), weights)
             mean = weighted_sum / sum_func(weights, axis=0)
         else:

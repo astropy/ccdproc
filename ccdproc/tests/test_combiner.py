@@ -243,7 +243,7 @@ def test_combiner_weighted_average_preserves_custom_scale_func():
     "ignore:invalid value encountered in divide:RuntimeWarning",
 )
 def test_combiner_weighted_average_fully_masked():
-    mask = xp.ones((1, 1), dtype=xp.bool)
+    mask = xp.ones((1, 1), dtype=bool)
     ccd_list = [
         CCDData(xp.ones((1, 1)), unit=u.adu, mask=mask),
         CCDData(xp.ones((1, 1)), unit=u.adu, mask=mask),
