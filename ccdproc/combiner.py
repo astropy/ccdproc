@@ -26,11 +26,10 @@ __all__ = ["Combiner", "combine"]
 
 
 def _default_median(xp=None):  # pragma: no cover
-    if HAS_BOTTLENECK:
+    if HAS_BOTTLENECK and (xp is None or array_api_compat.is_numpy_namespace(xp)):
         return bn.nanmedian
-    else:
-        if xp is None:
-            return None
+    if xp is None:
+        return None
 
     # No bottleneck, but we have a namespace.
     try:
@@ -42,11 +41,10 @@ def _default_median(xp=None):  # pragma: no cover
 
 
 def _default_average(xp=None):  # pragma: no cover
-    if HAS_BOTTLENECK:
+    if HAS_BOTTLENECK and (xp is None or array_api_compat.is_numpy_namespace(xp)):
         return bn.nanmean
-    else:
-        if xp is None:
-            return None
+    if xp is None:
+        return None
 
     # No bottleneck, but we have a namespace.
     try:
@@ -58,11 +56,10 @@ def _default_average(xp=None):  # pragma: no cover
 
 
 def _default_sum(xp=None):  # pragma: no cover
-    if HAS_BOTTLENECK:
+    if HAS_BOTTLENECK and (xp is None or array_api_compat.is_numpy_namespace(xp)):
         return bn.nansum
-    else:
-        if xp is None:
-            return None
+    if xp is None:
+        return None
 
     # No bottleneck, but we have a namespace.
     try:
@@ -74,11 +71,10 @@ def _default_sum(xp=None):  # pragma: no cover
 
 
 def _default_std(xp=None):  # pragma: no cover
-    if HAS_BOTTLENECK:
+    if HAS_BOTTLENECK and (xp is None or array_api_compat.is_numpy_namespace(xp)):
         return bn.nanstd
-    else:
-        if xp is None:
-            return None
+    if xp is None:
+        return None
 
     # No bottleneck, but we have a namespace.
     try:
@@ -87,10 +83,6 @@ def _default_std(xp=None):  # pragma: no cover
         raise RuntimeError(
             "No NaN-aware std function available. Please install bottleneck."
         ) from e
-
-
-_default_sum_func = _default_sum()
-_default_std_dev_func = _default_std()
 
 
 class Combiner:
@@ -608,8 +600,8 @@ class Combiner:
         self,
         scale_func=None,
         scale_to=None,
-        uncertainty_func=_default_std_dev_func,
-        sum_func=_default_sum_func,
+        uncertainty_func=None,
+        sum_func=None,
     ):
         """
         Average combine together a set of arrays.
@@ -690,9 +682,7 @@ class Combiner:
         # return the combined image
         return combined_image
 
-    def sum_combine(
-        self, sum_func=None, scale_to=None, uncertainty_func=_default_std_dev_func
-    ):
+    def sum_combine(self, sum_func=None, scale_to=None, uncertainty_func=None):
         """
         Sum combine together a set of arrays.
 
