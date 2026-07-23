@@ -22,6 +22,7 @@ from numpy import array as np_array
 from numpy import mgrid as np_mgrid
 from numpy import random as np_random
 
+from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import (
     Keyword,
@@ -614,6 +615,33 @@ def test_flat_correct():
     assert flat_data.header == ccd_data.header
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="the CCDData array-API wrapper passes the Python bool type to "
+    "array-api-strict when copying a mask",
+)
+def test_flat_correct_masked_flat_with_immutable_array():
+    ccd_values = [[8.0, 8.0], [8.0, 8.0]]
+    flat_values = [[2.0, 0.0], [4.0, 8.0]]
+    mask_values = [[False, True], [False, False]]
+    ccd_data = CCDData(xp.asarray(ccd_values, device=xp_device), unit="adu")
+    flat = CCDData(xp.asarray(flat_values, device=xp_device), unit="adu")
+    flat._mask = xp.asarray(mask_values, device=xp_device)
+
+    ccd_before = xp.asarray(ccd_values, device=xp_device)
+    flat_before = xp.asarray(flat_values, device=xp_device)
+    mask_before = xp.asarray(mask_values, device=xp_device)
+
+    result = flat_correct(ccd_data, flat, norm_value=1, add_keyword=None)
+
+    expected_data = xp.asarray([[4.0, 8.0], [2.0, 1.0]], device=xp_device)
+    assert xp.all(xpx.isclose(result.data, expected_data))
+    assert xp.all(result.mask == mask_before)
+    assert xp.all(ccd_data.data == ccd_before)
+    assert xp.all(flat.data == flat_before)
+    assert xp.all(flat.mask == mask_before)
+
+
 # Test for flat correction with min_value
 def test_flat_correct_min_value():
     ccd_data = ccd_data_func()
@@ -621,12 +649,18 @@ def test_flat_correct_min_value():
 
     # Create the flat
     data = 2 * RNG().normal(loc=1.0, scale=0.05, size=(size, size))
-    flat = CCDData(xp.asarray(data), meta=fits.header.Header(), unit=ccd_data.unit)
-    flat_orig_data = flat.data.copy()
+    flat = CCDData(
+        xp.asarray(data, device=xp_device),
+        meta=fits.header.Header(),
+        unit=ccd_data.unit,
+    )
+    flat_orig_data = xp.asarray(data, device=xp_device, copy=True)
     min_value = 2.1  # Should replace some, but not all, values
     flat_corrected_data = flat_correct(ccd_data, flat, min_value=min_value)
     flat_with_min = flat.copy()
-    xpx.at(flat_with_min.data)[flat_with_min.data < min_value].set(min_value)
+    flat_with_min.data = xpx.at(flat_with_min.data)[flat_with_min.data < min_value].set(
+        min_value
+    )
 
     # Check that the flat was normalized. The asserts below, which look a
     # little odd, are correctly testing that
@@ -649,7 +683,7 @@ def test_flat_correct_min_value():
     )
 
     # Test that flat is not modified.
-    assert (flat_orig_data == flat.data).all()
+    assert xp.all(flat_orig_data == flat.data)
     assert flat_orig_data is not flat.data
 
 

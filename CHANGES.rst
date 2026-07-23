@@ -11,6 +11,12 @@ New Features
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
   (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#942]
 
+Bug Fixes
+^^^^^^^^^
+
+- Make ``flat_correct`` and ``ccdmask`` use functional array updates so they
+  support immutable array-API backends. [#956]
+
 2.5.1 (2025-07-05)
 ------------------
 
