@@ -13,10 +13,12 @@ from astropy.wcs import WCS
 
 from ccdproc import flat_correct, trim_image
 from ccdproc._ccddata_wrapper_for_array_api import (
+    _CCDDataWrapperForArrayAPI,
     _InverseVarianceWrapper,
     _StdDevUncertaintyWrapper,
     _unwrap_ccddata_for_array_api,
     _VarianceUncertaintyWrapper,
+    _wrap_ccddata_for_array_api,
 )
 from ccdproc.conftest import testing_array_library as xp
 
@@ -93,6 +95,30 @@ def test_unwrap_plain_ccddata_is_identity():
 
     assert result is ccd
     assert result.uncertainty is assigned_uncertainty
+
+
+def test_unwrap_wrapper_preserves_backend_arrays():
+    ccd = CCDData(xp.ones((2, 2)), unit=u.adu)
+    ccd._mask = xp.asarray([[True, False], [False, True]])
+    ccd.uncertainty = StdDevUncertainty(xp.ones((2, 2)))
+
+    wrapped = _wrap_ccddata_for_array_api(ccd)
+    assert isinstance(wrapped, _CCDDataWrapperForArrayAPI)
+    assert wrapped is not ccd
+    wrapped_data = wrapped.data
+    wrapped_mask = wrapped.mask
+    wrapped_uncertainty_array = wrapped.uncertainty.array
+
+    result = _unwrap_ccddata_for_array_api(wrapped)
+
+    assert result is wrapped
+    assert type(result) is CCDData
+    assert result.data is wrapped_data
+    assert result.mask is wrapped_mask
+    assert type(result.uncertainty.array) is type(wrapped_uncertainty_array)
+    assert xp.all(xpx.isclose(result.uncertainty.array, wrapped_uncertainty_array))
+    assert type(result.uncertainty) is StdDevUncertainty
+    assert type(ccd) is CCDData
 
 
 def test_unwrap_ccddata_subclass_is_identity():
