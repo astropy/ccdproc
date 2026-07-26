@@ -375,16 +375,29 @@ def _unwrap_ccddata_for_array_api(ccd):
     Unwrap a CCDData object from array API backends to the original CCDData.
     """
 
-    if ccd.uncertainty is not None:
-        ccd.uncertainty = _unwrap_uncertainty(ccd.uncertainty)
-
-    if isinstance(ccd, CCDData):
-        return ccd
-
-    if not isinstance(ccd, _CCDDataWrapperForArrayAPI):
+    if not isinstance(ccd, CCDData):
         raise TypeError(
             "Input must be a CCDData or _CCDDataWrapperForArrayAPI instance."
         )
 
-    # Convert back to CCDData
-    return CCDData(ccd)
+    if isinstance(
+        ccd.uncertainty,
+        (
+            _StdDevUncertaintyWrapper,
+            _VarianceUncertaintyWrapper,
+            _InverseVarianceWrapper,
+        ),
+    ):
+        ccd.uncertainty = _unwrap_uncertainty(ccd.uncertainty)
+
+    if isinstance(ccd, _CCDDataWrapperForArrayAPI):
+        # Do not copy-construct through CCDData here. Astropy's mask setter
+        # coerces masks with np.asarray(..., dtype=bool), which would pull
+        # non-NumPy masks out of their array namespace. The wrapper is a
+        # state-free Python subclass created as a copy by
+        # _wrap_ccddata_for_array_api, so changing its public class identity
+        # does not mutate the caller's CCDData or disturb its backend arrays.
+        ccd.__class__ = CCDData
+        return ccd
+
+    return ccd
