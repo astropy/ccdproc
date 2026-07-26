@@ -391,19 +391,12 @@ class TestImageFileCollection:
         "yet understood.",
     )
     def test_generator_ccds_without_unit(self, triage_setup):
-        from ccdproc.conftest import testing_array_library
-
-        using_jax = testing_array_library.__name__ == "jax.numpy"
-
         collection = ImageFileCollection(
             location=triage_setup.test_dir, keywords=["imagetyp"]
         )
-        if using_jax:
-            ccd = next(collection.ccds())
-            assert isinstance(ccd, CCDData)
-        else:
-            with pytest.raises(ValueError):
-                _ = next(collection.ccds())
+
+        with pytest.raises(ValueError):
+            _ = next(collection.ccds())
 
     def test_generator_ccds(self, triage_setup):
         collection = ImageFileCollection(
