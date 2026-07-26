@@ -19,6 +19,7 @@ Coordinators Emeritus
 Alphabetical list of code contributors
 --------------------------------------
 
+* Simon Aguilera (@nomad3)
 * Jaime A. Alvarado-Montes (@JAAlvarado-Montes)
 * Yoonsoo P. Bach (@ysBach)
 * Kyle Barbary (@kbarbary)
