@@ -10,6 +10,8 @@ from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import ccdmask
 
 
+# Construct the CCD in the selected test namespace so every backend exercises
+# the functional-update paths, and verify that ccdmask leaves its input intact.
 def _ccdmask_in_active_namespace(data, **kwargs):
     ratio = CCDData(xp.asarray(data, device=xp_device), unit="adu")
     data_before = xp.asarray(data, device=xp_device, copy=True)
@@ -21,19 +23,20 @@ def _ccdmask_in_active_namespace(data, **kwargs):
 
 
 def _ones_like_filter(data, size):
-    assert size
+    assert size == (3, 3)
     return xp.ones_like(data)
 
 
 def _zeros_like_percentile_filter(data, percentile, size):
-    assert percentile
-    assert size
+    assert percentile in (30.9, 69.1)
+    assert size == (3, 3)
     return xp.zeros_like(data)
 
 
-def _zero_percentile(array, percentiles):
-    assert percentiles
-    return array[0] * 0
+def _fixed_percentile(array, percentile):
+    assert percentile in (30.9, 69.1)
+    value = 2 if percentile == 69.1 else -2
+    return array[0] * 0 + value
 
 
 def test_ccdmask_no_ccddata():
@@ -253,9 +256,17 @@ def test_ccdmask_byblocks_with_immutable_array(monkeypatch, findbadcolumns):
     )
     monkeypatch.setattr(
         "ccdproc.core._percentile_fallback",
-        _zero_percentile,
+        _fixed_percentile,
     )
     data = np.ones((8, 8))
+    # In the first 4x4 block, column 0 has an unmasked residual sum of 3.5,
+    # which is large enough for column masking but not per-pixel masking.
+    data[:4, 0] = 1.875
+    # Column 1 has an unmasked residual sum of -20. It must be clamped to zero
+    # before the column test or the whole column would be masked.
+    data[:4, 1] = -4
+    # Column 2 is individually masked, exercising—but not separately
+    # asserting—the all-masked fill in this non-degenerate block.
     data[:4, 2] = 1000
 
     mask = _ccdmask_in_active_namespace(
@@ -273,6 +284,8 @@ def test_ccdmask_byblocks_with_immutable_array(monkeypatch, findbadcolumns):
 
     expected = np.zeros(data.shape, dtype=bool)
     expected[:4, 2] = True
+    if findbadcolumns:
+        expected[:4, 0] = True
     assert xp.all(mask == xp.asarray(expected, device=xp_device))
 
 
