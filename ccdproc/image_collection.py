@@ -1094,10 +1094,11 @@ class ImageFileCollection:
         return_type="astropy.nddata.CCDData",
         ccd_extension=(
             "ext : int, str, or tuple, optional\n"
-            "    FITS extension from which to read the CCDData. This overrides the\n"
-            "    collection's extension for this generator only. If omitted,\n"
-            "    ``ccd_kwargs['hdu']`` is used when present, otherwise the\n"
-            "    collection's extension is used. ``ext`` and\n"
-            "    ``ccd_kwargs['hdu']`` cannot both be specified."
+            "            FITS extension from which to read the CCDData.\n"
+            "            This overrides the collection's extension for this\n"
+            "            generator only. If omitted, ``ccd_kwargs['hdu']`` is\n"
+            "            used when present; otherwise the collection's extension\n"
+            "            is used. ``ext`` and ``ccd_kwargs['hdu']`` cannot both\n"
+            "            be specified."
         ),
     )
