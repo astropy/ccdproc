@@ -971,7 +971,9 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None, xp=None):
     _use_flat = _flat
     if min_value is not None:
         _flat_min = _flat.copy()
-        xpx.at(_flat_min.data)[_flat_min.data < min_value].set(min_value)
+        _flat_min.data = xpx.at(_flat_min.data)[_flat_min.data < min_value].set(
+            min_value
+        )
         _use_flat = _flat_min
 
     # If a norm_value was input and is positive, use it to scale the flat
@@ -1007,7 +1009,7 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None, xp=None):
     # value is set to unity to avoid runtime divide-by-zero errors that are due
     # to a masked value being set to 0.
     if _flat_normed.mask is not None and _flat_normed.mask.any():
-        _flat_normed.data[_flat_normed.mask] = 1.0
+        _flat_normed.data = xpx.at(_flat_normed.data)[_flat_normed.mask].set(1.0)
 
     # divide through the flat
     _flat_corrected = _ccd.divide(_flat_normed, xp=xp, handle_mask=xp.logical_or)
@@ -2250,12 +2252,8 @@ def ccdmask(
                 # function that first tries percentile in case a particular
                 # array package has it but otherwise falls back to a sort.
                 # This is the case at least as of the 2023.12 API.
-                high = _percentile_fallback(
-                    xp.reshape(block, (xp.prod(block.shape),)), 69.1
-                )
-                low = _percentile_fallback(
-                    xp.reshape(block, (xp.prod(block.shape),)), 30.9
-                )
+                high = _percentile_fallback(xp.reshape(block, (-1,)), 69.1)
+                low = _percentile_fallback(xp.reshape(block, (-1,)), 30.9)
                 block_sigma = (high - low) / 2.0
                 block_mask = _sigma_mask(block, block_sigma, lsigma, hsigma)
                 # mblock = np.ma.MaskedArray(block, mask=block_mask, copy=False)
@@ -2271,17 +2269,18 @@ def ccdmask(
                         subset = block[:, k]
                         csum.append(xp.sum(subset[~block_mask[:, k]]))
                         all_masked.append(xp.all(block_mask[:, k]))
-                    csum = xp.asarray(csum)
-                    csum[csum <= 0] = 0
+                    csum = xp.stack(csum)
+                    all_masked = xp.stack(all_masked)
+                    csum = xpx.at(csum)[csum <= 0].set(0)
                     csum_sigma = xp.asarray(xp.sqrt(c2 - c1 - csum))
                     # The prior code filled the csum array with the value 1, which
                     # only affects those cases where all of the input values to
                     # the csum were masked, so we fill those with 1.
-                    csum[all_masked] = 1
+                    csum = xpx.at(csum)[all_masked].set(1)
                     colmask = _sigma_mask(csum, csum_sigma, lsigma, hsigma)
-                    block_mask[:, :] |= colmask[xp.newaxis, :]
+                    block_mask = xp.logical_or(block_mask, colmask[xp.newaxis, :])
 
-                mask[l1:l2, c1:c2] = block_mask
+                mask = xpx.at(mask)[l1:l2, c1:c2].set(block_mask)
     else:
         high = ndimage.percentile_filter(medsub, 69.1, size=(nlsig, ncsig))
         low = ndimage.percentile_filter(medsub, 30.9, size=(nlsig, ncsig))
@@ -2298,7 +2297,7 @@ def ccdmask(
                     for i in range(2, ngood + 2):
                         lend = line + i
                         if mask[lend, col] and not xp.all(mask[line : lend + 1, col]):
-                            mask[line:lend, col] = True
+                            mask = xpx.at(mask)[line:lend, col].set(True)
     return mask
 
 
