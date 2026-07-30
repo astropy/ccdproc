@@ -40,7 +40,7 @@ def _default_median(xp=None):
         ) from e
 
 
-def _default_average(xp=None): 
+def _default_average(xp=None):
     if HAS_BOTTLENECK and (xp is None or array_api_compat.is_numpy_namespace(xp)):
         return bn.nanmean
     if xp is None:
