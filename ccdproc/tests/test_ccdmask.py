@@ -15,6 +15,7 @@ class _PercentileFallbackNamespace:
 
     float64 = np.float64
     int64 = np.int64
+    any = staticmethod(np.any)
     minimum = staticmethod(np.minimum)
     sort = staticmethod(np.sort)
 
@@ -56,6 +57,21 @@ def test_percentile_fallback(percentile, expected):
         assert result.device == values.device
     assert xp.all(result == expected)
     assert xp.all(values == original)
+
+
+@pytest.mark.parametrize("percentile", [-5, 105])
+def test_percentile_fallback_rejects_out_of_range(percentile):
+    if xp.__name__ == "array_api_strict":
+        fallback_xp = xp
+    elif xp.__name__ == "array_api_compat.numpy":
+        fallback_xp = _PercentileFallbackNamespace
+    else:
+        pytest.skip("the fallback regression runs with NumPy and array-api-strict")
+
+    values = fallback_xp.asarray([0.0, 1.0, 2.0], device=xp_device)
+
+    with pytest.raises(ValueError, match=r"range \[0, 100\]"):
+        _percentile_fallback(values, percentile, xp=fallback_xp)
 
 
 # Construct the CCD in the selected test namespace so every backend exercises

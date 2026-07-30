@@ -125,14 +125,17 @@ def _percentile_fallback(array, percentiles, xp=None):
     except AttributeError:
         pass
 
-    # Fall back to using sort
-    sorted_array = xp.sort(array)
-
     percentile_array = xp.asarray(
         percentiles,
         dtype=xp.float64,
-        device=array_api_compat.device(sorted_array),
+        device=array_api_compat.device(array),
     )
+    if bool(xp.any((percentile_array < 0) | (percentile_array > 100))):
+        raise ValueError("Percentiles must be in the range [0, 100]")
+
+    # Fall back to using sort
+    sorted_array = xp.sort(array)
+
     indexes = xp.astype(
         sorted_array.shape[0] * percentile_array / 100,
         xp.int64,
