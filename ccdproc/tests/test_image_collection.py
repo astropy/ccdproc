@@ -290,13 +290,12 @@ class TestImageFileCollection:
             assert hdr == ccd.meta
 
     @pytest.mark.parametrize("extension", [1, "BLUE", ("BLUE", 1)])
-    @pytest.mark.parametrize("override", ["ext", "hdu"])
-    def test_ccds_extension_override(self, tmp_path, extension, override):
+    def test_ccds_hdu_override_preserves_ext_filter(self, tmp_path, extension):
         blue_data = np.arange(6).reshape(2, 3)
         red_data = blue_data + 100
         hdulist = fits.HDUList(
             [
-                fits.PrimaryHDU(header=fits.Header({"IMAGETYP": "BIAS"})),
+                fits.PrimaryHDU(header=fits.Header({"EXT": 7})),
                 fits.ImageHDU(blue_data, name="BLUE"),
                 fits.ImageHDU(red_data, name="RED"),
             ]
@@ -304,7 +303,7 @@ class TestImageFileCollection:
         hdulist.writeto(tmp_path / "multi-extension.fits")
         fits.HDUList(
             [
-                fits.PrimaryHDU(header=fits.Header({"IMAGETYP": "FLAT"})),
+                fits.PrimaryHDU(header=fits.Header({"EXT": 8})),
                 fits.ImageHDU(blue_data + 1000, name="BLUE"),
                 fits.ImageHDU(red_data + 1000, name="RED"),
             ]
@@ -312,45 +311,19 @@ class TestImageFileCollection:
 
         collection = ImageFileCollection(
             tmp_path,
-            keywords=["IMAGETYP"],
+            keywords=["EXT"],
             ext=0,
         )
-        filtered_collection = collection.filter(imagetyp="bias")
-        summary_before = filtered_collection.summary.copy()
-        ccd_kwargs = {"unit": "adu"}
-        override_kwargs = {}
-        if override == "ext":
-            override_kwargs["ext"] = extension
-        else:
-            ccd_kwargs["hdu"] = extension
+        ccd_kwargs = {"unit": "adu", "hdu": extension}
         original_ccd_kwargs = ccd_kwargs.copy()
 
-        ccds = list(
-            filtered_collection.ccds(
-                ccd_kwargs=ccd_kwargs,
-                **override_kwargs,
-            )
-        )
+        ccds = list(collection.ccds(ccd_kwargs=ccd_kwargs, ext=7))
 
         assert len(collection.summary) == 2
-        assert [Path(file).name for file in filtered_collection.files] == [
-            "multi-extension.fits"
-        ]
         assert len(ccds) == 1
         np.testing.assert_array_equal(ccds[0].data, blue_data)
         assert collection.ext == 0
-        assert filtered_collection.ext == 0
         assert ccd_kwargs == original_ccd_kwargs
-        assert filtered_collection.summary.colnames == summary_before.colnames
-        for column in summary_before.colnames:
-            np.testing.assert_array_equal(
-                filtered_collection.summary[column].data,
-                summary_before[column].data,
-            )
-            np.testing.assert_array_equal(
-                filtered_collection.summary[column].mask,
-                summary_before[column].mask,
-            )
 
     def test_ccds_extension_zero_override(self, tmp_path):
         primary_data = np.arange(6).reshape(2, 3)
@@ -362,19 +335,10 @@ class TestImageFileCollection:
         ).writeto(tmp_path / "multi-extension.fits")
         collection = ImageFileCollection(tmp_path, ext=1)
 
-        ccd = next(collection.ccds(ccd_kwargs={"unit": "adu"}, ext=0))
+        ccd = next(collection.ccds(ccd_kwargs={"unit": "adu", "hdu": 0}))
 
         np.testing.assert_array_equal(ccd.data, primary_data)
         assert collection.ext == 1
-
-    def test_ccds_extension_override_conflicts_with_hdu(self, triage_setup):
-        collection = ImageFileCollection(triage_setup.test_dir)
-        ccd_kwargs = {"unit": "adu", "hdu": 1}
-
-        with pytest.raises(ValueError, match=r"ext.*ccd_kwargs\['hdu'\]"):
-            collection.ccds(ccd_kwargs=ccd_kwargs, ext=1)
-
-        assert ccd_kwargs == {"unit": "adu", "hdu": 1}
 
     def test_headers(self, triage_setup):
         collection = ImageFileCollection(

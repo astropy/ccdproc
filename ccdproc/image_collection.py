@@ -894,10 +894,12 @@ class ImageFileCollection:
             For instance, the key ``'unit'`` can be used to specify the unit
             of the data. If ``'unit'`` is not given then ``'adu'`` is used as
             the default unit.
+            For CCDData generators, ``'hdu'`` may be an integer, an extension
+            name, or a ``(name, version)`` tuple. It overrides the collection's
+            extension for that generator call.
             See `~astropy.nddata.fits_ccddata_reader` for a complete list of
             parameters that can be passed through ``ccd_kwargs``.
 
-        {ccd_extension}
 
         regex_match : bool, keyword-only
             If ``True``, then string values in the ``**kwd`` dictionary are
@@ -1039,10 +1041,7 @@ class ImageFileCollection:
         )
 
     headers.__doc__ = _generator.__doc__.format(
-        name="header",
-        default_scaling="True",
-        return_type="astropy.io.fits.Header",
-        ccd_extension="",
+        name="header", default_scaling="True", return_type="astropy.io.fits.Header"
     )
 
     def hdus(self, do_not_scale_image_data=False, **kwd):
@@ -1056,7 +1055,6 @@ class ImageFileCollection:
         return_type="`, ` ".join(
             ("astropy.io.fits.PrimaryHDU", "astropy.io.fits.ImageHDU")
         ),
-        ccd_extension="",
     )
 
     def data(self, do_not_scale_image_data=False, **kwd):
@@ -1065,18 +1063,10 @@ class ImageFileCollection:
         )
 
     data.__doc__ = _generator.__doc__.format(
-        name="image",
-        default_scaling="False",
-        return_type="numpy.ndarray",
-        ccd_extension="",
+        name="image", default_scaling="False", return_type="numpy.ndarray"
     )
 
-    def ccds(self, ccd_kwargs=None, ext=None, **kwd):
-        if ext is not None:
-            if ccd_kwargs is not None and "hdu" in ccd_kwargs:
-                raise ValueError("ext and ccd_kwargs['hdu'] cannot both be specified.")
-            ccd_kwargs = dict(ccd_kwargs or {})
-            ccd_kwargs["hdu"] = ext
+    def ccds(self, ccd_kwargs=None, **kwd):
         if (clobber := kwd.get("clobber")) is not None:
             warnings.warn(
                 "The 'clobber' keyword argument is a deprecated alias for 'overwrite'",
@@ -1089,16 +1079,5 @@ class ImageFileCollection:
         return self._generator("ccd", ccd_kwargs=ccd_kwargs, **kwd)
 
     ccds.__doc__ = _generator.__doc__.format(
-        name="CCDData",
-        default_scaling="True",
-        return_type="astropy.nddata.CCDData",
-        ccd_extension=(
-            "ext : int, str, or tuple, optional\n"
-            "            FITS extension from which to read the CCDData.\n"
-            "            This overrides the collection's extension for this\n"
-            "            generator only. If omitted, ``ccd_kwargs['hdu']`` is\n"
-            "            used when present; otherwise the collection's extension\n"
-            "            is used. ``ext`` and ``ccd_kwargs['hdu']`` cannot both\n"
-            "            be specified."
-        ),
+        name="CCDData", default_scaling="True", return_type="astropy.nddata.CCDData"
     )
