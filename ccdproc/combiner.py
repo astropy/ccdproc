@@ -25,7 +25,7 @@ from .core import sigma_func
 __all__ = ["Combiner", "combine"]
 
 
-def _default_median(xp=None):  # pragma: no cover
+def _default_median(xp=None):
     if HAS_BOTTLENECK and (xp is None or array_api_compat.is_numpy_namespace(xp)):
         return bn.nanmedian
     if xp is None:
@@ -40,7 +40,7 @@ def _default_median(xp=None):  # pragma: no cover
         ) from e
 
 
-def _default_average(xp=None):  # pragma: no cover
+def _default_average(xp=None): 
     if HAS_BOTTLENECK and (xp is None or array_api_compat.is_numpy_namespace(xp)):
         return bn.nanmean
     if xp is None:
@@ -55,7 +55,7 @@ def _default_average(xp=None):  # pragma: no cover
         ) from e
 
 
-def _default_sum(xp=None):  # pragma: no cover
+def _default_sum(xp=None):
     if HAS_BOTTLENECK and (xp is None or array_api_compat.is_numpy_namespace(xp)):
         return bn.nansum
     if xp is None:
@@ -70,7 +70,7 @@ def _default_sum(xp=None):  # pragma: no cover
         ) from e
 
 
-def _default_std(xp=None):  # pragma: no cover
+def _default_std(xp=None):
     if HAS_BOTTLENECK and (xp is None or array_api_compat.is_numpy_namespace(xp)):
         return bn.nanstd
     if xp is None:
