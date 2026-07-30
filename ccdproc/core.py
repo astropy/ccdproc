@@ -1874,10 +1874,6 @@ def cosmicray_lacosmic(
                 )
                 nccd.uncertainty = gain_corrected.uncertainty
             nccd.unit = _ccd.unit * gain.unit
-            if nccd.uncertainty is not None:
-                nccd.uncertainty.unit = nccd.uncertainty._data_unit_to_uncertainty_unit(
-                    nccd.unit
-                )
 
         nccd.data = xp.asarray(cleanarr)
         if nccd.mask is None:
