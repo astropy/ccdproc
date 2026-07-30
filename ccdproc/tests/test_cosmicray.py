@@ -1,9 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import array_api_compat
 import array_api_extra as xpx
 import pytest
 from astropy import units as u
-from astropy.nddata import StdDevUncertainty
+from astropy.nddata import (
+    InverseVariance,
+    StdDevUncertainty,
+    VarianceUncertainty,
+)
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.ma import array as np_ma_array
 from numpy.random import default_rng
@@ -135,6 +140,153 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
         gain_for_test = 1.0
 
     assert_allclose(gain_for_test * orig_data, new_data)
+
+
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic's gain and mask paths do not support "
+    "array-api-strict's strict scalar and dtype rules",
+)
+@pytest.mark.parametrize(
+    ("uncertainty_type", "gain_power", "gain_apply", "expected_uncertainty_unit"),
+    [
+        pytest.param(
+            StdDevUncertainty,
+            1,
+            True,
+            u.electron,
+            id="stddev-gain-applied",
+        ),
+        pytest.param(
+            VarianceUncertainty,
+            2,
+            True,
+            u.electron**2,
+            id="variance-gain-applied",
+        ),
+        pytest.param(
+            InverseVariance,
+            -2,
+            True,
+            u.electron**-2,
+            id="inverse-variance-gain-applied",
+        ),
+        pytest.param(
+            StdDevUncertainty,
+            1,
+            False,
+            u.adu,
+            id="stddev-gain-disabled",
+        ),
+        pytest.param(
+            VarianceUncertainty,
+            2,
+            False,
+            u.adu**2,
+            id="variance-gain-disabled",
+        ),
+        pytest.param(
+            InverseVariance,
+            -2,
+            False,
+            u.adu**-2,
+            id="inverse-variance-gain-disabled",
+        ),
+    ],
+)
+def test_cosmicray_gain_correct_uncertainty(
+    monkeypatch, uncertainty_type, gain_power, gain_apply, expected_uncertainty_unit
+):
+    ccd_data, result, original_data, original_uncertainty, original_uncertainty_unit = (
+        _run_cosmicray_gain_correct_uncertainty(
+            monkeypatch, uncertainty_type, gain_power, gain_apply
+        )
+    )
+
+    gain = 2.0
+    gain_factor = gain**gain_power if gain_apply else 1.0
+    expected_unit = u.electron if gain_apply else u.adu
+
+    assert type(result.uncertainty) is uncertainty_type
+    assert result.unit == expected_unit
+    assert result.uncertainty.unit == expected_uncertainty_unit
+    assert_allclose(result.data, (gain if gain_apply else 1.0) * original_data)
+    assert_allclose(result.uncertainty.array, gain_factor * original_uncertainty)
+    assert_allclose(ccd_data.data, original_data)
+    assert_allclose(ccd_data.uncertainty.array, original_uncertainty)
+    assert ccd_data.unit == u.adu
+    assert ccd_data.uncertainty.unit == original_uncertainty_unit
+
+
+def _run_cosmicray_gain_correct_uncertainty(
+    monkeypatch, uncertainty_type, gain_power, gain_apply
+):
+    def no_cosmics(data, **_kwargs):
+        return xp.zeros_like(data, dtype=xp.bool), data
+
+    monkeypatch.setattr("astroscrappy.detect_cosmics", no_cosmics)
+
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    uncertainty = DATA_SCALE**gain_power * xp.ones_like(ccd_data.data)
+    ccd_data.uncertainty = uncertainty_type(uncertainty)
+    original_data = xp.asarray(ccd_data.data, copy=True)
+    original_uncertainty = xp.asarray(ccd_data.uncertainty.array, copy=True)
+    original_uncertainty_unit = ccd_data.uncertainty.unit
+    gain = 2.0
+
+    result = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=gain_apply)
+
+    return (
+        ccd_data,
+        result,
+        original_data,
+        original_uncertainty,
+        original_uncertainty_unit,
+    )
+
+
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_lacosmic's gain and mask paths do not support "
+    "array-api-strict's strict scalar and dtype rules",
+)
+@pytest.mark.parametrize(
+    ("uncertainty_type", "gain_power", "gain_apply"),
+    [
+        (StdDevUncertainty, 1, True),
+        pytest.param(
+            VarianceUncertainty,
+            2,
+            True,
+            marks=pytest.mark.backend_xfail(
+                "jax",
+                reason="Astropy uncertainty propagation converts JAX variance "
+                "arrays to NumPy",
+            ),
+        ),
+        pytest.param(
+            InverseVariance,
+            -2,
+            True,
+            marks=pytest.mark.backend_xfail(
+                "jax",
+                reason="Astropy uncertainty propagation converts JAX inverse "
+                "variance arrays to NumPy",
+            ),
+        ),
+        (StdDevUncertainty, 1, False),
+        (VarianceUncertainty, 2, False),
+        (InverseVariance, -2, False),
+    ],
+)
+def test_cosmicray_gain_correct_uncertainty_namespace(
+    monkeypatch, uncertainty_type, gain_power, gain_apply
+):
+    _, result, _, _, _ = _run_cosmicray_gain_correct_uncertainty(
+        monkeypatch, uncertainty_type, gain_power, gain_apply
+    )
+
+    assert array_api_compat.array_namespace(result.uncertainty.array) is xp
 
 
 @pytest.mark.backend_xfail(
