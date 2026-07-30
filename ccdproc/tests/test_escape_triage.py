@@ -25,6 +25,8 @@ def test_escape_wrapper_guard_is_thread_local(monkeypatch):
     )
 
     def foreign_namespace(value):
+        if not isinstance(value, str) or value not in ("first", "second"):
+            return None
         inspected.append(value)
         if value == "first":
             assert nested_wrapper("nested") == "nested"
@@ -43,6 +45,8 @@ def test_escape_wrapper_guard_is_thread_local(monkeypatch):
         first = executor.submit(wrapper, "first")
         try:
             assert first_entered.wait(timeout=5)
+            unrelated = object()
+            assert wrapper(unrelated) is unrelated
             second = executor.submit(wrapper, "second")
             assert second.result(timeout=5) == "second"
         finally:
@@ -51,11 +55,13 @@ def test_escape_wrapper_guard_is_thread_local(monkeypatch):
 
     assert inspected == ["first", "second"]
     assert logged == ["numpy.asarray", "numpy.asarray"]
-    assert original_calls == ["nested", "second", "first"]
+    assert original_calls == ["nested", unrelated, "second", "first"]
 
 
 def test_escape_log_tally_increment_is_serialized(monkeypatch):
     class TrackingLock:
+        """Track which thread owns the lock used by the tally."""
+
         def __init__(self):
             self.lock = Lock()
             self.owner = None
@@ -73,6 +79,8 @@ def test_escape_log_tally_increment_is_serialized(monkeypatch):
             return self.owner == get_ident()
 
     class GuardedCounts(dict):
+        """Assert every tally read and write happens while holding the lock."""
+
         def __init__(self, lock):
             super().__init__()
             self.lock = lock
@@ -88,7 +96,7 @@ def test_escape_log_tally_increment_is_serialized(monkeypatch):
     lock = TrackingLock()
     counts = GuardedCounts(lock)
     monkeypatch.setattr(_escape_triage, "_ESCAPE_LOG_COUNTS", counts)
-    monkeypatch.setattr(_escape_triage, "_ESCAPE_LOG_COUNTS_LOCK", lock, raising=False)
+    monkeypatch.setattr(_escape_triage, "_ESCAPE_LOG_COUNTS_LOCK", lock)
 
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = [
