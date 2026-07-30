@@ -7,7 +7,71 @@ from numpy.testing import assert_array_equal
 
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
-from ccdproc.core import ccdmask
+from ccdproc.core import _percentile_fallback, ccdmask
+
+
+class _PercentileFallbackNamespace:
+    """NumPy proxy without ``percentile``, used to exercise the fallback."""
+
+    float64 = np.float64
+    int64 = np.int64
+    any = staticmethod(np.any)
+    minimum = staticmethod(np.minimum)
+    sort = staticmethod(np.sort)
+
+    @staticmethod
+    def asarray(value, *, dtype=None, device=None):
+        del device
+        return np.asarray(value, dtype=dtype)
+
+    @staticmethod
+    def astype(array, dtype):
+        return array.astype(dtype)
+
+
+@pytest.mark.parametrize(
+    ("percentile", "expected"),
+    [
+        (30.9, 1.0),
+        (69.1, 9.0),
+        ([0, 50, 100], [1.0, 5.0, 9.0]),
+    ],
+)
+def test_percentile_fallback(percentile, expected):
+    if xp.__name__ == "array_api_strict":
+        fallback_xp = xp
+    elif xp.__name__ == "array_api_compat.numpy":
+        fallback_xp = _PercentileFallbackNamespace
+    else:
+        pytest.skip("the fallback regression runs with NumPy and array-api-strict")
+
+    values_list = [1.0] * 40 + [9.0] * 40 + [5.0] * 20
+    values = fallback_xp.asarray(values_list, device=xp_device)
+    original = fallback_xp.asarray(values_list, device=xp_device)
+
+    result = _percentile_fallback(values, percentile, xp=fallback_xp)
+
+    expected = fallback_xp.asarray(expected, dtype=values.dtype, device=xp_device)
+    assert result.shape == expected.shape
+    if xp.__name__ == "array_api_strict":
+        assert result.device == values.device
+    assert xp.all(result == expected)
+    assert xp.all(values == original)
+
+
+@pytest.mark.parametrize("percentile", [-5, 105])
+def test_percentile_fallback_rejects_out_of_range(percentile):
+    if xp.__name__ == "array_api_strict":
+        fallback_xp = xp
+    elif xp.__name__ == "array_api_compat.numpy":
+        fallback_xp = _PercentileFallbackNamespace
+    else:
+        pytest.skip("the fallback regression runs with NumPy and array-api-strict")
+
+    values = fallback_xp.asarray([0.0, 1.0, 2.0], device=xp_device)
+
+    with pytest.raises(ValueError, match=r"range \[0, 100\]"):
+        _percentile_fallback(values, percentile, xp=fallback_xp)
 
 
 # Construct the CCD in the selected test namespace so every backend exercises
