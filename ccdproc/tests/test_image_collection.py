@@ -289,6 +289,57 @@ class TestImageFileCollection:
             assert hdr == hdu.header
             assert hdr == ccd.meta
 
+    @pytest.mark.parametrize("extension", [1, "BLUE", ("BLUE", 1)])
+    def test_ccds_hdu_override_preserves_ext_filter(self, tmp_path, extension):
+        blue_data = np.arange(6).reshape(2, 3)
+        red_data = blue_data + 100
+        hdulist = fits.HDUList(
+            [
+                fits.PrimaryHDU(header=fits.Header({"EXT": 7})),
+                fits.ImageHDU(blue_data, name="BLUE"),
+                fits.ImageHDU(red_data, name="RED"),
+            ]
+        )
+        hdulist.writeto(tmp_path / "multi-extension.fits")
+        fits.HDUList(
+            [
+                fits.PrimaryHDU(header=fits.Header({"EXT": 8})),
+                fits.ImageHDU(blue_data + 1000, name="BLUE"),
+                fits.ImageHDU(red_data + 1000, name="RED"),
+            ]
+        ).writeto(tmp_path / "nonmatching.fits")
+
+        collection = ImageFileCollection(
+            tmp_path,
+            keywords=["EXT"],
+            ext=0,
+        )
+        ccd_kwargs = {"unit": "adu", "hdu": extension}
+        original_ccd_kwargs = ccd_kwargs.copy()
+
+        ccds = list(collection.ccds(ccd_kwargs=ccd_kwargs, ext=7))
+
+        assert len(collection.summary) == 2
+        assert len(ccds) == 1
+        np.testing.assert_array_equal(ccds[0].data, blue_data)
+        assert collection.ext == 0
+        assert ccd_kwargs == original_ccd_kwargs
+
+    def test_ccds_extension_zero_override(self, tmp_path):
+        primary_data = np.arange(6).reshape(2, 3)
+        fits.HDUList(
+            [
+                fits.PrimaryHDU(primary_data),
+                fits.ImageHDU(primary_data + 100, name="BLUE"),
+            ]
+        ).writeto(tmp_path / "multi-extension.fits")
+        collection = ImageFileCollection(tmp_path, ext=1)
+
+        ccd = next(collection.ccds(ccd_kwargs={"unit": "adu", "hdu": 0}))
+
+        np.testing.assert_array_equal(ccd.data, primary_data)
+        assert collection.ext == 1
+
     def test_headers(self, triage_setup):
         collection = ImageFileCollection(
             location=triage_setup.test_dir, keywords=["imagetyp"]

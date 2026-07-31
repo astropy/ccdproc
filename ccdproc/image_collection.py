@@ -894,6 +894,9 @@ class ImageFileCollection:
             For instance, the key ``'unit'`` can be used to specify the unit
             of the data. If ``'unit'`` is not given then ``'adu'`` is used as
             the default unit.
+            For CCDData generators, ``'hdu'`` may be an integer, an extension
+            name, or a ``(name, version)`` tuple. It overrides the collection's
+            extension for that generator call.
             See `~astropy.nddata.fits_ccddata_reader` for a complete list of
             parameters that can be passed through ``ccd_kwargs``.
 
@@ -933,7 +936,8 @@ class ImageFileCollection:
         if kwd:
             self._find_keywords_by_values(**kwd)
 
-        ccd_kwargs = ccd_kwargs or {}
+        ccd_kwargs = dict(ccd_kwargs or {})
+        ccd_hdu = ccd_kwargs.pop("hdu", self.ext)
 
         for full_path in self._paths():
             add_kwargs = {"do_not_scale_image_data": do_not_scale_image_data}
@@ -957,9 +961,7 @@ class ImageFileCollection:
                         dtype=return_thing.dtype.type,
                     )
             elif return_type == "ccd":
-                return_thing = fits_ccddata_reader(
-                    full_path, hdu=self.ext, **ccd_kwargs
-                )
+                return_thing = fits_ccddata_reader(full_path, hdu=ccd_hdu, **ccd_kwargs)
                 if xp is not None:
                     return_thing.data = xp.asarray(
                         return_thing.data, dtype=return_thing.data.dtype.type

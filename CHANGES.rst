@@ -10,6 +10,9 @@ New Features
   ``backend_skip`` markers, an escape-site report
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
   (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#942]
+- Allow ``ImageFileCollection.ccds`` to override the collection's FITS
+  extension per call with ``ccd_kwargs["hdu"]`` while preserving ``ext=`` as
+  a header filter. [#960]
 
 Bug Fixes
 ^^^^^^^^^
