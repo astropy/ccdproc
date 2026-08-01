@@ -1074,26 +1074,23 @@ def test_3d_combiner_with_scaling():
 
 
 def test_clip_extrema_keeps_indices_in_array_namespace(monkeypatch):
-    # Bypass Combiner.__init__ to isolate clip_extrema from the separate
-    # strict-backend limitation on stacking a list of arrays.
-    combiner = object.__new__(Combiner)
-    combiner._xp = xp
-    combiner._data_arr = xp.asarray(
-        [
-            [[9.0, 2.0, 7.0], [4.0, 8.0, 1.0]],
-            [[3.0, 6.0, 5.0], [9.0, 2.0, 8.0]],
-            [[6.0, 1.0, 4.0], [2.0, 7.0, 3.0]],
-        ],
-        device=xp_device,
-    )
-    combiner._data_arr_mask = xp.asarray(
-        [
-            [[False, False, False], [False, False, False]],
-            [[False, False, False], [False, False, False]],
-            [[False, False, False], [False, False, False]],
-        ],
-        device=xp_device,
-    )
+    data = [
+        [[9.0, 2.0, 7.0], [4.0, 8.0, 1.0]],
+        [[3.0, 6.0, 5.0], [9.0, 2.0, 8.0]],
+        [[6.0, 1.0, 4.0], [2.0, 7.0, 3.0]],
+    ]
+
+    if xp.__name__ == "array_api_strict":
+        # Bypass Combiner.__init__ only for array-api-strict, which cannot stack
+        # a list of arrays. This isolates clip_extrema from that separate limit.
+        combiner = object.__new__(Combiner)
+        combiner._xp = xp
+        combiner._data_arr = xp.asarray(data, device=xp_device)
+        combiner._data_arr_mask = xp.zeros(
+            combiner._data_arr.shape, dtype=xp.bool, device=xp_device
+        )
+    else:
+        combiner = Combiner([CCDData(xp.asarray(image), unit=u.adu) for image in data])
 
     captured_indices = []
     if xp.__name__ == "array_api_strict":
