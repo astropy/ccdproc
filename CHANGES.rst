@@ -37,6 +37,9 @@ Bug Fixes
 
 - Use Bottleneck combination functions only with NumPy arrays, preserving the
   selected Array API namespace for other backends. [#904, #959]
+- Keep ``Combiner.clip_extrema`` index arithmetic in the selected array
+  namespace so GPU-backed arrays do not require an implicit conversion to
+  NumPy. [#954]
 
 2.5.1 (2025-07-05)
 ------------------
