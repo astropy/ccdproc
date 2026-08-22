@@ -10,7 +10,10 @@ from astropy.nddata import (
     VarianceUncertainty,
 )
 from astropy.utils.exceptions import AstropyDeprecationWarning
+from numpy import array as np_array
+from numpy import zeros as np_zeros
 from numpy.ma import array as np_ma_array
+from numpy.ma import nomask as np_ma_nomask
 from numpy.random import default_rng
 from numpy.testing import assert_allclose
 
@@ -50,6 +53,7 @@ def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
         y, x = crrays[i]
         data_as_np[y, x] = crflux[i]
     data.data = xp.asarray(data_as_np)
+    return crrays
 
 
 @pytest.mark.backend_xfail(
@@ -446,14 +450,81 @@ def test_cosmicray_median_ccddata():
     "requires numpy and fails on a non-default device",
 )
 def test_cosmicray_median_masked():
+    # Regression test for #932: an input mask used to be silently ignored.
+    # Mask a subset of the injected cosmic-ray pixels; those must NOT be
+    # flagged, while the unmasked cosmic rays must still be detected.
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    threshold = 5
+    crrays = add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    n_masked = NCRAYS // 3
+    np_data = np_array(ccd_data.data)
+    np_mask = np_zeros(np_data.shape, dtype=bool)
+    for y, x in crrays[:n_masked]:
+        np_mask[y, x] = True
+    n_masked_unique = int(np_mask.sum())
+
+    data = np_ma_array(np_data, mask=np_mask)
+    ndata, crarr = cosmicray_median(data, thresh=5, mbox=11, error_image=DATA_SCALE)
+
+    crarr = np_array(crarr)
+    # no masked pixel is flagged as a cosmic ray...
+    assert not crarr[np_mask].any()
+    # ...and all of the unmasked cosmic rays are still detected
+    for y, x in crrays[n_masked:]:
+        assert crarr[y, x]
+    assert crarr.sum() == NCRAYS - n_masked_unique
+    # masked pixels are returned unchanged
+    assert_allclose(np_array(ndata)[np_mask], np_data[np_mask])
+
+
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
+    "requires numpy and fails on a non-default device",
+)
+def test_cosmicray_median_masked_nomask():
+    # A masked array with no mask set behaves like a plain array.
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
-    data = np_ma_array(ccd_data.data, mask=(ccd_data.data > -1e6))
+    data = np_ma_array(np_array(ccd_data.data))
+    assert data.mask is np_ma_nomask
     ndata, crarr = cosmicray_median(data, thresh=5, mbox=11, error_image=DATA_SCALE)
-
-    # check the number of cosmic rays detected
     assert crarr.sum() == NCRAYS
+
+
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
+    "requires numpy and fails on a non-default device",
+)
+def test_cosmicray_median_ccddata_masked():
+    # A CCDData input with a mask: the output mask is the union of the input
+    # mask and the detected cosmic rays.
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    threshold = 5
+    crrays = add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)
+    np_mask = np_zeros(ccd_data.shape, dtype=bool)
+    # mask a few of the cosmic rays and a block of ordinary pixels
+    for y, x in crrays[:5]:
+        np_mask[y, x] = True
+    np_mask[2:6, 3:9] = True
+    ccd_data.mask = xp.asarray(np_mask)
+    ccd_data.uncertainty = StdDevUncertainty(ccd_data.data * 0.0 + DATA_SCALE)
+
+    nccd = cosmicray_median(ccd_data, thresh=5, mbox=11, error_image=None)
+
+    out_mask = np_array(nccd.mask)
+    # every input-masked pixel is still masked
+    assert out_mask[np_mask].all()
+    # every cosmic ray is masked
+    for y, x in crrays:
+        assert out_mask[y, x]
+    # and nothing else is
+    expected = np_mask.copy()
+    for y, x in crrays:
+        expected[y, x] = True
+    assert (out_mask == expected).all()
 
 
 @pytest.mark.backend_xfail(
