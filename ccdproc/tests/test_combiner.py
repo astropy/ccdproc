@@ -205,6 +205,24 @@ def test_combiner_stacks_arrays_on_input_device():
     assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
 
 
+def test_combiner_explicit_namespace_differs_from_data():
+    # Regression test for the review of #976: when the caller passes an ``xp``
+    # that is not the namespace of the input data, the device of the inputs
+    # must not be forced onto ``xp`` (numpy's 'cpu' means nothing to jax or
+    # array-api-strict). The data is converted into ``xp`` on its default
+    # device instead.
+    np_ccds = [CCDData(np.ones((3, 3)) * i, unit=u.adu) for i in range(1, 3)]
+    np_ccds[0].mask = np.zeros((3, 3), dtype=bool)
+    c = Combiner(np_ccds, xp=xp)
+    assert array_api_compat.array_namespace(c.data) is array_api_compat.array_namespace(
+        xp.zeros(1)
+    )
+    assert c.data.shape == (2, 3, 3)
+    assert c.data.dtype == xp.float64
+    assert c.mask.dtype == xp.bool
+    assert float(xp.sum(c.data)) == 27.0
+
+
 def test_weights():
     ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, ccd_data]

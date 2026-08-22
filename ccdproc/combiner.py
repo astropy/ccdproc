@@ -179,10 +179,14 @@ class Combiner:
         # new_shape = (len(ccd_list),) + default_shape
         # Stack the individual images rather than passing a nested list to
         # xp.asarray: the array API does not allow nested sequences of arrays.
-        device = array_api_compat.device(ccd_list[0].data)
-        self._data_arr = xp.astype(
-            xp.stack([xp.asarray(ccd.data, device=device) for ccd in ccd_list]),
-            dtype,
+        # Keep the stack on the device of the input data, but only when the
+        # data already belong to ``xp``; a device object from a different
+        # namespace (e.g. numpy's 'cpu' for a jax namespace) is meaningless
+        # to ``xp``, so let ``xp`` use its default device instead.
+        data_xp = array_api_compat.array_namespace(ccd_list[0].data)
+        device = array_api_compat.device(ccd_list[0].data) if data_xp is xp else None
+        self._data_arr = xp.stack(
+            [xp.asarray(ccd.data, dtype=dtype, device=device) for ccd in ccd_list]
         )
 
         # populate self._data_arr_mask. The mask of a CCDData may be a numpy
