@@ -534,13 +534,19 @@ def test_background_deviation_box_per_box_values():
     global_std = float(xp.std(cd))
     left_val = float(bd[25, 25])
     right_val = float(bd[25, 75])
-    assert abs(left_val - 1.0) < 0.1
-    assert abs(right_val - 10.0) < 1.0
+    # The sample standard deviation of a 50x50 box scatters by roughly
+    # sigma / sqrt(2 * 2500) ~ 0.014 * sigma, so with a fixed seed these
+    # bounds are comfortably above the noise while still far tighter than the
+    # gap to the global standard deviation (~7).
+    assert abs(left_val - 1.0) < 0.05
+    assert abs(right_val - 10.0) < 0.5
     assert left_val != right_val
     assert abs(left_val - global_std) > 1.0
     assert abs(right_val - global_std) > 1.0
-    # every pixel within a box shares that box's value (the top-left and
-    # top-right boxes cover rows 0-50 and columns 0-50 / 50-99)
+    # every pixel within a box shares that box's value. setbox clamps the
+    # upper edge to len - 1, so the last row and column of the image are never
+    # filled (they keep the global standard deviation) and are deliberately
+    # excluded from the comparison.
     assert bool(xp.all(bd[:50, :50] == bd[0, 0]))
     assert bool(xp.all(bd[:50, 50:99] == bd[0, 50]))
 
