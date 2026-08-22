@@ -1,10 +1,13 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import warnings
+
 import array_api_compat
 import array_api_extra as xpx
 import pytest
 from astropy import units as u
 from astropy.nddata import (
+    CCDData,
     InverseVariance,
     StdDevUncertainty,
     VarianceUncertainty,
@@ -477,7 +480,7 @@ def test_cosmicray_median_masked():
     assert_allclose(np_array(ndata)[np_mask], np_data[np_mask])
 
 
-def test_cosmicray_median_masked_region_does_not_bias_neighbours():
+def test_cosmicray_median_masked_region_does_not_bias_neighbors():
     # Regression test for #932: a masked region of very bright pixels must not
     # raise the local median of the pixels next to it. The region is wider
     # than the median box, so an adjacent pixel's box is almost half masked;
@@ -502,6 +505,59 @@ def test_cosmicray_median_masked_region_does_not_bias_neighbours():
     assert not crarr[np_mask].any()
     # the masked pixels come back untouched
     assert_allclose(np_array(ndata)[np_mask], np_data[np_mask])
+
+
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
+    "requires numpy and fails on a non-default device",
+)
+def test_cosmicray_median_ccddata_masked_region_does_not_bias_neighbors():
+    # Same as the test above, but with the mask carried by a CCDData. The
+    # CCDData branch must forward its mask to the detection rather than only
+    # OR-ing it into the output mask.
+    rng = default_rng(seed=1)
+    sigma = 1.0
+    np_data = rng.normal(loc=0, scale=sigma, size=(100, 100))
+    np_mask = np_zeros(np_data.shape, dtype=bool)
+    np_mask[40:61, 40:54] = True
+    np_data[np_mask] = 1e4 * sigma
+    threshold = 5
+    cr_y, cr_x = 50, 54  # immediately to the right of the masked region
+    np_data[cr_y, cr_x] = 1.1 * threshold * sigma
+
+    ccd = CCDData(
+        xp.asarray(np_data),
+        unit="adu",
+        mask=xp.asarray(np_mask),
+        uncertainty=StdDevUncertainty(xp.asarray(np_data * 0.0 + sigma)),
+    )
+    nccd = cosmicray_median(ccd, thresh=threshold, mbox=11)
+    out_mask = np_array(nccd.mask)
+    assert out_mask[cr_y, cr_x]
+    assert out_mask[np_mask].all()
+    expected = np_mask.copy()
+    expected[cr_y, cr_x] = True
+    assert (out_mask == expected).all()
+    # the masked pixels come back untouched
+    assert_allclose(np_array(nccd.data)[np_mask], np_data[np_mask])
+
+
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
+    "requires numpy and fails on a non-default device",
+)
+def test_cosmicray_median_all_masked():
+    # Every pixel masked: nothing is flagged, data are returned unchanged and
+    # no warning (e.g. from a 0/0 in the fill value) is emitted.
+    np_data = default_rng(seed=3).normal(size=(20, 20))
+    data = np_ma_array(np_data, mask=np_zeros(np_data.shape, dtype=bool) | True)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        ndata, crarr = cosmicray_median(data, thresh=5, mbox=11, error_image=1.0)
+    assert not np_array(crarr).any()
+    assert_allclose(np_array(ndata), np_data)
 
 
 @pytest.mark.backend_xfail(
