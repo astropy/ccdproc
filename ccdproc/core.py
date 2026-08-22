@@ -473,7 +473,7 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False, x
     mask = data < 0
 
     if disregard_nan:
-        data = data * ~mask
+        data = data * xp.astype(~mask, data.dtype)
     else:
         # data[mask] = xp.nan
         logging.warning("Negative values in array will be replaced with nan")

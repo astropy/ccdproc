@@ -121,8 +121,8 @@ def test_create_deviation_from_negative_2():
     # Set the variance to zero where the data is negative
     # In-place replacement of values does not work in some array
     # libraries.
-    ccd_data.data = ccd_data.data * ~mask
-    expected_var = xp.sqrt(ccd_data.data + readnoise.value**2)
+    ccd_data.data = ccd_data.data * xp.astype(~mask, ccd_data.data.dtype)
+    expected_var = xp.sqrt(ccd_data.data + float(readnoise.value) ** 2)
     assert xp.all(xpx.isclose(ccd_var.uncertainty.array, expected_var))
 
 
