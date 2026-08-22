@@ -9,6 +9,7 @@ from astropy.nddata import CCDData
 from astropy.stats import median_absolute_deviation as mad
 from astropy.utils.data import get_pkg_data_filename
 from numpy import median as np_median
+from numpy.testing import assert_allclose
 
 from ccdproc import create_deviation
 from ccdproc.combiner import (
@@ -203,6 +204,30 @@ def test_combiner_stacks_arrays_on_input_device():
     assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
     c.scaling = lambda arr: float(arr.shape[0])
     assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
+    # A scaling callable that returns a 0-d array of the backend (rather than
+    # a Python float) must also work; array-api-strict rejects a list of such
+    # arrays passed to asarray.
+    c.scaling = lambda arr: xp.mean(arr) + 1
+    assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
+    assert c.scaling.shape == (3, 1, 1)
+    # all three images share ``data``, whose mean is 1/16
+    assert float(xp.max(xp.abs(c.scaling - (1.0 + 1 / 16)))) < 1e-6
+
+
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="combine() sizes the image with .nbytes, which array-api-strict "
+    "does not provide",
+)
+def test_combine_scale_callable_returning_backend_scalar():
+    # Regression test for the review of #976: ``combine(scale=<callable>)``
+    # must accept a callable that returns a 0-d array of the backend.
+    ccds = [
+        CCDData(xp.full((4, 4), float(i), dtype=xp.float64), unit=u.adu)
+        for i in (1, 2, 4)
+    ]
+    result = combine(ccds, method="average", scale=lambda arr: 1 / xp.mean(arr))
+    assert_allclose(np.asarray(result.data), 1.0)
 
 
 def test_combiner_explicit_namespace_differs_from_data():

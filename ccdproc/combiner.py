@@ -282,8 +282,16 @@ class Combiner:
             n_images = self._data_arr.shape[0]
             device = array_api_compat.device(self._data_arr)
             if callable(value):
-                self._scaling = [value(self._data_arr[i, ...]) for i in range(n_images)]
-                self._scaling = xp.asarray(self._scaling, device=device)
+                # The callable may return a Python float or a 0-d array of
+                # the backend; stack per-element conversions rather than
+                # passing a list of arrays to asarray, which array-api-strict
+                # rejects as a nested sequence of arrays.
+                self._scaling = xp.stack(
+                    [
+                        xp.asarray(value(self._data_arr[i, ...]), device=device)
+                        for i in range(n_images)
+                    ]
+                )
             else:
                 try:
                     len(value)
@@ -1123,8 +1131,11 @@ def combine(
 
                 scalevalues.append(scale(imgccd.data))
 
-            to_set_in_combiner["scaling"] = xp.asarray(
-                scalevalues, device=array_api_compat.device(ccd.data)
+            # See Combiner.scaling: stack per-element conversions so that a
+            # callable returning 0-d backend arrays works on array-api-strict.
+            device = array_api_compat.device(ccd.data)
+            to_set_in_combiner["scaling"] = xp.stack(
+                [xp.asarray(value, device=device) for value in scalevalues]
             )
         else:
             to_set_in_combiner["scaling"] = scale
