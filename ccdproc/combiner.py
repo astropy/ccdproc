@@ -177,14 +177,26 @@ class Combiner:
 
         # set up the data array
         # new_shape = (len(ccd_list),) + default_shape
-        self._data_arr = xp.asarray([ccd.data for ccd in ccd_list], dtype=dtype)
+        # Stack the individual images rather than passing a nested list to
+        # xp.asarray: the array API does not allow nested sequences of arrays.
+        device = array_api_compat.device(ccd_list[0].data)
+        self._data_arr = xp.astype(
+            xp.stack([xp.asarray(ccd.data, device=device) for ccd in ccd_list]),
+            dtype,
+        )
 
-        # populate self._data_arr_mask
+        # populate self._data_arr_mask. The mask of a CCDData may be a numpy
+        # array even when its data is not, so coerce each mask into the data
+        # namespace and onto the data device before stacking.
         mask_list = [
-            ccd.mask if ccd.mask is not None else xp.zeros(default_shape)
+            (
+                xp.asarray(ccd.mask, dtype=xp.bool, device=device)
+                if ccd.mask is not None
+                else xp.zeros(default_shape, dtype=xp.bool, device=device)
+            )
             for ccd in ccd_list
         ]
-        self._data_arr_mask = xp.asarray(mask_list, dtype=bool)
+        self._data_arr_mask = xp.stack(mask_list)
 
         # Must be after self.data_arr is defined because it checks the
         # length of the data array.
@@ -264,9 +276,10 @@ class Combiner:
             self._scaling = value
         else:
             n_images = self._data_arr.shape[0]
+            device = array_api_compat.device(self._data_arr)
             if callable(value):
-                self._scaling = [value(self._data_arr[i]) for i in range(n_images)]
-                self._scaling = xp.asarray(self._scaling)
+                self._scaling = [value(self._data_arr[i, ...]) for i in range(n_images)]
+                self._scaling = xp.asarray(self._scaling, device=device)
             else:
                 try:
                     len(value)
@@ -280,10 +293,11 @@ class Combiner:
                         "scaling must be a function or an array "
                         "the same length as the number of images."
                     )
-                self._scaling = xp.asarray(value)
+                self._scaling = xp.asarray(value, device=device)
             # reshape so that broadcasting occurs properly
-            for _ in range(len(self._data_arr.shape) - 1):
-                self._scaling = self.scaling[:, xp.newaxis]
+            self._scaling = xp.reshape(
+                self._scaling, (n_images,) + (1,) * (self._data_arr.ndim - 1)
+            )
 
     # set up IRAF-like minmax clipping
     def clip_extrema(self, nlow=0, nhigh=0):
@@ -1021,7 +1035,7 @@ def combine(
                     ccd.uncertainty.array, dtype=ccd.uncertainty.array.dtype.type
                 )
             if ccd.mask is not None:
-                ccd.mask = xp.asarray(ccd.mask, dtype=bool)
+                ccd.mask = xp.asarray(ccd.mask, dtype=xp.bool)
 
     # Get the array namespace; if array_package was not None and files were read in,
     # then xp the ccd.data will be the same as the array_package.
@@ -1048,7 +1062,7 @@ def combine(
     # If the template doesn't have a mask, add one, because the result may have
     # a mask
     if ccd.mask is None:
-        ccd.mask = xp.zeros_like(ccd.data, dtype=bool)
+        ccd.mask = xp.zeros_like(ccd.data, dtype=xp.bool)
 
     size_of_an_img = _calculate_size_of_image(ccd)
 
@@ -1101,11 +1115,13 @@ def combine(
                                 imgccd.uncertainty.array, dtype=dtype
                             )
                         if imgccd.mask is not None:
-                            imgccd.mask = xp.asarray(imgccd.mask, dtype=bool)
+                            imgccd.mask = xp.asarray(imgccd.mask, dtype=xp.bool)
 
                 scalevalues.append(scale(imgccd.data))
 
-            to_set_in_combiner["scaling"] = xp.asarray(scalevalues)
+            to_set_in_combiner["scaling"] = xp.asarray(
+                scalevalues, device=array_api_compat.device(ccd.data)
+            )
         else:
             to_set_in_combiner["scaling"] = scale
 
@@ -1144,7 +1160,7 @@ def combine(
                                 imgccd.uncertainty.array, dtype=dtype
                             )
                         if imgccd.mask is not None:
-                            imgccd.mask = xp.asarray(imgccd.mask, dtype=bool)
+                            imgccd.mask = xp.asarray(imgccd.mask, dtype=xp.bool)
 
                 # Trim image and copy
                 # The copy is *essential* to avoid having a bunch

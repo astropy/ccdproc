@@ -21,6 +21,9 @@ Bug Fixes
   average combinations. [#952]
 - Make ``flat_correct`` and ``ccdmask`` use functional array updates so they
   support immutable array-API backends. [#956]
+- Build the ``Combiner`` data and mask arrays with ``xp.stack`` instead of
+  passing a nested list of arrays to ``xp.asarray``, and keep the mask and
+  scaling arrays in the namespace and on the device of the input data. [#965]
 - Fix the fallback percentile calculation for array namespaces that do not
   provide ``percentile``. [#957]
 - Make array-API escape logging thread-safe so concurrent worker escapes are

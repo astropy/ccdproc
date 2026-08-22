@@ -2,6 +2,7 @@
 import array_api_compat
 import array_api_extra as xpx
 import astropy.units as u
+import numpy as np
 import numpy.ma as np_ma
 import pytest
 from astropy.nddata import CCDData
@@ -163,6 +164,45 @@ def test_combiner_mask():
     assert c._data_arr.shape == (3, 10, 10)
     assert c._data_arr_mask.shape == (3, 10, 10)
     assert not c._data_arr_mask[0, 5, 5]
+
+
+# Regression test for #965: the Combiner must stack the input images and
+# masks instead of passing a nested list of arrays to xp.asarray, and the
+# stacked arrays must live in the namespace and on the device of the inputs.
+def test_combiner_stacks_arrays_on_input_device():
+    data = xp.zeros((4, 4), dtype=xp.float32, device=xp_device)
+    data = xpx.at(data)[1, 2].set(1)
+    mask = xp.zeros((4, 4), dtype=xp.bool, device=xp_device)
+    mask = xpx.at(mask)[3, 3].set(True)
+    # astropy's CCDData.mask setter always coerces to numpy, which is not
+    # possible for arrays on a non-default device, so assign the mask in the
+    # data's namespace directly to emulate an array-API-aware CCDData.
+    ccd_masked = CCDData(data, unit=u.adu)
+    ccd_masked._mask = mask
+    ccd_unmasked = CCDData(data, unit=u.adu)
+    # Masks on CCDData may be plain numpy arrays even when the data is not.
+    ccd_np_mask = CCDData(data, unit=u.adu, mask=np.ones((4, 4), dtype=bool))
+
+    c = Combiner([ccd_masked, ccd_unmasked, ccd_np_mask], dtype=xp.float32)
+
+    for arr in (c.data, c.mask):
+        assert array_api_compat.array_namespace(
+            arr
+        ) is array_api_compat.array_namespace(data)
+        assert array_api_compat.device(arr) == array_api_compat.device(data)
+        assert arr.shape == (3, 4, 4)
+    assert c.data.dtype == xp.float32
+    assert c.mask.dtype == xp.bool
+    assert c.data[0, 1, 2] == 1
+    assert c.mask[0, 3, 3]
+    assert not xp.any(c.mask[1, ...])
+    assert xp.all(c.mask[2, ...])
+
+    # Scaling values should end up on the same device as the data.
+    c.scaling = [1.0, 2.0, 3.0]
+    assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
+    c.scaling = lambda arr: float(arr.shape[0])
+    assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
 
 
 def test_weights():
