@@ -3,6 +3,7 @@
 """This module implements the combiner class."""
 
 from copy import deepcopy
+from functools import partial
 
 try:  # pragma: no cover
     import bottleneck as bn
@@ -19,6 +20,7 @@ from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
 from numpy import mgrid as np_mgrid
 
+from ._nanmedian import nanmedian
 from .core import sigma_func
 
 __all__ = ["Combiner", "combine"]
@@ -33,10 +35,10 @@ def _default_median(xp=None):
     # No bottleneck, but we have a namespace.
     try:
         return xp.nanmedian
-    except AttributeError as e:
-        raise RuntimeError(
-            "No NaN-aware median function available. Please install bottleneck."
-        ) from e
+    except AttributeError:
+        # nanmedian is not part of the array API standard; fall back to a
+        # (slower, sort-based) implementation written purely in terms of it.
+        return partial(nanmedian, xp=xp)
 
 
 def _default_average(xp=None):

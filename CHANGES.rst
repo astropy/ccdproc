@@ -25,6 +25,9 @@ Bug Fixes
   excluded from the noise estimate when ``error_image`` is not given.
   Previously the mask of a masked array was silently dropped by the array
   conversion. [#932]
+- Add a NaN-aware median written purely in terms of the array API standard
+  and use it in ``Combiner.median_combine`` when the selected array namespace
+  has no ``nanmedian``, instead of raising ``RuntimeError``. [#906]
 - Make ``flat_correct`` and ``ccdmask`` use functional array updates so they
   support immutable array-API backends. [#956]
 - Build the ``Combiner`` data and mask arrays with ``xp.stack`` instead of

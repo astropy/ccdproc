@@ -1,4 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+from functools import partial
+
 import array_api_compat
 import array_api_extra as xpx
 import astropy.units as u
@@ -8,10 +10,10 @@ import pytest
 from astropy.nddata import CCDData
 from astropy.stats import median_absolute_deviation as mad
 from astropy.utils.data import get_pkg_data_filename
-from numpy import median as np_median
 from numpy.testing import assert_allclose
 
 from ccdproc import create_deviation
+from ccdproc._nanmedian import nanmedian
 from ccdproc.combiner import (
     Combiner,
     _calculate_step_sizes,
@@ -35,6 +37,11 @@ from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 pytestmark = pytest.mark.filterwarnings(
     "ignore:All-NaN slice encountered:RuntimeWarning"
 )
+
+
+def _overall_median(arr):
+    """NaN-aware median of every element of ``arr``, staying in ``xp``."""
+    return nanmedian(xp.reshape(arr, (-1,)), axis=0, xp=xp)
 
 
 def _make_mean_scaler(ccd_data):
@@ -114,8 +121,17 @@ def test_bottleneck_defaults_respect_array_namespace(default_func, function_name
 
     if array_api_compat.is_numpy_namespace(xp):
         expected = getattr(bottleneck, function_name)
-    else:
+    elif hasattr(xp, function_name):
         expected = getattr(xp, function_name)
+    elif function_name == "nanmedian":
+        # No nanmedian in the namespace: the spec-only fallback is used,
+        # bound to this namespace.
+        assert isinstance(default, partial)
+        assert default.func is nanmedian
+        assert default.keywords == {"xp": xp}
+        return
+    else:
+        pytest.skip(f"{xp.__name__} has no {function_name}")
     assert default is expected
 
 
@@ -634,23 +650,9 @@ def test_combiner_with_scaling():
     assert avg_ccd.shape == ccd_data.shape
     median_ccd = combiner.median_combine()
     # Does median also scale to the correct value?
-    # Some array libraries do not have a median, and median is not part of the
-    # standard array API, so we use numpy's median here.
-    # Odd; for dask, which does not have a full median, even falling back to numpy does
-    # not work. For some reason the call to np_median fails. I suppose this is maybe
-    # because dask just adds a median to its task list/compute graph thingy
-    # and then tries to evaluate it itself?
-
-    med_ccd = median_ccd.data
-    med_inp_data = ccd_data.data
-    # Try doing a compute on the data first, and if that fails it is no big deal
-    try:
-        med_ccd = med_ccd.compute()
-        med_inp_data = med_inp_data.compute()
-    except AttributeError:
-        pass
-
-    assert xp.all(xpx.isclose(np_median(med_ccd), np_median(med_inp_data)))
+    assert xp.all(
+        xpx.isclose(_overall_median(median_ccd.data), _overall_median(ccd_data.data))
+    )
 
     # Set the scaling manually...
     combiner.scaling = [scale_by_mean(combiner._data_arr[i]) for i in range(3)]
@@ -1176,16 +1178,9 @@ def test_3d_combiner_with_scaling():
     assert avg_ccd.shape == ccd_data.shape
     median_ccd = combiner.median_combine()
     # Does median also scale to the correct value?
-    # Once again, use numpy to find the median
-    med_ccd = median_ccd.data
-    med_inp_data = ccd_data.data
-    try:
-        med_ccd = med_ccd.compute()
-        med_inp_data = med_inp_data.compute()
-    except AttributeError:
-        pass
-
-    assert xp.all(xpx.isclose(np_median(med_ccd), np_median(med_inp_data)))
+    assert xp.all(
+        xpx.isclose(_overall_median(median_ccd.data), _overall_median(ccd_data.data))
+    )
 
     # Set the scaling manually...
     combiner.scaling = [scale_by_mean(combiner._data_arr[i]) for i in range(3)]
@@ -1503,11 +1498,7 @@ def test_user_supplied_combine_func_that_relies_on_masks(comb_func):
         actual_result = c.average_combine(scale_func=xp.mean)
     elif comb_func == "median_combine":
         expected_result = data
-        if not hasattr(xp, "median"):
-            # If the array API does not have a median function, we
-            # cannot test this.
-            pytest.skip("The array library does not support median")
-        actual_result = c.median_combine(median_func=xp.median)
+        actual_result = c.median_combine(median_func=partial(nanmedian, xp=xp))
 
     # Two of the three values are masked, so no matter what the combination
     # method is the result in this pixel should be 2.

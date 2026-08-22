@@ -150,9 +150,13 @@ What limitations should I be aware of?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 + The ``median`` function is not part of the array API, but most array libraries
-  do provide a ``median``. If the array library you choose does not have a ``median``
-  function then `ccdproc`_ will automatically fall back to using a ``median`` function from
-  `bottleneck`_, if that is installed, or to `numpy`_.
+  do provide a NaN-aware ``nanmedian``. When combining images, `ccdproc`_ uses
+  ``nanmedian`` from `bottleneck`_ for `numpy`_ arrays if `bottleneck`_ is
+  installed; otherwise it uses the ``nanmedian`` of the selected array library.
+  If that library has no ``nanmedian`` (for example ``array-api-strict``),
+  `ccdproc`_ falls back to a sort-based implementation written purely in terms
+  of the array API standard. That fallback is correct but slower
+  (O(n log n) along the combination axis rather than O(n)).
 
 Which array library should I use?
 ---------------------------------
