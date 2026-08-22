@@ -47,6 +47,9 @@ Bug Fixes
 - Create the dark scale factor in ``subtract_dark(scale=True)`` on the same
   device as the master dark, and stop reporting non-unit errors from the
   subtraction as unit mismatches. [#966]
+- Remove stale comments in the ``Combiner`` ``*_combine`` methods and rebind
+  the uncertainty instead of modifying it in place, so the methods work with
+  immutable array-API backends. [#980]
 - Fix dtype conversion in ``Combiner._weighted_sum`` to use the array-API
   namespace form ``xp.astype(weights, xp.float64)`` instead of the deprecated
   string-based ``.astype("float64")``. This resolves the ``DeprecationWarning``
