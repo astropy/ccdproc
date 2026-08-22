@@ -2020,9 +2020,10 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0, x
     If ``ccd`` is a `numpy.ma.MaskedArray` (or any array with a non-empty
     ``mask`` attribute), the masked pixels are never flagged as cosmic rays.
     For the purposes of detection and replacement they are treated as if they
-    had the local median value, so they do not affect the detection of cosmic
-    rays in neighbouring pixels. The masked pixels are returned unchanged in
-    the output data array, and the returned cosmic-ray mask is ``False`` there.
+    had the local median value of the unmasked data, so they do not affect
+    the detection of cosmic rays in neighbouring pixels. The masked pixels are
+    returned unchanged in the output data array, and the returned cosmic-ray
+    mask is ``False`` there.
 
     Returns
     -------
@@ -2082,13 +2083,23 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0, x
             if not _is_array(error_image):
                 raise TypeError("error_image is not a float or ndarray.")
 
-        # create the median image
-        marr = xp.asarray(ndimage.median_filter(data, size=(mbox, mbox)))
-
-        # Masked input pixels are replaced by the local median for the
-        # purposes of detection and replacement so that they do not
-        # contaminate the filters; the original values are kept in the output.
-        filt_data = data if in_mask is None else xp.where(in_mask, marr, data)
+        if in_mask is None:
+            filt_data = data
+            marr = xp.asarray(ndimage.median_filter(data, size=(mbox, mbox)))
+        else:
+            # Masked input pixels must not contaminate the median filter, so
+            # they are replaced before filtering. The replacement cannot depend
+            # on the masked values themselves (a masked region wider than the
+            # filter box would otherwise just reproduce them), so start from
+            # the mean of the unmasked data, compute the local median, and then
+            # refine once by replacing the masked pixels with that local
+            # median. The original values are kept in the output.
+            keep = ~in_mask
+            fill = xp.sum(xp.where(keep, data, 0)) / xp.sum(xp.astype(keep, data.dtype))
+            filt_data = xp.where(in_mask, fill, data)
+            marr = xp.asarray(ndimage.median_filter(filt_data, size=(mbox, mbox)))
+            filt_data = xp.where(in_mask, marr, data)
+            marr = xp.asarray(ndimage.median_filter(filt_data, size=(mbox, mbox)))
 
         # Find the residual image
         rarr = (filt_data - marr) / error_image

@@ -477,6 +477,33 @@ def test_cosmicray_median_masked():
     assert_allclose(np_array(ndata)[np_mask], np_data[np_mask])
 
 
+def test_cosmicray_median_masked_region_does_not_bias_neighbours():
+    # Regression test for #932: a masked region of very bright pixels must not
+    # raise the local median of the pixels next to it. The region is wider
+    # than the median box, so an adjacent pixel's box is almost half masked;
+    # if the masked values leaked into the median, a marginal cosmic ray next
+    # to the region would be missed.
+    rng = default_rng(seed=1)
+    sigma = 1.0
+    np_data = rng.normal(loc=0, scale=sigma, size=(100, 100))
+    np_mask = np_zeros(np_data.shape, dtype=bool)
+    np_mask[40:61, 40:54] = True
+    np_data[np_mask] = 1e4 * sigma
+    threshold = 5
+    cr_y, cr_x = 50, 54  # immediately to the right of the masked region
+    np_data[cr_y, cr_x] = 1.1 * threshold * sigma
+
+    masked = np_ma_array(np_data, mask=np_mask)
+    ndata, crarr = cosmicray_median(
+        masked, thresh=threshold, mbox=11, error_image=sigma
+    )
+    crarr = np_array(crarr)
+    assert crarr[cr_y, cr_x]
+    assert not crarr[np_mask].any()
+    # the masked pixels come back untouched
+    assert_allclose(np_array(ndata)[np_mask], np_data[np_mask])
+
+
 @pytest.mark.backend_xfail(
     "array-api-strict",
     reason="cosmicray_median uses scipy.ndimage.median_filter, which "
