@@ -2,6 +2,7 @@
 
 import array_api_compat
 import array_api_extra as xpx
+import numpy as np
 import pytest
 from astropy import units as u
 from astropy.nddata import (
@@ -518,7 +519,30 @@ def test_background_deviation_box():
     scale = 5.3
     cd = xp.asarray(default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale))
     bd = background_deviation_box(cd, 25)
-    assert abs(bd.mean() - scale) < 0.10
+    assert abs(float(xp.mean(bd)) - scale) < 0.10
+
+
+def test_background_deviation_box_per_box_values():
+    # Regression test for #963: the per-box deviation must actually be
+    # written into the result. A pure-mean check passes even if every box is
+    # silently left at the global standard deviation.
+    rng = default_rng(seed=123)
+    left = rng.normal(loc=0, size=(100, 50), scale=1.0)
+    right = rng.normal(loc=0, size=(100, 50), scale=10.0)
+    cd = xp.asarray(np.hstack([left, right]))
+    bd = background_deviation_box(cd, 50)
+    global_std = float(xp.std(cd))
+    left_val = float(bd[25, 25])
+    right_val = float(bd[25, 75])
+    assert abs(left_val - 1.0) < 0.1
+    assert abs(right_val - 10.0) < 1.0
+    assert left_val != right_val
+    assert abs(left_val - global_std) > 1.0
+    assert abs(right_val - global_std) > 1.0
+    # every pixel within a box shares that box's value (the top-left and
+    # top-right boxes cover rows 0-50 and columns 0-50 / 50-99)
+    assert bool(xp.all(bd[:50, :50] == bd[0, 0]))
+    assert bool(xp.all(bd[:50, 50:99] == bd[0, 50]))
 
 
 def test_background_deviation_box_fail():
