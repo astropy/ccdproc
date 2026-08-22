@@ -869,11 +869,15 @@ def subtract_dark(
             # The xp.asarray ensures that even the scale factor is an instance
             # of the array class. Using a plain float leads (because of a conversion
             # to numpy float) to numpy being used for the calculation.
-            _master_scaled = _master_scaled.multiply(xp.asarray(scale_factor))
+            _master_scaled = _master_scaled.multiply(
+                xp.asarray(
+                    scale_factor, device=array_api_compat.device(_master_scaled.data)
+                )
+            )
             _result = _ccd.subtract(_master_scaled, handle_mask=xp.logical_or)
         else:
             _result = _ccd.subtract(_master, handle_mask=xp.logical_or)
-    except (u.UnitsError, u.UnitConversionError, ValueError) as err:
+    except (u.UnitsError, u.UnitConversionError) as err:
         # Make the error message a little more explicit than what is returned
         # by default.
         raise u.UnitsError(

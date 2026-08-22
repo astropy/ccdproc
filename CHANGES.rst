@@ -25,6 +25,9 @@ Bug Fixes
   provide ``percentile``. [#957]
 - Make array-API escape logging thread-safe so concurrent worker escapes are
   not missed. [#955]
+- Create the dark scale factor in ``subtract_dark(scale=True)`` on the same
+  device as the master dark, and stop reporting non-unit errors from the
+  subtraction as unit mismatches. [#966]
 - Fix dtype conversion in ``Combiner._weighted_sum`` to use the array-API
   namespace form ``xp.astype(weights, xp.float64)`` instead of the deprecated
   string-based ``.astype("float64")``. This resolves the ``DeprecationWarning``
