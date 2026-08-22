@@ -37,6 +37,9 @@ Bug Fixes
 
 - Use Bottleneck combination functions only with NumPy arrays, preserving the
   selected Array API namespace for other backends. [#904, #959]
+- Make ``rebin`` build its index array with ``xp.astype`` on the input array's
+  device instead of the NumPy-only ``.astype`` method, so it works with
+  array-API backends such as ``array-api-strict``. [#967]
 - Keep ``Combiner.clip_extrema`` index arithmetic in the selected array
   namespace so GPU-backed arrays do not require an implicit conversion to
   NumPy. [#954]
