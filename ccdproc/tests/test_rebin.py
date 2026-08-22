@@ -98,3 +98,27 @@ def test_rebin_does_not_change_input():
 
     np.testing.assert_allclose(original.data, ccd_data.data)
     assert original.unit == ccd_data.unit
+
+
+def test_rebin_keeps_array_namespace():
+    # Regression test for #967: rebin used the numpy-only ``.astype`` method
+    # on the index array, which fails for array-API backends that do not
+    # provide it (e.g. array-api-strict).
+    import array_api_compat
+
+    from ccdproc.conftest import testing_array_device as xp_device
+    from ccdproc.conftest import testing_array_library as xp
+
+    a = xp.asarray(np.arange(16.0).reshape(4, 4), device=xp_device)
+    with pytest.warns(AstropyDeprecationWarning):
+        try:
+            b = rebin(a, (8, 8))
+        except TypeError as e:
+            if "does not support this method of rebinning" in str(e):
+                pytest.skip("Rebinning not supported for this data type")
+
+    assert array_api_compat.array_namespace(b) is array_api_compat.array_namespace(a)
+    assert array_api_compat.device(b) == array_api_compat.device(a)
+    assert b.shape == (8, 8)
+    # Every input pixel is replicated into a 2x2 block of the output.
+    assert bool(xp.all(b[::2, ::2] == a))

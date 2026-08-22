@@ -1478,8 +1478,8 @@ def rebin(ccd, newshape):
         # Not every array package has mgrid, so we do the mgrid with
         # numpy and convert to the array package used by ccd.data.
 
-        coordinates = xp.asarray(np_mgrid[slices])
-        indices = coordinates.astype("i")
+        coordinates = xp.asarray(np_mgrid[slices], device=array_api_compat.device(ccd))
+        indices = xp.astype(coordinates, xp.int32)
 
         try:
             result = ccd[tuple(indices)]
