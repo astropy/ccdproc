@@ -263,64 +263,113 @@ class _CupyOperationNamesMixin:
         return self.__class__(array=result, copy=False)
 
 
-class _StdDevUncertaintyWrapper(_CupyOperationNamesMixin, StdDevUncertainty):
+class _ArrayAPIPropagationMixin:
+    """
+    Override the operation propagate methods so that the variance conversions
+    happen in the array namespace of the uncertainty arrays.
+
+    Astropy's ``_VariancePropagationMixin`` does the propagation arithmetic in
+    terms of variances, using ``to_variance``/``from_variance`` hooks to convert
+    to and from the uncertainty type. Subclasses provide ``_variance_hooks``
+    to build those hooks from the array namespace ``xp``.
+    """
+
+    @staticmethod
+    def _variance_hooks(xp):
+        raise NotImplementedError
+
+    def _propagate_add(self, other_uncert, result_data, correlation):
+        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
+        to_variance, from_variance = self._variance_hooks(xp)
+        return super()._propagate_add_sub(
+            other_uncert,
+            result_data,
+            correlation,
+            subtract=False,
+            to_variance=to_variance,
+            from_variance=from_variance,
+        )
+
+    def _propagate_subtract(self, other_uncert, result_data, correlation):
+        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
+        to_variance, from_variance = self._variance_hooks(xp)
+        return super()._propagate_add_sub(
+            other_uncert,
+            result_data,
+            correlation,
+            subtract=True,
+            to_variance=to_variance,
+            from_variance=from_variance,
+        )
+
+    def _propagate_multiply(self, other_uncert, result_data, correlation):
+        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
+        to_variance, from_variance = self._variance_hooks(xp)
+        return super()._propagate_multiply_divide(
+            other_uncert,
+            result_data,
+            correlation,
+            divide=False,
+            to_variance=to_variance,
+            from_variance=from_variance,
+        )
+
+    def _propagate_divide(self, other_uncert, result_data, correlation):
+        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
+        to_variance, from_variance = self._variance_hooks(xp)
+        return super()._propagate_multiply_divide(
+            other_uncert,
+            result_data,
+            correlation,
+            divide=True,
+            to_variance=to_variance,
+            from_variance=from_variance,
+        )
+
+
+class _StdDevUncertaintyWrapper(
+    _CupyOperationNamesMixin, _ArrayAPIPropagationMixin, StdDevUncertainty
+):
     """
     Override operation propagate methods to make sure they use the array API.
 
     Override overall propagate method to allow cupy_-prefixed operation names.
     """
 
-    def _propagate_add(self, other_uncert, result_data, correlation):
-        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
-        return super()._propagate_add_sub(
-            other_uncert,
-            result_data,
-            correlation,
-            subtract=False,
-            to_variance=xp.square,
-            from_variance=xp.sqrt,
-        )
-
-    def _propagate_subtract(self, other_uncert, result_data, correlation):
-        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
-        return super()._propagate_add_sub(
-            other_uncert,
-            result_data,
-            correlation,
-            subtract=True,
-            to_variance=xp.square,
-            from_variance=xp.sqrt,
-        )
-
-    def _propagate_multiply(self, other_uncert, result_data, correlation):
-        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
-        return super()._propagate_multiply_divide(
-            other_uncert,
-            result_data,
-            correlation,
-            divide=False,
-            to_variance=xp.square,
-            from_variance=xp.sqrt,
-        )
-
-    def _propagate_divide(self, other_uncert, result_data, correlation):
-        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
-        return super()._propagate_multiply_divide(
-            other_uncert,
-            result_data,
-            correlation,
-            divide=True,
-            to_variance=xp.square,
-            from_variance=xp.sqrt,
-        )
+    @staticmethod
+    def _variance_hooks(xp):
+        return xp.square, xp.sqrt
 
 
-class _VarianceUncertaintyWrapper(_CupyOperationNamesMixin, VarianceUncertainty):
-    """This subclass is needed to allow CuPy operation names"""
+class _VarianceUncertaintyWrapper(
+    _CupyOperationNamesMixin, _ArrayAPIPropagationMixin, VarianceUncertainty
+):
+    """
+    Override operation propagate methods to make sure they use the array API.
+
+    Override overall propagate method to allow cupy_-prefixed operation names.
+    """
+
+    @staticmethod
+    def _variance_hooks(xp):
+        # Astropy also applies ``to_variance`` to units, so it must accept
+        # non-array inputs; ``xp.asarray`` keeps the result in the namespace
+        # (and on the device) of the input arrays.
+        return (lambda x: x), xp.asarray
 
 
-class _InverseVarianceWrapper(_CupyOperationNamesMixin, InverseVariance):
-    """This subclass is needed to allow CuPy operation names"""
+class _InverseVarianceWrapper(
+    _CupyOperationNamesMixin, _ArrayAPIPropagationMixin, InverseVariance
+):
+    """
+    Override operation propagate methods to make sure they use the array API.
+
+    Override overall propagate method to allow cupy_-prefixed operation names.
+    """
+
+    @staticmethod
+    def _variance_hooks(xp):
+        return (lambda x: 1 / x), (lambda x: 1 / xp.asarray(x))
 
 
 def _wrap_uncertainty(unc):
