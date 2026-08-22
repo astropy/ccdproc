@@ -4,6 +4,7 @@ The ccdproc package is a collection of code that will be helpful in basic CCD
 processing. These steps will allow reduction of basic CCD data as either a
 stand-alone processing or as part of a pipeline.
 """
+
 try:
     from ._version import version as __version__
 except ImportError:
