@@ -23,6 +23,8 @@ Bug Fixes
   support immutable array-API backends. [#956]
 - Fix the fallback percentile calculation for array namespaces that do not
   provide ``percentile``. [#957]
+- Cast the boolean mask to the data dtype in ``create_deviation`` so that
+  ``disregard_nan=True`` works with strict array-API backends. [#968]
 - Make array-API escape logging thread-safe so concurrent worker escapes are
   not missed. [#955]
 - Fix dtype conversion in ``Combiner._weighted_sum`` to use the array-API
