@@ -14,7 +14,7 @@ from astropy.utils.data import get_pkg_data_filename
 from numpy.testing import assert_allclose
 
 from ccdproc import create_deviation
-from ccdproc._nanmedian import nanmedian
+from ccdproc._nanfuncs import nanmean, nanmedian, nanstd, nansum
 from ccdproc.combiner import (
     Combiner,
     _calculate_step_sizes,
@@ -106,46 +106,54 @@ def test_combiner_create():
     assert c.mask.shape == c._data_arr_mask.shape
 
 
-@pytest.mark.parametrize(
-    ("default_func", "function_name"),
-    [
-        (_default_median, "nanmedian"),
-        (_default_average, "nanmean"),
-        (_default_sum, "nansum"),
-        (_default_std, "nanstd"),
-    ],
-)
-def test_bottleneck_defaults_respect_array_namespace(default_func, function_name):
-    bottleneck = pytest.importorskip("bottleneck")
+# Each of the four Combiner defaults, paired with the name of the native
+# function it prefers and the spec-only fallback it uses when the namespace
+# has none. None of the four names are in the array API standard, so on a
+# minimal namespace (array-api-strict) every one of them falls back.
+_DEFAULT_FUNCS = [
+    (_default_median, "nanmedian", nanmedian),
+    (_default_average, "nanmean", nanmean),
+    (_default_sum, "nansum", nansum),
+    (_default_std, "nanstd", nanstd),
+]
 
+
+@pytest.mark.parametrize(("default_func", "function_name", "fallback"), _DEFAULT_FUNCS)
+def test_bottleneck_defaults_respect_array_namespace(
+    default_func, function_name, fallback
+):
     default = default_func(xp=xp)
 
     if array_api_compat.is_numpy_namespace(xp):
+        # Only this branch needs bottleneck; skipping the whole test on it
+        # would leave the fallback branch below dead on the strict job,
+        # whose env deliberately omits bottleneck.
+        bottleneck = pytest.importorskip("bottleneck")
         expected = getattr(bottleneck, function_name)
     elif hasattr(xp, function_name):
         expected = getattr(xp, function_name)
     else:
-        # The namespace has no such function -- array-api-strict has no
-        # nanmedian, for one. Only the median has a spec-only fallback; the
-        # others raise RuntimeError inside default_func above, so in practice
-        # only nanmedian reaches here.
+        # The namespace has no such function -- array-api-strict has none of
+        # the four -- so the spec-only fallback stands in, bound to it.
         assert isinstance(default, partial)
-        assert default.func is nanmedian
+        assert default.func is fallback
         assert default.keywords == {"xp": xp}
         return
     assert default is expected
 
 
-def test_default_median_falls_back_without_nanmedian():
-    # A namespace with no nanmedian (it is not in the array API standard)
-    # gets the spec-only fallback, bound to that namespace. Use a stand-in
-    # namespace so this is exercised regardless of which backend is under
-    # test; every backend in CI happens to provide nanmedian.
+@pytest.mark.parametrize(("default_func", "_name", "fallback"), _DEFAULT_FUNCS)
+def test_defaults_fall_back_without_native_nan_function(default_func, _name, fallback):
+    # A namespace with none of the nan-aware reductions (not one of them is in
+    # the array API standard) gets the spec-only fallback, bound to that
+    # namespace. Use a stand-in namespace so this is exercised regardless of
+    # which backend is under test; most backends in CI happen to provide all
+    # four natively.
     fake_xp = types.ModuleType("not_a_real_array_namespace")
-    default = _default_median(xp=fake_xp)
+    default = default_func(xp=fake_xp)
 
     assert isinstance(default, partial)
-    assert default.func is nanmedian
+    assert default.func is fallback
     assert default.keywords == {"xp": fake_xp}
 
 

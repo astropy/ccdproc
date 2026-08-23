@@ -6,13 +6,20 @@ New Features
 
 - Add ``array-api-strict`` (on a non-default device) as a test backend, a
   CPU-only proxy for CuPy device behavior. [#942]
+- Allow ``ImageFileCollection.ccds`` to override the collection's FITS
+  extension per call with ``ccd_kwargs["hdu"]`` while preserving ``ext=`` as
+  a header filter. [#960]
+
+Other Changes and Additions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 - Add triage tooling for array-API backend failures: ``backend_xfail`` /
   ``backend_skip`` markers, an escape-site report
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
   (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#942]
-- Allow ``ImageFileCollection.ccds`` to override the collection's FITS
-  extension per call with ``ccd_kwargs["hdu"]`` while preserving ``ext=`` as
-  a header filter. [#960]
+- Add a ``strict`` tox environment for running the ``array-api-strict`` test
+  suite locally: ``tox -e strict`` reproduces the CI ``py313-strict`` job
+  without having to name the interpreter. [#986]
 
 Bug Fixes
 ^^^^^^^^^
@@ -28,6 +35,10 @@ Bug Fixes
 - Add a NaN-aware median written purely in terms of the array API standard
   and use it in ``Combiner.median_combine`` when the selected array namespace
   has no ``nanmedian``, instead of raising ``RuntimeError``. [#906]
+- Add NaN-aware sum, mean and standard deviation written purely in terms of
+  the array API standard and use them in ``Combiner.average_combine`` and
+  ``Combiner.sum_combine`` when the selected array namespace has no
+  ``nansum``/``nanmean``/``nanstd``, instead of raising ``RuntimeError``. [#986]
 - Make ``flat_correct`` and ``ccdmask`` use functional array updates so they
   support immutable array-API backends. [#956]
 - Build the ``Combiner`` data and mask arrays with ``xp.stack`` instead of
