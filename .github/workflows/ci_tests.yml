@@ -40,12 +40,17 @@ jobs:
             os: ubuntu-latest
             python: '3.12'
             tox_env: 'py312-test-alldeps-cov'
+            codecov_flags: 'numpy'
 
-          # Test non-numpy array libraries
+          # Test non-numpy array libraries. These also upload coverage:
+          # the array-API-only code paths (wrapper classes, spec-only
+          # fallbacks) are never executed by the numpy coverage job above,
+          # so without these uploads codecov reports them as uncovered.
           - name: 'ubuntu-py313-jax'
             os: ubuntu-latest
             python: '3.13'
-            tox_env: 'py313-jax'
+            tox_env: 'py313-jax-cov'
+            codecov_flags: 'jax'
 
           # Move bottleneck test a test without coverage
           - name: 'ubuntu-py312-bottleneck'
@@ -71,7 +76,8 @@ jobs:
           - name: 'ubuntu-py312-dask-escape-baseline'
             os: ubuntu-latest
             python: '3.12'
-            tox_env: 'py312-alldeps-dask-enforce'
+            tox_env: 'py312-alldeps-dask-enforce-cov'
+            codecov_flags: 'dask'
 
           - name: 'windows-py312'
             os: windows-latest
@@ -123,6 +129,8 @@ jobs:
     - name: Upload coverage to codecov
       if: "endsWith(matrix.tox_env, '-cov')"
       uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v7.0.0
+      with:
+        flags: ${{ matrix.codecov_flags }}
 
   # The strict array-API job is in its own matrix so that its failures --
   # expected until the remaining array-API bugs are fixed -- stay visible
