@@ -56,6 +56,9 @@ Bug Fixes
 - Keep ``Combiner.clip_extrema`` index arithmetic in the selected array
   namespace so GPU-backed arrays do not require an implicit conversion to
   NumPy. [#954]
+- Fix ``background_deviation_box`` discarding the result of the functional
+  array update, which left the output at the global standard deviation on
+  immutable array-API backends such as JAX. [#963]
 
 2.5.1 (2025-07-05)
 ------------------
