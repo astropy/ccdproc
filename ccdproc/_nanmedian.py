@@ -18,15 +18,18 @@ def nanmedian(x, /, *, axis=0, xp=None):
     """
     Median along an axis, ignoring NaNs, using only array-API functions.
 
-    The input is sorted along ``axis`` (NaNs sort to the end per the array
-    API specification), the number of non-NaN entries ``n`` is counted, and
-    the elements at positions ``(n - 1) // 2`` and ``n // 2`` are gathered
-    and averaged. Slices that are entirely NaN yield NaN.
+    NaNs are replaced by ``+inf`` and the result is sorted along ``axis``,
+    so that the first ``n`` positions hold the non-NaN values in order no
+    matter where the namespace's ``sort`` places NaNs (the standard leaves
+    that implementation-defined). The number of non-NaN entries ``n`` is
+    counted, and the elements at positions ``(n - 1) // 2`` and ``n // 2``
+    are gathered and averaged. Slices that are entirely NaN yield NaN.
 
     Parameters
     ----------
     x : array
-        Input array. Integer inputs are promoted to ``float64``.
+        Input array. Integer and boolean inputs are promoted to the
+        namespace's default real floating dtype.
     axis : int, optional
         Axis along which to compute the median. Default is 0.
         ``None`` and tuples of axes are not supported.
@@ -50,10 +53,8 @@ def nanmedian(x, /, *, axis=0, xp=None):
             "nanmedian fallback supports only a single integer axis."
         )
 
-    xp = xp or array_api_compat.array_namespace(x)
-
-    if not xp.isdtype(x.dtype, "real floating"):
-        x = xp.astype(x, xp.float64)
+    if xp is None:
+        xp = array_api_compat.array_namespace(x)
 
     ndim = x.ndim
     if not -ndim <= axis < ndim:
@@ -61,10 +62,24 @@ def nanmedian(x, /, *, axis=0, xp=None):
     axis = axis % ndim
 
     device = array_api_compat.device(x)
-    s = xp.sort(x, axis=axis)
+
+    if not xp.isdtype(x.dtype, "real floating"):
+        # Promote to the namespace's default real dtype rather than hardcoding
+        # float64: jax without JAX_ENABLE_X64 has no float64 and warns when one
+        # is requested, which pytest's filterwarnings turns into an error.
+        info = xp.__array_namespace_info__()
+        x = xp.astype(x, info.default_dtypes(device=device)["real floating"])
+
+    # Replacing NaNs with +inf keeps them past every real value regardless of
+    # how the namespace orders NaNs in ``sort``. Genuine +inf entries compare
+    # equal to the sentinels, so positions below ``n`` are unaffected.
+    s = xp.sort(
+        xp.where(xp.isnan(x), xp.asarray(xp.inf, dtype=x.dtype, device=device), x),
+        axis=axis,
+    )
 
     # Number of non-NaN values along the axis, kept broadcastable.
-    n = xp.sum(xp.astype(~xp.isnan(x), xp.int64), axis=axis, keepdims=True)
+    n = xp.sum(xp.astype(~xp.isnan(x), xp.int32), axis=axis, keepdims=True)
     lo = (n - 1) // 2
     hi = n // 2
 

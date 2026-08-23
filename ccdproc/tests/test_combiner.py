@@ -124,15 +124,15 @@ def test_bottleneck_defaults_respect_array_namespace(default_func, function_name
         expected = getattr(bottleneck, function_name)
     elif hasattr(xp, function_name):
         expected = getattr(xp, function_name)
-    elif function_name == "nanmedian":
-        # No nanmedian in the namespace: the spec-only fallback is used,
-        # bound to this namespace.
+    else:
+        # The namespace has no such function -- array-api-strict has no
+        # nanmedian, for one. Only the median has a spec-only fallback; the
+        # others raise RuntimeError inside default_func above, so in practice
+        # only nanmedian reaches here.
         assert isinstance(default, partial)
         assert default.func is nanmedian
         assert default.keywords == {"xp": xp}
         return
-    else:
-        pytest.skip(f"{xp.__name__} has no {function_name}")
     assert default is expected
 
 
