@@ -794,8 +794,11 @@ def test_cosmicray_median_mask_shape_mismatch():
     from ccdproc.core import _cosmicray_median_array
 
     np_data = default_rng(seed=4).normal(size=(20, 20))
+    # Use the compat namespace, as the public function does: plain numpy < 2
+    # has no ``bool`` attribute.
+    np_xp = array_api_compat.array_namespace(np_data)
 
     with pytest.raises(ValueError, match="mask is not the same shape"):
         _cosmicray_median_array(
-            np_data, np_zeros((10, 20), dtype=bool), 1.0, 5, 11, 0, 0, np
+            np_data, np_zeros((10, 20), dtype=bool), 1.0, 5, 11, 0, 0, np_xp
         )
