@@ -80,6 +80,10 @@ def nanmedian(x, /, *, axis=0, xp=None):
 
     # Number of non-NaN values along the axis, kept broadcastable.
     n = xp.sum(xp.astype(~xp.isnan(x), xp.int32), axis=axis, keepdims=True)
+    # For odd ``n`` these collapse to the same index, so the middle entry is
+    # picked twice and averaged with itself -- exact, bar overflow when the
+    # value exceeds half the dtype's maximum (numpy.nanmedian overflows there
+    # too). For ``n == 0`` ``lo`` is -1, which matches no index; see below.
     lo = (n - 1) // 2
     hi = n // 2
 
@@ -93,5 +97,10 @@ def nanmedian(x, /, *, axis=0, xp=None):
     hi_val = xp.sum(xp.where(idx == hi, s, zero), axis=axis)
     result = (lo_val + hi_val) / 2
 
+    # This guard is load-bearing, not defensive: for an all-NaN slice ``n`` is
+    # 0, so ``lo`` is -1 and matches no index (``lo_val`` sums to zero) while
+    # ``hi`` is 0 and picks s[0], which is one of the +inf sentinels above.
+    # ``result`` is therefore +inf rather than NaN, and only this ``where``
+    # makes an all-NaN slice yield NaN. Do not remove it as redundant.
     nan = xp.asarray(xp.nan, dtype=s.dtype, device=device)
     return xp.where(xp.squeeze(n, axis=axis) == 0, nan, result)
