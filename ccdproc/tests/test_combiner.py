@@ -17,6 +17,7 @@ from ccdproc import create_deviation
 from ccdproc._nanfuncs import nanmean, nanmedian, nanstd, nansum
 from ccdproc.combiner import (
     Combiner,
+    _calculate_size_of_image,
     _calculate_step_sizes,
     _default_average,
     _default_median,
@@ -269,18 +270,11 @@ def test_combiner_stacks_arrays_on_input_device():
     assert float(xp.max(xp.abs(c.scaling - (1.0 + 1 / 16)))) < 1e-6
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="combine() sizes the image with .nbytes, which array-api-strict "
-    "does not provide",
-)
 def test_combine_scale_callable_returning_backend_scalar():
     # Added in #976: ``combine(scale=<callable>)`` must accept a callable that
     # returns a 0-d array of the backend. Only array-api-strict rejects the
-    # previous ``xp.asarray([0-d array, ...])``, and on that backend
-    # ``combine()`` currently fails earlier on ``ccd.data.nbytes``, so this
-    # test cannot yet fail because of the scaling path on any backend; it
-    # will start guarding it once ``combine()`` stops using ``.nbytes``.
+    # previous ``xp.asarray([0-d array, ...])``, so this test guards the
+    # scaling path on that backend.
     ccds = [
         CCDData(xp.full((4, 4), float(i), dtype=xp.float64), unit=u.adu)
         for i in (1, 2, 4)
@@ -445,7 +439,7 @@ def test_combiner_weighted_average_preserves_custom_scale_func():
     "ignore:invalid value encountered in divide:RuntimeWarning",
 )
 def test_combiner_weighted_average_fully_masked():
-    mask = xp.ones((1, 1), dtype=bool)
+    mask = xp.ones((1, 1), dtype=xp.bool)
     ccd_list = [
         CCDData(xp.ones((1, 1)), unit=u.adu, mask=mask),
         CCDData(xp.ones((1, 1)), unit=u.adu, mask=mask),
@@ -814,7 +808,7 @@ def test_combiner_image_file_collection_input(tmp_path):
     for a_ccd in ccds:
         a_ccd.data = xp.asarray(a_ccd.data, dtype=xp.float64)
         if a_ccd.mask is not None:
-            a_ccd.mask = xp.asarray(a_ccd.mask, dtype=bool)
+            a_ccd.mask = xp.asarray(a_ccd.mask, dtype=xp.bool)
         if a_ccd.uncertainty is not None:
             a_ccd.uncertainty.array = xp.asarray(
                 a_ccd.uncertainty.array, dtype=xp.float64
@@ -869,6 +863,18 @@ def test_combine_average_ccddata():
     avgccd = combine(ccd_list, output_file=None, method="average", unit=u.adu)
     # averaging same ccdData should give back same images
     assert xp.all(xpx.isclose(avgccd.data, ccd_by_combiner.data))
+
+
+# combine() sizes images without ``.nbytes``, which not every array library
+# provides; check the count against the known element sizes.
+def test_calculate_size_of_image():
+    ccd = CCDData(
+        xp.zeros((7, 5), dtype=xp.float32),
+        unit=u.adu,
+        mask=xp.zeros((7, 5), dtype=xp.bool),
+    )
+    # float32 data (4 bytes) plus bool mask (1 byte)
+    assert _calculate_size_of_image(ccd) == 7 * 5 * (4 + 1)
 
 
 # test combiner convenience function reads fits file and
@@ -966,7 +972,7 @@ def test_combine_ccd_with_uncertainty_and_mask_from_fits(scale, tmp_path):
     ccd_data = CCDData.read(fitsfile, unit=u.adu)
     ccd_data.data = xp.asarray(ccd_data.data, dtype=xp.float64)
     # Set ._mask instead of .mask to avoid conversion to numpy array
-    ccd_data._mask = xp.zeros_like(ccd_data.data, dtype=bool)
+    ccd_data._mask = xp.zeros_like(ccd_data.data, dtype=xp.bool)
     if scale == "function":
         scale_by_mean = _make_mean_scaler(ccd_data)
     else:
@@ -1099,7 +1105,7 @@ def test_combiner_uncertainty_average():
 
 # test resulting uncertainty is corrected for the number of images (with mask)
 def test_combiner_uncertainty_average_mask():
-    mask = xp.zeros((10, 10), dtype=bool)
+    mask = xp.zeros((10, 10), dtype=xp.bool)
     mask = xpx.at(mask)[5, 5].set(True)
     ccd_with_mask = CCDData(xp.ones((10, 10)), unit=u.adu, mask=mask)
     ccd_list = [
@@ -1122,7 +1128,7 @@ def test_combiner_uncertainty_average_mask():
 # test resulting uncertainty is corrected for the number of images (with mask)
 def test_combiner_uncertainty_median_mask():
     mad_to_sigma = 1.482602218505602
-    mask = xp.zeros((10, 10), dtype=bool)
+    mask = xp.zeros((10, 10), dtype=xp.bool)
     mask = xpx.at(mask)[5, 5].set(True)
     ccd_with_mask = CCDData(xp.ones((10, 10)), unit=u.adu, mask=mask)
     ccd_list = [
@@ -1147,7 +1153,7 @@ def test_combiner_uncertainty_median_mask():
 
 # test resulting uncertainty is corrected for the number of images (with mask)
 def test_combiner_uncertainty_sum_mask():
-    mask = xp.zeros((10, 10), dtype=bool)
+    mask = xp.zeros((10, 10), dtype=xp.bool)
     mask = xpx.at(mask)[5, 5].set(True)
     ccd_with_mask = CCDData(xp.ones((10, 10)), unit=u.adu, mask=mask)
     ccd_list = [

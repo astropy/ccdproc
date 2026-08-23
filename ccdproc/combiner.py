@@ -514,7 +514,7 @@ class Combiner:
         xp = self._xp
 
         # Get the data as an unmasked array with masked values filled as NaN
-        if self._data_arr_mask.any():
+        if xp.any(self._data_arr_mask):
             # Use array_api_extra so that we can use at with all array libraries
             data = xpx.at(data)[self._data_arr_mask].set(xp.nan)
         else:
@@ -533,9 +533,9 @@ class Combiner:
             combo_func = default_func
             # Subtitute NaN for masked entries
             data = self._get_nan_substituted_data(data)
-            masked_values = xp.isnan(data).sum(axis=0)
+            masked_values = xp.count_nonzero(xp.isnan(data), axis=0)
         else:
-            masked_values = self._data_arr_mask.sum(axis=0)
+            masked_values = xp.count_nonzero(self._data_arr_mask, axis=0)
             combo_func = user_func
 
         return data, masked_values, combo_func
@@ -589,7 +589,7 @@ class Combiner:
         medianed = median_func(data, axis=0)
 
         # set the mask
-        mask = masked_values == len(self._data_arr)
+        mask = masked_values == self._data_arr.shape[0]
 
         # set the uncertainty
 
@@ -608,7 +608,9 @@ class Combiner:
         # in the data.
         uncertainty = xp.asarray(uncertainty)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty = uncertainty / xp.sqrt(len(self._data_arr) - masked_values)
+        uncertainty = uncertainty / xp.sqrt(
+            xp.astype(self._data_arr.shape[0] - masked_values, xp.float64)
+        )
 
         # create the combined image with a dtype matching the combiner
         combined_image = CCDData(
@@ -619,7 +621,7 @@ class Combiner:
         )
 
         # update the meta data
-        combined_image.meta["NCOMBINE"] = len(self._data_arr)
+        combined_image.meta["NCOMBINE"] = self._data_arr.shape[0]
 
         # return the combined image
         return combined_image
@@ -632,7 +634,7 @@ class Combiner:
         xp = xp or array_api_compat.array_namespace(data)
         if self.weights.shape != data.shape:
             # Add extra axes to the weights for broadcasting
-            weights = xp.reshape(self.weights, [len(self.weights), 1, 1])
+            weights = xp.reshape(self.weights, (self.weights.shape[0], 1, 1))
         else:
             weights = self.weights
 
@@ -709,12 +711,14 @@ class Combiner:
 
         # calculate the mask
 
-        mask = masked_values == len(self._data_arr)
+        mask = masked_values == self._data_arr.shape[0]
 
         # set up the deviation
         uncertainty = uncertainty_func(data, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty = uncertainty / xp.sqrt(len(data) - masked_values)
+        uncertainty = uncertainty / xp.sqrt(
+            xp.astype(data.shape[0] - masked_values, xp.float64)
+        )
         # Make sure the uncertainty is an array in the combiner's namespace
         uncertainty = xp.asarray(uncertainty)
 
@@ -727,7 +731,7 @@ class Combiner:
         )
 
         # update the meta data
-        combined_image.meta["NCOMBINE"] = len(data)
+        combined_image.meta["NCOMBINE"] = data.shape[0]
 
         # return the combined image
         return combined_image
@@ -783,16 +787,18 @@ class Combiner:
             summed = sum_func(data, axis=0)
 
         # set up the mask
-        mask = masked_values == len(self._data_arr)
+        mask = masked_values == self._data_arr.shape[0]
 
         # set up the deviation
         uncertainty = uncertainty_func(data, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty = uncertainty / xp.sqrt(len(data) - masked_values)
+        uncertainty = uncertainty / xp.sqrt(
+            xp.astype(data.shape[0] - masked_values, xp.float64)
+        )
         # Make sure the uncertainty is an array in the combiner's namespace
         uncertainty = xp.asarray(uncertainty)
         # Multiply uncertainty by square root of the number of images
-        uncertainty = uncertainty * (len(data) - masked_values)
+        uncertainty = uncertainty * xp.astype(data.shape[0] - masked_values, xp.float64)
 
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(
@@ -803,7 +809,7 @@ class Combiner:
         )
 
         # update the meta data
-        combined_image.meta["NCOMBINE"] = len(self._data_arr)
+        combined_image.meta["NCOMBINE"] = self._data_arr.shape[0]
 
         # return the combined image
         return combined_image
@@ -836,28 +842,45 @@ def _calculate_step_sizes(x_size, y_size, num_chunks):
     return xstep, ystep
 
 
+def _array_size_in_bytes(arr):
+    # ``nbytes`` is not part of the array API standard, so get the size from
+    # the element count and the dtype's bit width instead. ``finfo``/``iinfo``
+    # report the bit width of a single component, so complex dtypes need a
+    # factor of two.
+    xp = array_api_compat.array_namespace(arr)
+    dtype = arr.dtype
+    if xp.isdtype(dtype, "bool"):
+        bits = 8
+    elif xp.isdtype(dtype, "integral"):
+        bits = xp.iinfo(dtype).bits
+    elif xp.isdtype(dtype, "complex floating"):
+        bits = 2 * xp.finfo(dtype).bits
+    else:
+        bits = xp.finfo(dtype).bits
+    return array_api_compat.size(arr) * bits // 8
+
+
 def _calculate_size_of_image(ccd):
     # If uncertainty_func is given for combine this will create an uncertainty
     # even if the originals did not have one. In that case we need to create
     # an empty placeholder.
 
-    size_of_an_img = ccd.data.nbytes
+    size_of_an_img = _array_size_in_bytes(ccd.data)
     try:
-        size_of_an_img += ccd.uncertainty.array.nbytes
+        size_of_an_img += _array_size_in_bytes(ccd.uncertainty.array)
     # In case uncertainty is None it has no "array" and in case the "array" is
-    # not a numpy array:
-    except AttributeError:
+    # not an array at all:
+    except (AttributeError, TypeError):
         pass
-    # Mask is enforced to be a numpy.array across astropy versions
     if ccd.mask is not None:
-        size_of_an_img += ccd.mask.nbytes
-    # flags is not necessarily a numpy array so do not fail with an
-    # AttributeError in case something was set!
+        size_of_an_img += _array_size_in_bytes(ccd.mask)
+    # flags is not necessarily an array so do not fail in case something
+    # was set!
     # TODO: Flags are not taken into account in Combiner. This number is added
     #       nevertheless for future compatibility.
     try:
-        size_of_an_img += ccd.flags.nbytes
-    except AttributeError:
+        size_of_an_img += _array_size_in_bytes(ccd.flags)
+    except (AttributeError, TypeError):
         pass
 
     return size_of_an_img

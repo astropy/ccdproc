@@ -21,7 +21,7 @@ class _NDDataArray(NDDataArray):
         xp = array_api_compat.array_namespace(self.data)
         # Check that value is not either type of null mask.
         if (value is not None) and (value is not np.ma.nomask):
-            mask = xp.asarray(value, dtype=bool)
+            mask = xp.asarray(value, dtype=xp.bool)
             if mask.shape != self.data.shape:
                 raise ValueError(
                     f"dimensions of mask {mask.shape} and data "
@@ -163,7 +163,7 @@ class _CCDDataWrapperForArrayAPI(CCDData):
         xp = array_api_compat.array_namespace(self.data)
         # Check that value is not either type of null mask.
         if (value is not None) and (value is not np.ma.nomask):
-            mask = xp.asarray(value, dtype=bool)
+            mask = xp.asarray(value, dtype=xp.bool)
             if mask.shape != self.data.shape:
                 raise ValueError(
                     f"dimensions of mask {mask.shape} and data "
