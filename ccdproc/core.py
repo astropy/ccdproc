@@ -474,7 +474,7 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False, x
     mask = data < 0
 
     if disregard_nan:
-        data = data * ~mask
+        data = data * xp.astype(~mask, data.dtype)
     else:
         # data[mask] = xp.nan
         logging.warning("Negative values in array will be replaced with nan")
@@ -870,11 +870,15 @@ def subtract_dark(
             # The xp.asarray ensures that even the scale factor is an instance
             # of the array class. Using a plain float leads (because of a conversion
             # to numpy float) to numpy being used for the calculation.
-            _master_scaled = _master_scaled.multiply(xp.asarray(scale_factor))
+            _master_scaled = _master_scaled.multiply(
+                xp.asarray(
+                    scale_factor, device=array_api_compat.device(_master_scaled.data)
+                )
+            )
             _result = _ccd.subtract(_master_scaled, handle_mask=xp.logical_or)
         else:
             _result = _ccd.subtract(_master, handle_mask=xp.logical_or)
-    except (u.UnitsError, u.UnitConversionError, ValueError) as err:
+    except (u.UnitsError, u.UnitConversionError) as err:
         # Make the error message a little more explicit than what is returned
         # by default.
         raise u.UnitsError(
@@ -1344,7 +1348,7 @@ def background_deviation_box(data, bbox, xp=None):
     for i in range(int(0.5 * bbox), xlen, bbox):
         for j in range(int(0.5 * bbox), ylen, bbox):
             x1, x2, y1, y2 = setbox(i, j, bbox, xlen, ylen)
-            xpx.at(barr)[y1:y2, x1:x2].set(float(sigma_func(data[y1:y2, x1:x2])))
+            barr = xpx.at(barr)[y1:y2, x1:x2].set(float(sigma_func(data[y1:y2, x1:x2])))
 
     return barr
 
@@ -1475,8 +1479,8 @@ def rebin(ccd, newshape):
         # Not every array package has mgrid, so we do the mgrid with
         # numpy and convert to the array package used by ccd.data.
 
-        coordinates = xp.asarray(np_mgrid[slices])
-        indices = coordinates.astype("i")
+        coordinates = xp.asarray(np_mgrid[slices], device=array_api_compat.device(ccd))
+        indices = xp.astype(coordinates, xp.int32)
 
         try:
             result = ccd[tuple(indices)]

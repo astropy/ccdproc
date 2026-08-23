@@ -25,10 +25,23 @@ Bug Fixes
   Previously the input mask was silently ignored. [#932]
 - Make ``flat_correct`` and ``ccdmask`` use functional array updates so they
   support immutable array-API backends. [#956]
+- Build the ``Combiner`` data and mask arrays with ``xp.stack`` instead of
+  passing a nested list of arrays to ``xp.asarray``, and keep the mask and
+  scaling arrays in the namespace and on the device of the input data.
+  ``Combiner.scaling`` is now cast to the dtype of the data, accepts an
+  array-API array without ``__len__``, and is reshaped to exactly one
+  broadcast axis per image dimension, so a ``(N, 1)`` scaling array or a
+  callable returning a one-element array no longer adds a spurious trailing
+  dimension to the combined image. [#965]
 - Fix the fallback percentile calculation for array namespaces that do not
   provide ``percentile``. [#957]
+- Cast the boolean mask to the data dtype in ``create_deviation`` so that
+  ``disregard_nan=True`` works with strict array-API backends. [#968]
 - Make array-API escape logging thread-safe so concurrent worker escapes are
   not missed. [#955]
+- Create the dark scale factor in ``subtract_dark(scale=True)`` on the same
+  device as the master dark, and stop reporting non-unit errors from the
+  subtraction as unit mismatches. [#966]
 - Fix dtype conversion in ``Combiner._weighted_sum`` to use the array-API
   namespace form ``xp.astype(weights, xp.float64)`` instead of the deprecated
   string-based ``.astype("float64")``. This resolves the ``DeprecationWarning``
@@ -41,9 +54,15 @@ Bug Fixes
 
 - Use Bottleneck combination functions only with NumPy arrays, preserving the
   selected Array API namespace for other backends. [#904, #959]
+- Make ``rebin`` build its index array with ``xp.astype`` on the input array's
+  device instead of the NumPy-only ``.astype`` method, so it works with
+  array-API backends such as ``array-api-strict``. [#967]
 - Keep ``Combiner.clip_extrema`` index arithmetic in the selected array
   namespace so GPU-backed arrays do not require an implicit conversion to
   NumPy. [#954]
+- Fix ``background_deviation_box`` discarding the result of the functional
+  array update, which left the output at the global standard deviation on
+  immutable array-API backends such as JAX. [#963]
 
 2.5.1 (2025-07-05)
 ------------------
