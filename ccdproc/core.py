@@ -1988,8 +1988,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0, x
     ccd : `~astropy.nddata.CCDData`, `numpy.ndarray` or other array_like
         Data to have cosmic ray cleaned. If the input has a mask (the ``mask``
         of a `~astropy.nddata.CCDData`, or a `numpy.ma.MaskedArray`), masked
-        pixels are never flagged as cosmic rays and do not affect the
-        detection; see Notes.
+        pixels are never flagged as cosmic rays; see Notes.
 
     thresh : float, optional
         Threshold for detecting cosmic rays.
@@ -2023,13 +2022,13 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0, x
     Similar implementation to crmedian in iraf.imred.crutil.crmedian.
 
     If ``ccd`` is a `~astropy.nddata.CCDData` with a mask, or a
-    `numpy.ma.MaskedArray` (or any array with a non-empty ``mask``
-    attribute), the masked pixels are never flagged as cosmic rays.
-    For the purposes of detection and replacement they are treated as if they
-    had the local median value of the unmasked data, so they do not affect
-    the detection of cosmic rays in neighboring pixels. The masked pixels are
-    returned unchanged in the output data array, and the returned cosmic-ray
-    mask is ``False`` there.
+    `numpy.ma.MaskedArray`, the masked pixels are never flagged as cosmic
+    rays (including by the ``gbox`` growth step), they are returned unchanged
+    in the output data, and, when ``error_image`` is `None`, they are excluded
+    from the noise estimate. They are *not* excluded from the median filter
+    itself, so very bright masked pixels can still influence the local median
+    of their unmasked neighbors. For a `~astropy.nddata.CCDData` the returned
+    mask is the union of the input mask and the detected cosmic rays.
 
     Returns
     -------
@@ -2122,47 +2121,43 @@ def _cosmicray_median_array(data, in_mask, error_image, thresh, mbox, gbox, rbox
             in_mask, dtype=xp.bool, device=array_api_compat.device(data)
         )
 
+    if in_mask is not None and not bool(xp.any(~in_mask)):
+        # Everything is masked, so nothing can be a cosmic ray.
+        return xp.asarray(data, copy=True), xp.zeros_like(in_mask)
+
     if error_image is None:
-        error_image = xp.std(data)
+        # Estimate the noise from the unmasked pixels only, so that bright
+        # masked pixels (e.g. a saturated column) do not inflate the
+        # detection threshold.
+        if in_mask is None:
+            error_image = xp.std(data)
+        else:
+            error_image = xp.std(data[~in_mask])
     elif not isinstance(error_image, float):
         if not _is_array(error_image):
             raise TypeError("error_image is not a float or ndarray.")
 
-    if in_mask is None:
-        filt_data = data
-        marr = xp.asarray(ndimage.median_filter(data, size=(mbox, mbox)))
-    else:
-        # Masked input pixels must not contaminate the median filter, so
-        # they are replaced before filtering. The replacement cannot depend
-        # on the masked values themselves (a masked region wider than the
-        # filter box would otherwise just reproduce them), so start from
-        # the mean of the unmasked data, compute the local median, and then
-        # refine once by replacing the masked pixels with that local
-        # median. The original values are kept in the output.
-        keep = ~in_mask
-        n_keep = xp.sum(xp.astype(keep, data.dtype))
-        if float(n_keep) == 0:
-            # Everything is masked, so nothing can be a cosmic ray.
-            return xp.asarray(data, copy=True), xp.zeros_like(in_mask)
-        fill = xp.sum(xp.where(keep, data, 0)) / n_keep
-        filt_data = xp.where(in_mask, fill, data)
-        marr = xp.asarray(ndimage.median_filter(filt_data, size=(mbox, mbox)))
-        filt_data = xp.where(in_mask, marr, data)
-        marr = xp.asarray(ndimage.median_filter(filt_data, size=(mbox, mbox)))
+    # create the median image. Note that scipy.ndimage knows nothing about
+    # masks, so masked pixels are included in the median like any other.
+    marr = xp.asarray(ndimage.median_filter(data, size=(mbox, mbox)))
 
     # Find the residual image
-    rarr = (filt_data - marr) / error_image
+    rarr = (data - marr) / error_image
 
     # identify all sources
     crarr = rarr > thresh
 
+    if in_mask is not None:
+        # Masked input pixels are never flagged as cosmic rays, and must not
+        # seed the growth step below.
+        crarr = crarr & ~in_mask
+
     # grow the pixels
     if gbox > 0:
         crarr = xp.asarray(ndimage.maximum_filter(crarr, gbox))
-
-    if in_mask is not None:
-        # Masked input pixels are never flagged as cosmic rays.
-        crarr = crarr & ~in_mask
+        if in_mask is not None:
+            # Growth must not extend into masked pixels either.
+            crarr = crarr & ~in_mask
 
     # replace bad pixels in the image
     ndata = xp.asarray(data, copy=True)
@@ -2172,7 +2167,7 @@ def _cosmicray_median_array(data, in_mask, error_image, thresh, mbox, gbox, rbox
         # data = np.ma.masked_array(data, (crarr == 1))
 
         # make sure that mdata is the same type as data
-        mdata = xp.asarray(ndimage.median_filter(filt_data, rbox))
+        mdata = xp.asarray(ndimage.median_filter(data, rbox))
         ndata = xp.where(crarr, mdata, data)
 
     return ndata, crarr

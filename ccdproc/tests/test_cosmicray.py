@@ -22,6 +22,7 @@ from numpy.random import default_rng
 from numpy.testing import assert_allclose
 
 # Set up the array library to be used in tests
+from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import (
     background_deviation_box,
@@ -481,31 +482,56 @@ def test_cosmicray_median_masked():
     assert_allclose(np_array(ndata)[np_mask], np_data[np_mask])
 
 
-def test_cosmicray_median_masked_region_does_not_bias_neighbors():
-    # Regression test for #932: a masked region of very bright pixels must not
-    # raise the local median of the pixels next to it. The region is wider
-    # than the median box, so an adjacent pixel's box is almost half masked;
-    # if the masked values leaked into the median, a marginal cosmic ray next
-    # to the region would be missed.
-    rng = default_rng(seed=1)
-    sigma = 1.0
-    np_data = rng.normal(loc=0, scale=sigma, size=(100, 100))
+def _masked_column_image(seed=1, sigma=1.0):
+    """
+    A flat noise image with a masked, saturated column and two cosmic rays:
+    one well away from the column and one immediately next to it.
+    """
+    rng = default_rng(seed=seed)
+    np_data = rng.normal(loc=100.0, scale=sigma, size=(60, 60))
     np_mask = np_zeros(np_data.shape, dtype=bool)
-    np_mask[40:61, 40:54] = True
-    np_data[np_mask] = 1e4 * sigma
-    threshold = 5
-    cr_y, cr_x = 50, 54  # immediately to the right of the masked region
-    np_data[cr_y, cr_x] = 1.1 * threshold * sigma
+    np_mask[:, 30] = True
+    np_data[np_mask] = 65535.0
+    crays = [(10, 10), (40, 31)]
+    for y, x in crays:
+        np_data[y, x] = 100.0 + 20 * sigma
+    return np_data, np_mask, crays
 
+
+def test_cosmicray_median_masked_gbox_and_rbox():
+    # Masked pixels are never flagged, not even by the gbox growth step,
+    # whether the growth would start from a masked pixel (the saturated
+    # column has an enormous residual) or spread into one from a cosmic ray
+    # next to the column; and with rbox > 0 masked pixels are returned
+    # unchanged while the cosmic rays are replaced.
+    np_data, np_mask, crays = _masked_column_image()
     masked = np_ma_array(np_data, mask=np_mask)
     ndata, crarr = cosmicray_median(
-        masked, thresh=threshold, mbox=11, error_image=sigma
+        masked, thresh=5, mbox=11, gbox=3, rbox=5, error_image=1.0
     )
     crarr = np_array(crarr)
-    assert crarr[cr_y, cr_x]
     assert not crarr[np_mask].any()
-    # the masked pixels come back untouched
-    assert_allclose(np_array(ndata)[np_mask], np_data[np_mask])
+    for y, x in crays:
+        assert crarr[y, x]
+    # growth happened around the cosmic rays (3x3 minus the masked column)
+    assert crarr.sum() == 9 + 6
+    ndata = np_array(ndata)
+    assert_allclose(ndata[np_mask], np_data[np_mask])
+    for y, x in crays:
+        assert abs(ndata[y, x] - 100.0) < 5
+
+
+def test_cosmicray_median_masked_error_image_none():
+    # With error_image=None the noise is estimated from the unmasked pixels
+    # only; if the saturated column were included, the threshold would be
+    # thousands of sigma and nothing would be detected.
+    np_data, np_mask, crays = _masked_column_image()
+    masked = np_ma_array(np_data, mask=np_mask)
+    ndata, crarr = cosmicray_median(masked, thresh=5, mbox=11, error_image=None)
+    crarr = np_array(crarr)
+    for y, x in crays:
+        assert crarr[y, x]
+    assert not crarr[np_mask].any()
 
 
 @pytest.mark.backend_xfail(
@@ -513,42 +539,26 @@ def test_cosmicray_median_masked_region_does_not_bias_neighbors():
     reason="cosmicray_median uses scipy.ndimage.median_filter, which "
     "requires numpy and fails on a non-default device",
 )
-def test_cosmicray_median_ccddata_masked_region_does_not_bias_neighbors():
-    # Same as the test above, but with the mask carried by a CCDData. The
-    # CCDData branch must forward its mask to the detection rather than only
-    # OR-ing it into the output mask.
-    rng = default_rng(seed=1)
-    sigma = 1.0
-    np_data = rng.normal(loc=0, scale=sigma, size=(100, 100))
-    np_mask = np_zeros(np_data.shape, dtype=bool)
-    np_mask[40:61, 40:54] = True
-    np_data[np_mask] = 1e4 * sigma
-    threshold = 5
-    cr_y, cr_x = 50, 54  # immediately to the right of the masked region
-    np_data[cr_y, cr_x] = 1.1 * threshold * sigma
-
+def test_cosmicray_median_ccddata_masked_gbox():
+    # The CCDData branch forwards its mask to the detection: the masked
+    # column must not be flagged nor seed growth, and the output mask is the
+    # union of the input mask and the (grown) cosmic rays.
+    np_data, np_mask, crays = _masked_column_image()
     ccd = CCDData(
-        xp.asarray(np_data),
+        xp.asarray(np_data, device=xp_device),
         unit="adu",
-        mask=xp.asarray(np_mask),
-        uncertainty=StdDevUncertainty(xp.asarray(np_data * 0.0 + sigma)),
+        mask=np_mask,
+        uncertainty=StdDevUncertainty(xp.ones_like(xp.asarray(np_data))),
     )
-    nccd = cosmicray_median(ccd, thresh=threshold, mbox=11)
+    nccd = cosmicray_median(ccd, thresh=5, mbox=11, gbox=3)
     out_mask = np_array(nccd.mask)
-    assert out_mask[cr_y, cr_x]
     assert out_mask[np_mask].all()
-    expected = np_mask.copy()
-    expected[cr_y, cr_x] = True
-    assert (out_mask == expected).all()
-    # the masked pixels come back untouched
-    assert_allclose(np_array(nccd.data)[np_mask], np_data[np_mask])
+    for y, x in crays:
+        assert out_mask[y, x]
+    assert out_mask.sum() == np_mask.sum() + 9 + 6
+    assert_allclose(np_array(nccd.data), np_data)
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
-    "requires numpy and fails on a non-default device",
-)
 def test_cosmicray_median_all_masked():
     # Every pixel masked: nothing is flagged, data are returned unchanged and
     # no warning (e.g. from a 0/0 in the fill value) is emitted.
@@ -584,7 +594,9 @@ def test_cosmicray_median_masked_nomask():
 )
 def test_cosmicray_median_ccddata_masked():
     # A CCDData input with a mask: the output mask is the union of the input
-    # mask and the detected cosmic rays.
+    # mask and the detected cosmic rays. (This cannot distinguish a masked
+    # cosmic ray that is flagged from one that is not; see
+    # test_cosmicray_median_ccddata_masked_gbox for that.)
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
     crrays = add_cosmicrays(ccd_data, DATA_SCALE, threshold, ncrays=NCRAYS)

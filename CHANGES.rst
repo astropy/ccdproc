@@ -19,10 +19,11 @@ Bug Fixes
 
 - Exclude masked and clipped pixels, and their weights, when computing weighted
   average combinations. [#952]
-- ``cosmicray_median`` now honors the mask of a ``CCDData`` or masked-array input: masked
-  pixels are never flagged as cosmic rays and are excluded from the median
-  filter, so they do not bias the detection in neighboring pixels.
-  Previously the input mask was silently ignored. [#932]
+- ``cosmicray_median`` now honors the mask of a ``CCDData`` or masked-array
+  input: masked pixels are never flagged as cosmic rays, are returned
+  unchanged, and are excluded from the noise estimate when ``error_image``
+  is not given. Previously the mask of a masked array was silently dropped
+  by the array conversion. [#932]
 - Make ``flat_correct`` and ``ccdmask`` use functional array updates so they
   support immutable array-API backends. [#956]
 - Build the ``Combiner`` data and mask arrays with ``xp.stack`` instead of
