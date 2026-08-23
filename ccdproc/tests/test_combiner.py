@@ -199,11 +199,28 @@ def test_combiner_stacks_arrays_on_input_device():
     assert not xp.any(c.mask[1, ...])
     assert xp.all(c.mask[2, ...])
 
-    # Scaling values should end up on the same device as the data.
+    # Scaling values should end up on the same device as the data, and in
+    # the dtype of the data: integer scaling must not rely on int/float type
+    # promotion, which the array API does not guarantee.
     c.scaling = [1.0, 2.0, 3.0]
     assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
+    c.scaling = [1, 2, 3]
+    assert c.scaling.dtype == c.data.dtype
+    assert float(c.scaling[1, 0, 0]) == 2.0
     c.scaling = lambda arr: float(arr.shape[0])
     assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
+    c.scaling = lambda arr: arr.shape[0]
+    assert c.scaling.dtype == c.data.dtype
+    assert float(c.scaling[0, 0, 0]) == 4.0
+    # A backend array, which need not implement __len__, is accepted as
+    # scaling as long as its length matches the number of images.
+    c.scaling = xp.asarray([1.0, 0.5, 2.0], device=xp_device)
+    assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
+    assert float(c.scaling[2, 0, 0]) == 2.0
+    with pytest.raises(ValueError, match="same length"):
+        c.scaling = xp.asarray([1.0, 0.5], device=xp_device)
+    with pytest.raises(TypeError, match="same length"):
+        c.scaling = 2.0
     # A scaling callable that returns a 0-d array of the backend (rather than
     # a Python float) must also work; array-api-strict rejects a list of such
     # arrays passed to asarray.
@@ -220,8 +237,12 @@ def test_combiner_stacks_arrays_on_input_device():
     "does not provide",
 )
 def test_combine_scale_callable_returning_backend_scalar():
-    # Regression test for the review of #976: ``combine(scale=<callable>)``
-    # must accept a callable that returns a 0-d array of the backend.
+    # Added in #976: ``combine(scale=<callable>)`` must accept a callable that
+    # returns a 0-d array of the backend. Only array-api-strict rejects the
+    # previous ``xp.asarray([0-d array, ...])``, and on that backend
+    # ``combine()`` currently fails earlier on ``ccd.data.nbytes``, so this
+    # test cannot yet fail because of the scaling path on any backend; it
+    # will start guarding it once ``combine()`` stops using ``.nbytes``.
     ccds = [
         CCDData(xp.full((4, 4), float(i), dtype=xp.float64), unit=u.adu)
         for i in (1, 2, 4)
@@ -236,6 +257,11 @@ def test_combiner_explicit_namespace_differs_from_data():
     # must not be forced onto ``xp`` (numpy's 'cpu' means nothing to jax or
     # array-api-strict). The data is converted into ``xp`` on its default
     # device instead.
+    #
+    # Only array-api-strict actually rejects a foreign device: on numpy the
+    # data namespace *is* ``xp`` so the device is legitimately reused, and
+    # dask accepts ``device='cpu'`` regardless, so this test can fail only in
+    # the array-api-strict job.
     np_ccds = [CCDData(np.ones((3, 3)) * i, unit=u.adu) for i in range(1, 3)]
     np_ccds[0].mask = np.zeros((3, 3), dtype=bool)
     c = Combiner(np_ccds, xp=xp)
@@ -246,6 +272,18 @@ def test_combiner_explicit_namespace_differs_from_data():
     assert c.data.dtype == xp.float64
     assert c.mask.dtype == xp.bool
     assert float(xp.sum(c.data)) == 27.0
+
+
+def test_combiner_accepts_raw_module_as_namespace():
+    # A plain module (numpy here) passed as ``xp`` is normalised to its
+    # array-api-compat namespace, so array-API-only features such as
+    # ``xp.bool`` and ``device=`` are available to the Combiner.
+    np_ccds = [CCDData(np.ones((2, 2)) * i, unit=u.adu) for i in range(1, 3)]
+    c = Combiner(np_ccds, xp=np)
+    assert c._xp is array_api_compat.array_namespace(np.zeros(1))
+    assert c.data.shape == (2, 2, 2)
+    c.scaling = [1, 2]
+    assert float(np.sum(c.average_combine().data)) == 10.0
 
 
 def test_weights():

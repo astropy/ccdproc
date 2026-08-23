@@ -23,7 +23,12 @@ Bug Fixes
   support immutable array-API backends. [#956]
 - Build the ``Combiner`` data and mask arrays with ``xp.stack`` instead of
   passing a nested list of arrays to ``xp.asarray``, and keep the mask and
-  scaling arrays in the namespace and on the device of the input data. [#965]
+  scaling arrays in the namespace and on the device of the input data.
+  ``Combiner.scaling`` is now cast to the dtype of the data, accepts an
+  array-API array without ``__len__``, and is reshaped to exactly one
+  broadcast axis per image dimension, so a ``(N, 1)`` scaling array or a
+  callable returning a one-element array no longer adds a spurious trailing
+  dimension to the combined image. [#965]
 - Fix the fallback percentile calculation for array namespaces that do not
   provide ``percentile``. [#957]
 - Make array-API escape logging thread-safe so concurrent worker escapes are

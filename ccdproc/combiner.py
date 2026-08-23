@@ -105,7 +105,8 @@ class Combiner:
     xp : array namespace, optional
         The array namespace to use for the data. If `None` or not provided, it will
         be inferred from the first `~astropy.nddata.CCDData` object in
-        ``ccd_iter``.
+        ``ccd_iter``. A plain module (e.g. ``numpy``) is accepted and is
+        converted to its array-API-compatible namespace.
         Default is `None`.
 
     Raises
@@ -165,8 +166,14 @@ class Combiner:
                 if not (default_unit == ccd.unit):
                     raise TypeError("CCDData objects don't have the same unit.")
 
-        # Set array namespace
-        xp = xp or array_api_compat.array_namespace(ccd_list[0].data)
+        # Set array namespace. A raw module such as ``numpy`` or ``dask.array``
+        # may lack array-API features that are used below (``xp.bool``, the
+        # ``device`` keyword), so normalise whatever the caller passed to the
+        # array-api-compat namespace of one of its arrays.
+        if xp is None:
+            xp = array_api_compat.array_namespace(ccd_list[0].data)
+        else:
+            xp = array_api_compat.array_namespace(xp.asarray(0))
         self._xp = xp
         if dtype is None:
             dtype = xp.float64
@@ -281,31 +288,41 @@ class Combiner:
         else:
             n_images = self._data_arr.shape[0]
             device = array_api_compat.device(self._data_arr)
+            dtype = self._data_arr.dtype
             if callable(value):
                 # The callable may return a Python float or a 0-d array of
                 # the backend; stack per-element conversions rather than
                 # passing a list of arrays to asarray, which array-api-strict
                 # rejects as a nested sequence of arrays.
+                # Cast to the data dtype so that scaling by, e.g., an integer
+                # does not require type promotion, which the array API does
+                # not guarantee between integer and floating dtypes.
                 self._scaling = xp.stack(
                     [
-                        xp.asarray(value(self._data_arr[i, ...]), device=device)
+                        xp.asarray(
+                            value(self._data_arr[i, ...]), dtype=dtype, device=device
+                        )
                         for i in range(n_images)
                     ]
                 )
             else:
+                # Array API arrays need not implement __len__, so use the
+                # shape where there is one and fall back to len() for lists
+                # and tuples.
                 try:
-                    len(value)
-                except TypeError as err:
+                    n_values = getattr(value, "shape", None)
+                    n_values = n_values[0] if n_values else len(value)
+                except (TypeError, IndexError) as err:
                     raise TypeError(
                         "scaling must be a function or an array "
                         "the same length as the number of images.",
                     ) from err
-                if len(value) != n_images:
+                if n_values != n_images:
                     raise ValueError(
                         "scaling must be a function or an array "
                         "the same length as the number of images."
                     )
-                self._scaling = xp.asarray(value, device=device)
+                self._scaling = xp.asarray(value, dtype=dtype, device=device)
             # reshape so that broadcasting occurs properly
             self._scaling = xp.reshape(
                 self._scaling, (n_images,) + (1,) * (self._data_arr.ndim - 1)
