@@ -786,3 +786,16 @@ def test_cosmicray_lacosmic_pssl_does_not_fail():
     # Note that to get this to succeed reliably meant tuning
     # both sigclip and the threshold
     assert nccd_data.mask.sum() == NCRAYS
+
+
+def test_cosmicray_median_mask_shape_mismatch():
+    # CCDData and MaskedArray validate the mask shape themselves, so exercise
+    # the shared helper directly.
+    from ccdproc.core import _cosmicray_median_array
+
+    np_data = default_rng(seed=4).normal(size=(20, 20))
+
+    with pytest.raises(ValueError, match="mask is not the same shape"):
+        _cosmicray_median_array(
+            np_data, np_zeros((10, 20), dtype=bool), 1.0, 5, 11, 0, 0, np
+        )

@@ -2120,6 +2120,8 @@ def _cosmicray_median_array(data, in_mask, error_image, thresh, mbox, gbox, rbox
         in_mask = xp.asarray(
             in_mask, dtype=xp.bool, device=array_api_compat.device(data)
         )
+        if in_mask.shape != data.shape:
+            raise ValueError("mask is not the same shape as data.")
 
     if in_mask is not None and not bool(xp.any(~in_mask)):
         # Everything is masked, so nothing can be a cosmic ray.
@@ -2162,10 +2164,6 @@ def _cosmicray_median_array(data, in_mask, error_image, thresh, mbox, gbox, rbox
     # replace bad pixels in the image
     ndata = xp.asarray(data, copy=True)
     if rbox > 0:
-        # Fun fact: scipy.ndimage ignores the mask, so may as well not
-        # bother with it.
-        # data = np.ma.masked_array(data, (crarr == 1))
-
         # make sure that mdata is the same type as data
         mdata = xp.asarray(ndimage.median_filter(data, rbox))
         ndata = xp.where(crarr, mdata, data)
