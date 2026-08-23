@@ -1,7 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import array_api_compat
 import array_api_extra as xpx
 import astropy.units as u
+import numpy as np
 import pytest
 from astropy.nddata import (
     CCDData,
@@ -13,6 +15,7 @@ from astropy.wcs import WCS
 
 from ccdproc import flat_correct, trim_image
 from ccdproc._ccddata_wrapper_for_array_api import (
+    _ArrayAPIPropagationMixin,
     _CCDDataWrapperForArrayAPI,
     _InverseVarianceWrapper,
     _StdDevUncertaintyWrapper,
@@ -136,3 +139,60 @@ def test_unwrap_rejects_non_ccddata():
         match="Input must be a CCDData or _CCDDataWrapperForArrayAPI instance",
     ):
         _unwrap_ccddata_for_array_api(object())
+
+
+_STRICT_STDDEV_MULDIV_XFAIL = pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="astropy's _propagate_multiply_divide applies np.sqrt/np.abs to the "
+    "std-dev result, which fails on a non-default strict device (see #940)",
+)
+
+
+def test_propagation_mixin_requires_variance_hooks():
+    """The mixin is abstract: a subclass that forgets ``_variance_hooks`` fails
+    loudly rather than silently propagating with the wrong conversions."""
+    with pytest.raises(NotImplementedError):
+        _ArrayAPIPropagationMixin._variance_hooks(xp)
+
+
+@pytest.mark.parametrize(
+    ("uncertainty_type", "operation"),
+    [
+        pytest.param(
+            unc,
+            op,
+            marks=(
+                [_STRICT_STDDEV_MULDIV_XFAIL]
+                if unc is StdDevUncertainty and op in ("multiply", "divide")
+                else []
+            ),
+        )
+        for unc in (StdDevUncertainty, VarianceUncertainty, InverseVariance)
+        for op in ("add", "subtract", "multiply", "divide")
+    ],
+)
+def test_wrapped_arithmetic_keeps_uncertainty_in_namespace(uncertainty_type, operation):
+    data1 = [[1.0, 2.0], [3.0, 4.0]]
+    data2 = [[2.0, 2.0], [4.0, 8.0]]
+    unc1 = [[0.1, 0.2], [0.3, 0.4]]
+    unc2 = [[0.2, 0.1], [0.4, 0.3]]
+
+    def make(data, unc, asarray):
+        return CCDData(
+            asarray(data), unit=u.adu, uncertainty=uncertainty_type(asarray(unc))
+        )
+
+    ccd1 = _wrap_ccddata_for_array_api(make(data1, unc1, xp.asarray))
+    ccd2 = _wrap_ccddata_for_array_api(make(data2, unc2, xp.asarray))
+    result = getattr(ccd1, operation)(ccd2)
+
+    # Reference: astropy's own propagation on plain numpy CCDData.
+    ref1 = make(data1, unc1, np.asarray)
+    ref2 = make(data2, unc2, np.asarray)
+    expected = getattr(ref1, operation)(ref2)
+
+    assert array_api_compat.array_namespace(result.uncertainty.array) is xp
+    assert isinstance(result.uncertainty, uncertainty_type)
+    assert xp.all(
+        xpx.isclose(result.uncertainty.array, xp.asarray(expected.uncertainty.array))
+    )

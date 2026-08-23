@@ -263,26 +263,8 @@ def _run_cosmicray_gain_correct_uncertainty(
     ("uncertainty_type", "gain_power", "gain_apply"),
     [
         (StdDevUncertainty, 1, True),
-        pytest.param(
-            VarianceUncertainty,
-            2,
-            True,
-            marks=pytest.mark.backend_xfail(
-                "jax",
-                reason="Astropy uncertainty propagation converts JAX variance "
-                "arrays to NumPy",
-            ),
-        ),
-        pytest.param(
-            InverseVariance,
-            -2,
-            True,
-            marks=pytest.mark.backend_xfail(
-                "jax",
-                reason="Astropy uncertainty propagation converts JAX inverse "
-                "variance arrays to NumPy",
-            ),
-        ),
+        (VarianceUncertainty, 2, True),
+        (InverseVariance, -2, True),
         (StdDevUncertainty, 1, False),
         (VarianceUncertainty, 2, False),
         (InverseVariance, -2, False),
