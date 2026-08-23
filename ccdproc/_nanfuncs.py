@@ -18,6 +18,8 @@ keeps the three functions consistent with each other and with
 `ccdproc._nanmedian.nanmedian`.
 """
 
+import operator
+
 import array_api_compat
 
 __all__ = ["nanmean", "nanstd", "nansum"]
@@ -27,13 +29,49 @@ def _setup(x, axis, xp):
     """
     Validate ``axis``, resolve the namespace and device, promote to float.
 
-    Returns ``(x, axis, xp, device)`` with ``axis`` normalised to a
-    non-negative integer and ``x`` guaranteed to have a real floating dtype.
+    Parameters
+    ----------
+    x : array
+        Input array.
+    axis : int
+        Axis along which the caller will reduce. Booleans, ``None`` and
+        tuples of axes are rejected; anything else goes through
+        `operator.index`, so numpy integer scalars are accepted.
+    xp : array namespace or None
+        Namespace to use. ``None`` resolves it from ``x``.
+
+    Returns
+    -------
+    x : array
+        The input, promoted if necessary to the namespace's default real
+        floating dtype.
+    axis : int
+        The axis, normalised to a non-negative integer.
+    xp : array namespace
+        The resolved namespace.
+    device : device
+        The device ``x`` lives on.
+
+    Raises
+    ------
+    NotImplementedError
+        If ``axis`` is not a single integer.
+    ValueError
+        If ``axis`` is out of bounds for ``x``.
     """
-    if axis is None or not isinstance(axis, int):
+    # bool subclasses int -- axis=True would silently mean axis 1 -- so it is
+    # rejected explicitly, while operator.index accepts the numpy integer
+    # scalars that isinstance(axis, int) would refuse.
+    if axis is None or isinstance(axis, bool):
         raise NotImplementedError(
             "NaN-aware reduction fallbacks support only a single integer axis."
         )
+    try:
+        axis = operator.index(axis)
+    except TypeError:
+        raise NotImplementedError(
+            "NaN-aware reduction fallbacks support only a single integer axis."
+        ) from None
 
     if xp is None:
         xp = array_api_compat.array_namespace(x)
@@ -59,8 +97,29 @@ def _sum_and_count(x, axis, xp, device, *, keepdims):
     """
     NaN-free sum along ``axis`` and the number of non-NaN entries in it.
 
-    ``count`` has the same dtype as ``x`` so that it can divide the sum
-    without triggering a promotion the namespace might not allow.
+    Parameters
+    ----------
+    x : array
+        Input array, already promoted to a real floating dtype.
+    axis : int
+        Axis to reduce, already normalised to a non-negative integer.
+    xp : array namespace
+        Namespace to use.
+    device : device
+        Device on which to build scalar constants.
+    keepdims : bool
+        Whether the reduced axis is kept, with size one, in both outputs.
+
+    Returns
+    -------
+    total : array
+        Sum of the non-NaN entries along ``axis``.
+    count : array
+        Number of non-NaN entries along ``axis``, in the dtype of ``x`` so
+        that it can divide ``total`` without triggering a promotion the
+        namespace might not allow. A float32 ``count`` is exact only up to
+        2**24 non-NaN entries per slice -- unreachable when reducing over
+        the image axis of a combiner.
     """
     isnan = xp.isnan(x)
     zero = xp.asarray(0, dtype=x.dtype, device=device)
@@ -73,10 +132,30 @@ def _safe_divide(total, count, xp, device):
     """
     ``total / count``, yielding NaN wherever ``count`` is zero.
 
+    Parameters
+    ----------
+    total : array
+        Numerator.
+    count : array
+        Denominator, in the same dtype as ``total``. Zero entries mark
+        slices that had no non-NaN values.
+    xp : array namespace
+        Namespace to use.
+    device : device
+        Device on which to build scalar constants.
+
+    Returns
+    -------
+    array
+        ``total / count`` where ``count`` is non-zero, NaN elsewhere.
+
+    Notes
+    -----
     The zeros are swapped for ones *before* the division rather than being
     patched up afterwards: 0/0 on a numpy-backed namespace emits an "invalid
-    value encountered" `RuntimeWarning`, and ccdproc's pytest configuration
-    turns warnings into errors.
+    value encountered" `RuntimeWarning`, and a filter around this expression
+    would not survive a lazy backend -- under dask the warning only surfaces
+    at compute time, outside any ``catch_warnings`` block placed here.
     """
     one = xp.asarray(1, dtype=total.dtype, device=device)
     nan = xp.asarray(xp.nan, dtype=total.dtype, device=device)
@@ -128,9 +207,10 @@ def nanmean(x, /, *, axis=0, xp=None):
     Returns
     -------
     array
-        Mean of ``x`` along ``axis``, with that axis removed. Slices that are
-        entirely NaN yield NaN, matching `numpy.nanmean` -- but silently,
-        where numpy warns.
+        Mean of ``x`` along ``axis``, with that axis removed. Slices that
+        are entirely NaN yield NaN silently, matching ``bottleneck.nanmean``
+        (the numpy-backend default); `numpy.nanmean` warns here, but a fully
+        masked pixel is a routine input for the combiner, not an anomaly.
     """
     x, axis, xp, device = _setup(x, axis, xp)
     total, count = _sum_and_count(x, axis, xp, device, keepdims=False)
@@ -160,8 +240,10 @@ def nanstd(x, /, *, axis=0, xp=None):
     -------
     array
         Standard deviation of ``x`` along ``axis``, with that axis removed.
-        Slices that are entirely NaN yield NaN, matching `numpy.nanstd` --
-        but silently, where numpy warns. A slice with a single non-NaN entry
+        Slices that are entirely NaN yield NaN silently, matching
+        ``bottleneck.nanstd`` (the numpy-backend default); `numpy.nanstd`
+        warns here, but a fully masked pixel is a routine input for the
+        combiner, not an anomaly. A slice with a single non-NaN entry
         yields zero.
 
     Notes
@@ -170,7 +252,7 @@ def nanstd(x, /, *, axis=0, xp=None):
     rather than accumulating ``sum(x**2) - sum(x)**2 / n``. The extra pass
     costs one more reduction but avoids the catastrophic cancellation the
     single-pass form suffers when the values are large relative to their
-    spread, which is the normal situation for CCD counts.
+    spread, which is not unusual for CCD counts.
     """
     x, axis, xp, device = _setup(x, axis, xp)
 

@@ -9,6 +9,8 @@ module provides a fallback that works on any conforming namespace
 does not provide ``nanmedian``.
 """
 
+import operator
+
 import array_api_compat
 
 __all__ = ["nanmedian"]
@@ -31,8 +33,9 @@ def nanmedian(x, /, *, axis=0, xp=None):
         Input array. Integer and boolean inputs are promoted to the
         namespace's default real floating dtype.
     axis : int, optional
-        Axis along which to compute the median. Default is 0.
-        ``None`` and tuples of axes are not supported.
+        Axis along which to compute the median. Default is 0. Booleans,
+        ``None`` and tuples of axes are not supported; numpy integer
+        scalars are accepted.
     xp : array namespace, optional
         Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
 
@@ -48,10 +51,19 @@ def nanmedian(x, /, *, axis=0, xp=None):
     or ``bottleneck.nanmedian``. Prefer a native ``nanmedian`` when the
     namespace offers one.
     """
-    if axis is None or not isinstance(axis, int):
+    # bool subclasses int -- axis=True would silently mean axis 1 -- so it is
+    # rejected explicitly, while operator.index accepts the numpy integer
+    # scalars that isinstance(axis, int) would refuse.
+    if axis is None or isinstance(axis, bool):
         raise NotImplementedError(
             "nanmedian fallback supports only a single integer axis."
         )
+    try:
+        axis = operator.index(axis)
+    except TypeError:
+        raise NotImplementedError(
+            "nanmedian fallback supports only a single integer axis."
+        ) from None
 
     if xp is None:
         xp = array_api_compat.array_namespace(x)

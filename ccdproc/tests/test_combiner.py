@@ -123,11 +123,13 @@ _DEFAULT_FUNCS = [
 def test_bottleneck_defaults_respect_array_namespace(
     default_func, function_name, fallback
 ):
-    bottleneck = pytest.importorskip("bottleneck")
-
     default = default_func(xp=xp)
 
     if array_api_compat.is_numpy_namespace(xp):
+        # Only this branch needs bottleneck; skipping the whole test on it
+        # would leave the fallback branch below dead on the strict job,
+        # whose env deliberately omits bottleneck.
+        bottleneck = pytest.importorskip("bottleneck")
         expected = getattr(bottleneck, function_name)
     elif hasattr(xp, function_name):
         expected = getattr(xp, function_name)
@@ -141,11 +143,8 @@ def test_bottleneck_defaults_respect_array_namespace(
     assert default is expected
 
 
-@pytest.mark.parametrize(
-    ("default_func", "fallback"),
-    [(func, fallback) for func, _, fallback in _DEFAULT_FUNCS],
-)
-def test_defaults_fall_back_without_native_nan_function(default_func, fallback):
+@pytest.mark.parametrize(("default_func", "_name", "fallback"), _DEFAULT_FUNCS)
+def test_defaults_fall_back_without_native_nan_function(default_func, _name, fallback):
     # A namespace with none of the nan-aware reductions (not one of them is in
     # the array API standard) gets the spec-only fallback, bound to that
     # namespace. Use a stand-in namespace so this is exercised regardless of

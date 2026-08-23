@@ -22,6 +22,7 @@ _some_nan[[0, 1, 2, 3], [1, 2, 0, 2]] = np.nan
         (_some_nan, 0),  # NaNs scattered through the reduced axis
         (_some_nan, 1),  # a non-zero axis
         (_some_nan, -1),  # a negative axis
+        (_some_nan, np.int64(1)),  # a numpy integer axis
         (np.array([[1.0, np.nan], [2.0, np.nan], [3.0, np.nan]]), 0),  # all-NaN column
         (np.array([[1, 4], [2, 3], [5, 6], [4, 1]]), 0),  # integer input
     ],
@@ -39,6 +40,7 @@ def test_nanmedian_matches_numpy(data, axis):
     ("axis", "error"),
     [
         (None, NotImplementedError),
+        (True, NotImplementedError),  # bool subclasses int; reject it anyway
         ((0, 1), NotImplementedError),
         (2, ValueError),
         (-3, ValueError),
