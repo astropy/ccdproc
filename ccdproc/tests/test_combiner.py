@@ -2,12 +2,14 @@
 import array_api_compat
 import array_api_extra as xpx
 import astropy.units as u
+import numpy as np
 import numpy.ma as np_ma
 import pytest
 from astropy.nddata import CCDData
 from astropy.stats import median_absolute_deviation as mad
 from astropy.utils.data import get_pkg_data_filename
 from numpy import median as np_median
+from numpy.testing import assert_allclose
 
 from ccdproc import create_deviation
 from ccdproc.combiner import (
@@ -163,6 +165,125 @@ def test_combiner_mask():
     assert c._data_arr.shape == (3, 10, 10)
     assert c._data_arr_mask.shape == (3, 10, 10)
     assert not c._data_arr_mask[0, 5, 5]
+
+
+# Regression test for #965: the Combiner must stack the input images and
+# masks instead of passing a nested list of arrays to xp.asarray, and the
+# stacked arrays must live in the namespace and on the device of the inputs.
+def test_combiner_stacks_arrays_on_input_device():
+    data = xp.zeros((4, 4), dtype=xp.float32, device=xp_device)
+    data = xpx.at(data)[1, 2].set(1)
+    mask = xp.zeros((4, 4), dtype=xp.bool, device=xp_device)
+    mask = xpx.at(mask)[3, 3].set(True)
+    # astropy's CCDData.mask setter always coerces to numpy, which is not
+    # possible for arrays on a non-default device, so assign the mask in the
+    # data's namespace directly to emulate an array-API-aware CCDData.
+    ccd_masked = CCDData(data, unit=u.adu)
+    ccd_masked._mask = mask
+    ccd_unmasked = CCDData(data, unit=u.adu)
+    # Masks on CCDData may be plain numpy arrays even when the data is not.
+    ccd_np_mask = CCDData(data, unit=u.adu, mask=np.ones((4, 4), dtype=bool))
+
+    c = Combiner([ccd_masked, ccd_unmasked, ccd_np_mask], dtype=xp.float32)
+
+    for arr in (c.data, c.mask):
+        assert array_api_compat.array_namespace(
+            arr
+        ) is array_api_compat.array_namespace(data)
+        assert array_api_compat.device(arr) == array_api_compat.device(data)
+        assert arr.shape == (3, 4, 4)
+    assert c.data.dtype == xp.float32
+    assert c.mask.dtype == xp.bool
+    assert c.data[0, 1, 2] == 1
+    assert c.mask[0, 3, 3]
+    assert not xp.any(c.mask[1, ...])
+    assert xp.all(c.mask[2, ...])
+
+    # Scaling values should end up on the same device as the data, and in
+    # the dtype of the data: integer scaling must not rely on int/float type
+    # promotion, which the array API does not guarantee.
+    c.scaling = [1.0, 2.0, 3.0]
+    assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
+    c.scaling = [1, 2, 3]
+    assert c.scaling.dtype == c.data.dtype
+    assert float(c.scaling[1, 0, 0]) == 2.0
+    c.scaling = lambda arr: float(arr.shape[0])
+    assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
+    c.scaling = lambda arr: arr.shape[0]
+    assert c.scaling.dtype == c.data.dtype
+    assert float(c.scaling[0, 0, 0]) == 4.0
+    # A backend array, which need not implement __len__, is accepted as
+    # scaling as long as its length matches the number of images.
+    c.scaling = xp.asarray([1.0, 0.5, 2.0], device=xp_device)
+    assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
+    assert float(c.scaling[2, 0, 0]) == 2.0
+    with pytest.raises(ValueError, match="same length"):
+        c.scaling = xp.asarray([1.0, 0.5], device=xp_device)
+    with pytest.raises(TypeError, match="same length"):
+        c.scaling = 2.0
+    # A scaling callable that returns a 0-d array of the backend (rather than
+    # a Python float) must also work; array-api-strict rejects a list of such
+    # arrays passed to asarray.
+    c.scaling = lambda arr: xp.mean(arr) + 1
+    assert array_api_compat.device(c.scaling) == array_api_compat.device(data)
+    assert c.scaling.shape == (3, 1, 1)
+    # all three images share ``data``, whose mean is 1/16
+    assert float(xp.max(xp.abs(c.scaling - (1.0 + 1 / 16)))) < 1e-6
+
+
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="combine() sizes the image with .nbytes, which array-api-strict "
+    "does not provide",
+)
+def test_combine_scale_callable_returning_backend_scalar():
+    # Added in #976: ``combine(scale=<callable>)`` must accept a callable that
+    # returns a 0-d array of the backend. Only array-api-strict rejects the
+    # previous ``xp.asarray([0-d array, ...])``, and on that backend
+    # ``combine()`` currently fails earlier on ``ccd.data.nbytes``, so this
+    # test cannot yet fail because of the scaling path on any backend; it
+    # will start guarding it once ``combine()`` stops using ``.nbytes``.
+    ccds = [
+        CCDData(xp.full((4, 4), float(i), dtype=xp.float64), unit=u.adu)
+        for i in (1, 2, 4)
+    ]
+    result = combine(ccds, method="average", scale=lambda arr: 1 / xp.mean(arr))
+    assert_allclose(np.asarray(result.data), 1.0)
+
+
+def test_combiner_explicit_namespace_differs_from_data():
+    # Regression test for the review of #976: when the caller passes an ``xp``
+    # that is not the namespace of the input data, the device of the inputs
+    # must not be forced onto ``xp`` (numpy's 'cpu' means nothing to jax or
+    # array-api-strict). The data is converted into ``xp`` on its default
+    # device instead.
+    #
+    # Only array-api-strict actually rejects a foreign device: on numpy the
+    # data namespace *is* ``xp`` so the device is legitimately reused, and
+    # dask accepts ``device='cpu'`` regardless, so this test can fail only in
+    # the array-api-strict job.
+    np_ccds = [CCDData(np.ones((3, 3)) * i, unit=u.adu) for i in range(1, 3)]
+    np_ccds[0].mask = np.zeros((3, 3), dtype=bool)
+    c = Combiner(np_ccds, xp=xp)
+    assert array_api_compat.array_namespace(c.data) is array_api_compat.array_namespace(
+        xp.zeros(1)
+    )
+    assert c.data.shape == (2, 3, 3)
+    assert c.data.dtype == xp.float64
+    assert c.mask.dtype == xp.bool
+    assert float(xp.sum(c.data)) == 27.0
+
+
+def test_combiner_accepts_raw_module_as_namespace():
+    # A plain module (numpy here) passed as ``xp`` is normalised to its
+    # array-api-compat namespace, so array-API-only features such as
+    # ``xp.bool`` and ``device=`` are available to the Combiner.
+    np_ccds = [CCDData(np.ones((2, 2)) * i, unit=u.adu) for i in range(1, 3)]
+    c = Combiner(np_ccds, xp=np)
+    assert c._xp is array_api_compat.array_namespace(np.zeros(1))
+    assert c.data.shape == (2, 2, 2)
+    c.scaling = [1, 2]
+    assert float(np.sum(c.average_combine().data)) == 10.0
 
 
 def test_weights():
