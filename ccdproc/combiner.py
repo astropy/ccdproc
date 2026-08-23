@@ -20,8 +20,7 @@ from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
 from numpy import mgrid as np_mgrid
 
-from ._nanfuncs import nanmean, nanstd, nansum
-from ._nanmedian import nanmedian
+from ._nanfuncs import nanmean, nanmedian, nanstd, nansum
 from .core import sigma_func
 
 __all__ = ["Combiner", "combine"]

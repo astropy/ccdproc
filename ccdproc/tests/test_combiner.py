@@ -14,8 +14,7 @@ from astropy.utils.data import get_pkg_data_filename
 from numpy.testing import assert_allclose
 
 from ccdproc import create_deviation
-from ccdproc._nanfuncs import nanmean, nanstd, nansum
-from ccdproc._nanmedian import nanmedian
+from ccdproc._nanfuncs import nanmean, nanmedian, nanstd, nansum
 from ccdproc.combiner import (
     Combiner,
     _calculate_step_sizes,

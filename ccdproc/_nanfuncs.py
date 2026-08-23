@@ -1,28 +1,26 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-NaN-aware sum/mean/standard deviation written only in terms of the array API.
+NaN-aware sum/mean/standard deviation/median written only in terms of the
+array API.
 
-``nansum``/``nanmean``/``nanstd`` are not part of the array API standard, so
-this module provides fallbacks that work on any conforming namespace
-(``array-api-strict``, ``jax``, ``dask``, ``numpy``, ...). They are used by
-`ccdproc.combiner.Combiner` when the selected namespace does not provide the
-native versions. The NaN-aware median lives next door in
-`ccdproc._nanmedian`, which needs a sort and so is a good deal more
-involved than anything here.
+``nansum``/``nanmean``/``nanstd``/``nanmedian`` are not part of the array
+API standard, so this module provides fallbacks that work on any conforming
+namespace (``array-api-strict``, ``jax``, ``dask``, ``numpy``, ...). They
+are used by `ccdproc.combiner.Combiner` when the selected namespace does
+not provide the native versions.
 
-All three functions promote integer and boolean input to the namespace's
+All four functions promote integer and boolean input to the namespace's
 default real floating dtype, which is where they part company with
 ``numpy.nansum``: numpy preserves an integer dtype, these do not. Every
 caller in `ccdproc` combines floating point image data, and the promotion
-keeps the three functions consistent with each other and with
-`ccdproc._nanmedian.nanmedian`.
+keeps the four functions consistent with each other.
 """
 
 import operator
 
 import array_api_compat
 
-__all__ = ["nanmean", "nanstd", "nansum"]
+__all__ = ["nanmean", "nanmedian", "nanstd", "nansum"]
 
 
 def _setup(x, axis, xp):
@@ -271,3 +269,81 @@ def nanstd(x, /, *, axis=0, xp=None):
         xp.sum(deviation * deviation, axis=axis, keepdims=True), count, xp, device
     )
     return xp.squeeze(xp.sqrt(variance), axis=axis)
+
+
+def nanmedian(x, /, *, axis=0, xp=None):
+    """
+    Median along an axis, ignoring NaNs, using only array-API functions.
+
+    NaNs are replaced by ``+inf`` and the result is sorted along ``axis``,
+    so that the first ``n`` positions hold the non-NaN values in order no
+    matter where the namespace's ``sort`` places NaNs (the standard leaves
+    that implementation-defined). The number of non-NaN entries ``n`` is
+    counted, and the elements at positions ``(n - 1) // 2`` and ``n // 2``
+    are gathered and averaged.
+
+    Parameters
+    ----------
+    x : array
+        Input array. Integer and boolean inputs are promoted to the
+        namespace's default real floating dtype.
+    axis : int, optional
+        Axis along which to compute the median. Default is 0. Booleans,
+        ``None`` and tuples of axes are not supported; numpy integer
+        scalars are accepted.
+    xp : array namespace, optional
+        Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
+
+    Returns
+    -------
+    array
+        Median of ``x`` along ``axis``, with that axis removed. Slices that
+        are entirely NaN yield NaN silently, matching
+        ``bottleneck.nanmedian`` (the numpy-backend default);
+        `numpy.nanmedian` warns here, but a fully masked pixel is a routine
+        input for the combiner, not an anomaly.
+
+    Notes
+    -----
+    The implementation relies on a full sort so its cost is O(n log n) along
+    ``axis``, compared with the O(n) selection used by ``numpy.nanmedian``
+    or ``bottleneck.nanmedian``. Prefer a native ``nanmedian`` when the
+    namespace offers one.
+    """
+    x, axis, xp, device = _setup(x, axis, xp)
+    ndim = x.ndim
+
+    # Replacing NaNs with +inf keeps them past every real value regardless of
+    # how the namespace orders NaNs in ``sort``. Genuine +inf entries compare
+    # equal to the sentinels, so positions below ``n`` are unaffected.
+    s = xp.sort(
+        xp.where(xp.isnan(x), xp.asarray(xp.inf, dtype=x.dtype, device=device), x),
+        axis=axis,
+    )
+
+    # Number of non-NaN values along the axis, kept broadcastable.
+    n = xp.sum(xp.astype(~xp.isnan(x), xp.int32), axis=axis, keepdims=True)
+    # For odd ``n`` these collapse to the same index, so the middle entry is
+    # picked twice and averaged with itself -- exact, bar overflow when the
+    # value exceeds half the dtype's maximum (numpy.nanmedian overflows there
+    # too). For ``n == 0`` ``lo`` is -1, which matches no index; see below.
+    lo = (n - 1) // 2
+    hi = n // 2
+
+    # Index along ``axis``, shaped to broadcast against ``s``.
+    shape = [1] * ndim
+    shape[axis] = x.shape[axis]
+    idx = xp.reshape(xp.arange(x.shape[axis], device=device), tuple(shape))
+
+    zero = xp.asarray(0, dtype=s.dtype, device=device)
+    lo_val = xp.sum(xp.where(idx == lo, s, zero), axis=axis)
+    hi_val = xp.sum(xp.where(idx == hi, s, zero), axis=axis)
+    result = (lo_val + hi_val) / 2
+
+    # This guard is load-bearing, not defensive: for an all-NaN slice ``n`` is
+    # 0, so ``lo`` is -1 and matches no index (``lo_val`` sums to zero) while
+    # ``hi`` is 0 and picks s[0], which is one of the +inf sentinels above.
+    # ``result`` is therefore +inf rather than NaN, and only this ``where``
+    # makes an all-NaN slice yield NaN. Do not remove it as redundant.
+    nan = xp.asarray(xp.nan, dtype=s.dtype, device=device)
+    return xp.where(xp.squeeze(n, axis=axis) == 0, nan, result)
