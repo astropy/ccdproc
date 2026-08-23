@@ -20,6 +20,7 @@ from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
 from numpy import mgrid as np_mgrid
 
+from ._nanfuncs import nanmean, nanstd, nansum
 from ._nanmedian import nanmedian
 from .core import sigma_func
 
@@ -50,10 +51,10 @@ def _default_average(xp=None):
     # No bottleneck, but we have a namespace.
     try:
         return xp.nanmean
-    except AttributeError as e:
-        raise RuntimeError(
-            "No NaN-aware mean function available. Please install bottleneck."
-        ) from e
+    except AttributeError:
+        # nanmean is not part of the array API standard; fall back to an
+        # implementation written purely in terms of it.
+        return partial(nanmean, xp=xp)
 
 
 def _default_sum(xp=None):
@@ -65,10 +66,10 @@ def _default_sum(xp=None):
     # No bottleneck, but we have a namespace.
     try:
         return xp.nansum
-    except AttributeError as e:
-        raise RuntimeError(
-            "No NaN-aware sum function available. Please install bottleneck."
-        ) from e
+    except AttributeError:
+        # nansum is not part of the array API standard; fall back to an
+        # implementation written purely in terms of it.
+        return partial(nansum, xp=xp)
 
 
 def _default_std(xp=None):
@@ -80,10 +81,10 @@ def _default_std(xp=None):
     # No bottleneck, but we have a namespace.
     try:
         return xp.nanstd
-    except AttributeError as e:
-        raise RuntimeError(
-            "No NaN-aware std function available. Please install bottleneck."
-        ) from e
+    except AttributeError:
+        # nanstd is not part of the array API standard; fall back to an
+        # implementation written purely in terms of it.
+        return partial(nanstd, xp=xp)
 
 
 class Combiner:
