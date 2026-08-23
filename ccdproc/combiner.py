@@ -593,26 +593,22 @@ class Combiner:
 
         # set the uncertainty
 
-        # This still uses numpy for the median because the astropy
-        # code requires that the median function take the argument
-        # overwrite_input and bottleneck doesn't allow that argument.
-        # This is ugly, but setting ignore_nan to True should make sure
-        # that either nans or masks are handled properly.
+        # The default uncertainty function (sigma_func) takes ignore_nan,
+        # which makes it handle both NaNs and masked values (which were
+        # converted to NaN in _combination_setup); other callables are
+        # called with only the data and axis.
         if uncertainty_func is sigma_func:
             uncertainty = uncertainty_func(data, axis=0, ignore_nan=True)
         else:
             uncertainty = uncertainty_func(data, axis=0)
-        # Depending on how the uncertainty ws calculated it may or may not
-        # be an array of the same class as the data, so make sure it is
+        # Depending on how the uncertainty was calculated it may or may not
+        # be an array of the same class as the data, so make sure it is.
+        # There is no need to carry a mask on the uncertainty: it was
+        # calculated from the data, so masked elements are already masked
+        # in the data.
         uncertainty = xp.asarray(uncertainty)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= xp.sqrt(len(self._data_arr) - masked_values)
-        # Convert uncertainty to plain numpy array (#351)
-        # There is no need to care about potential masks because the
-        # uncertainty was calculated based on the data so potential masked
-        # elements are also masked in the data. No need to keep two identical
-        # masks.
-        uncertainty = xp.asarray(uncertainty)
+        uncertainty = uncertainty / xp.sqrt(len(self._data_arr) - masked_values)
 
         # create the combined image with a dtype matching the combiner
         combined_image = CCDData(
@@ -718,8 +714,8 @@ class Combiner:
         # set up the deviation
         uncertainty = uncertainty_func(data, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= xp.sqrt(len(data) - masked_values)
-        # Convert uncertainty to plain numpy array (#351)
+        uncertainty = uncertainty / xp.sqrt(len(data) - masked_values)
+        # Make sure the uncertainty is an array in the combiner's namespace
         uncertainty = xp.asarray(uncertainty)
 
         # create the combined image with a dtype that matches the combiner
@@ -792,11 +788,11 @@ class Combiner:
         # set up the deviation
         uncertainty = uncertainty_func(data, axis=0)
         # Divide uncertainty by the number of pixel (#309)
-        uncertainty /= xp.sqrt(len(data) - masked_values)
-        # Convert uncertainty to plain numpy array (#351)
+        uncertainty = uncertainty / xp.sqrt(len(data) - masked_values)
+        # Make sure the uncertainty is an array in the combiner's namespace
         uncertainty = xp.asarray(uncertainty)
         # Multiply uncertainty by square root of the number of images
-        uncertainty *= len(data) - masked_values
+        uncertainty = uncertainty * (len(data) - masked_values)
 
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(
