@@ -15,6 +15,7 @@ from astropy.wcs import WCS
 
 from ccdproc import flat_correct, trim_image
 from ccdproc._ccddata_wrapper_for_array_api import (
+    _ArrayAPIPropagationMixin,
     _CCDDataWrapperForArrayAPI,
     _InverseVarianceWrapper,
     _StdDevUncertaintyWrapper,
@@ -145,6 +146,13 @@ _STRICT_STDDEV_MULDIV_XFAIL = pytest.mark.backend_xfail(
     reason="astropy's _propagate_multiply_divide applies np.sqrt/np.abs to the "
     "std-dev result, which fails on a non-default strict device (see #940)",
 )
+
+
+def test_propagation_mixin_requires_variance_hooks():
+    """The mixin is abstract: a subclass that forgets ``_variance_hooks`` fails
+    loudly rather than silently propagating with the wrong conversions."""
+    with pytest.raises(NotImplementedError):
+        _ArrayAPIPropagationMixin._variance_hooks(xp)
 
 
 @pytest.mark.parametrize(
