@@ -1,4 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+import types
 from functools import partial
 
 import array_api_compat
@@ -133,6 +134,19 @@ def test_bottleneck_defaults_respect_array_namespace(default_func, function_name
     else:
         pytest.skip(f"{xp.__name__} has no {function_name}")
     assert default is expected
+
+
+def test_default_median_falls_back_without_nanmedian():
+    # A namespace with no nanmedian (it is not in the array API standard)
+    # gets the spec-only fallback, bound to that namespace. Use a stand-in
+    # namespace so this is exercised regardless of which backend is under
+    # test; every backend in CI happens to provide nanmedian.
+    fake_xp = types.ModuleType("not_a_real_array_namespace")
+    default = _default_median(xp=fake_xp)
+
+    assert isinstance(default, partial)
+    assert default.func is nanmedian
+    assert default.keywords == {"xp": fake_xp}
 
 
 @pytest.mark.parametrize(

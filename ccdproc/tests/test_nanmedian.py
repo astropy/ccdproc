@@ -76,3 +76,10 @@ def test_nanmedian_unsupported_axis():
         nanmedian(arr, axis=None)
     with pytest.raises(NotImplementedError):
         nanmedian(arr, axis=(0, 1))
+
+
+@pytest.mark.parametrize("axis", [2, -3])
+def test_nanmedian_axis_out_of_bounds(axis):
+    arr = xp.asarray(np.ones((2, 2)), device=xp_device)
+    with pytest.raises(ValueError, match="out of bounds"):
+        nanmedian(arr, axis=axis)
