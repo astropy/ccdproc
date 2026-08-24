@@ -1,5 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import types
 import warnings
 
 import array_api_compat
@@ -26,6 +27,7 @@ from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import (
     Keyword,
+    _median_fallback,
     ccd_process,
     cosmicray_lacosmic,
     cosmicray_median,
@@ -363,6 +365,26 @@ def test_subtract_overscan_fails():
     # Do we raise an error if the input is a plain array?
     with pytest.raises(TypeError):
         subtract_overscan(xp.zeros((10, 10)), fits_section="[1:10]")
+
+
+def test_median_fallback_without_native_median():
+    # The except branch of _median_fallback only runs naturally on namespaces
+    # with no ``median`` (array-api-strict is the only such backend in CI, and
+    # it does not report coverage), so hide the native function behind a proxy
+    # namespace that otherwise delegates to the backend under test.
+    class _NamespaceWithoutMedian(types.ModuleType):
+        def __getattr__(self, name):
+            if name == "median":
+                raise AttributeError(name)
+            return getattr(xp, name)
+
+    proxy = _NamespaceWithoutMedian("xp_without_median")
+    data = xp.asarray(np_array([[1.0, 2.0, 4.0], [3.0, 5.0, 6.0]]), device=xp_device)
+
+    result = _median_fallback(data, 0, xp=proxy)
+
+    expected = xp.asarray(np_array([2.0, 3.5, 5.0]), device=xp_device)
+    assert xp.all(xpx.isclose(result, expected))
 
 
 def test_trim_image_fits_section_requires_string():
