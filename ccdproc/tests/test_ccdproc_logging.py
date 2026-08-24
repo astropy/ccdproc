@@ -5,6 +5,7 @@ import pytest
 from astropy.nddata import CCDData
 
 from ccdproc import Keyword, create_deviation, subtract_bias, trim_image
+from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import _short_names
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
@@ -72,7 +73,7 @@ def test_implicit_logging():
     # should happen:
     # + A key named func.__name__ is created, with
     # + value that is the list of arguments the function was called with.
-    bias = CCDData(np.zeros_like(ccd_data.data), unit="adu")
+    bias = CCDData(xp.zeros_like(ccd_data.data), unit="adu")
     result = subtract_bias(ccd_data, bias)
     assert "subtract_bias" in result.header
     assert result.header["subtract_bias"] == (

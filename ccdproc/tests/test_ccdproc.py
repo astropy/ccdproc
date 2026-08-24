@@ -172,8 +172,8 @@ def test_subtract_overscan(median, transpose, data_rectangle):
 
     # Since some array libraries do not support in-place operations, we
     # work on the science and overscan regions separately.
-    science_data = ccd_data.data[science_region].copy()
-    overscan_data = 0 * ccd_data.data[oscan_region].copy() + oscan
+    science_data = xp.asarray(ccd_data.data[science_region], copy=True)
+    overscan_data = 0 * xp.asarray(ccd_data.data[oscan_region], copy=True) + oscan
 
     # Add a fake sky background so the "science" part of the image has a
     # different average than the "overscan" part.
@@ -201,7 +201,7 @@ def test_subtract_overscan(median, transpose, data_rectangle):
         )
     )
     # Is the overscan region zero?
-    assert (ccd_data_overscan.data[oscan_region] == 0).all()
+    assert xp.all(ccd_data_overscan.data[oscan_region] == 0)
 
     # Now do what should be the same subtraction, with the overscan specified
     # with the fits_section
@@ -222,7 +222,7 @@ def test_subtract_overscan(median, transpose, data_rectangle):
         )
     )
     # Is the overscan region zero?
-    assert (ccd_data_fits_section.data[oscan_region] == 0).all()
+    assert xp.all(ccd_data_fits_section.data[oscan_region] == 0)
 
     # Do both ways of subtracting overscan give exactly the same result?
     assert xp.all(
@@ -353,7 +353,7 @@ def test_subtract_overscan_fails():
         subtract_overscan(xp.zeros((10, 10)), 3, median=False, model=None)
     # Do we get an error if we specify both overscan and fits_section?
     with pytest.raises(TypeError):
-        subtract_overscan(ccd_data, overscan=ccd_data[0:10], fits_section="[1:10]")
+        subtract_overscan(ccd_data, overscan=ccd_data[0:10, ...], fits_section="[1:10]")
     # Do we raise an error if we specify neither overscan nor fits_section?
     with pytest.raises(TypeError):
         subtract_overscan(ccd_data)
@@ -402,7 +402,7 @@ def test_trim_with_wcs_alters_wcs():
     ccd_data = ccd_data_func()
     # WCS construction example pulled form astropy.wcs docs
     wcs = WCS(naxis=2)
-    wcs.wcs.crpix = xp.asarray(ccd_data.shape) / 2
+    wcs.wcs.crpix = xp.asarray(ccd_data.shape, dtype=xp.float64) / 2
     wcs.wcs.cdelt = xp.asarray([-0.066667, 0.066667])
     wcs.wcs.crval = [0, -90]
     wcs.wcs.ctype = ["RA---AIR", "DEC--AIR"]
@@ -951,7 +951,7 @@ def test__overscan_schange():
     ccd_data = ccd_data_func()
     old_data = ccd_data.copy()
     new_data = subtract_overscan(ccd_data, overscan=ccd_data[:, 1], overscan_axis=0)
-    assert not xp.allclose(old_data.data, new_data.data)
+    assert not xp.all(xpx.isclose(old_data.data, new_data.data))
     assert xp.all(xpx.isclose(old_data.data, ccd_data.data))
 
 

@@ -7,6 +7,7 @@ import pytest
 from astropy.nddata import StdDevUncertainty
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
+from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import rebin
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
@@ -67,7 +68,7 @@ def test_rebin_smaller():
 def test_rebin_ccddata(mask_data, uncertainty):
     ccd_data = ccd_data_func(data_size=10)
     if mask_data:
-        ccd_data.mask = np.zeros_like(ccd_data)
+        ccd_data.mask = xp.zeros_like(ccd_data.data)
     if uncertainty:
         err = np.random.default_rng().normal(size=ccd_data.shape)
         ccd_data.uncertainty = StdDevUncertainty(err)
