@@ -358,9 +358,7 @@ def test_pixelwise_weights():
     ]
     combo = Combiner(ccd_list)
     combo.weights = xp.ones_like(combo._data_arr)
-    combo.weights = xpx.at(combo.weights)[:, 5, 5].set(
-        xp.asarray([1, 5, 10], dtype=xp.float64)
-    )
+    combo.weights = xpx.at(combo.weights)[:, 5, 5].set(xp.asarray([1.0, 5.0, 10.0]))
     ccd = combo.average_combine()
     assert xp.all(xpx.isclose(ccd.data[5, 5], 312.5))
     assert xp.all(xpx.isclose(ccd.data[0, 0], 0))
@@ -583,10 +581,10 @@ def test_combiner_sum():
 
 # test weighted sum
 def test_combiner_sum_weighted():
-    ccd_data = CCDData(data=xp.asarray([[0, 1], [2, 3]], dtype=xp.float64), unit="adu")
+    ccd_data = CCDData(data=xp.asarray([[0.0, 1.0], [2.0, 3.0]]), unit="adu")
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
-    c.weights = xp.asarray([1, 2, 3], dtype=xp.float64)
+    c.weights = xp.asarray([1.0, 2.0, 3.0])
     ccd = c.sum_combine()
     expected_result = sum(w * d.data for w, d in zip(c.weights, ccd_list, strict=True))
     assert xp.all(xpx.isclose(ccd.data, expected_result))
@@ -598,10 +596,10 @@ def test_combiner_sum_weighted_by_pixel():
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     # Weights below are chosen so that every entry in
-    weights_pixel = [[8, 4], [2, 1]]
-    c.weights = xp.asarray([weights_pixel] * 3, dtype=xp.float64)
+    weights_pixel = [[8.0, 4.0], [2.0, 1.0]]
+    c.weights = xp.asarray([weights_pixel] * 3)
     ccd = c.sum_combine()
-    expected_result = xp.asarray([[24, 24], [24, 24]], dtype=xp.float64)
+    expected_result = xp.asarray([[24.0, 24.0], [24.0, 24.0]])
     assert xp.all(xpx.isclose(ccd.data, expected_result))
 
 
@@ -612,11 +610,11 @@ def test_combiner_sum_weighted_with_mask():
         CCDData(xp.asarray([[10, 20]]), unit=u.adu),
     ]
     combiner = Combiner(ccd_list)
-    combiner.weights = xp.asarray([1, 3], dtype=xp.float64)
+    combiner.weights = xp.asarray([1.0, 3.0])
 
     combined = combiner.sum_combine()
 
-    expected = xp.asarray([[30, 62]], dtype=xp.float64)
+    expected = xp.asarray([[30.0, 62.0]])
     assert xp.all(xpx.isclose(combined.data, expected))
 
 
@@ -1126,13 +1124,11 @@ def test_combiner_uncertainty_average_mask():
     c = Combiner(ccd_list)
     ccd = c.average_combine()
     # Just the standard deviation of ccd data.
-    ref_uncertainty = xp.ones((10, 10)) * xp.std(
-        xp.asarray([1, 2, 3], dtype=xp.float64)
-    )
+    ref_uncertainty = xp.ones((10, 10)) * xp.std(xp.asarray([1.0, 2.0, 3.0]))
     # Correction because we combined two images.
     ref_uncertainty /= xp.sqrt(xp.asarray(3.0))
     ref_uncertainty = xpx.at(ref_uncertainty)[5, 5].set(
-        xp.std(xp.asarray([2, 3], dtype=xp.float64)) / xp.sqrt(xp.asarray(2.0))
+        xp.std(xp.asarray([2.0, 3.0])) / xp.sqrt(xp.asarray(2.0))
     )
     assert xp.all(xpx.isclose(ccd.uncertainty.array, ref_uncertainty))
 
@@ -1176,12 +1172,10 @@ def test_combiner_uncertainty_sum_mask():
     c = Combiner(ccd_list)
     ccd = c.sum_combine()
     # Just the standard deviation of ccd data.
-    ref_uncertainty = xp.ones((10, 10)) * xp.std(
-        xp.asarray([1, 2, 3], dtype=xp.float64)
-    )
+    ref_uncertainty = xp.ones((10, 10)) * xp.std(xp.asarray([1.0, 2.0, 3.0]))
     ref_uncertainty *= xp.sqrt(xp.asarray(3.0))
     ref_uncertainty = xpx.at(ref_uncertainty)[5, 5].set(
-        xp.std(xp.asarray([2, 3], dtype=xp.float64)) * xp.sqrt(xp.asarray(2.0))
+        xp.std(xp.asarray([2.0, 3.0])) * xp.sqrt(xp.asarray(2.0))
     )
     assert xp.all(xpx.isclose(ccd.uncertainty.array, ref_uncertainty))
 
