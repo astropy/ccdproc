@@ -28,6 +28,7 @@ from ._ccddata_wrapper_for_array_api import (
     _unwrap_ccddata_for_array_api,
     _wrap_ccddata_for_array_api,
 )
+from ._nanfuncs import median as _nanfuncs_median
 from .log_meta import log_to_metadata
 from .utils.slices import slice_from_string
 
@@ -150,6 +151,39 @@ def _percentile_fallback(array, percentiles, xp=None):
         ),
     )
     return sorted_array[indexes]
+
+
+def _median_fallback(array, axis, xp=None):
+    """
+    Try calculating the median using the namespace, otherwise fall back to
+    `ccdproc._nanfuncs.median`. As of the 2023 version of the array API
+    there is no median function in the API.
+
+    Parameters
+    ----------
+    array : array_like
+        Array from which to calculate the median.
+
+    axis : int
+        Axis along which to calculate the median.
+
+    xp : array namespace, optional
+        Array namespace to use for calculations. If not provided, the
+        namespace will be determined from the array.
+
+    Returns
+    -------
+    median : array
+        Median of ``array`` along ``axis``.
+    """
+    xp = xp or array_api_compat.array_namespace(array)
+    try:
+        return xp.median(array, axis=axis)
+    except AttributeError:
+        # median is not part of the array API standard; fall back to an
+        # implementation built on nanmedian, which also matches
+        # numpy.median's NaN-propagating semantics.
+        return _nanfuncs_median(array, axis=axis, xp=xp)
 
 
 @log_to_metadata
@@ -626,7 +660,7 @@ def subtract_overscan(
         overscan_axis = 0 if overscan.shape[1] > overscan.shape[0] else 1
 
     if median:
-        oscan = xp.median(overscan.data, axis=overscan_axis)
+        oscan = _median_fallback(overscan.data, overscan_axis, xp=xp)
     else:
         oscan = xp.mean(overscan.data, axis=overscan_axis)
 
