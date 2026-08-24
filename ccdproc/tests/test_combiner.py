@@ -867,14 +867,22 @@ def test_combine_average_ccddata():
 
 # combine() sizes images without ``.nbytes``, which not every array library
 # provides; check the count against the known element sizes.
-def test_calculate_size_of_image():
+@pytest.mark.parametrize(
+    "dtype,element_size",
+    [
+        (xp.float32, 4),
+        (xp.complex64, 8),
+        (xp.complex128, 16),
+    ],
+)
+def test_calculate_size_of_image(dtype, element_size):
     ccd = CCDData(
-        xp.zeros((7, 5), dtype=xp.float32),
+        xp.zeros((7, 5), dtype=dtype),
         unit=u.adu,
         mask=xp.zeros((7, 5), dtype=xp.bool),
     )
-    # float32 data (4 bytes) plus bool mask (1 byte)
-    assert _calculate_size_of_image(ccd) == 7 * 5 * (4 + 1)
+    # data (element_size bytes) plus bool mask (1 byte)
+    assert _calculate_size_of_image(ccd) == 7 * 5 * (element_size + 1)
 
 
 # test combiner convenience function reads fits file and
