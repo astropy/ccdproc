@@ -39,13 +39,9 @@ Bug Fixes
   the array API standard and use them in ``Combiner.average_combine`` and
   ``Combiner.sum_combine`` when the selected array namespace has no
   ``nansum``/``nanmean``/``nanstd``, instead of raising ``RuntimeError``. [#986]
-- Make the ``Combiner`` combination internals array-API compatible: masked
-  entries are detected and counted with ``xp.any``/``xp.count_nonzero``
-  instead of numpy-only array methods, image counts no longer rely on arrays
-  implementing ``len()`` and are promoted to floating point before entering
-  the uncertainty calculation, mask dtypes use the namespace's ``bool``, and
-  ``combine()`` sizes images for ``mem_limit`` from the element count and
-  dtype width instead of the non-standard ``nbytes``. [#988]
+- Make the ``Combiner`` combination internals array-API compatible and size
+  images for ``mem_limit`` from the element count and dtype width instead of
+  the non-standard ``nbytes``. [#988]
 - Make ``flat_correct`` and ``ccdmask`` use functional array updates so they
   support immutable array-API backends. [#956]
 - Build the ``Combiner`` data and mask arrays with ``xp.stack`` instead of
