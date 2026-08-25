@@ -838,8 +838,10 @@ def test_transform_image(mask_data, uncertainty):
     if mask_data:
         # Set the _mask rather than .mask to avoid issues with array-api
         # TODO: Fix this when CCDData is array-api compliant
-        ccd_data._mask = xp.zeros_like(ccd_data.data)
-        xpx.at(ccd_data._mask)[10, 10].set(1)
+        ccd_data._mask = xp.zeros_like(ccd_data.data, dtype=xp.bool)
+        # xpx.at(...).set(...) returns the updated array rather than
+        # mutating in place, so the return value must be kept.
+        ccd_data._mask = xpx.at(ccd_data._mask)[10, 10].set(True)
     if uncertainty:
         err = RNG().normal(size=ccd_data.shape)
         ccd_data.uncertainty = StdDevUncertainty(xp.asarray(err))
@@ -853,6 +855,12 @@ def test_transform_image(mask_data, uncertainty):
     if mask_data:
         assert tran.shape == tran.mask.shape
         assert xp.all(xpx.isclose(ccd_data.mask, tran.mask))
+        # The mask was True only at [10, 10]; check that the transformed
+        # mask preserves that location instead of, say, being trivially
+        # all-True or all-False.
+        expected_mask = xp.zeros_like(tran.mask, dtype=xp.bool)
+        expected_mask = xpx.at(expected_mask)[10, 10].set(True)
+        assert xp.all(tran.mask == expected_mask)
     if uncertainty:
         assert tran.shape == tran.uncertainty.array.shape
         assert xp.all(
@@ -1294,7 +1302,7 @@ def test_ccd_process(uncertainty_type):
 
     ccd_data.meta["testkw"] = 100
 
-    mask = xp.zeros((100, 90))
+    mask = xp.zeros((100, 90), dtype=xp.bool)
 
     masterbias = CCDData(2.0 * xp.ones((100, 90)), unit=u.electron)
     masterbias.uncertainty = uncertainty_type(xp.zeros((100, 90)))
@@ -1363,7 +1371,9 @@ def test_ccd_process(uncertainty_type):
     assert xp.all(
         xpx.isclose(expected_error_factor * xp.ones((100, 90)), occd.uncertainty.array)
     )
-    assert xp.all(xpx.isclose(mask, occd.mask))
+    # ``mask`` is boolean, so compare exactly instead of with ``isclose``,
+    # which strict array namespaces only accept numeric dtypes for.
+    assert xp.all(mask == occd.mask)
     assert occd.unit == u.electron
     # Make sure the original keyword is still present. Regression test for #401
     assert occd.meta["testkw"] == 100
@@ -1377,7 +1387,7 @@ def test_ccd_process_gain_corrected():
     ccd_data.data = xp.concat([ccd_data.data[:, :-10], 2 * xp.ones((100, 10))], axis=1)
     ccd_data.meta["testkw"] = 100
 
-    mask = xp.zeros((100, 90))
+    mask = xp.zeros((100, 90), dtype=xp.bool)
 
     masterbias = CCDData(4.0 * xp.ones((100, 90)), unit=u.adu)
     masterbias.uncertainty = StdDevUncertainty(xp.zeros((100, 90)))
@@ -1411,7 +1421,9 @@ def test_ccd_process_gain_corrected():
 
     assert xp.all(xpx.isclose(2.0 * xp.ones((100, 90)), occd.data))
     assert xp.all(xpx.isclose(3.0 * xp.ones((100, 90)), occd.uncertainty.array))
-    assert xp.all(xpx.isclose(mask, occd.mask))
+    # ``mask`` is boolean, so compare exactly instead of with ``isclose``,
+    # which strict array namespaces only accept numeric dtypes for.
+    assert xp.all(mask == occd.mask)
     assert occd.unit == u.electron
     # Make sure the original keyword is still present. Regression test for #401
     assert occd.meta["testkw"] == 100
