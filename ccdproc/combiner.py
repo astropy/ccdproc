@@ -18,7 +18,6 @@ from astropy import log
 from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
-from numpy import mgrid as np_mgrid
 
 from ._nanfuncs import nanmean, nanmedian, nanstd, nansum
 from .core import _native_numpy, sigma_func
@@ -358,6 +357,9 @@ class Combiner:
         will count the masking of that pixel toward the count of nhigh masked
         pixels.
 
+        If ``nlow`` or ``nhigh`` is at least the number of images, every pixel
+        is masked.
+
         Here is a copy of the relevant IRAF help text [0]_:
 
         nlow = 1, nhigh = (minmax)
@@ -379,33 +381,17 @@ class Combiner:
         if nhigh is None:
             nhigh = 0
 
+        n_images = self._data_arr.shape[0]
+        # argsorted[i, ...] is, per pixel, the index of the image whose value
+        # has rank i (0 = lowest, n_images - 1 = highest). Sorting those
+        # indices again inverts the permutation: ranks[k, ...] is the rank of
+        # image k's value at each pixel. Comparing ranks avoids scattering
+        # into the mask with per-pixel indices, which the array API standard
+        # does not support.
         argsorted = xp.argsort(self._data_arr, axis=0)
-        # Not every array package has mgrid, so make it in numpy and convert it to the
-        # array package used for the data.
-        mg = xp.asarray(
-            np_mgrid[
-                [slice(ndim) for i, ndim in enumerate(self._data_arr.shape) if i > 0]
-            ],
-            device=array_api_compat.device(self._data_arr),
-        )
-        for i in range(-1 * nhigh, nlow):
-            coordinates = [xp.reshape(argsorted[(i, ...)], (-1,))]
-            coordinates.extend(
-                xp.reshape(mg[(axis, ...)], (-1,)) for axis in range(mg.shape[0])
-            )
-            # Some array libraries don't support indexing with arrays in multiple
-            # dimensions, so we need to flatten the mask array, set the mask
-            # values for a flattened array, and then reshape it back to the
-            # original shape.
-            flat_index = coordinates[0]
-            for coordinate, dimension in zip(
-                coordinates[1:], self._data_arr.shape[1:], strict=True
-            ):
-                flat_index = flat_index * dimension + coordinate
-            self._data_arr_mask = xp.reshape(
-                xpx.at(xp.reshape(self._data_arr_mask, (-1,)))[flat_index].set(True),
-                self._data_arr.shape,
-            )
+        ranks = xp.argsort(argsorted, axis=0)
+        clip = (ranks < nlow) | (ranks >= n_images - nhigh)
+        self._data_arr_mask = self._data_arr_mask | clip
 
     # set up min/max clipping algorithms
     def minmax_clipping(self, min_clip=None, max_clip=None):

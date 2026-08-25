@@ -102,6 +102,9 @@ Bug Fixes
   cast the mask in ``transform_image`` to the data dtype before transforming
   it, and convert FITS data to native byte order before handing it to a
   non-NumPy array namespace in ``combine`` and ``ImageFileCollection``. [#995]
+- Compute the ``Combiner.clip_extrema`` mask with a rank comparison instead
+  of scattering into the mask through per-pixel integer indices, which the
+  array API standard does not support. [#994]
 
 2.5.1 (2025-07-05)
 ------------------

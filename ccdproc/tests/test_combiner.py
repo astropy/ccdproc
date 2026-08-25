@@ -1226,56 +1226,17 @@ def test_3d_combiner_with_scaling():
     assert avg_ccd.shape == ccd_data.shape
 
 
-def test_clip_extrema_keeps_indices_in_array_namespace(monkeypatch):
+def test_clip_extrema_stays_in_array_namespace_and_device():
     data = [
         [[9.0, 2.0, 7.0], [4.0, 8.0, 1.0]],
         [[3.0, 6.0, 5.0], [9.0, 2.0, 8.0]],
         [[6.0, 1.0, 4.0], [2.0, 7.0, 3.0]],
     ]
 
-    if xp.__name__ == "array_api_strict":
-        # Bypass Combiner.__init__ only for array-api-strict, which cannot stack
-        # a list of arrays. This isolates clip_extrema from that separate limit.
-        combiner = object.__new__(Combiner)
-        combiner._xp = xp
-        combiner._data_arr = xp.asarray(data, device=xp_device)
-        combiner._data_arr_mask = xp.zeros(
-            combiner._data_arr.shape, dtype=xp.bool, device=xp_device
-        )
-    else:
-        combiner = Combiner([CCDData(xp.asarray(image), unit=u.adu) for image in data])
-
-    captured_indices = []
-    if xp.__name__ == "array_api_strict":
-        # array-api-strict deliberately implements only standard indexing, which
-        # excludes the integer-array assignment performed by xpx.at. Replace that
-        # final update only, so this backend can exercise and inspect the index
-        # calculation on a non-default device.
-        class AtSpy:
-            def __init__(self, array):
-                self.array = array
-
-            def __getitem__(self, index):
-                self.index = index
-                captured_indices.append(index)
-                return self
-
-            def set(self, value):
-                device = array_api_compat.device(self.array)
-                positions = xp.arange(self.array.shape[0], device=device)
-                selected = xp.any(
-                    xp.reshape(positions, (-1, 1)) == xp.reshape(self.index, (1, -1)),
-                    axis=1,
-                )
-                return xp.where(
-                    selected,
-                    xp.asarray(value, dtype=self.array.dtype, device=device),
-                    self.array,
-                )
-
-        monkeypatch.setattr("ccdproc.combiner.xpx.at", AtSpy)
-
-    combiner.clip_extrema(nlow=1, nhigh=1)
+    c = Combiner(
+        [CCDData(xp.asarray(image, device=xp_device), unit=u.adu) for image in data]
+    )
+    c.clip_extrema(nlow=1, nhigh=1)
 
     expected_mask = xp.asarray(
         [
@@ -1285,21 +1246,32 @@ def test_clip_extrema_keeps_indices_in_array_namespace(monkeypatch):
         ],
         device=xp_device,
     )
-    assert xp.all(combiner.mask == expected_mask)
-    assert array_api_compat.device(combiner.mask) == array_api_compat.device(
-        combiner.data
+    assert array_api_compat.array_namespace(c._data_arr_mask) is xp
+    assert array_api_compat.device(c.mask) == array_api_compat.device(c.data)
+    assert xp.all(c.mask == expected_mask)
+
+
+def test_clip_extrema_masks_expected_indices():
+    # pixel [0, 0] is a 3-way tie at 5.0; with the standard's stable=True
+    # argsort the last tied image (index 3) is the one nhigh masks --
+    # identical to the pre-rewrite behavior for this input.
+    data = [[[5.0, 1.0]], [[5.0, 4.0]], [[3.0, 2.0]], [[5.0, 3.0]]]
+
+    c = Combiner(
+        [CCDData(xp.asarray(image, device=xp_device), unit=u.adu) for image in data]
     )
-    if captured_indices:
-        expected_indices = (
-            xp.asarray([0, 7, 2, 9, 4, 11], device=xp_device),
-            xp.asarray([6, 13, 14, 15, 10, 5], device=xp_device),
-        )
-        assert len(captured_indices) == len(expected_indices)
-        for actual, expected in zip(captured_indices, expected_indices, strict=True):
-            assert xp.all(actual == expected)
-            assert array_api_compat.device(actual) == array_api_compat.device(
-                combiner.data
-            )
+    c.clip_extrema(nlow=1, nhigh=1)
+
+    expected_mask = xp.asarray(
+        [
+            [[False, True]],
+            [[False, True]],
+            [[True, False]],
+            [[True, False]],
+        ],
+        device=xp_device,
+    )
+    assert xp.all(c.mask == expected_mask)
 
 
 def test_clip_extrema_3d():
