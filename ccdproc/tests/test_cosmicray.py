@@ -254,17 +254,36 @@ def _run_cosmicray_gain_correct_uncertainty(
     )
 
 
-@pytest.mark.backend_xfail(
+# Only the gain_apply=True cases still fail on array-api-strict; the
+# gain_apply=False cases pass on every backend.
+_GAIN_APPLY_STRICT_XFAIL = pytest.mark.backend_xfail(
     "array-api-strict",
     reason="cosmicray_lacosmic's gain and mask paths do not support "
     "array-api-strict's strict scalar and dtype rules",
 )
+
+
 @pytest.mark.parametrize(
     ("uncertainty_type", "gain_power", "gain_apply"),
     [
-        (StdDevUncertainty, 1, True),
-        (VarianceUncertainty, 2, True),
-        (InverseVariance, -2, True),
+        pytest.param(
+            StdDevUncertainty,
+            1,
+            True,
+            marks=_GAIN_APPLY_STRICT_XFAIL,
+        ),
+        pytest.param(
+            VarianceUncertainty,
+            2,
+            True,
+            marks=_GAIN_APPLY_STRICT_XFAIL,
+        ),
+        pytest.param(
+            InverseVariance,
+            -2,
+            True,
+            marks=_GAIN_APPLY_STRICT_XFAIL,
+        ),
         (StdDevUncertainty, 1, False),
         (VarianceUncertainty, 2, False),
         (InverseVariance, -2, False),
@@ -484,15 +503,22 @@ def _masked_column_image(seed=1, sigma=1.0):
     return np_data, np_mask, crays
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
-    "requires numpy and fails on a non-default device",
-)
 # (The CCDData branch takes its error image from the uncertainty.)
 @pytest.mark.parametrize(
     "kind,error_image",
-    [("masked_array", 1.0), ("masked_array", None), ("ccddata", None)],
+    [
+        ("masked_array", 1.0),
+        ("masked_array", None),
+        pytest.param(
+            "ccddata",
+            None,
+            marks=pytest.mark.backend_xfail(
+                "array-api-strict",
+                reason="cosmicray_median uses scipy.ndimage.median_filter, which "
+                "requires numpy and fails on a non-default device",
+            ),
+        ),
+    ],
 )
 def test_cosmicray_median_masked_column(kind, error_image):
     # Masked pixels are never flagged, not even by the gbox growth step,
