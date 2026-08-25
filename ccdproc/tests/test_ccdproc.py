@@ -292,6 +292,11 @@ def test_subtract_overscan(median, transpose, data_rectangle):
 
 
 # A more substantial test of overscan modeling
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="subtract_overscan model fitting goes through astropy.modeling, "
+    "which is NumPy-only (#933)",
+)
 @pytest.mark.parametrize("transpose", [True, False])
 def test_subtract_overscan_model(transpose):
     ccd_data = ccd_data_func()
@@ -301,7 +306,11 @@ def test_subtract_overscan_model(transpose):
     oscan_region = (slice(None), slice(0, 10))
     science_region = (slice(None), slice(10, None))
 
-    yscan, xscan = xp.asarray(np_mgrid[0:size, 0:size]) / 10.0 + 300.0
+    mgrid_scan = (
+        xp.asarray(np_mgrid[0:size, 0:size], dtype=xp.float64, device=xp_device) / 10.0
+        + 300.0
+    )
+    yscan, xscan = mgrid_scan[0, ...], mgrid_scan[1, ...]
 
     if transpose:
         oscan_region = oscan_region[::-1]
@@ -314,10 +323,10 @@ def test_subtract_overscan_model(transpose):
 
     original_mean = xp.mean(ccd_data.data[science_region])
 
-    science_data = ccd_data.data[science_region].copy()
+    science_data = xp.asarray(ccd_data.data[science_region], copy=True)
     # Set any existing overscan to zero. Overscan is stored for the entire
     # image, so we need to do this before we add the new overscan.
-    overscan_data = 0 * ccd_data.data[oscan_region].copy()
+    overscan_data = 0 * xp.asarray(ccd_data.data[oscan_region], copy=True)
     # Reconstruct the full image
     ccd_data.data = xp.concat([overscan_data, science_data], axis=overscan_axis) + scan
 
