@@ -30,7 +30,7 @@ from ccdproc.combiner import (
 # Set up the array library to be used in tests
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
-from ccdproc.core import _native_numpy
+from ccdproc.core import _namespace_dtype, _native_numpy
 from ccdproc.image_collection import ImageFileCollection
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 from ccdproc.tests.pytest_fixtures import numpy_ccddata, numpy_copy
@@ -221,6 +221,23 @@ def test_combiner_dtype_mapped_to_namespace(dtype, expected_name):
     assert c._data_arr.dtype == getattr(xp, expected_name)
     avg = c.average_combine()
     assert avg.dtype == getattr(xp, expected_name)
+
+
+def test_namespace_dtype_passes_through_what_numpy_cannot_read():
+    """
+    A dtype that NumPy cannot interpret is returned unchanged for the
+    namespace to deal with. On array-api-strict the namespace's own dtype
+    objects take this path; on the other backends they are NumPy types, so
+    an arbitrary object stands in for that case here.
+    """
+
+    class NotADtype:
+        pass
+
+    sentinel = NotADtype()
+    assert _namespace_dtype(sentinel, xp) is sentinel
+    # The namespace's own dtype objects always come back as themselves.
+    assert _namespace_dtype(xp.float32, xp) == xp.float32
 
 
 # test mask is created from ccd.data
