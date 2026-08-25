@@ -305,7 +305,7 @@ class _ArrayAPIPropagationMixin:
     def _propagate_multiply(self, other_uncert, result_data, correlation):
         xp = array_api_compat.array_namespace(self.array, other_uncert.array)
         to_variance, from_variance = self._variance_hooks(xp)
-        return super()._propagate_multiply_divide(
+        return self._propagate_multiply_divide(
             other_uncert,
             result_data,
             correlation,
@@ -317,7 +317,7 @@ class _ArrayAPIPropagationMixin:
     def _propagate_divide(self, other_uncert, result_data, correlation):
         xp = array_api_compat.array_namespace(self.array, other_uncert.array)
         to_variance, from_variance = self._variance_hooks(xp)
-        return super()._propagate_multiply_divide(
+        return self._propagate_multiply_divide(
             other_uncert,
             result_data,
             correlation,
@@ -325,6 +325,93 @@ class _ArrayAPIPropagationMixin:
             to_variance=to_variance,
             from_variance=from_variance,
         )
+
+    def _propagate_multiply_divide(
+        self,
+        other_uncert,
+        result_data,
+        correlation,
+        divide=False,
+        to_variance=lambda x: x,
+        from_variance=lambda x: x,
+    ):
+        """
+        Propagate uncertainty for multiplication or division.
+
+        This is astropy's
+        ``_VariancePropagationMixin._propagate_multiply_divide`` with the
+        NumPy calls replaced by their array-namespace equivalents; see the
+        astropy version for the derivation of the formulae. Unlike astropy's
+        version this does not convert the uncertainties between units,
+        because ``_CCDDataWrapperForArrayAPI._arithmetic_wrapper`` removes
+        the units from the uncertainties before doing the arithmetic.
+
+        Parameters
+        ----------
+        other_uncert : `~astropy.nddata.NDUncertainty`
+            The uncertainty of the other operand. Its ``array`` and
+            ``parent_nddata.data`` must be in the same array namespace as
+            ``self.array``.
+        result_data : array-like
+            Accepted only for signature compatibility with astropy; the
+            formulae do not use it.
+        correlation : float or array-like
+            Correlation coefficient between the two operands, ``0`` for
+            uncorrelated.
+        divide : bool, optional
+            ``True`` for division, ``False`` (default) for multiplication.
+        to_variance : callable, optional
+            Converts the stored uncertainty array to a variance. Defaults to
+            the identity, i.e. the uncertainty is already a variance.
+        from_variance : callable, optional
+            Converts a variance back to the stored uncertainty type. Defaults
+            to the identity.
+
+        Returns
+        -------
+        array-like
+            The propagated uncertainty array, in the same array namespace and
+            on the same device as the inputs, in the representation of
+            ``self`` (as determined by ``from_variance``).
+        """
+        del result_data  # accepted only for compatibility with astropy
+        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
+
+        correlation_sign = -1 if divide else 1
+
+        if other_uncert.array is not None:
+            d_b = to_variance(other_uncert.array)
+            # Formula: sigma**2 = |A|**2 * d_b
+            right = xp.abs(self.parent_nddata.data**2 * d_b)
+        else:
+            right = 0
+
+        if self.array is not None:
+            # Just the reversed case
+            d_a = to_variance(self.array)
+            # Formula: sigma**2 = |B|**2 * d_a
+            left = xp.abs(other_uncert.parent_nddata.data**2 * d_a)
+        else:
+            left = 0
+
+        if isinstance(correlation, np.ndarray) or correlation != 0:
+            corr = (
+                2
+                * correlation
+                * xp.sqrt(d_a * d_b)
+                * self.parent_nddata.data
+                * other_uncert.parent_nddata.data
+            )
+        else:
+            corr = 0
+
+        if divide:
+            return from_variance(
+                (left + right + correlation_sign * corr)
+                / other_uncert.parent_nddata.data**4
+            )
+        else:
+            return from_variance(left + right + correlation_sign * corr)
 
 
 class _StdDevUncertaintyWrapper(

@@ -94,6 +94,10 @@ Bug Fixes
 - Keep the mask of the result of ``Combiner.average_combine``,
   ``median_combine``, ``sum_combine`` and ``combine`` in the array namespace
   and on the device of the data instead of converting it to NumPy. [#992]
+- Fix ``gain_correct`` and ``flat_correct`` for images on a non-default
+  device: put the gain and flat normalization on the device of the data, cast
+  an integer gain to float, and keep the uncertainty propagation for
+  multiplication and division out of NumPy. [#993]
 
 2.5.1 (2025-07-05)
 ------------------
