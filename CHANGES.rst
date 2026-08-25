@@ -101,7 +101,7 @@ Bug Fixes
 - Use the array namespace's ``bool`` for the ``ccd_process`` bad-pixel mask,
   cast the mask in ``transform_image`` to the data dtype before transforming
   it, and convert FITS data to native byte order before handing it to a
-  non-NumPy array namespace in ``combine`` and ``ImageFileCollection``. [#NNN]
+  non-NumPy array namespace in ``combine`` and ``ImageFileCollection``. [#995]
 
 2.5.1 (2025-07-05)
 ------------------
