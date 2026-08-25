@@ -343,31 +343,20 @@ class _ArrayAPIPropagationMixin:
         astropy's ``np.abs`` converts the operands to numpy arrays, which fails
         for arrays that cannot be converted (for example on a non-default
         device). See the astropy version for the derivation of the formulae.
-        """
-        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
 
-        # For multiplication we don't need the result as quantity
-        if isinstance(result_data, u.Quantity):
-            result_data = result_data.value
+        Unlike astropy's version this does not convert the uncertainties
+        between units: ``_CCDDataWrapperForArrayAPI._arithmetic_wrapper``
+        removes the units from the uncertainties before doing the arithmetic,
+        so there is never a unit to convert. ``result_data`` is not used by the
+        formulae and is only accepted for compatibility with astropy.
+        """
+        del result_data  # accepted only for compatibility with astropy
+        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
 
         correlation_sign = -1 if divide else 1
 
         if other_uncert.array is not None:
-            # We want the result to have a unit consistent with the parent, so
-            # we only need to convert the unit of the other uncertainty if it
-            # is different from its data's unit.
-            if (
-                other_uncert.unit
-                and to_variance(1 * other_uncert.unit)
-                != ((1 * other_uncert.parent_nddata.unit) ** 2).unit
-            ):
-                d_b = (
-                    to_variance(other_uncert.array << other_uncert.unit)
-                    .to((1 * other_uncert.parent_nddata.unit) ** 2)
-                    .value
-                )
-            else:
-                d_b = to_variance(other_uncert.array)
+            d_b = to_variance(other_uncert.array)
             # Formula: sigma**2 = |A|**2 * d_b
             right = xp.abs(self.parent_nddata.data**2 * d_b)
         else:
@@ -375,18 +364,7 @@ class _ArrayAPIPropagationMixin:
 
         if self.array is not None:
             # Just the reversed case
-            if (
-                self.unit
-                and to_variance(1 * self.unit)
-                != ((1 * self.parent_nddata.unit) ** 2).unit
-            ):
-                d_a = (
-                    to_variance(self.array << self.unit)
-                    .to((1 * self.parent_nddata.unit) ** 2)
-                    .value
-                )
-            else:
-                d_a = to_variance(self.array)
+            d_a = to_variance(self.array)
             # Formula: sigma**2 = |B|**2 * d_a
             left = xp.abs(other_uncert.parent_nddata.data**2 * d_a)
         else:
