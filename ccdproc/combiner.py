@@ -21,7 +21,7 @@ from astropy.utils import deprecated_renamed_argument
 from numpy import mgrid as np_mgrid
 
 from ._nanfuncs import nanmean, nanmedian, nanstd, nansum
-from .core import sigma_func
+from .core import _native_numpy, sigma_func
 
 __all__ = ["Combiner", "combine"]
 
@@ -1088,11 +1088,16 @@ def combine(
             except TypeError:
                 xp = array_package
 
-            ccd.data = xp.asarray(ccd.data, dtype=ccd.data.dtype.type)
+            # ccd.data (and its uncertainty, if any) were just read from a
+            # FITS file, so they are NumPy arrays, possibly in big-endian
+            # byte order. Convert to native byte order before handing them
+            # to a non-NumPy namespace: some namespaces reject non-native
+            # dtypes outright, and array_api_strict warns (which becomes an
+            # error under this project's warning filters) when a NumPy
+            # dtype object is compared against one of its own.
+            ccd.data = xp.asarray(_native_numpy(ccd.data))
             if ccd.uncertainty is not None:
-                ccd.uncertainty.array = xp.asarray(
-                    ccd.uncertainty.array, dtype=ccd.uncertainty.array.dtype.type
-                )
+                ccd.uncertainty.array = xp.asarray(_native_numpy(ccd.uncertainty.array))
             # The mask is converted below, once the namespace is known.
 
     # Get the array namespace; if array_package was not None and files were read in,

@@ -7,17 +7,21 @@ from pathlib import Path
 from shutil import rmtree
 from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 
+import array_api_compat
 import astropy.io.fits as fits
 
-# Will continue to use np.testing here we are not testing array API
+# Will continue to use np.testing here we are not testing array API,
+# except in the one test that specifically checks that ccds()/data()
+# honor the array namespace requested via array_package.
 import numpy as np
 import pytest
 from astropy.io.fits.verify import VerifyWarning
-from astropy.nddata import CCDData
+from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.table import Table
 from astropy.utils.data import get_pkg_data_filename
 from astropy.utils.exceptions import AstropyUserWarning
 
+from ccdproc.conftest import testing_array_library as xp
 from ccdproc.image_collection import ImageFileCollection
 
 _filters = []
@@ -456,6 +460,29 @@ class TestImageFileCollection:
         ccd_kwargs = {"unit": "adu"}
         for ccd in collection.ccds(ccd_kwargs=ccd_kwargs):
             assert isinstance(ccd, CCDData)
+
+    def test_generator_ccds_converts_to_array_namespace(self, tmp_path):
+        # A collection constructed with array_package=xp should hand
+        # data/uncertainty/mask read from FITS files to that namespace.
+        # This exercises the same FITS-to-namespace conversion as
+        # combine() (#971).
+        fitsfile = get_pkg_data_filename("data/a8280271.fits", package="ccdproc.tests")
+        ccd_data = CCDData.read(fitsfile, unit="adu")
+        ccd_data.mask = np.zeros(ccd_data.shape, dtype=bool)
+        ccd_data.uncertainty = StdDevUncertainty(np.ones(ccd_data.shape))
+        ccd_data.write(tmp_path / "with_mask_and_uncertainty.fits")
+
+        collection = ImageFileCollection(location=tmp_path, array_package=xp)
+        ccd = next(collection.ccds(ccd_kwargs={"unit": "adu"}))
+
+        assert array_api_compat.array_namespace(ccd.data) is xp
+        assert array_api_compat.array_namespace(ccd.uncertainty.array) is xp
+        assert ccd.mask.dtype == xp.bool
+
+        # collection.data() goes through the same conversion, but as a
+        # bare array rather than a CCDData.
+        data = next(collection.data())
+        assert array_api_compat.array_namespace(data) is xp
 
     def test_consecutive_fiilters(self, triage_setup):
         collection = ImageFileCollection(

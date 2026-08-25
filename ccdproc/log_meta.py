@@ -139,11 +139,15 @@ def _replace_array_with_placeholder(value):
         try:
             length = len(value)
         except TypeError:
-            # Value has no length...
+            # Value has no length. This includes array API arrays that
+            # deliberately do not implement __len__ (e.g. array_api_strict,
+            # per the array API standard), not just NDData.
             try:
-                # ...but if it is NDData its .data will have a length
+                # ...but if it is NDData its .data will have a length. A
+                # bare array-API array has no .data attribute, hence the
+                # AttributeError below.
                 length = len(value.data)
-            except TypeError:
+            except (TypeError, AttributeError):
                 # No idea what this data is, assume length is not 1
                 length = 42
         return_type_not_value = length > 1

@@ -98,6 +98,35 @@ def _is_array(arr):
     return True
 
 
+def _native_numpy(arr):
+    """
+    Return a NumPy array with the same data in native byte order.
+
+    Parameters
+    ----------
+    arr : `numpy.ndarray`
+        A NumPy array, possibly in non-native byte order.
+
+    Returns
+    -------
+    `numpy.ndarray`
+        ``arr`` converted to its dtype's native scalar type. No copy is made
+        if one is not required.
+
+    Notes
+    -----
+    Data read from a FITS file is big-endian (e.g. dtype ``>f8``), a byte
+    order that only NumPy understands; other array namespaces reject such
+    an array outright. Requesting ``dtype=arr.dtype.type`` from
+    ``xp.asarray`` works around that in NumPy and JAX but hands a NumPy
+    type object to the namespace, which ``array_api_strict`` warns about.
+    Converting to native byte order in NumPy first and handing the
+    resulting plain array to ``xp.asarray`` with no ``dtype`` avoids both
+    problems.
+    """
+    return arr.astype(arr.dtype.type, copy=False)
+
+
 def _percentile_fallback(array, percentiles, xp=None):
     """
     Try calculating percentile using namespace, otherwise fall back to
@@ -380,7 +409,7 @@ def ccd_process(
         # TODO: the private _mask attribute is set here to avoid the
         # mask.setter than sets the mask to a numpy array. This can be
         # removed when CCDData supports array namespaces.
-        nccd._mask = xp.asarray(bad_pixel_mask, dtype=bool)
+        nccd._mask = xp.asarray(bad_pixel_mask, dtype=xp.bool)
     else:
         raise TypeError("bad_pixel_mask is not None or an array.")
 
@@ -1147,6 +1176,9 @@ def transform_image(ccd, transform_func, **kwargs):
     # make a copy of the object
     _nccd = _ccd.copy()
 
+    # Set array namespace
+    xp = array_api_compat.array_namespace(_nccd.data)
+
     # transform the image plane
     try:
         _nccd.data = transform_func(_nccd.data, **kwargs)
@@ -1161,7 +1193,11 @@ def transform_image(ccd, transform_func, **kwargs):
 
     # transform the mask plane
     if _nccd.mask is not None:
-        mask = transform_func(_nccd.mask, **kwargs)
+        # Cast the boolean mask to the data's dtype before transforming it;
+        # most transform functions (e.g. scipy.ndimage.shift) do not accept
+        # boolean input, so treat the mask as numeric and re-threshold the
+        # result below.
+        mask = transform_func(xp.astype(_nccd.mask, _nccd.data.dtype), **kwargs)
         _nccd.mask = mask > 0
 
     if _nccd.wcs is not None:

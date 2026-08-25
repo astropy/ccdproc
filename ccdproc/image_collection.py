@@ -15,6 +15,7 @@ from astropy.table import MaskedColumn, Table
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .ccddata import _recognized_fits_file_extensions, fits_ccddata_reader
+from .core import _native_numpy
 
 # ==> numpy comment <==
 # numpy is used internally to keep track of masking in the summary
@@ -954,25 +955,31 @@ class ImageFileCollection:
                 # By default we will get a numpy array, but if the user
                 # specified an array package, we will convert it to that type.
                 if xp is not None:
-                    return_thing = xp.asarray(
-                        # Turns out only numpy understands dtypes like ">f8" so use
-                        # .type
-                        return_thing,
-                        dtype=return_thing.dtype.type,
-                    )
+                    # return_thing was just read from a FITS file, so it is a
+                    # NumPy array, possibly in big-endian byte order.
+                    # Converting to native byte order first lets a non-NumPy
+                    # namespace accept it.
+                    return_thing = xp.asarray(_native_numpy(return_thing))
             elif return_type == "ccd":
                 return_thing = fits_ccddata_reader(full_path, hdu=ccd_hdu, **ccd_kwargs)
                 if xp is not None:
-                    return_thing.data = xp.asarray(
-                        return_thing.data, dtype=return_thing.data.dtype.type
-                    )
+                    # As above: convert to native byte order before handing
+                    # the FITS-derived data to a non-NumPy namespace.
+                    return_thing.data = xp.asarray(_native_numpy(return_thing.data))
                     if return_thing.uncertainty is not None:
                         return_thing.uncertainty.array = xp.asarray(
-                            return_thing.uncertainty.array,
-                            dtype=return_thing.uncertainty.array.dtype.type,
+                            _native_numpy(return_thing.uncertainty.array)
                         )
                     if return_thing.mask is not None:
-                        return_thing.mask = xp.asarray(return_thing.mask, dtype=bool)
+                        # Set the private _mask attribute directly: the
+                        # public mask setter (CCDData -> NDDataArray)
+                        # always converts its value to a NumPy array, which
+                        # would silently undo the namespace conversion here.
+                        # TODO: remove this workaround when CCDData supports
+                        # array namespaces.
+                        return_thing._mask = xp.asarray(
+                            return_thing.mask, dtype=xp.bool
+                        )
 
             elif return_type == "hdu":
                 with fits.open(full_path, **add_kwargs) as hdulist:
