@@ -71,12 +71,24 @@ def ccd_data(
 
 def numpy_copy(array):
     """
-    Return a NumPy copy of ``array``, moving it off a non-default device first.
+    Return a NumPy copy of an array from any array namespace.
 
-    ``np.asarray`` raises on an array-api-strict array that lives on one of
-    the library's fake non-default devices (the suite runs strict tests on
-    ``Device("device1")`` for exactly that reason), so move the array to the
-    default device before converting.
+    Parameters
+    ----------
+    array : array-like
+        An array from any array-API namespace, on any device.
+
+    Returns
+    -------
+    `numpy.ndarray`
+        A NumPy array with the same shape, dtype and values as ``array``.
+
+    Notes
+    -----
+    ``np.asarray`` only works for arrays on the namespace's default
+    device. The strict tests run on ``Device("device1")``, on which
+    array-api-strict deliberately refuses to export to NumPy, so the array
+    is moved to the default device first.
     """
     xp = array_api_compat.array_namespace(array)
     if xp.__name__ == "array_api_strict":
@@ -86,11 +98,25 @@ def numpy_copy(array):
 
 def numpy_ccddata(ccd):
     """
-    Return a copy of ``ccd`` with ``data``, ``mask`` and ``uncertainty.array``
-    (when present) converted to NumPy via `numpy_copy`.
+    Return a copy of a ``CCDData`` whose arrays are all NumPy arrays.
 
-    Unit and meta are copied over unchanged. Useful for handing a namespace
-    ``CCDData`` to code that requires NumPy, such as ``CCDData.write``.
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`
+        Image whose ``data``, and ``mask`` and ``uncertainty`` if present,
+        may be in any array namespace.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData`
+        A new ``CCDData`` with ``data``, ``mask`` and ``uncertainty.array``
+        converted with `numpy_copy`; ``unit`` and ``meta`` are carried over
+        unchanged and the uncertainty keeps its class.
+
+    Notes
+    -----
+    Use this to hand a namespace ``CCDData`` to code that requires NumPy,
+    such as ``CCDData.write``.
     """
     new_ccd = CCDData(numpy_copy(ccd.data), unit=ccd.unit, meta=ccd.meta)
     if ccd.mask is not None:

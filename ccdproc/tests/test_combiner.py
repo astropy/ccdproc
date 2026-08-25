@@ -30,6 +30,7 @@ from ccdproc.combiner import (
 # Set up the array library to be used in tests
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
+from ccdproc.core import _native_numpy
 from ccdproc.image_collection import ImageFileCollection
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 from ccdproc.tests.pytest_fixtures import numpy_ccddata, numpy_copy
@@ -874,9 +875,8 @@ def test_combine_average_ccddata():
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
     # ``combine`` ignores ``array_package`` for CCDData input, so convert
-    # the data to the namespace ourselves (``.astype(float)`` makes the
-    # big-endian FITS data native; strict/jax reject ``>f8``).
-    ccd.data = xp.asarray(ccd.data.astype(float))
+    # the data to the namespace ourselves.
+    ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 3
     c = Combiner(ccd_list)
     ccd_by_combiner = c.average_combine()
