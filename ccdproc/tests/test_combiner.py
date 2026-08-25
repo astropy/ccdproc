@@ -1226,21 +1226,6 @@ def test_3d_combiner_with_scaling():
     assert avg_ccd.shape == ccd_data.shape
 
 
-def _clip_extrema_combiner(data):
-    if xp.__name__ == "array_api_strict":
-        # Bypass Combiner.__init__ only for array-api-strict, which cannot stack
-        # a list of arrays. This isolates clip_extrema from that separate limit.
-        combiner = object.__new__(Combiner)
-        combiner._xp = xp
-        combiner._data_arr = xp.asarray(data, device=xp_device)
-        combiner._data_arr_mask = xp.zeros(
-            combiner._data_arr.shape, dtype=xp.bool, device=xp_device
-        )
-    else:
-        combiner = Combiner([CCDData(xp.asarray(image), unit=u.adu) for image in data])
-    return combiner
-
-
 def test_clip_extrema_stays_in_array_namespace_and_device():
     data = [
         [[9.0, 2.0, 7.0], [4.0, 8.0, 1.0]],
@@ -1248,7 +1233,9 @@ def test_clip_extrema_stays_in_array_namespace_and_device():
         [[6.0, 1.0, 4.0], [2.0, 7.0, 3.0]],
     ]
 
-    c = _clip_extrema_combiner(data)
+    c = Combiner(
+        [CCDData(xp.asarray(image, device=xp_device), unit=u.adu) for image in data]
+    )
     c.clip_extrema(nlow=1, nhigh=1)
 
     expected_mask = xp.asarray(
@@ -1270,7 +1257,9 @@ def test_clip_extrema_masks_expected_indices():
     # identical to the pre-rewrite behavior for this input.
     data = [[[5.0, 1.0]], [[5.0, 4.0]], [[3.0, 2.0]], [[5.0, 3.0]]]
 
-    c = _clip_extrema_combiner(data)
+    c = Combiner(
+        [CCDData(xp.asarray(image, device=xp_device), unit=u.adu) for image in data]
+    )
     c.clip_extrema(nlow=1, nhigh=1)
 
     expected_mask = xp.asarray(
