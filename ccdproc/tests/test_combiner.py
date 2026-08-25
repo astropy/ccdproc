@@ -30,10 +30,10 @@ from ccdproc.combiner import (
 # Set up the array library to be used in tests
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
-from ccdproc.core import _namespace_dtype, _native_numpy
+from ccdproc.core import _namespace_dtype, _native_numpy, _to_numpy
 from ccdproc.image_collection import ImageFileCollection
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
-from ccdproc.tests.pytest_fixtures import numpy_ccddata, numpy_copy
+from ccdproc.tests.pytest_fixtures import numpy_ccddata
 
 # Several tests have many more NaNs in them than real data. numpy generates
 # lots of warnings in those cases and it makes more sense to suppress them
@@ -871,7 +871,7 @@ def test_combiner_image_file_collection_input(tmp_path):
     # above did not request ``xp_device``), while ``ccd.data`` is on
     # ``xp_device``; compare via NumPy copies rather than requiring both
     # sides to share a device.
-    assert_allclose(numpy_copy(ccd.data), numpy_copy(result.data))
+    assert_allclose(_to_numpy(ccd.data), _to_numpy(result.data))
 
 
 def test_combine_image_file_collection_input(tmp_path):
@@ -899,9 +899,9 @@ def test_combine_image_file_collection_input(tmp_path):
     # The combine() results land on the namespace's default device, while
     # ``ccd.data`` is on ``xp_device``; compare via NumPy copies rather than
     # requiring both sides to share a device.
-    assert_allclose(numpy_copy(ccd.data), numpy_copy(comb_files.data))
-    assert_allclose(numpy_copy(ccd.data), numpy_copy(comb_ccds.data))
-    assert_allclose(numpy_copy(ccd.data), numpy_copy(comb_string.data))
+    assert_allclose(_to_numpy(ccd.data), _to_numpy(comb_files.data))
+    assert_allclose(_to_numpy(ccd.data), _to_numpy(comb_ccds.data))
+    assert_allclose(_to_numpy(ccd.data), _to_numpy(comb_string.data))
 
     with pytest.raises(FileNotFoundError):
         # This should fail because the test is not running in the

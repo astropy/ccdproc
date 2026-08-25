@@ -99,12 +99,9 @@ class Combiner:
         A list or generator of CCDData objects that will be combined together.
 
     dtype : dtype-like or None, optional
-        The dtype for the stacked data and the results: a dtype object of
-        the array namespace, or anything NumPy accepts as a dtype (e.g.
-        ``int``, ``"float32"``, `numpy.float32`), which is mapped to the
-        namespace's dtype of the same name. If ``None`` the namespace's
-        ``float64`` is used.
-        Default is ``None``.
+        The dtype of the stacked data and the results; NumPy-style dtypes
+        (e.g. ``int``, ``"float32"``) are mapped to the namespace's dtype
+        of the same name. Default is ``None``, i.e. ``float64``.
 
     xp : array namespace, optional
         The array namespace to use for the data. If `None` or not provided, it will
