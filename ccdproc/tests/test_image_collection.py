@@ -479,6 +479,11 @@ class TestImageFileCollection:
         assert array_api_compat.array_namespace(ccd.uncertainty.array) is xp
         assert ccd.mask.dtype == xp.bool
 
+        # collection.data() goes through the same conversion, but as a
+        # bare array rather than a CCDData.
+        data = next(collection.data())
+        assert array_api_compat.array_namespace(data) is xp
+
     def test_consecutive_fiilters(self, triage_setup):
         collection = ImageFileCollection(
             location=triage_setup.test_dir, keywords=["imagetyp", "filter", "object"]

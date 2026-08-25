@@ -7,6 +7,7 @@ from astropy.nddata import CCDData
 from ccdproc import Keyword, create_deviation, subtract_bias, trim_image
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import _short_names
+from ccdproc.log_meta import _replace_array_with_placeholder
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
 
@@ -108,3 +109,26 @@ def test_logging_with_really_long_parameter_value():
     )
     trim_3 = trim_image(ccd, fits_section=section)
     assert section in trim_3.header[_short_names["trim_image"]]
+
+
+def test_replace_array_with_placeholder_no_len_no_data():
+    # Regression test for the "length = 42" fallback: an array API object
+    # with neither __len__ nor a .data attribute (like an array-api-strict
+    # array) should still be replaced with a placeholder string.
+    class NoLenNoData:
+        def __array_namespace__(self, *args, **kwargs):
+            return None
+
+    result = _replace_array_with_placeholder(NoLenNoData())
+    assert result == "<NoLenNoData>"
+
+    # If the object has a .data attribute of length 1 it is treated like
+    # NDData and returned unchanged.
+    class NoLenWithData:
+        def __array_namespace__(self, *args, **kwargs):
+            return None
+
+        data = [0]
+
+    obj = NoLenWithData()
+    assert _replace_array_with_placeholder(obj) is obj
