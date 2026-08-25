@@ -5,7 +5,7 @@ import array_api_extra as xpx
 import numpy as np
 import pytest
 
-from ccdproc._nanfuncs import nanmean, nanmedian, nanstd, nansum
+from ccdproc._nanfuncs import median, nanmean, nanmedian, nanstd, nansum
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 
@@ -26,6 +26,7 @@ _FUNCS = [
     # every multi-element float row below.
     pytest.param(nanstd, np.nanstd, id="nanstd"),
     pytest.param(nanmedian, np.nanmedian, id="nanmedian"),
+    pytest.param(median, np.median, id="median"),
 ]
 
 _DATA = [
@@ -74,14 +75,17 @@ def test_matches_numpy(func, reference, data, axis):
     assert xp.all(xpx.isclose(result, expected, equal_nan=True))
 
 
-@pytest.mark.parametrize("func", [nansum, nanmean, nanstd, nanmedian])
+@pytest.mark.parametrize("func", [nansum, nanmean, nanstd, nanmedian, median])
 def test_no_warning_on_all_nan_slice(func):
     """
     All-NaN slices are handled silently.
 
     Most of the numpy counterparts warn here, and ccdproc's pytest
     configuration turns warnings into errors, so a fallback that warned would
-    fail every ``Combiner`` test with a fully masked pixel.
+    fail every ``Combiner`` test with a fully masked pixel. ``numpy.median``
+    itself does not warn on NaN input, but ``median`` is included here too
+    since it shares the ``_setup``/``nanmedian`` machinery with the other
+    fallbacks.
     """
     data = xp.asarray(
         np.array([[1.0, np.nan], [2.0, np.nan], [3.0, np.nan]]), device=xp_device
@@ -101,7 +105,7 @@ def test_nansum_all_nan_slice_is_zero():
     assert xp.all(xpx.isclose(result, xp.asarray([3.0, 0.0], device=xp_device)))
 
 
-@pytest.mark.parametrize("func", [nansum, nanmean, nanstd, nanmedian])
+@pytest.mark.parametrize("func", [nansum, nanmean, nanstd, nanmedian, median])
 @pytest.mark.parametrize(
     ("axis", "error"),
     [

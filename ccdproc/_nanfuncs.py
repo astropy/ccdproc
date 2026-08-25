@@ -1,26 +1,29 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-NaN-aware sum/mean/standard deviation/median written only in terms of the
-array API.
+NaN-aware sum/mean/standard deviation/median, and a NaN-propagating median,
+written only in terms of the array API.
 
 ``nansum``/``nanmean``/``nanstd``/``nanmedian`` are not part of the array
 API standard, so this module provides fallbacks that work on any conforming
 namespace (``array-api-strict``, ``jax``, ``dask``, ``numpy``, ...). They
 are used by `ccdproc.combiner.Combiner` when the selected namespace does
-not provide the native versions.
+not provide the native versions. ``median`` is not part of the standard
+either, and this module also provides a fallback for it, built on
+``nanmedian``, used by `ccdproc.core.subtract_overscan` when the selected
+namespace does not provide the native version.
 
-All four functions promote integer and boolean input to the namespace's
+All five functions promote integer and boolean input to the namespace's
 default real floating dtype, which is where they part company with
 ``numpy.nansum``: numpy preserves an integer dtype, these do not. Every
 caller in `ccdproc` combines floating point image data, and the promotion
-keeps the four functions consistent with each other.
+keeps the five functions consistent with each other.
 """
 
 import operator
 
 import array_api_compat
 
-__all__ = ["nanmean", "nanmedian", "nanstd", "nansum"]
+__all__ = ["median", "nanmean", "nanmedian", "nanstd", "nansum"]
 
 
 def _setup(x, axis, xp):
@@ -347,3 +350,41 @@ def nanmedian(x, /, *, axis=0, xp=None):
     # makes an all-NaN slice yield NaN. Do not remove it as redundant.
     nan = xp.asarray(xp.nan, dtype=s.dtype, device=device)
     return xp.where(xp.squeeze(n, axis=axis) == 0, nan, result)
+
+
+def median(x, /, *, axis=0, xp=None):
+    """
+    Median along an axis, using only array-API functions.
+
+    Parameters
+    ----------
+    x : array
+        Input array. Integer and boolean inputs are promoted to the
+        namespace's default real floating dtype.
+    axis : int, optional
+        Axis along which to compute the median. Default is 0. Booleans,
+        ``None`` and tuples of axes are not supported; numpy integer
+        scalars are accepted.
+    xp : array namespace, optional
+        Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
+
+    Returns
+    -------
+    array
+        Median of ``x`` along ``axis``, with that axis removed. Slices that
+        contain any NaN yield NaN, matching `numpy.median`; this is the
+        difference from `nanmedian`, which ignores NaNs entirely.
+
+    Notes
+    -----
+    On input with no NaNs this is exactly `nanmedian` -- the same sorting
+    and index-picking algorithm is used, so the values agree bit for bit.
+    The two differ only in how a NaN in the reduced slice is handled: this
+    function propagates it to the result, matching `numpy.median`, while
+    `nanmedian` ignores it. That NaN-propagating behaviour is restored here
+    with a final `where` over whether any NaN is present along ``axis``,
+    since `nanmedian` alone would silently drop NaNs instead.
+    """
+    x, axis, xp, device = _setup(x, axis, xp)
+    nan = xp.asarray(xp.nan, dtype=x.dtype, device=device)
+    return xp.where(xp.any(xp.isnan(x), axis=axis), nan, nanmedian(x, axis=axis, xp=xp))

@@ -87,6 +87,10 @@ Bug Fixes
 - Fix ``background_deviation_box`` discarding the result of the functional
   array update, which left the output at the global standard deviation on
   immutable array-API backends such as JAX. [#963]
+- Add a ``median`` fallback written purely in terms of the array API
+  standard, built on the existing NaN-aware ``nanmedian``, and use it in
+  ``subtract_overscan`` when the selected array namespace has no ``median``,
+  instead of raising ``AttributeError``. [#989]
 
 2.5.1 (2025-07-05)
 ------------------
