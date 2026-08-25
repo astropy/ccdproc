@@ -615,10 +615,13 @@ class Combiner:
         # create the combined image with a dtype matching the combiner
         combined_image = CCDData(
             xp.asarray(medianed, dtype=self.dtype),
-            mask=mask,
             unit=self.unit,
             uncertainty=StdDevUncertainty(uncertainty),
         )
+        # TODO: the private _mask attribute is set here to avoid the
+        # CCDData.mask setter, which converts the mask to a numpy array.
+        # This can be removed when CCDData supports array namespaces.
+        combined_image._mask = mask
 
         # update the meta data
         combined_image.meta["NCOMBINE"] = self._data_arr.shape[0]
@@ -725,10 +728,13 @@ class Combiner:
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(
             xp.asarray(mean, dtype=self.dtype),
-            mask=mask,
             unit=self.unit,
             uncertainty=StdDevUncertainty(uncertainty),
         )
+        # TODO: the private _mask attribute is set here to avoid the
+        # CCDData.mask setter, which converts the mask to a numpy array.
+        # This can be removed when CCDData supports array namespaces.
+        combined_image._mask = mask
 
         # update the meta data
         combined_image.meta["NCOMBINE"] = data.shape[0]
@@ -803,10 +809,13 @@ class Combiner:
         # create the combined image with a dtype that matches the combiner
         combined_image = CCDData(
             xp.asarray(summed, dtype=self.dtype),
-            mask=mask,
             unit=self.unit,
             uncertainty=StdDevUncertainty(uncertainty),
         )
+        # TODO: the private _mask attribute is set here to avoid the
+        # CCDData.mask setter, which converts the mask to a numpy array.
+        # This can be removed when CCDData supports array namespaces.
+        combined_image._mask = mask
 
         # update the meta data
         combined_image.meta["NCOMBINE"] = self._data_arr.shape[0]
@@ -1084,8 +1093,7 @@ def combine(
                 ccd.uncertainty.array = xp.asarray(
                     ccd.uncertainty.array, dtype=ccd.uncertainty.array.dtype.type
                 )
-            if ccd.mask is not None:
-                ccd.mask = xp.asarray(ccd.mask, dtype=xp.bool)
+            # The mask is converted below, once the namespace is known.
 
     # Get the array namespace; if array_package was not None and files were read in,
     # then xp the ccd.data will be the same as the array_package.
@@ -1110,9 +1118,18 @@ def combine(
         ccd.uncertainty = StdDevUncertainty(xp.zeros_like(ccd.data))
 
     # If the template doesn't have a mask, add one, because the result may have
-    # a mask
+    # a mask. If it does have one, it may be a numpy array even when the data
+    # is not (the CCDData.mask setter converts to numpy), so coerce it into the
+    # data's namespace and onto the data's device: the combined tiles are
+    # written into it below.
+    # TODO: the private _mask attribute is set here to avoid the CCDData.mask
+    # setter. This can be removed when CCDData supports array namespaces.
     if ccd.mask is None:
-        ccd.mask = xp.zeros_like(ccd.data, dtype=xp.bool)
+        ccd._mask = xp.zeros_like(ccd.data, dtype=xp.bool)
+    else:
+        ccd._mask = xp.asarray(
+            ccd.mask, dtype=xp.bool, device=array_api_compat.device(ccd.data)
+        )
 
     size_of_an_img = _calculate_size_of_image(ccd)
 
@@ -1165,7 +1182,7 @@ def combine(
                                 imgccd.uncertainty.array, dtype=dtype
                             )
                         if imgccd.mask is not None:
-                            imgccd.mask = xp.asarray(imgccd.mask, dtype=xp.bool)
+                            imgccd._mask = xp.asarray(imgccd.mask, dtype=xp.bool)
 
                 scalevalues.append(scale(imgccd.data))
 
@@ -1213,7 +1230,7 @@ def combine(
                                 imgccd.uncertainty.array, dtype=dtype
                             )
                         if imgccd.mask is not None:
-                            imgccd.mask = xp.asarray(imgccd.mask, dtype=xp.bool)
+                            imgccd._mask = xp.asarray(imgccd.mask, dtype=xp.bool)
 
                 # Trim image and copy
                 # The copy is *essential* to avoid having a bunch
@@ -1243,10 +1260,12 @@ def combine(
             ccd.data = xpx.at(ccd.data)[x:xend, y:yend].set(comb_tile.data)
 
             if ccd.mask is not None:
-                # Maybe temporary workaround for the mask not being writeable...
-                ccd.mask = ccd.mask.copy()
-                # Handle immutable arrays with array_api_extra
-                ccd.mask = xpx.at(ccd.mask)[x:xend, y:yend].set(comb_tile.mask)
+                # Handle immutable arrays with array_api_extra; copy=True
+                # also covers a read-only mask. The private attribute is set
+                # to avoid the CCDData.mask setter (see above).
+                ccd._mask = xpx.at(ccd.mask)[x:xend, y:yend].set(
+                    comb_tile.mask, copy=True
+                )
 
             if ccd.uncertainty is not None:
                 # Handle immutable arrays with array_api_extra

@@ -91,6 +91,13 @@ Bug Fixes
   standard, built on the existing NaN-aware ``nanmedian``, and use it in
   ``subtract_overscan`` when the selected array namespace has no ``median``,
   instead of raising ``AttributeError``. [#989]
+- Keep the mask of the result of ``Combiner.average_combine``,
+  ``median_combine`` and ``sum_combine`` and of ``combine`` in the array
+  namespace and on the device of the data, instead of letting the
+  ``CCDData.mask`` setter convert it to NumPy, which fails for arrays that
+  cannot be converted (for example on a non-default device). ``combine``
+  now also coerces a NumPy mask on the template image into the data's
+  namespace and device. [#992]
 
 2.5.1 (2025-07-05)
 ------------------

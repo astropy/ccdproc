@@ -1,4 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+import math
 import types
 from functools import partial
 
@@ -933,7 +934,7 @@ def test_average_combine_uncertainty():
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.average_combine(uncertainty_func=xp.sum)
-    uncert_ref = xp.sum(c._data_arr, 0) / xp.sqrt(3)
+    uncert_ref = xp.sum(c._data_arr, axis=0) / math.sqrt(3)
     assert xp.all(xpx.isclose(ccd.uncertainty.array, uncert_ref))
 
     # Compare this also to the "combine" call
@@ -948,7 +949,7 @@ def test_median_combine_uncertainty():
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.median_combine(uncertainty_func=xp.sum)
-    uncert_ref = xp.sum(c._data_arr, 0) / xp.sqrt(3)
+    uncert_ref = xp.sum(c._data_arr, axis=0) / math.sqrt(3)
     assert xp.all(xpx.isclose(ccd.uncertainty.array, uncert_ref))
 
     # Compare this also to the "combine" call
@@ -963,7 +964,7 @@ def test_sum_combine_uncertainty():
     ccd_list = [ccd_data, ccd_data, ccd_data]
     c = Combiner(ccd_list)
     ccd = c.sum_combine(uncertainty_func=xp.sum)
-    uncert_ref = xp.sum(c._data_arr, 0) * xp.sqrt(3)
+    uncert_ref = xp.sum(c._data_arr, axis=0) * math.sqrt(3)
     assert xp.all(xpx.isclose(ccd.uncertainty.array, uncert_ref))
 
     # Compare this also to the "combine" call
@@ -1054,9 +1055,9 @@ def test_combine_result_uncertainty_and_mask(comb_func, mask_point):
     # Check that the right point is masked, and only one point is
     # masked
     assert expected_result.mask[0, 0] == mask_point
-    assert expected_result.mask.sum() == mask_point
+    assert int(xp.count_nonzero(expected_result.mask)) == int(mask_point)
     assert ccd_comb.mask[0, 0] == mask_point
-    assert ccd_comb.mask.sum() == mask_point
+    assert int(xp.count_nonzero(ccd_comb.mask)) == int(mask_point)
 
 
 @pytest.mark.backend_xfail(
