@@ -202,6 +202,27 @@ def test_combiner_dtype():
     assert result_sum.dtype == c.dtype
 
 
+# A dtype that is not one of the namespace's own dtype objects (a builtin
+# type, a string, a NumPy scalar type) is mapped to the namespace's dtype of
+# the same name, so ``dtype=int`` works on every backend.
+@pytest.mark.parametrize(
+    "dtype,expected_name",
+    [
+        (int, "int64"),
+        (float, "float64"),
+        ("float32", "float32"),
+        (np.float32, "float32"),
+    ],
+)
+def test_combiner_dtype_mapped_to_namespace(dtype, expected_name):
+    ccd_data = ccd_data_func()
+    c = Combiner([ccd_data, ccd_data], dtype=dtype)
+    assert c.dtype == getattr(xp, expected_name)
+    assert c._data_arr.dtype == getattr(xp, expected_name)
+    avg = c.average_combine()
+    assert avg.dtype == getattr(xp, expected_name)
+
+
 # test mask is created from ccd.data
 def test_combiner_mask():
     data = xp.zeros((10, 10))
@@ -802,8 +823,9 @@ def test_combiner_result_dtype():
     res = combine([ccd, ccd_times_2, ccd_times_3], dtype=int)
     # The result dtype should be integer:
     assert xp.isdtype(res.data.dtype, "integral")
-    ref = xp.ones((3, 3)) * 2
-    assert xp.all(xpx.isclose(res.data, ref))
+    # Compare with a Python int: an integer array and a float reference
+    # cannot be promoted together under the array API standard.
+    assert xp.all(res.data == 2)
 
 
 def test_combiner_image_file_collection_input(tmp_path):
@@ -1106,11 +1128,17 @@ def test_combine_overwrite_output(tmp_path):
     # The default dtype of Combiner is float64
     res = combine([ccd, ccd_times_2], output_file=output_file, overwrite_output=True)
 
+    # The returned result must still be in the array namespace, with its
+    # uncertainty and mask; only the file is written from a NumPy copy.
+    xp_compat = array_api_compat.array_namespace(xp.asarray(0))
+    for arr in (res.data, res.uncertainty.array, res.mask):
+        assert array_api_compat.array_namespace(arr) is xp_compat
+
     # Need to convert this to the array namespace.
     res_from_disk = CCDData.read(output_file)
-    res_from_disk.data = xp.asarray(
-        res_from_disk.data, dtype=res_from_disk.data.dtype.type
-    )
+    assert res_from_disk.uncertainty is not None
+    assert res_from_disk.mask is not None
+    res_from_disk.data = xp.asarray(_native_numpy(res_from_disk.data))
 
     # Data should be the same
     assert xp.all(xpx.isclose(res.data, res_from_disk.data))

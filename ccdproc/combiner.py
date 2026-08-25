@@ -20,7 +20,7 @@ from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
 
 from ._nanfuncs import nanmean, nanmedian, nanstd, nansum
-from .core import _native_numpy, sigma_func
+from .core import _namespace_dtype, _native_numpy, _to_numpy, sigma_func
 
 __all__ = ["Combiner", "combine"]
 
@@ -98,9 +98,12 @@ class Combiner:
     ccd_iter : list or generator
         A list or generator of CCDData objects that will be combined together.
 
-    dtype : str or `numpy.dtype` or None, optional
-        Allows user to set dtype. See `numpy.array` ``dtype`` parameter
-        description. If ``None`` it uses ``np.float64``.
+    dtype : dtype-like or None, optional
+        The dtype for the stacked data and the results: a dtype object of
+        the array namespace, or anything NumPy accepts as a dtype (e.g.
+        ``int``, ``"float32"``, `numpy.float32`), which is mapped to the
+        namespace's dtype of the same name. If ``None`` the namespace's
+        ``float64`` is used.
         Default is ``None``.
 
     xp : array namespace, optional
@@ -178,6 +181,8 @@ class Combiner:
         self._xp = xp
         if dtype is None:
             dtype = xp.float64
+        else:
+            dtype = _namespace_dtype(dtype, xp)
 
         self.unit = default_unit
         self.weights = None
@@ -990,9 +995,10 @@ def combine(
         - ``sigma_clip_func`` : function, optional
         - ``sigma_clip_dev_func`` : function, optional
 
-    dtype : str or `numpy.dtype` or None, optional
-        The intermediate and resulting ``dtype`` for the combined CCDs. See
-        `ccdproc.Combiner`. If ``None`` this is set to ``float64``.
+    dtype : dtype-like or None, optional
+        The intermediate and resulting ``dtype`` for the combined CCDs; see
+        `ccdproc.Combiner` for the accepted forms. If ``None`` this is set to
+        the namespace's ``float64``.
         Default is ``None``.
 
     combine_uncertainty_function : callable, None, optional
@@ -1089,6 +1095,8 @@ def combine(
     xp = array_api_compat.array_namespace(ccd.data)
     if dtype is None:
         dtype = xp.float64
+    else:
+        dtype = _namespace_dtype(dtype, xp)
 
     if sigma_clip_func is None:
         sigma_clip_func = xp.mean
@@ -1268,6 +1276,17 @@ def combine(
 
     # Write fits file if filename was provided
     if output_file is not None:
-        ccd.write(output_file, overwrite=overwrite_output)
+        # astropy.io.fits needs NumPy arrays, so write from a NumPy copy and
+        # leave the returned result in its array namespace.
+        to_write = CCDData(
+            _to_numpy(ccd.data), unit=ccd.unit, meta=ccd.meta, wcs=ccd.wcs
+        )
+        if ccd.mask is not None:
+            to_write.mask = _to_numpy(ccd.mask)
+        if ccd.uncertainty is not None:
+            to_write.uncertainty = ccd.uncertainty.__class__(
+                _to_numpy(ccd.uncertainty.array)
+            )
+        to_write.write(output_file, overwrite=overwrite_output)
 
     return ccd

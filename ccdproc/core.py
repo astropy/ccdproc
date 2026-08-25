@@ -9,6 +9,7 @@ import warnings
 
 import array_api_compat
 import array_api_extra as xpx
+import numpy as np
 from astropy import nddata, stats
 from astropy import units as u
 from astropy.modeling import fitting
@@ -125,6 +126,76 @@ def _native_numpy(arr):
     problems.
     """
     return arr.astype(arr.dtype.type, copy=False)
+
+
+def _to_numpy(arr):
+    """
+    Return ``arr`` as a NumPy array, copying only when that is required.
+
+    Parameters
+    ----------
+    arr : array-like
+        An array from any array-API namespace, on any device.
+
+    Returns
+    -------
+    `numpy.ndarray`
+        A NumPy array with the same shape, dtype and values as ``arr``.
+
+    Notes
+    -----
+    This is the deliberate host-side conversion for code that requires
+    NumPy, such as writing a FITS file through `astropy.io.fits`. Callers
+    must not hand the result back to the user in place of the input: the
+    input stays in its own array namespace.
+
+    ``np.asarray`` only works for arrays on the namespace's default device,
+    so the array is first moved there, asking for that device through the
+    standard ``__array_namespace_info__().default_device()``. The move is a
+    no-op when the array is already there, and is skipped when the
+    namespace reports `None` as its default device (as JAX does), since
+    there is then nothing to move to.
+    """
+    xp = array_api_compat.array_namespace(arr)
+    default_device = xp.__array_namespace_info__().default_device()
+    if default_device is not None:
+        arr = array_api_compat.to_device(arr, default_device)
+    return np.asarray(arr)
+
+
+def _namespace_dtype(dtype, xp):
+    """
+    Return the dtype object of an array namespace that corresponds to ``dtype``.
+
+    Parameters
+    ----------
+    dtype : dtype-like
+        Anything NumPy accepts as a dtype (a builtin such as ``int``, a
+        string such as ``"float32"``, a NumPy scalar type or `numpy.dtype`),
+        or a dtype object of ``xp`` itself.
+    xp : array namespace
+        The namespace whose dtype is wanted.
+
+    Returns
+    -------
+    dtype
+        The dtype of ``xp`` with the same name as NumPy's reading of
+        ``dtype``, or ``dtype`` itself if NumPy cannot interpret it (it is
+        then presumably already a dtype of ``xp``) or ``xp`` has no dtype of
+        that name.
+
+    Notes
+    -----
+    ``xp.asarray`` and ``xp.astype`` require the namespace's own dtype
+    objects. A builtin type such as ``int`` is a valid NumPy dtype, but
+    array-api-strict rejects it, so NumPy is used here only to resolve the
+    name and the dtype is then looked up on ``xp``.
+    """
+    try:
+        name = np.dtype(dtype).name
+    except TypeError:
+        return dtype
+    return getattr(xp, name, dtype)
 
 
 def _percentile_fallback(array, percentiles, xp=None):
@@ -695,7 +766,7 @@ def subtract_overscan(
 
     if model is not None:
         of = fitting.LinearLSQFitter()
-        yarr = xp.arange(len(oscan))
+        yarr = xp.arange(oscan.shape[0])
         oscan = of(model, yarr, oscan)
         # The model will return something array-like but it may not be the same array
         # library that we started with, so convert it back to the original
