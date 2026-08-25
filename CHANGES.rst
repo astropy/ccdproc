@@ -20,6 +20,8 @@ Other Changes and Additions
 - Add a ``strict`` tox environment for running the ``array-api-strict`` test
   suite locally: ``tox -e strict`` reproduces the CI ``py313-strict`` job
   without having to name the interpreter. [#986]
+- ``combine`` no longer accepts an array as its ``array_package`` argument;
+  pass the array namespace or module instead, as for ``Combiner``. [#997]
 
 Bug Fixes
 ^^^^^^^^^
@@ -105,6 +107,12 @@ Bug Fixes
 - Compute the ``Combiner.clip_extrema`` mask with a rank comparison instead
   of scattering into the mask through per-pixel integer indices, which the
   array API standard does not support. [#994]
+- Accept a plain module such as ``numpy`` or ``dask.array`` as ``array_package``
+  in ``combine``, normalising it to its array-api-compat namespace the way
+  ``Combiner`` already does. [#997]
+- Keep the uncertainty propagation for correlated addition and subtraction
+  through ``_CCDDataWrapperForArrayAPI`` in the array namespace instead of
+  falling back to NumPy. [#997]
 
 2.5.1 (2025-07-05)
 ------------------

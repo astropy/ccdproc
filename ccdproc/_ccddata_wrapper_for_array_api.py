@@ -281,7 +281,7 @@ class _ArrayAPIPropagationMixin:
     def _propagate_add(self, other_uncert, result_data, correlation):
         xp = array_api_compat.array_namespace(self.array, other_uncert.array)
         to_variance, from_variance = self._variance_hooks(xp)
-        return super()._propagate_add_sub(
+        return self._propagate_add_sub(
             other_uncert,
             result_data,
             correlation,
@@ -293,7 +293,7 @@ class _ArrayAPIPropagationMixin:
     def _propagate_subtract(self, other_uncert, result_data, correlation):
         xp = array_api_compat.array_namespace(self.array, other_uncert.array)
         to_variance, from_variance = self._variance_hooks(xp)
-        return super()._propagate_add_sub(
+        return self._propagate_add_sub(
             other_uncert,
             result_data,
             correlation,
@@ -301,6 +301,78 @@ class _ArrayAPIPropagationMixin:
             to_variance=to_variance,
             from_variance=from_variance,
         )
+
+    def _propagate_add_sub(
+        self,
+        other_uncert,
+        result_data,
+        correlation,
+        subtract=False,
+        to_variance=lambda x: x,
+        from_variance=lambda x: x,
+    ):
+        """
+        Propagate uncertainty for addition or subtraction.
+
+        Parameters
+        ----------
+        other_uncert : `~astropy.nddata.NDUncertainty`
+            The uncertainty of the other operand. Its ``array`` must be in
+            the same array namespace as ``self.array``.
+        result_data : array-like
+            Accepted only for signature compatibility with astropy; the
+            formulae do not use it.
+        subtract : bool, optional
+            ``True`` for subtraction, ``False`` (default) for addition.
+        correlation : float or array-like
+            Correlation coefficient between the two operands, ``0`` for
+            uncorrelated.
+        to_variance : callable, optional
+            Converts the stored uncertainty array to a variance. Defaults to
+            the identity, i.e. the uncertainty is already a variance.
+        from_variance : callable, optional
+            Converts a variance back to the stored uncertainty type. Defaults
+            to the identity.
+
+        Returns
+        -------
+        array-like
+            The propagated uncertainty array, in the same array namespace and
+            on the same device as the inputs, in the representation of
+            ``self`` (as determined by ``from_variance``).
+
+        Notes
+        -----
+        This is astropy's ``_VariancePropagationMixin._propagate_add_sub``
+        with the NumPy call replaced by its array-namespace equivalent; see
+        the astropy version for the derivation of the formulae. Unlike
+        astropy's version this does not convert the uncertainties between
+        units, because ``_CCDDataWrapperForArrayAPI._arithmetic_wrapper``
+        removes the units from the uncertainties before doing the
+        arithmetic.
+        """
+        del result_data  # accepted only for compatibility with astropy
+        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
+
+        correlation_sign = -1 if subtract else 1
+
+        other = to_variance(other_uncert.array) if other_uncert.array is not None else 0
+        this = to_variance(self.array) if self.array is not None else 0
+
+        # Formula: sigma**2 = dA + dB +/- 2*cor*sqrt(dA*dB)
+        # Only take the correlation term into account when both operands
+        # have an uncertainty; otherwise ``this`` or ``other`` is a bare
+        # Python ``0`` and ``xp.sqrt(0)`` is rejected on strict. The term is
+        # mathematically zero in that case regardless.
+        if (isinstance(correlation, np.ndarray) or correlation != 0) and (
+            other_uncert.array is not None and self.array is not None
+        ):
+            corr = 2 * correlation * xp.sqrt(this * other)
+            result = this + other + correlation_sign * corr
+        else:
+            result = this + other
+
+        return from_variance(result)
 
     def _propagate_multiply(self, other_uncert, result_data, correlation):
         xp = array_api_compat.array_namespace(self.array, other_uncert.array)
@@ -338,14 +410,6 @@ class _ArrayAPIPropagationMixin:
         """
         Propagate uncertainty for multiplication or division.
 
-        This is astropy's
-        ``_VariancePropagationMixin._propagate_multiply_divide`` with the
-        NumPy calls replaced by their array-namespace equivalents; see the
-        astropy version for the derivation of the formulae. Unlike astropy's
-        version this does not convert the uncertainties between units,
-        because ``_CCDDataWrapperForArrayAPI._arithmetic_wrapper`` removes
-        the units from the uncertainties before doing the arithmetic.
-
         Parameters
         ----------
         other_uncert : `~astropy.nddata.NDUncertainty`
@@ -373,6 +437,16 @@ class _ArrayAPIPropagationMixin:
             The propagated uncertainty array, in the same array namespace and
             on the same device as the inputs, in the representation of
             ``self`` (as determined by ``from_variance``).
+
+        Notes
+        -----
+        This is astropy's
+        ``_VariancePropagationMixin._propagate_multiply_divide`` with the
+        NumPy calls replaced by their array-namespace equivalents; see the
+        astropy version for the derivation of the formulae. Unlike astropy's
+        version this does not convert the uncertainties between units,
+        because ``_CCDDataWrapperForArrayAPI._arithmetic_wrapper`` removes
+        the units from the uncertainties before doing the arithmetic.
         """
         del result_data  # accepted only for compatibility with astropy
         xp = array_api_compat.array_namespace(self.array, other_uncert.array)

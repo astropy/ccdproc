@@ -211,7 +211,7 @@ def test_wrapped_arithmetic_uncertainty_only_on_operand(uncertainty_type, operat
 @pytest.mark.parametrize(
     "uncertainty_type", [StdDevUncertainty, VarianceUncertainty, InverseVariance]
 )
-@pytest.mark.parametrize("operation", ["multiply", "divide"])
+@pytest.mark.parametrize("operation", ["add", "subtract", "multiply", "divide"])
 def test_wrapped_arithmetic_correlated_uncertainty(uncertainty_type, operation):
     data1 = [[1.0, 2.0], [3.0, 4.0]]
     data2 = [[2.0, 2.0], [4.0, 8.0]]
