@@ -88,11 +88,16 @@ def numpy_copy(array):
     ``np.asarray`` only works for arrays on the namespace's default
     device. The strict tests run on ``Device("device1")``, on which
     array-api-strict deliberately refuses to export to NumPy, so the array
-    is moved to the default device first.
+    is moved to the default device first. That move is a no-op on every
+    other backend the suite runs. The default device is asked for through
+    the standard ``__array_namespace_info__().default_device()``, which
+    the 2025.12 standard allows to be `None` (JAX does this); in that case
+    there is nothing to move to and ``np.asarray`` is used directly.
     """
     xp = array_api_compat.array_namespace(array)
-    if xp.__name__ == "array_api_strict":
-        array = xp.asarray(array, device=xp.Device("CPU_DEVICE"))
+    default_device = xp.__array_namespace_info__().default_device()
+    if default_device is not None:
+        array = array_api_compat.to_device(array, default_device)
     return np.asarray(array)
 
 
