@@ -1013,10 +1013,11 @@ def combine(
 
         If not specified, the array package used will
         be numpy. The array package can be specified either by passing in
-        an array namespace (e.g. output from ``array_api_compat.array_namespace``),
-        or an imported array package that follows the array API standard
-        (e.g. ``numpy`` or ``jax.numpy``), or an array whose namespace can be
-        determined (e.g. a `numpy.ndarray` or ``jax.numpy.ndarray``).
+        an array namespace (e.g. output from ``array_api_compat.array_namespace``)
+        or a plain, imported array module that follows the array API standard
+        (e.g. ``numpy`` or ``dask.array``); either is normalised to its
+        array-api-compat namespace before use, the same way
+        `~ccdproc.Combiner` normalises its ``xp`` argument.
 
     ccdkwargs : Other keyword arguments for `astropy.nddata.fits_ccddata_reader`.
 
@@ -1069,10 +1070,12 @@ def combine(
         # The ccd object will always read as numpy, so convert it to the
         # requested namespace if there is one.
         if array_package is not None:
-            try:
-                xp = array_api_compat.array_namespace(array_package)
-            except TypeError:
-                xp = array_package
+            # ``array_package`` may be a raw module such as ``numpy`` or
+            # ``dask.array``; normalise it to the array-api-compat namespace
+            # the same way ``Combiner.__init__`` does, so the conversions
+            # below can rely on array-API features (e.g. the ``device``
+            # keyword) that a raw module may not provide.
+            xp = array_api_compat.array_namespace(array_package.asarray(0))
 
             # ccd.data (and its uncertainty, if any) were just read from a
             # FITS file, so they are NumPy arrays, possibly in big-endian

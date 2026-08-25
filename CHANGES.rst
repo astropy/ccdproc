@@ -105,6 +105,9 @@ Bug Fixes
 - Compute the ``Combiner.clip_extrema`` mask with a rank comparison instead
   of scattering into the mask through per-pixel integer indices, which the
   array API standard does not support. [#994]
+- Accept a plain module such as ``numpy`` or ``dask.array`` as ``array_package``
+  in ``combine``, normalising it to its array-api-compat namespace the way
+  ``Combiner`` already does. [#NNN]
 
 2.5.1 (2025-07-05)
 ------------------

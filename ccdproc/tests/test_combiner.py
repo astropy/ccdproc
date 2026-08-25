@@ -1518,3 +1518,55 @@ def test_user_supplied_combine_func_that_relies_on_masks(comb_func):
     expected_result = xpx.at(expected_result)[5, 5].set(2)
 
     assert xp.all(xpx.isclose(expected_result, actual_result.data))
+
+
+# Regression tests for #982: combine()'s ``array_package`` only normalised
+# an already-instantiated array (via array_api_compat.array_namespace), so a
+# raw array module (e.g. plain ``numpy`` or ``dask.array``, as opposed to
+# ``array_api_compat.numpy``/``array_api_compat.dask.array``) passed through
+# unnormalised into code that relies on array-API features the raw module
+# does not provide.
+def test_combine_array_package_raw_module(tmp_path):
+    """A raw array module passed as ``array_package`` should be normalised
+    to its array-api-compat namespace, the same way ``Combiner`` normalises
+    its ``xp`` argument.
+    """
+    ccd = CCDData(np.arange(9, dtype=float).reshape(3, 3), unit=u.adu)
+    files = []
+    for i in range(3):
+        path = tmp_path / f"raw-module-{i}.fits"
+        ccd.write(path)
+        files.append(str(path))
+
+    result = combine(files, array_package=np, unit="adu")
+    assert array_api_compat.is_numpy_array(result.data)
+
+    # On strict and jax, the suite's own ``xp`` fixture is itself a raw
+    # module (``array_api_strict``/``jax.numpy`` imported directly, not
+    # through array_api_compat), so this also exercises the raw-module
+    # path of #982 on those backends without a separate test case.
+    result = combine(files, array_package=xp, unit="adu")
+    expected_xp = array_api_compat.array_namespace(xp.asarray(0))
+    assert array_api_compat.array_namespace(result.data) is expected_xp
+
+
+def test_combine_array_package_dask_module(tmp_path):
+    """Regression test for #982.
+
+    Passing the raw ``dask.array`` module (rather than its
+    array-api-compat wrapper, ``array_api_compat.dask.array``) as
+    ``array_package`` used to reach ``dask.array.from_array`` with an
+    unsupported ``device=`` keyword, raising ``TypeError: from_array() got
+    an unexpected keyword argument 'device'``.
+    """
+    dask = pytest.importorskip("dask.array")
+
+    ccd = CCDData(np.arange(9, dtype=float).reshape(3, 3), unit=u.adu)
+    files = []
+    for i in range(3):
+        path = tmp_path / f"raw-dask-{i}.fits"
+        ccd.write(path)
+        files.append(str(path))
+
+    result = combine(files, array_package=dask, unit="adu")
+    assert array_api_compat.is_dask_array(result.data)
