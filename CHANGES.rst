@@ -104,7 +104,7 @@ Bug Fixes
   non-NumPy array namespace in ``combine`` and ``ImageFileCollection``. [#995]
 - Compute the ``Combiner.clip_extrema`` mask with a rank comparison instead
   of scattering into the mask through per-pixel integer indices, which the
-  array API standard does not support. [#NNN]
+  array API standard does not support. [#994]
 
 2.5.1 (2025-07-05)
 ------------------
