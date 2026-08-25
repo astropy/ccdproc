@@ -336,19 +336,43 @@ class _ArrayAPIPropagationMixin:
         from_variance=lambda x: x,
     ):
         """
-        Error propagation for multiplication or division.
+        Propagate uncertainty for multiplication or division.
 
-        This is astropy's ``_VariancePropagationMixin._propagate_multiply_divide``
-        with the ``numpy`` calls replaced by their array namespace equivalents;
-        astropy's ``np.abs`` converts the operands to numpy arrays, which fails
-        for arrays that cannot be converted (for example on a non-default
-        device). See the astropy version for the derivation of the formulae.
+        This is astropy's
+        ``_VariancePropagationMixin._propagate_multiply_divide`` with the
+        NumPy calls replaced by their array-namespace equivalents; see the
+        astropy version for the derivation of the formulae. Unlike astropy's
+        version this does not convert the uncertainties between units,
+        because ``_CCDDataWrapperForArrayAPI._arithmetic_wrapper`` removes
+        the units from the uncertainties before doing the arithmetic.
 
-        Unlike astropy's version this does not convert the uncertainties
-        between units: ``_CCDDataWrapperForArrayAPI._arithmetic_wrapper``
-        removes the units from the uncertainties before doing the arithmetic,
-        so there is never a unit to convert. ``result_data`` is not used by the
-        formulae and is only accepted for compatibility with astropy.
+        Parameters
+        ----------
+        other_uncert : `~astropy.nddata.NDUncertainty`
+            The uncertainty of the other operand. Its ``array`` and
+            ``parent_nddata.data`` must be in the same array namespace as
+            ``self.array``.
+        result_data : array-like
+            Accepted only for signature compatibility with astropy; the
+            formulae do not use it.
+        correlation : float or array-like
+            Correlation coefficient between the two operands, ``0`` for
+            uncorrelated.
+        divide : bool, optional
+            ``True`` for division, ``False`` (default) for multiplication.
+        to_variance : callable, optional
+            Converts the stored uncertainty array to a variance. Defaults to
+            the identity, i.e. the uncertainty is already a variance.
+        from_variance : callable, optional
+            Converts a variance back to the stored uncertainty type. Defaults
+            to the identity.
+
+        Returns
+        -------
+        array-like
+            The propagated uncertainty array, in the same array namespace and
+            on the same device as the inputs, in the representation of
+            ``self`` (as determined by ``from_variance``).
         """
         del result_data  # accepted only for compatibility with astropy
         xp = array_api_compat.array_namespace(self.array, other_uncert.array)
