@@ -611,7 +611,11 @@ def test_flat_correct():
     size = ccd_data.shape[0]
     # create the flat, with some scatter
     data = 2 * RNG().normal(loc=1.0, scale=0.05, size=(size, size))
-    flat = CCDData(xp.asarray(data), meta=fits.header.Header(), unit=ccd_data.unit)
+    flat = CCDData(
+        xp.asarray(data, device=xp_device),
+        meta=fits.header.Header(),
+        unit=ccd_data.unit,
+    )
     flat_data = flat_correct(ccd_data, flat, add_keyword=None)
 
     # Check that the flat was normalized
@@ -719,7 +723,9 @@ def test_flat_correct_norm_value():
     # the mean of the flat data.
     flat_mean = 5.0
     data = RNG().normal(loc=1.0, scale=0.05, size=ccd_data.shape)
-    flat = CCDData(xp.asarray(data), meta=fits.Header(), unit=ccd_data.unit)
+    flat = CCDData(
+        xp.asarray(data, device=xp_device), meta=fits.Header(), unit=ccd_data.unit
+    )
     flat_data = flat_correct(ccd_data, flat, add_keyword=None, norm_value=flat_mean)
 
     # Check that the flat was normalized
@@ -757,7 +763,7 @@ def test_flat_correct_deviation():
     ccd_data.unit = u.electron
     ccd_data = create_deviation(ccd_data, readnoise=5 * u.electron)
     # Create the flat
-    data = 2 * xp.ones((size, size))
+    data = 2 * xp.ones((size, size), device=xp_device)
     flat = CCDData(data, meta=fits.header.Header(), unit=ccd_data.unit)
     flat = create_deviation(flat, readnoise=0.5 * u.electron)
     ccd_data = flat_correct(ccd_data, flat)
@@ -766,16 +772,16 @@ def test_flat_correct_deviation():
 # Test the uncertainty on the data after flat correction
 def test_flat_correct_data_uncertainty():
     # Regression test for #345
-    # TODO: remove when fix that NDUncertainty explicitly checks
-    # whether the value is a numpy array.
     dat = CCDData(
-        xp.ones([100, 100]), unit="adu", uncertainty=np_array(xp.ones([100, 100]))
+        xp.ones([100, 100]),
+        unit="adu",
+        uncertainty=StdDevUncertainty(xp.ones([100, 100])),
     )
     # Note flat is set to 10, error, if present, is set to one.
     flat = CCDData(10 * xp.ones([100, 100]), unit="adu")
     res = flat_correct(dat, flat)
-    assert (res.data == dat.data).all()
-    assert (res.uncertainty.array == dat.uncertainty.array).all()
+    assert xp.all(res.data == dat.data)
+    assert xp.all(res.uncertainty.array == dat.uncertainty.array)
 
 
 # Tests for gain correction

@@ -32,12 +32,16 @@ def test_linear_gain_correct(gain):
     if isinstance(gain, Keyword):
         gain = gain.value  # convert to Quantity...
     try:
-        gain_value = gain.value
+        # Make this a python float so that it can be multiplied by an array
+        # from any array namespace.
+        gain_value = float(gain.value)
     except AttributeError:
         gain_value = gain
 
-    xp.all(xpx.isclose(ccd.data, gain_value * orig_data))
-    xp.all(xpx.isclose(ccd.uncertainty.array, gain_value * ccd_data.uncertainty.array))
+    assert xp.all(xpx.isclose(ccd.data, gain_value * orig_data))
+    assert xp.all(
+        xpx.isclose(ccd.uncertainty.array, gain_value * ccd_data.uncertainty.array)
+    )
 
     if isinstance(gain, u.Quantity):
         assert ccd.unit == ccd_data.unit * gain.unit
@@ -57,6 +61,6 @@ def test_linear_gain_unit_keyword():
     gain = 3.0
     gain_unit = u.electron / u.adu
     ccd = gain_correct(ccd_data, gain, gain_unit=gain_unit)
-    xp.all(xpx.isclose(ccd.data, gain * orig_data))
-    xp.all(xpx.isclose(ccd.uncertainty.array, gain * ccd_data.uncertainty.array))
+    assert xp.all(xpx.isclose(ccd.data, gain * orig_data))
+    assert xp.all(xpx.isclose(ccd.uncertainty.array, gain * ccd_data.uncertainty.array))
     assert ccd.unit == ccd_data.unit * gain_unit
