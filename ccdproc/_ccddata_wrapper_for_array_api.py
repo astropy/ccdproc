@@ -305,7 +305,7 @@ class _ArrayAPIPropagationMixin:
     def _propagate_multiply(self, other_uncert, result_data, correlation):
         xp = array_api_compat.array_namespace(self.array, other_uncert.array)
         to_variance, from_variance = self._variance_hooks(xp)
-        return super()._propagate_multiply_divide(
+        return self._propagate_multiply_divide(
             other_uncert,
             result_data,
             correlation,
@@ -317,7 +317,7 @@ class _ArrayAPIPropagationMixin:
     def _propagate_divide(self, other_uncert, result_data, correlation):
         xp = array_api_compat.array_namespace(self.array, other_uncert.array)
         to_variance, from_variance = self._variance_hooks(xp)
-        return super()._propagate_multiply_divide(
+        return self._propagate_multiply_divide(
             other_uncert,
             result_data,
             correlation,
@@ -325,6 +325,91 @@ class _ArrayAPIPropagationMixin:
             to_variance=to_variance,
             from_variance=from_variance,
         )
+
+    def _propagate_multiply_divide(
+        self,
+        other_uncert,
+        result_data,
+        correlation,
+        divide=False,
+        to_variance=lambda x: x,
+        from_variance=lambda x: x,
+    ):
+        """
+        Error propagation for multiplication or division.
+
+        This is astropy's ``_VariancePropagationMixin._propagate_multiply_divide``
+        with the ``numpy`` calls replaced by their array namespace equivalents;
+        astropy's ``np.abs`` converts the operands to numpy arrays, which fails
+        for arrays that cannot be converted (for example on a non-default
+        device). See the astropy version for the derivation of the formulae.
+        """
+        xp = array_api_compat.array_namespace(self.array, other_uncert.array)
+
+        # For multiplication we don't need the result as quantity
+        if isinstance(result_data, u.Quantity):
+            result_data = result_data.value
+
+        correlation_sign = -1 if divide else 1
+
+        if other_uncert.array is not None:
+            # We want the result to have a unit consistent with the parent, so
+            # we only need to convert the unit of the other uncertainty if it
+            # is different from its data's unit.
+            if (
+                other_uncert.unit
+                and to_variance(1 * other_uncert.unit)
+                != ((1 * other_uncert.parent_nddata.unit) ** 2).unit
+            ):
+                d_b = (
+                    to_variance(other_uncert.array << other_uncert.unit)
+                    .to((1 * other_uncert.parent_nddata.unit) ** 2)
+                    .value
+                )
+            else:
+                d_b = to_variance(other_uncert.array)
+            # Formula: sigma**2 = |A|**2 * d_b
+            right = xp.abs(self.parent_nddata.data**2 * d_b)
+        else:
+            right = 0
+
+        if self.array is not None:
+            # Just the reversed case
+            if (
+                self.unit
+                and to_variance(1 * self.unit)
+                != ((1 * self.parent_nddata.unit) ** 2).unit
+            ):
+                d_a = (
+                    to_variance(self.array << self.unit)
+                    .to((1 * self.parent_nddata.unit) ** 2)
+                    .value
+                )
+            else:
+                d_a = to_variance(self.array)
+            # Formula: sigma**2 = |B|**2 * d_a
+            left = xp.abs(other_uncert.parent_nddata.data**2 * d_a)
+        else:
+            left = 0
+
+        if isinstance(correlation, np.ndarray) or correlation != 0:
+            corr = (
+                2
+                * correlation
+                * xp.sqrt(d_a * d_b)
+                * self.parent_nddata.data
+                * other_uncert.parent_nddata.data
+            )
+        else:
+            corr = 0
+
+        if divide:
+            return from_variance(
+                (left + right + correlation_sign * corr)
+                / other_uncert.parent_nddata.data**4
+            )
+        else:
+            return from_variance(left + right + correlation_sign * corr)
 
 
 class _StdDevUncertaintyWrapper(

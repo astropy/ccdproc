@@ -50,10 +50,6 @@ def test_trim_image_returns_plain_ccddata():
     assert result.wcs.wcs.compare(ccd.wcs.wcs)
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="Astropy uncertainty propagation mixes NumPy and strict arrays",
-)
 def test_flat_correct_returns_public_uncertainty():
     ccd = CCDData(
         xp.ones((2, 2)),
@@ -141,13 +137,6 @@ def test_unwrap_rejects_non_ccddata():
         _unwrap_ccddata_for_array_api(object())
 
 
-_STRICT_STDDEV_MULDIV_XFAIL = pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="astropy's _propagate_multiply_divide applies np.sqrt/np.abs to the "
-    "std-dev result, which fails on a non-default strict device (see #940)",
-)
-
-
 def test_propagation_mixin_requires_variance_hooks():
     """The mixin is abstract: a subclass that forgets ``_variance_hooks`` fails
     loudly rather than silently propagating with the wrong conversions."""
@@ -156,21 +145,9 @@ def test_propagation_mixin_requires_variance_hooks():
 
 
 @pytest.mark.parametrize(
-    ("uncertainty_type", "operation"),
-    [
-        pytest.param(
-            unc,
-            op,
-            marks=(
-                [_STRICT_STDDEV_MULDIV_XFAIL]
-                if unc is StdDevUncertainty and op in ("multiply", "divide")
-                else []
-            ),
-        )
-        for unc in (StdDevUncertainty, VarianceUncertainty, InverseVariance)
-        for op in ("add", "subtract", "multiply", "divide")
-    ],
+    "uncertainty_type", [StdDevUncertainty, VarianceUncertainty, InverseVariance]
 )
+@pytest.mark.parametrize("operation", ["add", "subtract", "multiply", "divide"])
 def test_wrapped_arithmetic_keeps_uncertainty_in_namespace(uncertainty_type, operation):
     data1 = [[1.0, 2.0], [3.0, 4.0]]
     data2 = [[2.0, 2.0], [4.0, 8.0]]
