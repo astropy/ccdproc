@@ -102,15 +102,6 @@ def _native_numpy(arr):
     """
     Return a NumPy array with the same data in native byte order.
 
-    Data read from a FITS file is big-endian (e.g. dtype ``>f8``), a byte
-    order that only NumPy understands; other array namespaces reject such
-    an array outright. Requesting ``dtype=arr.dtype.type`` from
-    ``xp.asarray`` works around that in NumPy and JAX but hands a NumPy
-    type object to the namespace, which ``array_api_strict`` warns about.
-    Converting to native byte order in NumPy first and handing the
-    resulting plain array to ``xp.asarray`` with no ``dtype`` avoids both
-    problems.
-
     Parameters
     ----------
     arr : `numpy.ndarray`
@@ -121,6 +112,17 @@ def _native_numpy(arr):
     `numpy.ndarray`
         ``arr`` converted to its dtype's native scalar type. No copy is made
         if one is not required.
+
+    Notes
+    -----
+    Data read from a FITS file is big-endian (e.g. dtype ``>f8``), a byte
+    order that only NumPy understands; other array namespaces reject such
+    an array outright. Requesting ``dtype=arr.dtype.type`` from
+    ``xp.asarray`` works around that in NumPy and JAX but hands a NumPy
+    type object to the namespace, which ``array_api_strict`` warns about.
+    Converting to native byte order in NumPy first and handing the
+    resulting plain array to ``xp.asarray`` with no ``dtype`` avoids both
+    problems.
     """
     return arr.astype(arr.dtype.type, copy=False)
 
