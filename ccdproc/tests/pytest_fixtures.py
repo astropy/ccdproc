@@ -2,6 +2,7 @@
 
 from shutil import rmtree
 
+import array_api_compat
 import numpy as np
 import pytest
 from astropy import units as u
@@ -66,6 +67,39 @@ def ccd_data(
     ccd = CCDData(xp.asarray(data, device=xp_device), unit=u.adu)
     ccd.header = fake_meta
     return ccd
+
+
+def numpy_copy(array):
+    """
+    Return a NumPy copy of ``array``, moving it off a non-default device first.
+
+    ``np.asarray`` raises on an array-api-strict array that lives on one of
+    the library's fake non-default devices (the suite runs strict tests on
+    ``Device("device1")`` for exactly that reason), so move the array to the
+    default device before converting.
+    """
+    xp = array_api_compat.array_namespace(array)
+    if xp.__name__ == "array_api_strict":
+        array = xp.asarray(array, device=xp.Device("CPU_DEVICE"))
+    return np.asarray(array)
+
+
+def numpy_ccddata(ccd):
+    """
+    Return a copy of ``ccd`` with ``data``, ``mask`` and ``uncertainty.array``
+    (when present) converted to NumPy via `numpy_copy`.
+
+    Unit and meta are copied over unchanged. Useful for handing a namespace
+    ``CCDData`` to code that requires NumPy, such as ``CCDData.write``.
+    """
+    new_ccd = CCDData(numpy_copy(ccd.data), unit=ccd.unit, meta=ccd.meta)
+    if ccd.mask is not None:
+        new_ccd.mask = numpy_copy(ccd.mask)
+    if ccd.uncertainty is not None:
+        new_ccd.uncertainty = ccd.uncertainty.__class__(
+            numpy_copy(ccd.uncertainty.array)
+        )
+    return new_ccd
 
 
 @pytest.fixture
