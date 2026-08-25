@@ -965,7 +965,15 @@ def gain_correct(ccd, gain, gain_unit=None, xp=None):
     gain_value = (
         gain_value.decompose().value if isinstance(gain_value, Quantity) else gain_value
     )
-    _result = _ccd.multiply(xp.asarray(gain_value), xp=xp, handle_mask=xp.logical_or)
+    if isinstance(gain_value, numbers.Real):
+        # The array API standard does not promote integer arrays with
+        # floating-point arrays, so make sure a plain-number gain is a float.
+        gain_value = float(gain_value)
+    _result = _ccd.multiply(
+        xp.asarray(gain_value, device=array_api_compat.device(_ccd.data)),
+        xp=xp,
+        handle_mask=xp.logical_or,
+    )
     if gain_unit:
         # Set unit of the data
         _result.unit = _ccd.unit * gain_unit
@@ -1054,7 +1062,10 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None, xp=None):
     # Make sure flat_mean is a plain python float so that we
     # can use it with the array namespace. -- actually, we need to cast
     # flat_mean to the array namespace.
-    _flat_normed = _use_flat.divide(xp.asarray(flat_mean), xp=xp)
+    _flat_normed = _use_flat.divide(
+        xp.asarray(flat_mean, device=array_api_compat.device(_use_flat.data)),
+        xp=xp,
+    )
 
     # We need to fix up the unit now since we stripped the unit from
     # the flat_mean above.
