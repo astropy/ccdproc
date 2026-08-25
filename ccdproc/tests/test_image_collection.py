@@ -438,14 +438,17 @@ class TestImageFileCollection:
         for img in collection.data():
             assert isinstance(img, np.ndarray)
 
-    @pytest.mark.backend_xfail(
-        "jax",
-        reason="on Linux CI with the jax backend, ccds() does not raise "
-        "ValueError for unit-less files; the same test passes on macOS with "
-        "identical astropy/jax versions. Platform-dependent, root cause not "
-        "yet understood.",
-    )
     def test_generator_ccds_without_unit(self, triage_setup):
+        # astropy's ``_arithmetic`` decorator (ccddata.py) sets the module
+        # global ``_config_ccd_requires_unit = False`` around an arithmetic
+        # call and restores it with no try/finally, so an earlier test whose
+        # arithmetic raised (e.g. test_unit_mismatch_behaves_as_expected)
+        # can leave it permanently disabled (astropy/astropy#20268). Reset
+        # it explicitly so this test does not depend on what ran before it.
+        import astropy.nddata.ccddata as _ccddata_module
+
+        _ccddata_module._config_ccd_requires_unit = True
+
         collection = ImageFileCollection(
             location=triage_setup.test_dir, keywords=["imagetyp"]
         )
