@@ -356,14 +356,6 @@ def median(x, /, *, axis=0, xp=None):
     """
     Median along an axis, using only array-API functions.
 
-    On input with no NaNs this is exactly `nanmedian` -- the same sorting
-    and index-picking algorithm is used, so the values agree bit for bit.
-    The two differ only in how a NaN in the reduced slice is handled: this
-    function propagates it to the result, matching `numpy.median`, while
-    `nanmedian` ignores it. That NaN-propagating behaviour is restored here
-    with a final `where` over whether any NaN is present along ``axis``,
-    since `nanmedian` alone would silently drop NaNs instead.
-
     Parameters
     ----------
     x : array
@@ -382,6 +374,16 @@ def median(x, /, *, axis=0, xp=None):
         Median of ``x`` along ``axis``, with that axis removed. Slices that
         contain any NaN yield NaN, matching `numpy.median`; this is the
         difference from `nanmedian`, which ignores NaNs entirely.
+
+    Notes
+    -----
+    On input with no NaNs this is exactly `nanmedian` -- the same sorting
+    and index-picking algorithm is used, so the values agree bit for bit.
+    The two differ only in how a NaN in the reduced slice is handled: this
+    function propagates it to the result, matching `numpy.median`, while
+    `nanmedian` ignores it. That NaN-propagating behaviour is restored here
+    with a final `where` over whether any NaN is present along ``axis``,
+    since `nanmedian` alone would silently drop NaNs instead.
     """
     x, axis, xp, device = _setup(x, axis, xp)
     nan = xp.asarray(xp.nan, dtype=x.dtype, device=device)
