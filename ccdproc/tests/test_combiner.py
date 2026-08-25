@@ -7,7 +7,6 @@ import array_api_compat
 import array_api_extra as xpx
 import astropy.units as u
 import numpy as np
-import numpy.ma as np_ma
 import pytest
 from astropy.nddata import CCDData
 from astropy.stats import median_absolute_deviation as mad
@@ -33,6 +32,7 @@ from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.image_collection import ImageFileCollection
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
+from ccdproc.tests.pytest_fixtures import numpy_ccddata, numpy_copy
 
 # Several tests have many more NaNs in them than real data. numpy generates
 # lots of warnings in those cases and it makes more sense to suppress them
@@ -48,9 +48,16 @@ def _overall_median(arr):
 
 
 def _make_mean_scaler(ccd_data):
+    # Use the namespace of each argument: the reference image may be a
+    # NumPy array read from FITS while ``x`` is a namespace array (or vice
+    # versa), so neither side can assume the other's array library.
+    ref_xp = array_api_compat.array_namespace(ccd_data.data)
+    ref_mean = float(ref_xp.mean(ccd_data.data))
+
     def scale_by_mean(x):
         # scale each array to the mean of the first image
-        return ccd_data.data.mean() / np_ma.average(x)
+        xp_x = array_api_compat.array_namespace(x)
+        return ref_mean / float(xp_x.mean(x))
 
     return scale_by_mean
 
@@ -645,25 +652,19 @@ def test_combiner_mask_average():
     assert not ccd.mask[5, 5]
 
 
-@pytest.mark.backend_xfail(
-    "jax",
-    reason="astropy nddata arithmetic passes a jax array as dtype=, "
-    "triggering jax's implicit-array-to-dtype DeprecationWarning, which "
-    "is an error under this test suite's warning filters",
-)
 def test_combiner_with_scaling():
     ccd_data = ccd_data_func()
     # The factors below are not particularly important; just avoid anything
     # whose average is 1.
-    ccd_data_lower = ccd_data.multiply(3)
-    ccd_data_higher = ccd_data.multiply(0.9)
+    ccd_data_lower = CCDData(ccd_data.data * 3, unit=ccd_data.unit)
+    ccd_data_higher = CCDData(ccd_data.data * 0.9, unit=ccd_data.unit)
     combiner = Combiner([ccd_data, ccd_data_higher, ccd_data_lower])
     scale_by_mean = _make_mean_scaler(ccd_data)
     combiner.scaling = scale_by_mean
     avg_ccd = combiner.average_combine()
     # Does the mean of the scaled arrays match the value to which it was
     # scaled?
-    assert xp.all(xpx.isclose(avg_ccd.data.mean(), ccd_data.data.mean()))
+    assert xp.all(xpx.isclose(xp.mean(avg_ccd.data), xp.mean(ccd_data.data)))
     assert avg_ccd.shape == ccd_data.shape
     median_ccd = combiner.median_combine()
     # Does median also scale to the correct value?
@@ -672,9 +673,9 @@ def test_combiner_with_scaling():
     )
 
     # Set the scaling manually...
-    combiner.scaling = [scale_by_mean(combiner._data_arr[i]) for i in range(3)]
+    combiner.scaling = [scale_by_mean(combiner._data_arr[i, ...]) for i in range(3)]
     avg_ccd = combiner.average_combine()
-    assert xp.all(xpx.isclose(avg_ccd.data.mean(), ccd_data.data.mean()))
+    assert xp.all(xpx.isclose(xp.mean(avg_ccd.data), xp.mean(ccd_data.data)))
     assert avg_ccd.shape == ccd_data.shape
 
     # Scale by a float
@@ -745,11 +746,17 @@ def test_combine_average_fitsimages():
     fitsfile = get_pkg_data_filename("data/a8280271.fits", package="ccdproc.tests")
     ccd = CCDData.read(fitsfile, unit=u.adu)
     ccd_list = [ccd] * 3
-    c = Combiner(ccd_list)
+    c = Combiner(ccd_list, xp=xp)
     ccd_by_combiner = c.average_combine()
 
     fitsfilename_list = [fitsfile] * 3
-    avgccd = combine(fitsfilename_list, output_file=None, method="average", unit=u.adu)
+    avgccd = combine(
+        fitsfilename_list,
+        output_file=None,
+        method="average",
+        unit=u.adu,
+        array_package=xp,
+    )
     # averaging same fits images should give back same fits image
     assert xp.all(xpx.isclose(avgccd.data, ccd_by_combiner.data))
 
@@ -763,33 +770,35 @@ def test_combine_numpyndarray():
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
     ccd_list = [ccd] * 3
-    c = Combiner(ccd_list)
+    c = Combiner(ccd_list, xp=xp)
     ccd_by_combiner = c.average_combine()
 
     fitsfilename_list = [fitsfile] * 3
-    avgccd = combine(fitsfilename_list, output_file=None, method="average", unit=u.adu)
+    avgccd = combine(
+        fitsfilename_list,
+        output_file=None,
+        method="average",
+        unit=u.adu,
+        array_package=xp,
+    )
     # averaging same fits images should give back same fits image
     assert xp.all(xpx.isclose(avgccd.data, ccd_by_combiner.data))
 
 
-@pytest.mark.backend_xfail(
-    "jax",
-    reason="astropy nddata arithmetic passes a jax array as dtype=, "
-    "triggering jax's implicit-array-to-dtype DeprecationWarning, which "
-    "is an error under this test suite's warning filters",
-)
 def test_combiner_result_dtype():
     """Regression test: #391
 
     The result should have the appropriate dtype not the dtype of the first
     input."""
     ccd = CCDData(xp.ones((3, 3), dtype=xp.uint16), unit="adu")
-    res = combine([ccd, ccd.multiply(2)])
+    ccd_times_2 = CCDData(ccd.data * 2, unit=ccd.unit)
+    ccd_times_3 = CCDData(ccd.data * 3, unit=ccd.unit)
+    res = combine([ccd, ccd_times_2])
     # The default dtype of Combiner is float64
     assert res.data.dtype == xp.float64
     ref = xp.ones((3, 3)) * 1.5
     assert xp.all(xpx.isclose(res.data, ref))
-    res = combine([ccd, ccd.multiply(2), ccd.multiply(3)], dtype=int)
+    res = combine([ccd, ccd_times_2, ccd_times_3], dtype=int)
     # The result dtype should be integer:
     assert xp.isdtype(res.data.dtype, "integral")
     ref = xp.ones((3, 3)) * 2
@@ -800,7 +809,7 @@ def test_combiner_image_file_collection_input(tmp_path):
     # Regression check for #754
     ccd = ccd_data_func()
     for i in range(3):
-        ccd.write(tmp_path / f"ccd-{i}.fits")
+        numpy_ccddata(ccd).write(tmp_path / f"ccd-{i}.fits")
 
     ifc = ImageFileCollection(tmp_path)
     ccds = list(ifc.ccds())
@@ -818,7 +827,11 @@ def test_combiner_image_file_collection_input(tmp_path):
 
     # Do this on a separate line from the assert to make debugging easier
     result = comb.average_combine()
-    assert xp.all(xpx.isclose(ccd.data, result.data))
+    # ``result`` lands on the namespace's default device (the conversion
+    # above did not request ``xp_device``), while ``ccd.data`` is on
+    # ``xp_device``; compare via NumPy copies rather than requiring both
+    # sides to share a device.
+    assert_allclose(numpy_copy(ccd.data), numpy_copy(result.data))
 
 
 def test_combine_image_file_collection_input(tmp_path):
@@ -827,7 +840,7 @@ def test_combine_image_file_collection_input(tmp_path):
     ccd = ccd_data_func()
     xp = array_api_compat.array_namespace(ccd.data)
     for i in range(3):
-        ccd.write(tmp_path / f"ccd-{i}.fits")
+        numpy_ccddata(ccd).write(tmp_path / f"ccd-{i}.fits")
 
     ifc = ImageFileCollection(tmp_path, array_package=xp)
 
@@ -843,9 +856,12 @@ def test_combine_image_file_collection_input(tmp_path):
         array_package=xp,
     )
 
-    assert xp.all(xpx.isclose(ccd.data, comb_files.data))
-    assert xp.all(xpx.isclose(ccd.data, comb_ccds.data))
-    assert xp.all(xpx.isclose(ccd.data, comb_string.data))
+    # The combine() results land on the namespace's default device, while
+    # ``ccd.data`` is on ``xp_device``; compare via NumPy copies rather than
+    # requiring both sides to share a device.
+    assert_allclose(numpy_copy(ccd.data), numpy_copy(comb_files.data))
+    assert_allclose(numpy_copy(ccd.data), numpy_copy(comb_ccds.data))
+    assert_allclose(numpy_copy(ccd.data), numpy_copy(comb_string.data))
 
     with pytest.raises(FileNotFoundError):
         # This should fail because the test is not running in the
@@ -857,6 +873,10 @@ def test_combine_image_file_collection_input(tmp_path):
 def test_combine_average_ccddata():
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
+    # ``combine`` ignores ``array_package`` for CCDData input, so convert
+    # the data to the namespace ourselves (``.astype(float)`` makes the
+    # big-endian FITS data native; strict/jax reject ``>f8``).
+    ccd.data = xp.asarray(ccd.data.astype(float))
     ccd_list = [ccd] * 3
     c = Combiner(ccd_list)
     ccd_by_combiner = c.average_combine()
@@ -892,12 +912,17 @@ def test_combine_limitedmem_fitsimages():
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
     ccd_list = [ccd] * 5
-    c = Combiner(ccd_list)
+    c = Combiner(ccd_list, xp=xp)
     ccd_by_combiner = c.average_combine()
 
     fitsfilename_list = [fitsfile] * 5
     avgccd = combine(
-        fitsfilename_list, output_file=None, method="average", mem_limit=1e6, unit=u.adu
+        fitsfilename_list,
+        output_file=None,
+        method="average",
+        mem_limit=1e6,
+        unit=u.adu,
+        array_package=xp,
     )
     # averaging same ccdData should give back same images
     assert xp.all(xpx.isclose(avgccd.data, ccd_by_combiner.data))
@@ -909,7 +934,7 @@ def test_combine_limitedmem_scale_fitsimages():
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
     ccd_list = [ccd] * 5
-    c = Combiner(ccd_list)
+    c = Combiner(ccd_list, xp=xp)
     # scale each array to the mean of the first image
     scale_by_mean = _make_mean_scaler(ccd)
     c.scaling = scale_by_mean
@@ -923,6 +948,7 @@ def test_combine_limitedmem_scale_fitsimages():
         mem_limit=1e6,
         scale=scale_by_mean,
         unit=u.adu,
+        array_package=xp,
     )
 
     assert xp.all(xpx.isclose(avgccd.data, ccd_by_combiner.data))
@@ -1060,12 +1086,6 @@ def test_combine_result_uncertainty_and_mask(comb_func, mask_point):
     assert int(xp.count_nonzero(ccd_comb.mask)) == int(mask_point)
 
 
-@pytest.mark.backend_xfail(
-    "jax",
-    reason="astropy nddata arithmetic passes a jax array as dtype=, "
-    "triggering jax's implicit-array-to-dtype DeprecationWarning, which "
-    "is an error under this test suite's warning filters",
-)
 def test_combine_overwrite_output(tmp_path):
     """
     The combine function should *not* overwrite the result file
@@ -1074,18 +1094,17 @@ def test_combine_overwrite_output(tmp_path):
     output_file = tmp_path / "fake.fits"
 
     ccd = CCDData(xp.ones((3, 3)), unit="adu")
+    ccd_times_2 = CCDData(ccd.data * 2, unit=ccd.unit)
 
     # Make sure we have a file to overwrite
     ccd.write(output_file)
     # Test that overwrite does NOT happen by default
     with pytest.raises(OSError, match="fake.fits already exists"):
-        res = combine([ccd, ccd.multiply(2)], output_file=str(output_file))
+        res = combine([ccd, ccd_times_2], output_file=str(output_file))
 
     # Should be no error here...
     # The default dtype of Combiner is float64
-    res = combine(
-        [ccd, ccd.multiply(2)], output_file=output_file, overwrite_output=True
-    )
+    res = combine([ccd, ccd_times_2], output_file=output_file, overwrite_output=True)
 
     # Need to convert this to the array namespace.
     res_from_disk = CCDData.read(output_file)
@@ -1211,7 +1230,7 @@ def test_3d_combiner_with_scaling():
     avg_ccd = combiner.average_combine()
     # Does the mean of the scaled arrays match the value to which it was
     # scaled?
-    assert xp.all(xpx.isclose(avg_ccd.data.mean(), ccd_data.data.mean()))
+    assert xp.all(xpx.isclose(xp.mean(avg_ccd.data), xp.mean(ccd_data.data)))
     assert avg_ccd.shape == ccd_data.shape
     median_ccd = combiner.median_combine()
     # Does median also scale to the correct value?
@@ -1220,9 +1239,9 @@ def test_3d_combiner_with_scaling():
     )
 
     # Set the scaling manually...
-    combiner.scaling = [scale_by_mean(combiner._data_arr[i]) for i in range(3)]
+    combiner.scaling = [scale_by_mean(combiner._data_arr[i, ...]) for i in range(3)]
     avg_ccd = combiner.average_combine()
-    assert xp.all(xpx.isclose(avg_ccd.data.mean(), ccd_data.data.mean()))
+    assert xp.all(xpx.isclose(xp.mean(avg_ccd.data), xp.mean(ccd_data.data)))
     assert avg_ccd.shape == ccd_data.shape
 
 
@@ -1301,7 +1320,7 @@ def test_writeable_after_combine(tmpdir, comb_func):
     combined = Combiner([ccd_data for _ in range(3)])
     ccd2 = getattr(combined, comb_func)()
     # This should not fail because the resulting uncertainty has a mask
-    ccd2.write(tmp_file.strpath)
+    numpy_ccddata(ccd2).write(tmp_file.strpath)
 
 
 def test_clip_extrema_alone():
@@ -1421,12 +1440,6 @@ def test_combiner_gen():
     assert c._data_arr_mask.shape == (3, 100, 100)
 
 
-@pytest.mark.backend_xfail(
-    "jax",
-    reason="astropy nddata arithmetic passes a jax array as dtype=, "
-    "triggering jax's implicit-array-to-dtype DeprecationWarning, which "
-    "is an error under this test suite's warning filters",
-)
 @pytest.mark.parametrize(
     "comb_func", ["average_combine", "median_combine", "sum_combine"]
 )
@@ -1438,15 +1451,15 @@ def test_combiner_with_scaling_uncertainty(comb_func):
     ccd_data = ccd_data_func()
     # The factors below are not particularly important; just avoid anything
     # whose average is 1.
-    ccd_data_lower = ccd_data.multiply(3)
-    ccd_data_higher = ccd_data.multiply(0.9)
+    ccd_data_lower = CCDData(ccd_data.data * 3, unit=ccd_data.unit)
+    ccd_data_higher = CCDData(ccd_data.data * 0.9, unit=ccd_data.unit)
 
     combiner = Combiner([ccd_data, ccd_data_higher, ccd_data_lower])
     # scale each array to the mean of the first image
     scale_by_mean = _make_mean_scaler(ccd_data)
     combiner.scaling = scale_by_mean
 
-    scaled_ccds = xp.asarray(
+    scaled_ccds = xp.stack(
         [
             ccd_data.data * scale_by_mean(ccd_data.data),
             ccd_data_lower.data * scale_by_mean(ccd_data_lower.data),
