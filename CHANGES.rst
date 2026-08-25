@@ -108,6 +108,9 @@ Bug Fixes
 - Accept a plain module such as ``numpy`` or ``dask.array`` as ``array_package``
   in ``combine``, normalising it to its array-api-compat namespace the way
   ``Combiner`` already does. [#NNN]
+- Keep the uncertainty propagation for correlated addition and subtraction
+  through ``_CCDDataWrapperForArrayAPI`` in the array namespace instead of
+  falling back to NumPy. [#NNN]
 
 2.5.1 (2025-07-05)
 ------------------
