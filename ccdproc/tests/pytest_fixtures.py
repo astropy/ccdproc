@@ -2,6 +2,7 @@
 
 from shutil import rmtree
 
+import array_api_compat
 import numpy as np
 import pytest
 from astropy import units as u
@@ -66,6 +67,70 @@ def ccd_data(
     ccd = CCDData(xp.asarray(data, device=xp_device), unit=u.adu)
     ccd.header = fake_meta
     return ccd
+
+
+def numpy_copy(array):
+    """
+    Return a NumPy copy of an array from any array namespace.
+
+    Parameters
+    ----------
+    array : array-like
+        An array from any array-API namespace, on any device.
+
+    Returns
+    -------
+    `numpy.ndarray`
+        A NumPy array with the same shape, dtype and values as ``array``.
+
+    Notes
+    -----
+    ``np.asarray`` only works for arrays on the namespace's default
+    device. The strict tests run on ``Device("device1")``, on which
+    array-api-strict deliberately refuses to export to NumPy, so the array
+    is moved to the default device first. That move is a no-op on every
+    other backend the suite runs. The default device is asked for through
+    the standard ``__array_namespace_info__().default_device()``, which
+    the 2025.12 standard allows to be `None` (JAX does this); in that case
+    there is nothing to move to and ``np.asarray`` is used directly.
+    """
+    xp = array_api_compat.array_namespace(array)
+    default_device = xp.__array_namespace_info__().default_device()
+    if default_device is not None:
+        array = array_api_compat.to_device(array, default_device)
+    return np.asarray(array)
+
+
+def numpy_ccddata(ccd):
+    """
+    Return a copy of a ``CCDData`` whose arrays are all NumPy arrays.
+
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`
+        Image whose ``data``, and ``mask`` and ``uncertainty`` if present,
+        may be in any array namespace.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData`
+        A new ``CCDData`` with ``data``, ``mask`` and ``uncertainty.array``
+        converted with `numpy_copy`; ``unit`` and ``meta`` are carried over
+        unchanged and the uncertainty keeps its class.
+
+    Notes
+    -----
+    Use this to hand a namespace ``CCDData`` to code that requires NumPy,
+    such as ``CCDData.write``.
+    """
+    new_ccd = CCDData(numpy_copy(ccd.data), unit=ccd.unit, meta=ccd.meta)
+    if ccd.mask is not None:
+        new_ccd.mask = numpy_copy(ccd.mask)
+    if ccd.uncertainty is not None:
+        new_ccd.uncertainty = ccd.uncertainty.__class__(
+            numpy_copy(ccd.uncertainty.array)
+        )
+    return new_ccd
 
 
 @pytest.fixture
