@@ -20,6 +20,8 @@ Other Changes and Additions
 - Add a ``strict`` tox environment for running the ``array-api-strict`` test
   suite locally: ``tox -e strict`` reproduces the CI ``py313-strict`` job
   without having to name the interpreter. [#986]
+- ``combine`` no longer accepts an array as its ``array_package`` argument;
+  pass the array namespace or module instead, as for ``Combiner``. [#997]
 
 Bug Fixes
 ^^^^^^^^^

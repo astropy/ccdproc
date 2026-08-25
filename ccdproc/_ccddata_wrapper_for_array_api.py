@@ -314,14 +314,6 @@ class _ArrayAPIPropagationMixin:
         """
         Propagate uncertainty for addition or subtraction.
 
-        This is astropy's ``_VariancePropagationMixin._propagate_add_sub``
-        with the NumPy call replaced by its array-namespace equivalent; see
-        the astropy version for the derivation of the formulae. Unlike
-        astropy's version this does not convert the uncertainties between
-        units, because ``_CCDDataWrapperForArrayAPI._arithmetic_wrapper``
-        removes the units from the uncertainties before doing the
-        arithmetic.
-
         Parameters
         ----------
         other_uncert : `~astropy.nddata.NDUncertainty`
@@ -348,6 +340,16 @@ class _ArrayAPIPropagationMixin:
             The propagated uncertainty array, in the same array namespace and
             on the same device as the inputs, in the representation of
             ``self`` (as determined by ``from_variance``).
+
+        Notes
+        -----
+        This is astropy's ``_VariancePropagationMixin._propagate_add_sub``
+        with the NumPy call replaced by its array-namespace equivalent; see
+        the astropy version for the derivation of the formulae. Unlike
+        astropy's version this does not convert the uncertainties between
+        units, because ``_CCDDataWrapperForArrayAPI._arithmetic_wrapper``
+        removes the units from the uncertainties before doing the
+        arithmetic.
         """
         del result_data  # accepted only for compatibility with astropy
         xp = array_api_compat.array_namespace(self.array, other_uncert.array)
@@ -408,14 +410,6 @@ class _ArrayAPIPropagationMixin:
         """
         Propagate uncertainty for multiplication or division.
 
-        This is astropy's
-        ``_VariancePropagationMixin._propagate_multiply_divide`` with the
-        NumPy calls replaced by their array-namespace equivalents; see the
-        astropy version for the derivation of the formulae. Unlike astropy's
-        version this does not convert the uncertainties between units,
-        because ``_CCDDataWrapperForArrayAPI._arithmetic_wrapper`` removes
-        the units from the uncertainties before doing the arithmetic.
-
         Parameters
         ----------
         other_uncert : `~astropy.nddata.NDUncertainty`
@@ -443,6 +437,16 @@ class _ArrayAPIPropagationMixin:
             The propagated uncertainty array, in the same array namespace and
             on the same device as the inputs, in the representation of
             ``self`` (as determined by ``from_variance``).
+
+        Notes
+        -----
+        This is astropy's
+        ``_VariancePropagationMixin._propagate_multiply_divide`` with the
+        NumPy calls replaced by their array-namespace equivalents; see the
+        astropy version for the derivation of the formulae. Unlike astropy's
+        version this does not convert the uncertainties between units,
+        because ``_CCDDataWrapperForArrayAPI._arithmetic_wrapper`` removes
+        the units from the uncertainties before doing the arithmetic.
         """
         del result_data  # accepted only for compatibility with astropy
         xp = array_api_compat.array_namespace(self.array, other_uncert.array)

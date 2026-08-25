@@ -1549,10 +1549,6 @@ def test_combine_array_package_raw_module(tmp_path):
     expected_xp = array_api_compat.array_namespace(xp.asarray(0))
     assert array_api_compat.array_namespace(result.data) is expected_xp
 
-    # An array is also accepted, and stands in for its namespace.
-    result = combine(files, array_package=xp.asarray(0), unit="adu")
-    assert array_api_compat.array_namespace(result.data) is expected_xp
-
 
 def test_combine_array_package_dask_module(tmp_path):
     """Regression test for #982.
