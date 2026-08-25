@@ -103,11 +103,12 @@ def _native_numpy(arr):
     Return a NumPy array with the same data in native byte order.
 
     Data read from a FITS file is big-endian (e.g. dtype ``>f8``), a byte
-    order that only NumPy understands. Non-NumPy array namespaces (and
-    ``array_api_strict``) reject such a dtype outright, or, if the dtype
-    happens to be native-endian already, warn when it is compared against
-    their own dtype objects. Converting to native byte order first and
-    handing the resulting plain NumPy array to ``xp.asarray`` avoids both
+    order that only NumPy understands; other array namespaces reject such
+    an array outright. Requesting ``dtype=arr.dtype.type`` from
+    ``xp.asarray`` works around that in NumPy and JAX but hands a NumPy
+    type object to the namespace, which ``array_api_strict`` warns about.
+    Converting to native byte order in NumPy first and handing the
+    resulting plain array to ``xp.asarray`` with no ``dtype`` avoids both
     problems.
 
     Parameters
