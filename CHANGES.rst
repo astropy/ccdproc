@@ -113,6 +113,14 @@ Bug Fixes
 - Keep the uncertainty propagation for correlated addition and subtraction
   through ``_CCDDataWrapperForArrayAPI`` in the array namespace instead of
   falling back to NumPy. [#997]
+- ``combine`` writes ``output_file`` from a NumPy copy of the result, so a
+  result in a non-NumPy array namespace can be written to FITS and is
+  returned unchanged in its namespace. [#999]
+- ``Combiner`` and ``combine`` map a ``dtype`` given as a builtin type,
+  string or NumPy dtype (e.g. ``dtype=int``) to the array namespace's own
+  dtype instead of passing it through unchanged. [#999]
+- Size the overscan model fit in ``subtract_overscan`` with ``shape``
+  instead of ``len``, which the array API standard does not provide. [#999]
 
 2.5.1 (2025-07-05)
 ------------------

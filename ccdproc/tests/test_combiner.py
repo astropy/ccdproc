@@ -30,10 +30,10 @@ from ccdproc.combiner import (
 # Set up the array library to be used in tests
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
-from ccdproc.core import _native_numpy
+from ccdproc.core import _namespace_dtype, _native_numpy, _to_numpy
 from ccdproc.image_collection import ImageFileCollection
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
-from ccdproc.tests.pytest_fixtures import numpy_ccddata, numpy_copy
+from ccdproc.tests.pytest_fixtures import numpy_ccddata
 
 # Several tests have many more NaNs in them than real data. numpy generates
 # lots of warnings in those cases and it makes more sense to suppress them
@@ -200,6 +200,44 @@ def test_combiner_dtype():
     result_sum = c.sum_combine()
     # dtype of sum should match dtype of input
     assert result_sum.dtype == c.dtype
+
+
+# A dtype that is not one of the namespace's own dtype objects (a builtin
+# type, a string, a NumPy scalar type) is mapped to the namespace's dtype of
+# the same name, so ``dtype=int`` works on every backend.
+@pytest.mark.parametrize(
+    "dtype,expected_name",
+    [
+        (int, "int64"),
+        (float, "float64"),
+        ("float32", "float32"),
+        (np.float32, "float32"),
+    ],
+)
+def test_combiner_dtype_mapped_to_namespace(dtype, expected_name):
+    ccd_data = ccd_data_func()
+    c = Combiner([ccd_data, ccd_data], dtype=dtype)
+    assert c.dtype == getattr(xp, expected_name)
+    assert c._data_arr.dtype == getattr(xp, expected_name)
+    avg = c.average_combine()
+    assert avg.dtype == getattr(xp, expected_name)
+
+
+def test_namespace_dtype_passes_through_what_numpy_cannot_read():
+    """
+    A dtype that NumPy cannot interpret is returned unchanged for the
+    namespace to deal with. On array-api-strict the namespace's own dtype
+    objects take this path; on the other backends they are NumPy types, so
+    an arbitrary object stands in for that case here.
+    """
+
+    class NotADtype:
+        pass
+
+    sentinel = NotADtype()
+    assert _namespace_dtype(sentinel, xp) is sentinel
+    # The namespace's own dtype objects always come back as themselves.
+    assert _namespace_dtype(xp.float32, xp) == xp.float32
 
 
 # test mask is created from ccd.data
@@ -802,8 +840,9 @@ def test_combiner_result_dtype():
     res = combine([ccd, ccd_times_2, ccd_times_3], dtype=int)
     # The result dtype should be integer:
     assert xp.isdtype(res.data.dtype, "integral")
-    ref = xp.ones((3, 3)) * 2
-    assert xp.all(xpx.isclose(res.data, ref))
+    # Compare with a Python int: an integer array and a float reference
+    # cannot be promoted together under the array API standard.
+    assert xp.all(res.data == 2)
 
 
 def test_combiner_image_file_collection_input(tmp_path):
@@ -832,7 +871,7 @@ def test_combiner_image_file_collection_input(tmp_path):
     # above did not request ``xp_device``), while ``ccd.data`` is on
     # ``xp_device``; compare via NumPy copies rather than requiring both
     # sides to share a device.
-    assert_allclose(numpy_copy(ccd.data), numpy_copy(result.data))
+    assert_allclose(_to_numpy(ccd.data), _to_numpy(result.data))
 
 
 def test_combine_image_file_collection_input(tmp_path):
@@ -860,9 +899,9 @@ def test_combine_image_file_collection_input(tmp_path):
     # The combine() results land on the namespace's default device, while
     # ``ccd.data`` is on ``xp_device``; compare via NumPy copies rather than
     # requiring both sides to share a device.
-    assert_allclose(numpy_copy(ccd.data), numpy_copy(comb_files.data))
-    assert_allclose(numpy_copy(ccd.data), numpy_copy(comb_ccds.data))
-    assert_allclose(numpy_copy(ccd.data), numpy_copy(comb_string.data))
+    assert_allclose(_to_numpy(ccd.data), _to_numpy(comb_files.data))
+    assert_allclose(_to_numpy(ccd.data), _to_numpy(comb_ccds.data))
+    assert_allclose(_to_numpy(ccd.data), _to_numpy(comb_string.data))
 
     with pytest.raises(FileNotFoundError):
         # This should fail because the test is not running in the
@@ -1106,11 +1145,17 @@ def test_combine_overwrite_output(tmp_path):
     # The default dtype of Combiner is float64
     res = combine([ccd, ccd_times_2], output_file=output_file, overwrite_output=True)
 
+    # The returned result must still be in the array namespace, with its
+    # uncertainty and mask; only the file is written from a NumPy copy.
+    xp_compat = array_api_compat.array_namespace(xp.asarray(0))
+    for arr in (res.data, res.uncertainty.array, res.mask):
+        assert array_api_compat.array_namespace(arr) is xp_compat
+
     # Need to convert this to the array namespace.
     res_from_disk = CCDData.read(output_file)
-    res_from_disk.data = xp.asarray(
-        res_from_disk.data, dtype=res_from_disk.data.dtype.type
-    )
+    assert res_from_disk.uncertainty is not None
+    assert res_from_disk.mask is not None
+    res_from_disk.data = xp.asarray(_native_numpy(res_from_disk.data))
 
     # Data should be the same
     assert xp.all(xpx.isclose(res.data, res_from_disk.data))
