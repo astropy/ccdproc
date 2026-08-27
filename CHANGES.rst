@@ -121,6 +121,11 @@ Bug Fixes
   dtype instead of passing it through unchanged. [#999]
 - Size the overscan model fit in ``subtract_overscan`` with ``shape``
   instead of ``len``, which the array API standard does not provide. [#999]
+- Compute ``sigma_func`` (the ``median_combine`` uncertainty) with a median
+  absolute deviation written purely in terms of the array API when the array
+  namespace is not numpy, instead of converting the data to numpy through
+  ``astropy.stats.median_absolute_deviation``. Numpy input still uses
+  astropy. [#TBD]
 
 2.5.1 (2025-07-05)
 ------------------
