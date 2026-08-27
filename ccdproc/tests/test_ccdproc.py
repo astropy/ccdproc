@@ -16,17 +16,23 @@ from astropy.nddata import (
     StdDevUncertainty,
     VarianceUncertainty,
 )
+from astropy.stats import mad_std, median_absolute_deviation
 from astropy.units.quantity import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from numpy import array as np_array
+from numpy import asarray as np_asarray
+from numpy import float32 as np_float32
+from numpy import int64 as np_int64
 from numpy import mgrid as np_mgrid
+from numpy import nan as np_nan
 from numpy import random as np_random
 
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import (
     Keyword,
+    _mad_fallback,
     _median_fallback,
     ccd_process,
     cosmicray_lacosmic,
@@ -394,6 +400,161 @@ def test_median_fallback_without_native_median():
 
     expected = xp.asarray(np_array([2.0, 3.5, 5.0]), device=xp_device)
     assert xp.all(xpx.isclose(result, expected))
+
+
+_MAD_RNG = np_random.default_rng(929)
+_MAD_3D = _MAD_RNG.normal(size=(5, 4, 3))
+_MAD_3D[[0, 1, 2, 4], [1, 2, 0, 3], [0, 2, 1, 1]] = np_nan
+_MAD_CLEAN_3D = _MAD_RNG.normal(size=(5, 4, 3))
+
+_MAD_CASES = [
+    # Every axis form sigma_func's callers use, on data with scattered NaNs:
+    # None (background_deviation_box), a single axis (median_combine), a
+    # numpy integer, and tuples in either order with negative entries.
+    *[
+        (_MAD_3D, axis)
+        for axis in [
+            None,
+            0,
+            1,
+            -1,
+            np_int64(1),
+            (0, 1),
+            (0, 2),
+            (2, 0),
+            (-1, 0),
+            (0, 1, 2),
+        ]
+    ],
+    *[(_MAD_RNG.normal(size=(n, 7)), 0) for n in range(1, 7)],  # odd/even lengths
+    (np_array([1.0, 2.0, 3.0, 4.0]), 0),  # 1-D
+    (np_array([1.0, 2.0, 3.0, 4.0]), None),
+    (np_array([[1.0, np_nan], [2.0, np_nan], [3.0, np_nan]]), 0),  # all-NaN column
+    (np_array([np_nan, np_nan, np_nan]), None),  # every value NaN
+    (np_array([[1, 4], [2, 3], [5, 6], [4, 1]]), 0),  # integer input
+    (np_array([[True, False], [False, True], [True, True]]), 0),  # boolean input
+    (np_array([[1.0, 2.0, 3.0], [4.0, 5.0, 7.0]], dtype=np_float32), 1),
+]
+
+
+# The ignore mark lets the astropy reference warn on all-NaN slices where
+# the fallback deliberately does not; test_mad_fallback_all_nan_slice_is_silent
+# owns the fallback's silence.
+@pytest.mark.filterwarnings("ignore:All-NaN slice encountered:RuntimeWarning")
+@pytest.mark.parametrize("ignore_nan", [False, True])
+@pytest.mark.parametrize(("data", "axis"), _MAD_CASES)
+def test_mad_fallback_matches_astropy(data, axis, ignore_nan):
+    # sigma_func only reaches _mad_fallback on non-numpy namespaces, none of
+    # which report coverage, so the fallback is exercised directly here on
+    # every backend.
+    expected_np = np_asarray(
+        median_absolute_deviation(data, axis=axis, ignore_nan=ignore_nan)
+    )
+    expected = xp.asarray(expected_np, device=xp_device)
+
+    result = _mad_fallback(xp.asarray(data, device=xp_device), axis, ignore_nan)
+
+    assert result.shape == expected.shape
+    # Integer and boolean input is promoted to the namespace's default real
+    # dtype, as the _nanfuncs medians do.
+    assert xp.isdtype(result.dtype, "real floating")
+    assert xp.all(xpx.isclose(result, expected, equal_nan=True))
+
+
+def test_mad_fallback_all_nan_slice_is_silent():
+    data = xp.asarray(np_array([[np_nan, np_nan]] * 3), device=xp_device)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        # The bool() calls force the computation inside the block on lazy
+        # backends, where a warning would otherwise surface at compute time.
+        assert bool(xp.all(xp.isnan(_mad_fallback(data, 0, True))))
+        assert bool(xp.isnan(_mad_fallback(data, None, True)))
+
+
+def test_mad_fallback_rejects_duplicate_axes():
+    data = xp.asarray(_MAD_CLEAN_3D, device=xp_device)
+    with pytest.raises(ValueError, match="duplicate"):
+        _mad_fallback(data, (0, 0), True)
+    # -3 is axis 0 of a 3-D array, so this is a duplicate too.
+    with pytest.raises(ValueError, match="duplicate"):
+        _mad_fallback(data, (0, -3), True)
+    with pytest.raises(ValueError, match="out of bounds"):
+        _mad_fallback(data, (0, 3), True)
+    with pytest.raises(ValueError, match="out of bounds"):
+        _mad_fallback(data, 3, True)
+
+
+@pytest.mark.parametrize(
+    ("data", "axis", "ignore_nan"),
+    [
+        pytest.param(_MAD_CLEAN_3D, None, False, id="all-no_nan"),
+        pytest.param(_MAD_3D, 0, True, id="axis0-ignore_nan"),
+        pytest.param(_MAD_3D, (0, 1), True, id="axes01-ignore_nan"),
+    ],
+)
+def test_sigma_func_matches_mad_std(data, axis, ignore_nan):
+    expected_np = np_asarray(mad_std(data, axis=axis, ignore_nan=ignore_nan))
+    expected = xp.asarray(expected_np, device=xp_device)
+
+    result = sigma_func(
+        xp.asarray(data, device=xp_device), axis=axis, ignore_nan=ignore_nan
+    )
+
+    assert result.shape == expected.shape
+    assert xp.all(xpx.isclose(result, expected, equal_nan=True))
+    if axis is None:
+        # background_deviation_box relies on the 0-d result converting to float.
+        assert result.shape == ()
+        assert float(result) == pytest.approx(float(expected_np))
+
+
+def test_sigma_func_keeps_namespace_and_device():
+    data = xp.asarray(_MAD_3D, device=xp_device)
+    for axis in (None, 0, (0, 2)):
+        result = sigma_func(data, axis=axis, ignore_nan=True)
+        assert array_api_compat.array_namespace(
+            result
+        ) is array_api_compat.array_namespace(data)
+        if xp_device is not None:
+            assert array_api_compat.device(result) == xp_device
+
+
+def test_sigma_func_fallback_branch_on_any_backend(monkeypatch):
+    # On numpy sigma_func hands the data to astropy; every other backend
+    # takes the fallback branch, and none of them reports coverage, so make
+    # numpy take it too and check that the two branches agree.
+    data = xp.asarray(_MAD_3D, device=xp_device)
+    expected = sigma_func(data, axis=0, ignore_nan=True)
+
+    monkeypatch.setattr(array_api_compat, "is_numpy_namespace", lambda _xp: False)
+    result = sigma_func(data, axis=0, ignore_nan=True)
+
+    assert array_api_compat.array_namespace(result) is array_api_compat.array_namespace(
+        data
+    )
+    assert xp.all(xpx.isclose(result, expected, equal_nan=True))
+
+
+def test_sigma_func_ccddata_mask_is_honoured():
+    ccd = ccd_data_func()
+    mask = xp.asarray(RNG(929).random(ccd.shape) > 0.7, device=xp_device)
+    # TODO: Set .mask instead of ._mask when CCDData is array-api compliant
+    ccd._mask = mask
+    nan = xp.asarray(np_nan, dtype=ccd.data.dtype, device=xp_device)
+    nanned = xp.where(mask, nan, ccd.data)
+
+    # A single integer axis with ignore_nan=True is the form median_combine
+    # uses, and the one form for which astropy (the numpy path) also excludes
+    # the masked pixels, so the public function can be checked on every backend.
+    result = sigma_func(ccd, axis=0, ignore_nan=True)
+    expected = sigma_func(nanned, axis=0, ignore_nan=True)
+    assert xp.all(xpx.isclose(result, expected, equal_nan=True))
+
+    # The fallback excludes the masked pixels for every axis and ignore_nan.
+    for axis, ignore_nan in [(None, False), (1, False), ((0, 1), True)]:
+        result = _mad_fallback(ccd.data, axis, ignore_nan, mask=mask)
+        expected = _mad_fallback(nanned, axis, True)
+        assert xp.all(xpx.isclose(result, expected, equal_nan=True))
 
 
 def test_trim_image_fits_section_requires_string():
