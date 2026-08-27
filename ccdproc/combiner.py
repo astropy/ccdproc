@@ -184,10 +184,11 @@ def _sigma_clip_mask(
     """
     Iterative sigma clipping written purely in terms of the array API.
 
-    Reproduces the mask returned by ``astropy.stats.sigma_clip(data,
-    masked=True).mask`` for any array-API namespace, without converting the
-    data to numpy. `Combiner.sigma_clipping` uses this when the namespace is
-    not numpy; numpy data go to astropy directly.
+    Reproduces the mask of ``astropy.stats.sigma_clip``'s compiled path
+    (the one its string ``cenfunc`` and ``stdfunc`` options take) for any
+    array-API namespace, without converting the data to numpy.
+    `Combiner.sigma_clipping` uses this when the namespace is not numpy;
+    numpy data go to astropy directly.
 
     Parameters
     ----------
@@ -228,13 +229,18 @@ def _sigma_clip_mask(
 
     Notes
     -----
-    Like astropy, the returned mask is the bounds of the *last* iteration
-    applied to the original data, ``~isfinite(data) | (data < lower) |
-    (data > upper)``, rather than the union of the values rejected in each
-    iteration: an earlier iteration's rejection can be undone if the bounds
-    widen. Non-finite values are always masked. A slice whose values are
-    all rejected before the last iteration gets NaN bounds and so keeps only
-    its non-finite entries masked, as astropy does.
+    The returned mask is the bounds of the *last* iteration applied to the
+    original data, ``~isfinite(data) | (data < lower) | (data > upper)``,
+    rather than the union of the values rejected in each iteration: an
+    earlier iteration's rejection can be undone if the bounds widen.
+    Non-finite values are always masked. A slice whose values are all
+    rejected before the last iteration gets NaN bounds and so keeps only
+    its non-finite entries masked. This is what astropy's compiled path
+    does on every astropy version. Astropy's python loop, taken when
+    ``cenfunc`` or ``stdfunc`` is a callable, did the same with
+    ``copy=False`` up to astropy 8.0 but from 8.1 masks the union of every
+    iteration's rejections, so for a callable the numpy path of
+    `Combiner.sigma_clipping` can differ from this one in those corners.
 
     The ``'median'``, ``'mean'``, ``'std'`` and ``'mad_std'`` options use
     the same NaN-aware reductions as the ``Combiner`` combination methods.
@@ -707,9 +713,10 @@ class Combiner:
         When the data are numpy arrays the clipping is done by
         :func:`~astropy.stats.sigma_clip`. For any other array namespace it
         is done by an implementation written in terms of the array API
-        standard that reproduces astropy's result: the mask is the bounds
-        of the last iteration applied to the data, and non-finite values
-        are always masked. The string options for ``func`` and ``dev_func``
+        standard that reproduces the result of astropy's compiled path
+        (the one the string options take): the mask is the bounds of the
+        last iteration applied to the data, and non-finite values are
+        always masked. The string options for ``func`` and ``dev_func``
         use the same NaN-aware reductions as the combination methods on
         every backend.
 

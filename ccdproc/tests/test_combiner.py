@@ -1726,34 +1726,59 @@ def _sigma_clip_datasets():
 
 def _sigma_clip_reference(np_data, **kwargs):
     """
-    Mask from astropy.stats.sigma_clip, always as a full boolean array.
+    Mask of astropy.stats.sigma_clip's final bounds applied to ``np_data``.
 
-    ``copy=False`` because that is what ``Combiner.sigma_clipping`` passes,
-    and it matters: for a callable ``cenfunc``/``stdfunc`` astropy takes its
-    python loop, whose ``masked=True`` result is the union of every
-    iteration's rejections with ``copy=True`` but the last iteration's
-    bounds applied to the data with ``copy=False``.
+    The bounds are what astropy's two code paths agree on. Its compiled
+    path (string ``cenfunc`` and ``stdfunc``) masks the data outside the
+    bounds of the last iteration. Its python loop (any callable) did the
+    same with ``copy=False``, which is what ``Combiner.sigma_clipping``
+    passes, up to astropy 8.0; from 8.1 (astropy#19858) it masks the union
+    of every iteration's rejections whatever ``copy`` is. The two differ
+    only when the bounds widen between iterations or a slice is clipped
+    entirely, which the mad_std cases of the data sets provoke.
+    ``_sigma_clip_mask`` follows the compiled path, so the reference is
+    built from the bounds. For the compiled path astropy's own mask is
+    checked against it too: that is what numpy data get from
+    ``Combiner.sigma_clipping``, and the other backends must agree with it.
     """
-    return np.ma.getmaskarray(
-        sigma_clip(np_data.copy(), masked=True, copy=False, **kwargs)
+    _, lower, upper = sigma_clip(
+        np_data.copy(), masked=False, return_bounds=True, **kwargs
     )
+    # The compiled path drops the clipped axis from the bounds while the
+    # python loop keeps it with length one; either way, make them broadcast.
+    axis = kwargs.get("axis", 0) % np_data.ndim
+    shape = tuple(1 if dim == axis else n for dim, n in enumerate(np_data.shape))
+    lower = np.reshape(lower, shape)
+    upper = np.reshape(upper, shape)
+    with np.errstate(invalid="ignore"):
+        expected = ~np.isfinite(np_data) | (np_data < lower) | (np_data > upper)
+
+    if isinstance(kwargs.get("cenfunc", "median"), str) and isinstance(
+        kwargs.get("stdfunc", "std"), str
+    ):
+        from_astropy = np.ma.getmaskarray(
+            sigma_clip(np_data.copy(), masked=True, copy=False, **kwargs)
+        )
+        assert np.array_equal(from_astropy, expected)
+    return expected
 
 
 # This is a differential test: the only specification of _sigma_clip_mask is
-# "the same mask as astropy.stats.sigma_clip", and astropy's behaviour has
-# corners that no hand-written expectation would pin down (see the Notes of
-# _sigma_clip_mask: final-bounds-not-union, None/0 thresholds meaning 3,
-# fully clipped slices, always-masked non-finite values). The full cross
-# product is deliberate rather than a curated list, because those corners
-# only show up for particular combinations: a slice collapses only for some
-# center/deviation pairs and thresholds; final-bounds-vs-union only matters
-# for maxiters > 1; maxiters=None is a different (host-synchronising) code
-# path from an integer count; the string options go through the tiered
-# _default_* reductions while callables are used as given. The threshold
-# pairs are the default, an asymmetric pair, a tight pair that rejects a lot,
-# and a lopsided one. 5 x 3 x 3 x 4 x 3 = 540 cases per backend; it is the
-# largest test in the suite by count and roughly doubles the dask run time,
-# which is the price of being sure the two code paths agree.
+# "astropy.stats.sigma_clip's bounds applied to the data" (see
+# _sigma_clip_reference for why the bounds rather than astropy's mask), and
+# astropy's behaviour has corners that no hand-written expectation would pin
+# down (see the Notes of _sigma_clip_mask: final-bounds-not-union, None/0
+# thresholds meaning 3, fully clipped slices, always-masked non-finite values).
+# The full cross product is deliberate rather than a curated list, because
+# those corners only show up for particular combinations: a slice collapses
+# only for some center/deviation pairs and thresholds; final-bounds-vs-union
+# only matters for maxiters > 1; maxiters=None is a different
+# (host-synchronising) code path from an integer count; the string options go
+# through the tiered _default_* reductions while callables are used as given.
+# The threshold pairs are the default, an asymmetric pair, a tight pair that
+# rejects a lot, and a lopsided one. 5 x 3 x 3 x 4 x 3 = 540 cases per backend;
+# it is the largest test in the suite by count and roughly doubles the dask run
+# time, which is the price of being sure the two code paths agree.
 @pytest.mark.filterwarnings("ignore::astropy.utils.exceptions.AstropyUserWarning")
 @pytest.mark.filterwarnings("ignore:invalid value encountered:RuntimeWarning")
 @pytest.mark.filterwarnings("ignore:Mean of empty slice:RuntimeWarning")
