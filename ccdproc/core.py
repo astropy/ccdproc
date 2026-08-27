@@ -317,9 +317,8 @@ def _mad_fallback(data, axis, ignore_nan, xp=None, mask=None):
 
     mask : array or None, optional
         Boolean mask with the shape of ``data``. Masked pixels are excluded
-        from the statistics (which forces ``ignore_nan`` on), as astropy
-        does for a masked `~astropy.nddata.CCDData` when ``ignore_nan`` is
-        set.
+        from the statistics (which forces ``ignore_nan`` on), as `sigma_func`
+        arranges on numpy by handing astropy a `numpy.ma.MaskedArray`.
 
     Returns
     -------
@@ -1517,10 +1516,9 @@ def sigma_func(arr, axis=None, ignore_nan=False):
     the namespace's default real floating dtype, and it yields NaN silently
     for slices that are entirely NaN, where numpy would warn.
 
-    A masked `~astropy.nddata.CCDData` is handed to astropy as is on numpy.
-    The fallback excludes the masked pixels from the statistics (which
-    implies ``ignore_nan``), as astropy does for a single integer ``axis``
-    with ``ignore_nan=True``.
+    The masked pixels of a masked `~astropy.nddata.CCDData` are excluded
+    from the statistics on every backend, which implies ``ignore_nan``; a
+    slice that is entirely masked gives NaN.
     """
     if isinstance(arr, CCDData):
         data = arr.data
@@ -1531,11 +1529,19 @@ def sigma_func(arr, axis=None, ignore_nan=False):
     xp = array_api_compat.array_namespace(data)
 
     if array_api_compat.is_numpy_namespace(xp):
-        # Pass ``arr`` rather than ``data``: astropy honours a CCDData mask.
-        return xp.asarray(
-            stats.median_absolute_deviation(arr, axis=axis, ignore_nan=ignore_nan)
-            * 1.482602218505602
-        )
+        if mask is not None:
+            # astropy only honours the mask of a numpy.ma.MaskedArray. Passing
+            # the CCDData itself leaves it to numpy.nanmedian to notice the
+            # mask of the MaskedArray that CCDData.__array__ produces, which
+            # only happens on its small-array path (fewer than 600 elements
+            # along ``axis``) and never once bottleneck is installed.
+            data = np.ma.masked_array(data, mask=mask)
+            ignore_nan = True
+        result = stats.median_absolute_deviation(data, axis=axis, ignore_nan=ignore_nan)
+        if np.ma.isMaskedArray(result):
+            # Entirely masked slices, which the fallback also reports as NaN.
+            result = result.filled(np.nan)
+        return xp.asarray(result * 1.482602218505602)
 
     return _mad_fallback(data, axis, ignore_nan, xp=xp, mask=mask) * 1.482602218505602
 

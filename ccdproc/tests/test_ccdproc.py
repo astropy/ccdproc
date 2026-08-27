@@ -447,8 +447,16 @@ def test_mad_fallback_matches_astropy(data, axis, ignore_nan):
     # sigma_func only reaches _mad_fallback on non-numpy namespaces, none of
     # which report coverage, so the fallback is exercised directly here on
     # every backend.
+    #
+    # The reference gets a tuple axis with its negative entries normalised:
+    # astropy's bottleneck dispatch (astropy.stats.nanfunctions.
+    # _move_tuple_axes_last) transposes with the tuple as given and raises
+    # on a negative entry. The fallback still receives the tuple as written.
+    reference_axis = axis
+    if isinstance(axis, tuple):
+        reference_axis = tuple(ax % data.ndim for ax in axis)
     expected_np = np_asarray(
-        median_absolute_deviation(data, axis=axis, ignore_nan=ignore_nan)
+        median_absolute_deviation(data, axis=reference_axis, ignore_nan=ignore_nan)
     )
     expected = xp.asarray(expected_np, device=xp_device)
 
@@ -535,26 +543,36 @@ def test_sigma_func_fallback_branch_on_any_backend(monkeypatch):
     assert xp.all(xpx.isclose(result, expected, equal_nan=True))
 
 
-def test_sigma_func_ccddata_mask_is_honoured():
+# The ignore mark is for numpy.nanmedian on the entirely masked column of
+# the NaN-filled reference; the masked path itself does not warn.
+@pytest.mark.filterwarnings("ignore:All-NaN slice encountered:RuntimeWarning")
+@pytest.mark.parametrize(
+    ("axis", "ignore_nan"),
+    # axis=0 with ignore_nan=True is the form median_combine uses.
+    [(0, True), (None, False), (1, False), ((0, 1), True)],
+)
+def test_sigma_func_ccddata_mask_is_honoured(axis, ignore_nan):
     ccd = ccd_data_func()
-    mask = xp.asarray(RNG(929).random(ccd.shape) > 0.7, device=xp_device)
+    mask_np = RNG(929).random(ccd.shape) > 0.7
+    mask_np[:, 3] = True  # an entirely masked column gives NaN along axis 0
+    mask = xp.asarray(mask_np, device=xp_device)
     # TODO: Set .mask instead of ._mask when CCDData is array-api compliant
     ccd._mask = mask
     nan = xp.asarray(np_nan, dtype=ccd.data.dtype, device=xp_device)
     nanned = xp.where(mask, nan, ccd.data)
 
-    # A single integer axis with ignore_nan=True is the form median_combine
-    # uses, and the one form for which astropy (the numpy path) also excludes
-    # the masked pixels, so the public function can be checked on every backend.
-    result = sigma_func(ccd, axis=0, ignore_nan=True)
-    expected = sigma_func(nanned, axis=0, ignore_nan=True)
+    # Masked pixels are excluded for every axis and ignore_nan, on numpy
+    # (where astropy is handed a numpy.ma.MaskedArray) as in the fallback,
+    # so the result is that of the NaN-filled data with ignore_nan on.
+    expected = sigma_func(nanned, axis=axis, ignore_nan=True)
+    result = sigma_func(ccd, axis=axis, ignore_nan=ignore_nan)
+    assert result.shape == expected.shape
     assert xp.all(xpx.isclose(result, expected, equal_nan=True))
 
-    # The fallback excludes the masked pixels for every axis and ignore_nan.
-    for axis, ignore_nan in [(None, False), (1, False), ((0, 1), True)]:
-        result = _mad_fallback(ccd.data, axis, ignore_nan, mask=mask)
-        expected = _mad_fallback(nanned, axis, True)
-        assert xp.all(xpx.isclose(result, expected, equal_nan=True))
+    # The public function only reaches the fallback's mask handling on
+    # non-numpy namespaces, so exercise it directly here on every backend.
+    result = _mad_fallback(ccd.data, axis, ignore_nan, mask=mask) * 1.482602218505602
+    assert xp.all(xpx.isclose(result, expected, equal_nan=True))
 
 
 def test_trim_image_fits_section_requires_string():
