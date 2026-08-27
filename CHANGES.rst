@@ -139,7 +139,7 @@ Bug Fixes
   reproduces ``astropy.stats.sigma_clip`` (NumPy data still use astropy);
   ``'median'``/``'mean'``/``'std'``/``'mad_std'`` use the namespace's
   NaN-aware reductions or ccdproc's fallbacks. Passing ``axis``, ``copy`` or
-  ``maxiters`` to ``sigma_clipping`` no longer raises ``TypeError``. [#TBD]
+  ``maxiters`` to ``sigma_clipping`` no longer raises ``TypeError``. [#1001]
 
 2.5.1 (2025-07-05)
 ------------------
