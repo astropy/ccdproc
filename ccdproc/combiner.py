@@ -2,6 +2,8 @@
 
 """This module implements the combiner class."""
 
+import operator
+import warnings
 from copy import deepcopy
 from functools import partial
 
@@ -83,6 +85,229 @@ def _default_std(xp=None):
         # nanstd is not part of the array API standard; fall back to an
         # implementation written purely in terms of it.
         return partial(nanstd, xp=xp)
+
+
+def _nanmadstd(x, /, *, axis=0, xp):
+    """
+    NaN-aware median absolute deviation along ``axis``, scaled to a
+    standard deviation.
+
+    This is the ``'mad_std'`` deviation option of `Combiner.sigma_clipping`
+    when the array namespace is not numpy. It uses the same tiered median
+    as `Combiner.median_combine` (`bottleneck` for numpy, the namespace's
+    ``nanmedian`` if it has one, otherwise the fallback in
+    `ccdproc._nanfuncs`), so NaNs are ignored on every backend.
+
+    Parameters
+    ----------
+    x : array
+        Input array, in the namespace ``xp``.
+    axis : int, optional
+        Axis along which to compute the deviation. Default is ``0``.
+    xp : array namespace
+        Namespace of ``x``.
+
+    Returns
+    -------
+    array
+        ``1.4826 * median(|x - median(x)|)`` along ``axis``, with that axis
+        removed.
+    """
+    # TODO: use _nanfuncs.<name> once PR A (sigma_func fallback) merges
+    median = _default_median(xp)
+    center = xp.expand_dims(median(x, axis=axis), axis=axis)
+    return 1.482602218505602 * median(xp.abs(x - center), axis=axis)
+
+
+def _default_mad_std(xp):
+    return partial(_nanmadstd, xp=xp)
+
+
+# The string options of Combiner.sigma_clipping, mapped to the functions
+# that produce the tiered (bottleneck -> native -> fallback) implementation
+# for a namespace. The names match astropy.stats.sigma_clip's cenfunc and
+# stdfunc options so that the two code paths accept the same strings.
+_SIGMA_CLIP_CENFUNCS = {"median": _default_median, "mean": _default_average}
+_SIGMA_CLIP_STDFUNCS = {"std": _default_std, "mad_std": _default_mad_std}
+
+
+def _resolve_sigma_clip_func(func, options, kind, xp):
+    """
+    Turn a ``cenfunc``/``stdfunc`` argument into a callable for ``xp``.
+
+    Parameters
+    ----------
+    func : str or callable
+        A key of ``options`` or a callable ``f(data, axis=axis)``.
+    options : dict
+        Map from option name to a function of ``xp`` returning the callable.
+    kind : str
+        Name of the argument, used in error messages.
+    xp : array namespace
+        Namespace the callable will operate in.
+
+    Returns
+    -------
+    callable
+        The resolved function.
+
+    Raises
+    ------
+    ValueError
+        If ``func`` is a string that is not one of ``options``.
+    TypeError
+        If ``func`` is neither a string nor callable.
+    """
+    if callable(func):
+        return func
+    if isinstance(func, str):
+        try:
+            return options[func](xp)
+        except KeyError:
+            raise ValueError(
+                f"{kind} must be one of {sorted(options)} or a callable, got {func!r}"
+            ) from None
+    raise TypeError(f"{kind} must be a string or a callable, got {type(func).__name__}")
+
+
+def _sigma_clip_mask(
+    data,
+    *,
+    sigma_lower=3,
+    sigma_upper=3,
+    axis=0,
+    maxiters=1,
+    cenfunc="median",
+    stdfunc="std",
+    xp=None,
+):
+    """
+    Iterative sigma clipping written purely in terms of the array API.
+
+    Reproduces the mask returned by ``astropy.stats.sigma_clip(data,
+    masked=True).mask`` for any array-API namespace, without converting the
+    data to numpy. `Combiner.sigma_clipping` uses this when the namespace is
+    not numpy; numpy data go to astropy directly.
+
+    Parameters
+    ----------
+    data : array
+        Data to clip.
+    sigma_lower, sigma_upper : float or None, optional
+        Number of deviations below/above the center beyond which a value is
+        clipped. As in astropy, ``None`` and ``0`` mean ``3``. Default is
+        ``3``.
+    axis : int, optional
+        Axis along which the center and deviation are computed. Only a single
+        integer axis is supported. Default is ``0``.
+    maxiters : int or None, optional
+        Number of clipping iterations. ``None`` iterates until no more values
+        are rejected. Default is ``1``.
+    cenfunc : {'median', 'mean'} or callable, optional
+        Statistic for the center. A callable must accept ``(data, axis=axis)``
+        and ignore NaNs. Default is ``'median'``.
+    stdfunc : {'std', 'mad_std'} or callable, optional
+        Statistic for the deviation, same requirements as ``cenfunc``.
+        Default is ``'std'``.
+    xp : array namespace, optional
+        Namespace of ``data``; resolved from ``data`` when ``None``.
+
+    Returns
+    -------
+    array of bool
+        Mask of the clipped values, ``True`` where a value is rejected, in
+        the namespace and on the device of ``data``.
+
+    Raises
+    ------
+    NotImplementedError
+        If ``axis`` is not a single integer.
+    ValueError
+        If ``axis`` is out of bounds, ``maxiters`` is not positive, or a
+        string ``cenfunc``/``stdfunc`` is not one of the options.
+
+    Notes
+    -----
+    Like astropy, the returned mask is the bounds of the *last* iteration
+    applied to the original data, ``~isfinite(data) | (data < lower) |
+    (data > upper)``, rather than the union of the values rejected in each
+    iteration: an earlier iteration's rejection can be undone if the bounds
+    widen. Non-finite values are always masked. A slice whose values are
+    all rejected before the last iteration gets NaN bounds and so keeps only
+    its non-finite entries masked, as astropy does.
+
+    The ``'median'``, ``'mean'``, ``'std'`` and ``'mad_std'`` options use
+    the same NaN-aware reductions as the ``Combiner`` combination methods.
+    Warnings that those reductions may raise on all-NaN slices are
+    suppressed here, as astropy suppresses them.
+
+    An integer ``maxiters`` runs exactly that many iterations and never
+    synchronises with the host, so on a lazy backend such as dask the whole
+    clip stays one graph. ``maxiters=None`` has to test after each iteration
+    whether anything was rejected, which forces a compute per iteration on
+    such backends; prefer an integer there.
+    """
+    if xp is None:
+        xp = array_api_compat.array_namespace(data)
+    device = array_api_compat.device(data)
+
+    # Same axis rules as the NaN-aware reduction fallbacks in _nanfuncs.
+    if axis is None or isinstance(axis, bool):
+        raise NotImplementedError(
+            "sigma clipping outside numpy supports only a single integer axis."
+        )
+    try:
+        axis = operator.index(axis)
+    except TypeError:
+        raise NotImplementedError(
+            "sigma clipping outside numpy supports only a single integer axis."
+        ) from None
+    ndim = data.ndim
+    if not -ndim <= axis < ndim:
+        raise ValueError(f"axis {axis} is out of bounds for array of dimension {ndim}")
+    axis = axis % ndim
+
+    if maxiters is not None:
+        maxiters = operator.index(maxiters)
+        if maxiters < 1:
+            raise ValueError("maxiters must be None or a positive integer.")
+
+    # astropy: ``sigma_lower or sigma`` with ``sigma=3``, so None and 0 both
+    # mean 3. Python floats, because a strict namespace rejects numpy scalars
+    # in arithmetic with its arrays.
+    sigma_lower = float(sigma_lower or 3)
+    sigma_upper = float(sigma_upper or 3)
+
+    center_func = _resolve_sigma_clip_func(cenfunc, _SIGMA_CLIP_CENFUNCS, "cenfunc", xp)
+    std_func = _resolve_sigma_clip_func(stdfunc, _SIGMA_CLIP_STDFUNCS, "stdfunc", xp)
+
+    if not xp.isdtype(data.dtype, "real floating"):
+        # The namespace default rather than float64: jax without X64 has no
+        # float64 and warns when one is requested.
+        info = xp.__array_namespace_info__()
+        data = xp.astype(data, info.default_dtypes(device=device)["real floating"])
+
+    nan = xp.asarray(xp.nan, dtype=data.dtype, device=device)
+    invalid = ~xp.isfinite(data)
+    filtered = xp.where(invalid, nan, data)
+
+    iteration = 0
+    while maxiters is None or iteration < maxiters:
+        iteration += 1
+        with warnings.catch_warnings():
+            # All-NaN slices make numpy's nan-functions warn; astropy
+            # silences the same warnings in its _compute_bounds.
+            warnings.simplefilter("ignore", RuntimeWarning)
+            center = xp.expand_dims(center_func(filtered, axis=axis), axis=axis)
+            deviation = xp.expand_dims(std_func(filtered, axis=axis), axis=axis)
+        lower = center - deviation * sigma_lower
+        upper = center + deviation * sigma_upper
+        rejected = (filtered < lower) | (filtered > upper)
+        if maxiters is None and not bool(xp.any(rejected)):
+            break
+        filtered = xp.where(rejected, nan, filtered)
+
+    return invalid | (data < lower) | (data > upper)
 
 
 class Combiner:
@@ -443,12 +668,14 @@ class Combiner:
         low_thresh : positive float or None, optional
             Threshold for rejecting pixels that deviate below the baseline
             value. If negative value, then will be convert to a positive
-            value. If None, no rejection will be done based on low_thresh.
+            value. If None, it is treated as 3, as
+            :func:`~astropy.stats.sigma_clip` does.
             Default is 3.
 
         high_thresh : positive float or None, optional
             Threshold for rejecting pixels that deviate above the baseline
-            value. If None, no rejection will be done based on high_thresh.
+            value. If None, it is treated as 3, as
+            :func:`~astropy.stats.sigma_clip` does.
             Default is 3.
 
         func : {'median', 'mean'} or callable, optional
@@ -457,7 +684,7 @@ class Combiner:
             function/object and the ``axis`` keyword is used, then it must
             be able to ignore NaNs (e.g., `numpy.nanmean`) and it must have
             an ``axis`` keyword to return an array with axis dimension(s)
-            removed. The default is ``'median'``.
+            removed. The default is ``'mean'``.
 
         dev_func : {'std', 'mad_std'} or callable, optional
             The statistic or callable function/object used to compute the
@@ -468,28 +695,72 @@ class Combiner:
             removed. The default is ``'std'``.
 
         kwd
-            Any remaining keyword arguments are passed to astropy's
-            :func:`~astropy.stats.sigma_clip` function.
+            ``axis`` (default ``0``) and ``maxiters`` (default ``1``) are
+            honoured for every array namespace. ``copy`` (default `False`)
+            and any other keyword arguments are passed to astropy's
+            :func:`~astropy.stats.sigma_clip` when the data are numpy
+            arrays; for any other array namespace ``copy`` is ignored and
+            other keywords raise `TypeError`.
+
+        Notes
+        -----
+        When the data are numpy arrays the clipping is done by
+        :func:`~astropy.stats.sigma_clip`. For any other array namespace it
+        is done by an implementation written in terms of the array API
+        standard that reproduces astropy's result: the mask is the bounds
+        of the last iteration applied to the data, and non-finite values
+        are always masked. The string options for ``func`` and ``dev_func``
+        use the same NaN-aware reductions as the combination methods on
+        every backend.
+
+        Pixels that are already masked are not excluded from the statistics
+        used for the clipping, but they stay masked.
         """
 
         # Remove in 3.0
         _ = kwd.pop("use_astropy", True)
 
-        self._data_arr_mask = (
-            self._data_arr_mask
-            | sigma_clip(
+        xp = self._xp
+        # Pop rather than get: these were also forwarded through **kwd,
+        # which made passing any of them a "multiple values" TypeError.
+        axis = kwd.pop("axis", 0)
+        copy = kwd.pop("copy", False)
+        maxiters = kwd.pop("maxiters", 1)
+
+        if array_api_compat.is_numpy_namespace(xp):
+            clipped = sigma_clip(
                 self._data_arr,
                 sigma_lower=low_thresh,
                 sigma_upper=high_thresh,
-                axis=kwd.get("axis", 0),
-                copy=kwd.get("copy", False),
-                maxiters=kwd.get("maxiters", 1),
+                axis=axis,
+                copy=copy,
+                maxiters=maxiters,
                 cenfunc=func,
                 stdfunc=dev_func,
                 masked=True,
                 **kwd,
             ).mask
-        )
+        else:
+            if kwd:
+                raise TypeError(
+                    "sigma_clipping got unexpected keyword argument(s) "
+                    f"{sorted(kwd)}. These are options of "
+                    "astropy.stats.sigma_clip (such as grow, masked or "
+                    "return_bounds) and are only available when the array "
+                    "namespace is numpy."
+                )
+            clipped = _sigma_clip_mask(
+                self._data_arr,
+                sigma_lower=low_thresh,
+                sigma_upper=high_thresh,
+                axis=axis,
+                maxiters=maxiters,
+                cenfunc=func,
+                stdfunc=dev_func,
+                xp=xp,
+            )
+
+        self._data_arr_mask = self._data_arr_mask | clipped
 
     def _get_scaled_data(self, scale_arg):
         if scale_arg is not None:

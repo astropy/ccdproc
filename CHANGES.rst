@@ -134,6 +134,12 @@ Bug Fixes
   ``CCDData``. Previously the mask was only honored on numpy for small
   arrays with a single integer ``axis`` and ``ignore_nan=True``, and, when
   bottleneck is installed, not for float64 data at all. [#1000]
+- ``Combiner.sigma_clipping`` now clips data in a non-NumPy array namespace
+  with an implementation written in terms of the array API standard that
+  reproduces ``astropy.stats.sigma_clip`` (NumPy data still use astropy);
+  ``'median'``/``'mean'``/``'std'``/``'mad_std'`` use the namespace's
+  NaN-aware reductions or ccdproc's fallbacks. Passing ``axis``, ``copy`` or
+  ``maxiters`` to ``sigma_clipping`` no longer raises ``TypeError``. [#TBD]
 
 2.5.1 (2025-07-05)
 ------------------
