@@ -125,7 +125,7 @@ Bug Fixes
   absolute deviation written purely in terms of the array API when the array
   namespace is not numpy, instead of converting the data to numpy through
   ``astropy.stats.median_absolute_deviation``. Numpy input still uses
-  astropy. [#TBD]
+  astropy. [#1000]
 
 2.5.1 (2025-07-05)
 ------------------
