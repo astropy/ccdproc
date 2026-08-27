@@ -1667,7 +1667,19 @@ def test_combine_array_package_dask_module(tmp_path):
 
 
 def _sigma_clip_datasets():
-    """Numpy data sets that exercise the corners of astropy's mask."""
+    """
+    Numpy data sets that exercise the corners of astropy's mask.
+
+    Each one targets a way in which an implementation can look right and
+    still disagree with ``astropy.stats.sigma_clip``: ``normal`` is the plain
+    case with planted outliers; ``nan_inf`` has NaNs and infs that must
+    always be masked, a NaN next to finite values that must not drag the
+    whole column with it, and an all-NaN column; ``zero_std`` has one value
+    1e-12 above an otherwise constant slice, so the result depends on the
+    bound comparison being strict; ``collapse`` has slices whose bounds go
+    to NaN or to zero width during the iteration; ``int`` checks that
+    integer input is promoted before any arithmetic.
+    """
     rng = np.random.default_rng(929)
     normal = rng.normal(size=(8, 5, 4))
     normal[0, 0, 0] = 10.0
@@ -1682,6 +1694,10 @@ def _sigma_clip_datasets():
     nan_inf[6, 1, 1] = -np.inf
     nan_inf[:, 1, 2] = np.nan  # an all-NaN column
 
+    # One value barely above a constant slice: with std it is the only
+    # thing inside the bounds; with mad_std the deviation is 0 and the
+    # bounds collapse onto the center, so whether the 5.0s are rejected
+    # comes down to strict "<"/">" comparisons, as astropy uses.
     zero_std = np.full((6, 3, 3), 5.0)
     zero_std[2, 1, 1] = 5.0 + 1e-12
 
@@ -1694,6 +1710,9 @@ def _sigma_clip_datasets():
     collapse[:, 0, 0] = [50.0, 0.1, -0.2, 0.05, 1.3, 2.7]
     collapse[:, 1, 1] = [0.0, 0.0, 0.0, 0.0, 0.0, 7.0]
 
+    # Integer input; the helper must promote it to the namespace default
+    # float before subtracting a float center (a strict namespace rejects
+    # int - float), and the mask must still match astropy's.
     ints = np.array([[1, 50], [2, 51], [3, 52], [100, 53]])
 
     return {
@@ -1720,6 +1739,21 @@ def _sigma_clip_reference(np_data, **kwargs):
     )
 
 
+# This is a differential test: the only specification of _sigma_clip_mask is
+# "the same mask as astropy.stats.sigma_clip", and astropy's behaviour has
+# corners that no hand-written expectation would pin down (see the Notes of
+# _sigma_clip_mask: final-bounds-not-union, None/0 thresholds meaning 3,
+# fully clipped slices, always-masked non-finite values). The full cross
+# product is deliberate rather than a curated list, because those corners
+# only show up for particular combinations: a slice collapses only for some
+# center/deviation pairs and thresholds; final-bounds-vs-union only matters
+# for maxiters > 1; maxiters=None is a different (host-synchronising) code
+# path from an integer count; the string options go through the tiered
+# _default_* reductions while callables are used as given. The threshold
+# pairs are the default, an asymmetric pair, a tight pair that rejects a lot,
+# and a lopsided one. 5 x 3 x 3 x 4 x 3 = 540 cases per backend; it is the
+# largest test in the suite by count and roughly doubles the dask run time,
+# which is the price of being sure the two code paths agree.
 @pytest.mark.filterwarnings("ignore::astropy.utils.exceptions.AstropyUserWarning")
 @pytest.mark.filterwarnings("ignore:invalid value encountered:RuntimeWarning")
 @pytest.mark.filterwarnings("ignore:Mean of empty slice:RuntimeWarning")
