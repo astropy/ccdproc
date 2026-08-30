@@ -37,6 +37,10 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- ``flat_correct`` now checks whether the flat has any masked pixels with
+  ``xp.any`` instead of the ``mask.any()`` method, which arrays of
+  spec-only array-API namespaces such as ``array-api-strict`` do not
+  have. [#1005]
 - Exclude masked and clipped pixels, and their weights, when computing weighted
   average combinations. [#952]
 - ``cosmicray_median`` now honors the mask of a ``CCDData`` or masked-array

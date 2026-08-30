@@ -754,6 +754,12 @@ def test_subtract_dark_fails():
         subtract_dark(ccd_data, small_master)
 
 
+@pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="astropy's arithmetic mixin builds the Quantity with "
+    "``data << unit``, and array-api-strict rejects the astropy unit "
+    "operand (astropy is not array-API aware, see #936)",
+)
 def test_unit_mismatch_behaves_as_expected():
     ccd_data = ccd_data_func()
     """
@@ -818,11 +824,6 @@ def test_flat_correct():
     assert flat_data.header == ccd_data.header
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="the CCDData array-API wrapper passes the Python bool type to "
-    "array-api-strict when copying a mask",
-)
 def test_flat_correct_masked_flat_with_immutable_array():
     ccd_values = [[8.0, 8.0], [8.0, 8.0]]
     flat_values = [[2.0, 0.0], [4.0, 8.0]]
