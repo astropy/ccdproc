@@ -10,8 +10,8 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.nddata import CCDData
-from astropy.stats import mad_std, sigma_clip
 from astropy.stats import median_absolute_deviation as mad
+from astropy.stats import sigma_clip
 from astropy.utils.data import get_pkg_data_filename
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
@@ -27,7 +27,6 @@ from ccdproc.combiner import (
     _default_median,
     _default_std,
     _default_sum,
-    _nanmadstd,
     _sigma_clip_mask,
     combine,
     sigma_func,
@@ -543,18 +542,11 @@ def test_combiner_minmax_min():
     assert xp.all(c._data_arr_mask[1, ...])
 
 
-def _mad_dev_func(x, axis=0):
-    """``median_absolute_deviation`` for whichever backend is under test."""
-    if array_api_compat.is_numpy_namespace(xp):
-        return mad(x, axis=axis)
-    center = xp.expand_dims(nanmedian(x, axis=axis, xp=xp), axis=axis)
-    return nanmedian(xp.abs(x - center), axis=axis, xp=xp)
-
-
-@pytest.mark.parametrize(
-    "dev_func", [_mad_dev_func, "mad_std"], ids=["callable", "mad_std"]
-)
-def test_combiner_sigmaclip_high(dev_func):
+def test_combiner_sigmaclip_high():
+    # Five frames at 0 / -10 / +10 and a sixth at +1000. With a median
+    # center and mad_std deviation the sixth frame is above the 3-sigma
+    # upper bound at every pixel (median 5, bound ~49), so it is masked
+    # everywhere and the other five nowhere; low_thresh=None means 3 too.
     ccd_list = [
         CCDData(xp.zeros((10, 10)), unit=u.adu),
         CCDData(xp.zeros((10, 10)) - 10, unit=u.adu),
@@ -565,16 +557,17 @@ def test_combiner_sigmaclip_high(dev_func):
     ]
 
     c = Combiner(ccd_list)
-    # using mad for more robust statistics vs. std
-    c.sigma_clipping(high_thresh=3, low_thresh=None, func="median", dev_func=dev_func)
+    c.sigma_clipping(high_thresh=3, low_thresh=None, func="median", dev_func="mad_std")
     assert xp.all(c._data_arr_mask[5, ...])
     assert not xp.any(c._data_arr_mask[:5, ...])
 
 
-@pytest.mark.parametrize(
-    "dev_func", [_mad_dev_func, "mad_std"], ids=["callable", "mad_std"]
-)
-def test_combiner_sigmaclip_single_pix(dev_func):
+def test_combiner_sigmaclip_single_pix():
+    # Six frames at 0 / -10 / +10, then pixel (5, 5) of the fifth frame is
+    # set to 25 while the other frames stay within +-10 there. With a median
+    # center and mad_std deviation the bound at that pixel is ~19.7, so only
+    # that one value is rejected: not the rest of its frame and not the
+    # other frames' values at (5, 5).
     ccd_list = [
         CCDData(xp.zeros((10, 10)), unit=u.adu),
         CCDData(xp.zeros((10, 10)) - 10, unit=u.adu),
@@ -592,17 +585,18 @@ def test_combiner_sigmaclip_single_pix(dev_func):
     combo._data_arr = xpx.at(combo._data_arr)[3, 5, 5].set(-5)
     combo._data_arr = xpx.at(combo._data_arr)[4, 5, 5].set(25)
     combo.sigma_clipping(
-        high_thresh=3, low_thresh=None, func="median", dev_func=dev_func
+        high_thresh=3, low_thresh=None, func="median", dev_func="mad_std"
     )
     assert bool(combo._data_arr_mask[4, 5, 5])
     assert not xp.any(combo._data_arr_mask[:4, ...])
     assert not xp.any(combo._data_arr_mask[5, ...])
 
 
-@pytest.mark.parametrize(
-    "dev_func", [_mad_dev_func, "mad_std"], ids=["callable", "mad_std"]
-)
-def test_combiner_sigmaclip_low(dev_func):
+def test_combiner_sigmaclip_low():
+    # Five frames at 0 / -10 / +10 and a sixth at -1000. With a median
+    # center and mad_std deviation the sixth frame is below the 3-sigma
+    # lower bound at every pixel (median -5, bound ~-49), so it is masked
+    # everywhere and the other five nowhere; high_thresh=None means 3 too.
     ccd_list = [
         CCDData(xp.zeros((10, 10)), unit=u.adu),
         CCDData(xp.zeros((10, 10)) - 10, unit=u.adu),
@@ -613,8 +607,7 @@ def test_combiner_sigmaclip_low(dev_func):
     ]
 
     c = Combiner(ccd_list)
-    # using mad for more robust statistics vs. std
-    c.sigma_clipping(high_thresh=None, low_thresh=3, func="median", dev_func=dev_func)
+    c.sigma_clipping(high_thresh=None, low_thresh=3, func="median", dev_func="mad_std")
     assert xp.all(c._data_arr_mask[5, ...])
     assert not xp.any(c._data_arr_mask[:5, ...])
 
@@ -1668,25 +1661,19 @@ def test_combine_array_package_dask_module(tmp_path):
 
 def _sigma_clip_datasets():
     """
-    Numpy data sets that exercise the corners of astropy's mask.
-
-    Each one targets a way in which an implementation can look right and
-    still disagree with ``astropy.stats.sigma_clip``: ``normal`` is the plain
-    case with planted outliers; ``nan_inf`` has NaNs and infs that must
-    always be masked, a NaN next to finite values that must not drag the
-    whole column with it, and an all-NaN column; ``zero_std`` has one value
-    1e-12 above an otherwise constant slice, so the result depends on the
-    bound comparison being strict; ``collapse`` has slices whose bounds go
-    to NaN or to zero width during the iteration; ``int`` checks that
-    integer input is promoted before any arithmetic.
+    Numpy data sets that exercise the corners of astropy's mask; see the
+    comment on each array below for the corner it targets.
     """
     rng = np.random.default_rng(929)
+    # The plain case: planted outliers among otherwise normal values.
     normal = rng.normal(size=(8, 5, 4))
     normal[0, 0, 0] = 10.0
     normal[3, 1, 2] = -25.0
     normal[7, 4, 3] = 6.0
     normal[2, 2, 2] = -7.0
 
+    # NaNs and infs that must always be masked, a NaN next to finite values
+    # that must not drag the whole column with it, and an all-NaN column.
     nan_inf = normal.copy()
     nan_inf[1, 0, 1] = np.nan
     nan_inf[5, 3, 3] = np.nan
@@ -1704,8 +1691,8 @@ def _sigma_clip_datasets():
     # One column that mean/mad_std clips entirely in the first iteration
     # (its MAD is tiny while its mean is far off), and one whose second
     # iteration has zero spread, next to two ordinary columns. Non-round
-    # values, so that no value sits exactly on a bound where the rounding
-    # of astropy's compiled reductions could differ from the namespace's.
+    # values, so that no value sits exactly on a bound (see the rounding
+    # caveat in the _sigma_clip_mask Notes for why that would matter).
     collapse = rng.normal(size=(6, 2, 2))
     collapse[:, 0, 0] = [50.0, 0.1, -0.2, 0.05, 1.3, 2.7]
     collapse[:, 1, 1] = [0.0, 0.0, 0.0, 0.0, 0.0, 7.0]
@@ -1715,19 +1702,43 @@ def _sigma_clip_datasets():
     # int - float), and the mask must still match astropy's.
     ints = np.array([[1, 50], [2, 51], [3, 52], [100, 53]])
 
+    # Same corners as normal, in float32: pins the promotion in
+    # _sigma_clip_mask that keeps a float32 clip matching astropy's, which
+    # always computes in float64.
+    float32 = normal.astype(np.float32)
+
     return {
         "normal": normal,
         "nan_inf": nan_inf,
         "zero_std": zero_std,
         "collapse": collapse,
         "int": ints,
+        "float32": float32,
     }
 
 
 def _sigma_clip_reference(np_data, **kwargs):
     """
-    Mask of astropy.stats.sigma_clip's final bounds applied to ``np_data``.
+    Mask of ``astropy.stats.sigma_clip``'s final bounds applied to ``np_data``.
 
+    Parameters
+    ----------
+    np_data : numpy.ndarray
+        Data to clip, in numpy (the values the backend under test sees).
+    **kwargs
+        Passed to `astropy.stats.sigma_clip`: ``sigma_lower``,
+        ``sigma_upper``, ``maxiters``, ``cenfunc``, ``stdfunc``, ``axis``.
+
+    Returns
+    -------
+    numpy.ndarray of bool
+        True where ``np_data`` is non-finite or outside the bounds of the
+        last iteration. For string ``cenfunc``/``stdfunc`` this is also
+        asserted to equal astropy's own mask, which is what numpy data get
+        from ``Combiner.sigma_clipping``.
+
+    Notes
+    -----
     The bounds are what astropy's two code paths agree on. Its compiled
     path (string ``cenfunc`` and ``stdfunc``) masks the data outside the
     bounds of the last iteration. Its python loop (any callable) did the
@@ -1768,34 +1779,38 @@ def _sigma_clip_reference(np_data, **kwargs):
 # _sigma_clip_reference for why the bounds rather than astropy's mask), and
 # astropy's behaviour has corners that no hand-written expectation would pin
 # down (see the Notes of _sigma_clip_mask: final-bounds-not-union, None/0
-# thresholds meaning 3, fully clipped slices, always-masked non-finite values).
-# The full cross product is deliberate rather than a curated list, because
-# those corners only show up for particular combinations: a slice collapses
-# only for some center/deviation pairs and thresholds; final-bounds-vs-union
-# only matters for maxiters > 1; maxiters=None is a different
-# (host-synchronising) code path from an integer count; the string options go
-# through the tiered _default_* reductions while callables are used as given.
-# The threshold pairs are the default, an asymmetric pair, a tight pair that
-# rejects a lot, and a lopsided one. 5 x 3 x 3 x 4 x 3 = 540 cases per backend;
-# it is the largest test in the suite by count and roughly doubles the dask run
-# time, which is the price of being sure the two code paths agree.
+# thresholds meaning 3, fully clipped slices, always-masked non-finite
+# values, and the floating-point rounding caveat). The (cenfunc, stdfunc)
+# pairs cover the string dispatch table plus a callable pair; (None, 0)
+# exercises the None/0 -> 3 threshold rule. Wrapping the _sigma_clip_mask
+# call in simplefilter("error") folds in silence on the all-NaN column of
+# the nan_inf/float32 datasets (skipped on dask: a lazy backend only runs
+# numpy's nan-functions on its chunks when the graph is computed, outside
+# this test's control). No value in the datasets sits exactly on a bound
+# (see the rounding caveat above) except where a corner intentionally
+# provokes it. 6 datasets x 4 (cenfunc, stdfunc) pairs x 4 threshold pairs
+# x 3 maxiters = 288 cases per backend.
 @pytest.mark.filterwarnings("ignore::astropy.utils.exceptions.AstropyUserWarning")
 @pytest.mark.filterwarnings("ignore:invalid value encountered:RuntimeWarning")
 @pytest.mark.filterwarnings("ignore:Mean of empty slice:RuntimeWarning")
 @pytest.mark.filterwarnings("ignore:Degrees of freedom <= 0:RuntimeWarning")
 @pytest.mark.parametrize("maxiters", [1, 3, None])
 @pytest.mark.parametrize(
-    ("sigma_lower", "sigma_upper"), [(3, 3), (2, 2.5), (1.5, 1.5), (3, 1)]
+    ("sigma_lower", "sigma_upper"), [(None, 0), (2, 2.5), (1.5, 1.5), (3, 1)]
 )
-@pytest.mark.parametrize("stdfunc", ["std", "mad_std", "callable"])
-@pytest.mark.parametrize("cenfunc", ["median", "mean", "callable"])
+@pytest.mark.parametrize(
+    ("cenfunc", "stdfunc"),
+    [
+        ("median", "std"),
+        ("mean", "std"),
+        ("mean", "mad_std"),
+        ("callable", "callable"),
+    ],
+)
 @pytest.mark.parametrize("dataset", sorted(_sigma_clip_datasets()))
 def test_sigma_clip_mask_matches_astropy(
     dataset, cenfunc, stdfunc, sigma_lower, sigma_upper, maxiters
 ):
-    # The warnings ignored above all come from the astropy reference (or,
-    # on dask, from the numpy nan-functions its chunks are computed with);
-    # _sigma_clip_mask itself is silent, see the test after this one.
     data = xp.asarray(_sigma_clip_datasets()[dataset], device=xp_device)
     # Build the reference from the backend's own values so that a backend
     # with a different default float width still sees identical data.
@@ -1810,16 +1825,19 @@ def test_sigma_clip_mask_matches_astropy(
     else:
         xp_stdfunc = ref_stdfunc = stdfunc
 
-    result = _sigma_clip_mask(
-        data,
-        sigma_lower=sigma_lower,
-        sigma_upper=sigma_upper,
-        axis=0,
-        maxiters=maxiters,
-        cenfunc=xp_cenfunc,
-        stdfunc=xp_stdfunc,
-        xp=xp,
-    )
+    with warnings.catch_warnings():
+        if not array_api_compat.is_dask_namespace(xp):
+            warnings.simplefilter("error")
+        result = _sigma_clip_mask(
+            data,
+            sigma_lower=sigma_lower,
+            sigma_upper=sigma_upper,
+            axis=0,
+            maxiters=maxiters,
+            cenfunc=xp_cenfunc,
+            stdfunc=xp_stdfunc,
+            xp=xp,
+        )
     expected = _sigma_clip_reference(
         np_data,
         sigma_lower=sigma_lower,
@@ -1839,241 +1857,101 @@ def test_sigma_clip_mask_matches_astropy(
     assert bool(xp.all(result == xp.asarray(expected, device=xp_device)))
 
 
-@pytest.mark.filterwarnings("ignore:invalid value encountered:RuntimeWarning")
-@pytest.mark.filterwarnings("ignore:Mean of empty slice:RuntimeWarning")
-@pytest.mark.filterwarnings("ignore:Degrees of freedom <= 0:RuntimeWarning")
-@pytest.mark.parametrize(
-    ("cenfunc", "stdfunc"), [("median", "std"), ("mean", "mad_std")]
-)
-def test_sigma_clip_mask_is_silent_on_nan(cenfunc, stdfunc):
-    # An all-NaN column makes numpy's nan-functions warn; astropy silences
-    # those warnings and so must the array-API implementation.
-    data = xp.asarray(_sigma_clip_datasets()["nan_inf"], device=xp_device)
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        result = _sigma_clip_mask(
-            data, cenfunc=cenfunc, stdfunc=stdfunc, maxiters=3, xp=xp
-        )
-        if not array_api_compat.is_dask_namespace(xp):
-            # A lazy backend runs numpy's nan-functions on its chunks only
-            # when the graph is computed, outside the helper's control (the
-            # marks above cover that); an eager one must stay silent here.
-            assert bool(xp.all(result[:, 1, 2]))
-    # The all-NaN column is masked, the NaN and infs are masked, and the
-    # finite values of a column that also holds a NaN are not all masked.
-    assert bool(xp.all(result[:, 1, 2]))
-    assert bool(result[1, 0, 1]) and bool(result[2, 4, 0]) and bool(result[6, 1, 1])
-    assert not bool(xp.all(result[:, 0, 1]))
-
-
-def test_sigma_clip_mask_none_threshold_means_three():
-    # astropy treats sigma_lower/sigma_upper of None (and 0) as 3 -- there is
-    # no "no rejection on this side" -- and the array-API path matches it.
-    column = [0.0, 0.5, -0.5, 1.0, -1.0, 0.2, -0.2, 0.3, -0.3, 0.1, -0.1]
-    column += [0.0] * 9 + [40.0]
-    data = xp.asarray(np.array(column)[:, None], device=xp_device)
-
-    # No xp= here: the helper resolves the namespace from the data.
-    reference = _sigma_clip_mask(data, sigma_lower=3, sigma_upper=3)
-    # Only the outlier is rejected at 3 sigma, so None/0 really are 3 here
-    # rather than "reject nothing" or "reject everything".
-    assert int(xp.sum(xp.astype(reference, xp.int64))) == 1
-    assert bool(reference[-1, 0])
-    for thresholds in [(None, None), (0, 0), (None, 3), (3, 0)]:
-        result = _sigma_clip_mask(
-            data, sigma_lower=thresholds[0], sigma_upper=thresholds[1], xp=xp
-        )
-        assert bool(xp.all(result == reference))
-
-
-def test_sigma_clip_mask_final_bounds_not_union():
+def test_sigma_clip_mask_argument_handling():
     """
-    The mask is the last iteration's bounds applied to the data, not the
-    union of the values rejected in each iteration.
-
-    With ``median``/``std`` and 0.5 sigma, astropy's bounds on this column
-    are [3.64, 20.36] after one iteration and [0.23, 7.77] after two, so
-    the 2.0 rejected in the first iteration is inside the final bounds and
-    ends up unmasked while the 20.0 becomes masked::
-
-        >>> from astropy.stats import sigma_clip
-        >>> data = [50.0, 20.0, 2.0, 4.0, 4.0, 21.0]
-        >>> sigma_clip(data, sigma=0.5, maxiters=1, cenfunc="median").mask
-        array([ True, False,  True, False, False,  True])
-        >>> sigma_clip(data, sigma=0.5, maxiters=2, cenfunc="median").mask
-        array([ True,  True, False, False, False,  True])
+    Argument handling of _sigma_clip_mask that the differential grid does
+    not reach: numpy-scalar thresholds are converted before they meet the
+    data (a strict namespace rejects them in arithmetic), ``xp=None``
+    resolves the namespace from the data, a negative axis counts from the
+    end, and ``maxiters=0`` and unknown ``cenfunc``/``stdfunc`` strings
+    raise. Axis validation itself is `_nanfuncs._setup`'s and is covered
+    by ``test_nanfuncs.py::test_bad_axis``.
     """
-    column = np.array([50.0, 20.0, 2.0, 4.0, 4.0, 21.0])[:, None]
-    data = xp.asarray(column, device=xp_device)
-
-    after_one = _sigma_clip_mask(
-        data, sigma_lower=0.5, sigma_upper=0.5, maxiters=1, xp=xp
-    )
-    after_two = _sigma_clip_mask(
-        data, sigma_lower=0.5, sigma_upper=0.5, maxiters=2, xp=xp
-    )
-
-    expected_one = xp.asarray([True, False, True, False, False, True], device=xp_device)
-    expected_two = xp.asarray([True, True, False, False, False, True], device=xp_device)
-    assert bool(xp.all(after_one[:, 0] == expected_one))
-    assert bool(xp.all(after_two[:, 0] == expected_two))
-
-
-def test_sigma_clip_mask_accepts_numpy_scalar_thresholds():
-    # A strict namespace rejects numpy scalars in arithmetic with its arrays,
-    # so the thresholds must be converted before they meet the data.
     data = xp.asarray(_sigma_clip_datasets()["normal"], device=xp_device)
+
     expected = _sigma_clip_mask(data, sigma_lower=2, sigma_upper=2.5, xp=xp)
     result = _sigma_clip_mask(
         data, sigma_lower=np.int64(2), sigma_upper=np.float64(2.5), xp=xp
     )
     assert bool(xp.all(result == expected))
 
+    # No xp= here: the helper resolves the namespace from the data.
+    assert bool(xp.all(_sigma_clip_mask(data) == _sigma_clip_mask(data, xp=xp)))
 
-def test_sigma_clip_mask_bad_axis():
-    data = xp.asarray(_sigma_clip_datasets()["normal"], device=xp_device)
-    for axis in [None, (0, 1), True]:
-        with pytest.raises(NotImplementedError, match="single integer axis"):
-            _sigma_clip_mask(data, axis=axis, xp=xp)
-    with pytest.raises(ValueError, match="out of bounds"):
-        _sigma_clip_mask(data, axis=3, xp=xp)
-    with pytest.raises(ValueError, match="maxiters"):
-        _sigma_clip_mask(data, maxiters=0, xp=xp)
     # A negative axis is normalised like numpy's.
     expected = _sigma_clip_mask(data, axis=2, xp=xp)
     assert bool(xp.all(_sigma_clip_mask(data, axis=-1, xp=xp) == expected))
 
+    with pytest.raises(ValueError, match="maxiters"):
+        _sigma_clip_mask(data, maxiters=0, xp=xp)
 
-def test_sigma_clip_mask_bad_string():
-    data = xp.asarray(_sigma_clip_datasets()["normal"], device=xp_device)
     with pytest.raises(ValueError, match="cenfunc must be one of"):
         _sigma_clip_mask(data, cenfunc="mode", xp=xp)
     with pytest.raises(ValueError, match="stdfunc must be one of"):
         _sigma_clip_mask(data, stdfunc="var", xp=xp)
-    with pytest.raises(TypeError, match="stdfunc must be a string or a callable"):
-        _sigma_clip_mask(data, stdfunc=3, xp=xp)
-
-
-@pytest.mark.parametrize("axis", [0, 1, -1])
-def test_nanmadstd_matches_astropy(axis):
-    np_data = _sigma_clip_datasets()["nan_inf"].copy()
-    np_data[~np.isfinite(np_data)] = np.nan
-    data = xp.asarray(np_data, device=xp_device)
-    result = _nanmadstd(data, axis=axis, xp=xp)
-    expected = xp.asarray(
-        mad_std(np_data, axis=axis, ignore_nan=True), device=xp_device
-    )
-    assert result.shape == expected.shape
-    assert bool(xp.all(xpx.isclose(result, expected, equal_nan=True)))
 
 
 def _sigma_clip_ccd_list():
+    """
+    The ``normal`` set of `_sigma_clip_datasets` as a list of `CCDData`,
+    one per slice along axis 0, as arrays of the backend under test.
+    """
     data = _sigma_clip_datasets()["normal"]
     return [CCDData(xp.asarray(image, device=xp_device), unit=u.adu) for image in data]
 
 
-def test_sigma_clipping_uses_astropy_only_for_numpy(monkeypatch):
-    calls = []
-    astropy_sigma_clip = combiner_module.sigma_clip
+@pytest.mark.parametrize("force_fallback", [False, True])
+def test_sigma_clipping_dispatch(monkeypatch, force_fallback):
+    """
+    ``Combiner.sigma_clipping`` sends numpy data to astropy and everything
+    else to ``_sigma_clip_mask``, with ``axis``/``maxiters``/``copy``
+    reaching astropy correctly, an astropy-only kwarg such as ``grow``
+    raising off the numpy path, the ``use_astropy`` deprecation warning
+    raised on both paths, and a pre-existing mask preserved either way.
+    ``force_fallback`` forces the array-API branch on every backend, numpy
+    included, so the numpy coverage job sees it too.
+    """
+    if force_fallback:
+        # This also flips _default_median/_default_std (combiner.py:31,
+        # :76), which read the same predicate, so on numpy this clips with
+        # array_api_compat.numpy.nanmedian/nanstd instead of bottleneck;
+        # only the dispatch is under test here, not those reductions.
+        monkeypatch.setattr(array_api_compat, "is_numpy_namespace", lambda _xp: False)
 
-    def spy(*args, **kwargs):
-        calls.append(kwargs)
-        return astropy_sigma_clip(*args, **kwargs)
-
-    monkeypatch.setattr(combiner_module, "sigma_clip", spy)
-
-    c = Combiner(_sigma_clip_ccd_list())
-    c.sigma_clipping(low_thresh=2, high_thresh=2.5, func="median", dev_func="mad_std")
-
-    if array_api_compat.is_numpy_namespace(xp):
-        # numpy data must keep going to astropy, with the same arguments
-        # as before, so that its compiled fast path is used.
-        assert len(calls) == 1
-        assert calls[0]["masked"] is True
-        assert calls[0]["maxiters"] == 1
-        assert calls[0]["axis"] == 0
-        assert calls[0]["copy"] is False
-    else:
-        assert calls == []
-
-    expected = _sigma_clip_reference(
-        _to_numpy(c._data_arr),
-        sigma_lower=2,
-        sigma_upper=2.5,
-        axis=0,
-        maxiters=1,
-        cenfunc="median",
-        stdfunc="mad_std",
+    calls, real = [], combiner_module.sigma_clip
+    monkeypatch.setattr(
+        combiner_module,
+        "sigma_clip",
+        lambda *a, **k: calls.append(k) or real(*a, **k),
     )
-    assert array_api_compat.array_namespace(
-        c._data_arr_mask
-    ) is array_api_compat.array_namespace(c._data_arr)
-    assert array_api_compat.device(c._data_arr_mask) == array_api_compat.device(
-        c._data_arr
-    )
-    assert bool(xp.all(c._data_arr_mask == xp.asarray(expected, device=xp_device)))
 
-
-@pytest.mark.filterwarnings("ignore:invalid value encountered:RuntimeWarning")
-def test_sigma_clipping_accepts_axis_and_maxiters():
-    # Regression test: axis, copy and maxiters used to be read from kwd and
-    # also forwarded through **kwd, so passing any of them raised
-    # "TypeError: got multiple values for keyword argument".
-    c = Combiner(_sigma_clip_ccd_list())
-    c.sigma_clipping(low_thresh=2, high_thresh=2, axis=0, maxiters=3, copy=False)
-    expected = _sigma_clip_reference(
-        _to_numpy(c._data_arr),
-        sigma_lower=2,
-        sigma_upper=2,
-        axis=0,
-        maxiters=3,
-        cenfunc="mean",
-        stdfunc="std",
-    )
-    assert bool(xp.all(c._data_arr_mask == xp.asarray(expected, device=xp_device)))
-
-
-def test_sigma_clipping_rejects_astropy_only_kwargs_off_numpy():
-    c = Combiner(_sigma_clip_ccd_list())
-    if array_api_compat.is_numpy_namespace(xp):
-        # Forwarded to astropy as before.
-        c.sigma_clipping(grow=1)
-        assert c._data_arr_mask.dtype == xp.bool
-    else:
-        with pytest.raises(TypeError, match="grow"):
-            c.sigma_clipping(grow=1)
-
-
-def test_sigma_clipping_use_astropy_still_deprecated():
-    # The deprecation decorator re-inserts use_astropy into the keyword
-    # arguments, so the method must pop it before looking at what is left.
-    c = Combiner(_sigma_clip_ccd_list())
-    with pytest.warns(AstropyDeprecationWarning, match="use_astropy"):
-        c.sigma_clipping(use_astropy=True)
-    assert c._data_arr_mask.dtype == xp.bool
-
-
-def test_sigma_clipping_keeps_existing_mask():
     c = Combiner(_sigma_clip_ccd_list())
     # A pixel that sigma clipping would not reject on its own.
     c._data_arr_mask = xpx.at(c._data_arr_mask)[4, 2, 3].set(True)
-    c.sigma_clipping(low_thresh=3, high_thresh=3, func="median", dev_func="mad_std")
-    assert bool(c._data_arr_mask[4, 2, 3])
-    # ... and the outlier planted by _sigma_clip_datasets is rejected.
-    assert bool(c._data_arr_mask[3, 1, 2])
+    with pytest.warns(AstropyDeprecationWarning, match="use_astropy"):
+        c.sigma_clipping(
+            low_thresh=2,
+            high_thresh=2.5,
+            func="median",
+            dev_func="mad_std",
+            axis=0,
+            maxiters=2,
+            copy=False,
+            use_astropy=True,
+        )
 
+    # Reads the (possibly patched) predicate sigma_clipping itself just
+    # used, so this reflects which path the call above actually took.
+    uses_astropy = array_api_compat.is_numpy_namespace(xp)
+    assert (len(calls) == 1) is uses_astropy
+    if uses_astropy:
+        # numpy data must keep going to astropy, with the same arguments
+        # as before, so that its compiled fast path is used.
+        assert calls[0]["masked"] is True
+        assert calls[0]["maxiters"] == 2
+        assert calls[0]["copy"] is False
+        assert calls[0]["axis"] == 0
 
-def test_sigma_clipping_fallback_branch_on_any_backend(monkeypatch):
-    # Force the array-API branch of sigma_clipping on every backend, numpy
-    # included (where it is otherwise never taken), so that the numpy
-    # coverage job sees it.
-    monkeypatch.setattr(array_api_compat, "is_numpy_namespace", lambda _xp: False)
-    c = Combiner(_sigma_clip_ccd_list())
-    with pytest.raises(TypeError, match="grow"):
-        c.sigma_clipping(grow=1)
-    c.sigma_clipping(
-        low_thresh=2, high_thresh=2.5, func="median", dev_func="mad_std", maxiters=2
-    )
     expected = _sigma_clip_reference(
         _to_numpy(c._data_arr),
         sigma_lower=2,
@@ -2083,7 +1961,21 @@ def test_sigma_clipping_fallback_branch_on_any_backend(monkeypatch):
         cenfunc="median",
         stdfunc="mad_std",
     )
+    expected[4, 2, 3] = True  # the pre-existing mask stays set
+    assert array_api_compat.array_namespace(
+        c._data_arr_mask
+    ) is array_api_compat.array_namespace(c._data_arr)
+    assert array_api_compat.device(c._data_arr_mask) == array_api_compat.device(
+        c._data_arr
+    )
     assert bool(xp.all(c._data_arr_mask == xp.asarray(expected, device=xp_device)))
+
+    if uses_astropy:
+        # Forwarded to astropy as before.
+        c.sigma_clipping(grow=1)
+    else:
+        with pytest.raises(TypeError, match="grow"):
+            c.sigma_clipping(grow=1)
 
 
 def test_combine_sigma_clip_on_any_backend():

@@ -2,6 +2,7 @@
 
 """This module implements the combiner class."""
 
+import itertools
 import operator
 import warnings
 from copy import deepcopy
@@ -21,7 +22,7 @@ from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
 
-from ._nanfuncs import nanmean, nanmedian, nanstd, nansum
+from ._nanfuncs import _setup, nanmad, nanmean, nanmedian, nanstd, nansum
 from .core import _namespace_dtype, _native_numpy, _to_numpy, sigma_func
 
 __all__ = ["Combiner", "combine"]
@@ -113,14 +114,7 @@ def _nanmadstd(x, /, *, axis=0, xp):
         ``1.4826 * median(|x - median(x)|)`` along ``axis``, with that axis
         removed.
     """
-    # TODO: use _nanfuncs.<name> once PR A (sigma_func fallback) merges
-    median = _default_median(xp)
-    center = xp.expand_dims(median(x, axis=axis), axis=axis)
-    return 1.482602218505602 * median(xp.abs(x - center), axis=axis)
-
-
-def _default_mad_std(xp):
-    return partial(_nanmadstd, xp=xp)
+    return 1.482602218505602 * nanmad(x, axis=axis, xp=xp, median=_default_median(xp))
 
 
 # The string options of Combiner.sigma_clipping, mapped to the functions
@@ -128,10 +122,13 @@ def _default_mad_std(xp):
 # for a namespace. The names match astropy.stats.sigma_clip's cenfunc and
 # stdfunc options so that the two code paths accept the same strings.
 _SIGMA_CLIP_CENFUNCS = {"median": _default_median, "mean": _default_average}
-_SIGMA_CLIP_STDFUNCS = {"std": _default_std, "mad_std": _default_mad_std}
+_SIGMA_CLIP_STDFUNCS = {
+    "std": _default_std,
+    "mad_std": lambda xp: partial(_nanmadstd, xp=xp),
+}
 
 
-def _resolve_sigma_clip_func(func, options, kind, xp):
+def _resolve(func, options, kind, xp):
     """
     Turn a ``cenfunc``/``stdfunc`` argument into a callable for ``xp``.
 
@@ -154,20 +151,18 @@ def _resolve_sigma_clip_func(func, options, kind, xp):
     Raises
     ------
     ValueError
-        If ``func`` is a string that is not one of ``options``.
-    TypeError
-        If ``func`` is neither a string nor callable.
+        If ``func`` is a string that is not one of ``options`` (this also
+        catches a non-string, non-callable ``func``, a corner astropy
+        itself does not guard against either).
     """
     if callable(func):
         return func
-    if isinstance(func, str):
-        try:
-            return options[func](xp)
-        except KeyError:
-            raise ValueError(
-                f"{kind} must be one of {sorted(options)} or a callable, got {func!r}"
-            ) from None
-    raise TypeError(f"{kind} must be a string or a callable, got {type(func).__name__}")
+    try:
+        return options[func](xp)
+    except KeyError:
+        raise ValueError(
+            f"{kind} must be one of {sorted(options)} or a callable, got {func!r}"
+        ) from None
 
 
 def _sigma_clip_mask(
@@ -186,7 +181,9 @@ def _sigma_clip_mask(
 
     Reproduces the mask of ``astropy.stats.sigma_clip``'s compiled path
     (the one its string ``cenfunc`` and ``stdfunc`` options take) for any
-    array-API namespace, without converting the data to numpy.
+    array-API namespace, without converting the data to numpy, up to
+    floating-point rounding of the reductions: a value lying exactly on a
+    bound can be classified differently from astropy.
     `Combiner.sigma_clipping` uses this when the namespace is not numpy;
     numpy data go to astropy directly.
 
@@ -245,33 +242,42 @@ def _sigma_clip_mask(
     The ``'median'``, ``'mean'``, ``'std'`` and ``'mad_std'`` options use
     the same NaN-aware reductions as the ``Combiner`` combination methods.
     Warnings that those reductions may raise on all-NaN slices are
-    suppressed here, as astropy suppresses them.
+    suppressed here, as astropy suppresses them. Non-floating input, and
+    floating input narrower than the namespace default, is promoted to the
+    namespace's default real floating dtype before computing, but only
+    when both ``cenfunc`` and ``stdfunc`` are strings: that is when
+    astropy's compiled path (float64 internally) is the reproduction
+    target. A callable ``cenfunc`` or ``stdfunc`` instead matches
+    astropy's python loop, which keeps the data's own dtype, so no
+    promotion happens then either.
 
-    An integer ``maxiters`` runs exactly that many iterations and never
-    synchronises with the host, so on a lazy backend such as dask the whole
-    clip stays one graph. ``maxiters=None`` has to test after each iteration
-    whether anything was rejected, which forces a compute per iteration on
-    such backends; prefer an integer there.
+    An integer ``maxiters`` runs exactly that many iterations, unlike
+    astropy, which returns as soon as an iteration rejects nothing, and
+    never synchronises with the host, so on a lazy backend such as dask the
+    whole clip stays one graph. ``maxiters=None`` has to test after each
+    iteration whether anything was rejected, which forces a compute per
+    iteration on such backends; prefer an integer there.
     """
-    if xp is None:
-        xp = array_api_compat.array_namespace(data)
-    device = array_api_compat.device(data)
+    data, axis, xp, device = _setup(data, axis, xp)
 
-    # Same axis rules as the NaN-aware reduction fallbacks in _nanfuncs.
-    if axis is None or isinstance(axis, bool):
-        raise NotImplementedError(
-            "sigma clipping outside numpy supports only a single integer axis."
-        )
-    try:
-        axis = operator.index(axis)
-    except TypeError:
-        raise NotImplementedError(
-            "sigma clipping outside numpy supports only a single integer axis."
-        ) from None
-    ndim = data.ndim
-    if not -ndim <= axis < ndim:
-        raise ValueError(f"axis {axis} is out of bounds for array of dimension {ndim}")
-    axis = axis % ndim
+    if isinstance(cenfunc, str) and isinstance(stdfunc, str):
+        # B1: widen (never narrow) to the namespace's default real floating
+        # dtype. _setup above already promotes non-floating input to that
+        # dtype; a floating input keeps its own dtype there, but astropy's
+        # *compiled* path -- taken only when both cenfunc and stdfunc are
+        # strings -- always computes in float64, so float32 input must be
+        # widened too, or its mask can differ from astropy's near a bound.
+        # A callable cenfunc or stdfunc instead takes astropy's python
+        # loop, which applies the callable to the data's own dtype with no
+        # promotion (verified: cenfunc=np.nanmean/stdfunc=np.nanstd on
+        # float32 input returns float32 bounds), so this branch leaves a
+        # callable's input dtype alone to match. xp.result_type picks the
+        # wider of the two, so this is a no-op once data is already at or
+        # above the default width (jax without JAX_ENABLE_X64 has no
+        # float64, so its own default is the ceiling).
+        info = xp.__array_namespace_info__()
+        default = info.default_dtypes(device=device)["real floating"]
+        data = xp.astype(data, xp.result_type(data.dtype, default))
 
     if maxiters is not None:
         maxiters = operator.index(maxiters)
@@ -284,22 +290,14 @@ def _sigma_clip_mask(
     sigma_lower = float(sigma_lower or 3)
     sigma_upper = float(sigma_upper or 3)
 
-    center_func = _resolve_sigma_clip_func(cenfunc, _SIGMA_CLIP_CENFUNCS, "cenfunc", xp)
-    std_func = _resolve_sigma_clip_func(stdfunc, _SIGMA_CLIP_STDFUNCS, "stdfunc", xp)
-
-    if not xp.isdtype(data.dtype, "real floating"):
-        # The namespace default rather than float64: jax without X64 has no
-        # float64 and warns when one is requested.
-        info = xp.__array_namespace_info__()
-        data = xp.astype(data, info.default_dtypes(device=device)["real floating"])
+    center_func = _resolve(cenfunc, _SIGMA_CLIP_CENFUNCS, "cenfunc", xp)
+    std_func = _resolve(stdfunc, _SIGMA_CLIP_STDFUNCS, "stdfunc", xp)
 
     nan = xp.asarray(xp.nan, dtype=data.dtype, device=device)
     invalid = ~xp.isfinite(data)
     filtered = xp.where(invalid, nan, data)
 
-    iteration = 0
-    while maxiters is None or iteration < maxiters:
-        iteration += 1
+    for _ in range(maxiters) if maxiters else itertools.count():
         with warnings.catch_warnings():
             # All-NaN slices make numpy's nan-functions warn; astropy
             # silences the same warnings in its _compute_bounds.
@@ -673,7 +671,6 @@ class Combiner:
         ----------
         low_thresh : positive float or None, optional
             Threshold for rejecting pixels that deviate below the baseline
-            value. If negative value, then will be convert to a positive
             value. If None, it is treated as 3, as
             :func:`~astropy.stats.sigma_clip` does.
             Default is 3.
@@ -702,11 +699,17 @@ class Combiner:
 
         kwd
             ``axis`` (default ``0``) and ``maxiters`` (default ``1``) are
-            honoured for every array namespace. ``copy`` (default `False`)
-            and any other keyword arguments are passed to astropy's
-            :func:`~astropy.stats.sigma_clip` when the data are numpy
-            arrays; for any other array namespace ``copy`` is ignored and
-            other keywords raise `TypeError`.
+            honoured for every array namespace. Outside numpy ``axis`` must
+            be a single integer: ``None`` and a tuple of axes, both of
+            which :func:`~astropy.stats.sigma_clip` accepts, raise
+            `NotImplementedError` there. ``masked`` and ``return_bounds``
+            are never accepted, on any array namespace -- this method
+            always asks astropy for the mask itself -- and raise
+            `TypeError`. ``copy`` (default `False`) and any other
+            astropy-only keyword argument, such as ``grow``, are passed to
+            astropy's :func:`~astropy.stats.sigma_clip` when the data are
+            numpy arrays; for any other array namespace ``copy`` is
+            ignored and those other keywords raise `TypeError`.
 
         Notes
         -----
@@ -714,11 +717,13 @@ class Combiner:
         :func:`~astropy.stats.sigma_clip`. For any other array namespace it
         is done by an implementation written in terms of the array API
         standard that reproduces the result of astropy's compiled path
-        (the one the string options take): the mask is the bounds of the
-        last iteration applied to the data, and non-finite values are
-        always masked. The string options for ``func`` and ``dev_func``
-        use the same NaN-aware reductions as the combination methods on
-        every backend.
+        (the one the string options take) up to floating-point rounding of
+        the reductions: a value lying exactly on a bound can be classified
+        differently from astropy. The mask is the bounds of the last
+        iteration applied to the data, and non-finite values are always
+        masked. The string options for ``func`` and ``dev_func`` use the
+        same NaN-aware reductions as the combination methods on every
+        backend.
 
         Pixels that are already masked are not excluded from the statistics
         used for the clipping, but they stay masked.
@@ -733,6 +738,20 @@ class Combiner:
         axis = kwd.pop("axis", 0)
         copy = kwd.pop("copy", False)
         maxiters = kwd.pop("maxiters", 1)
+
+        # This method always requests the mask itself (``masked=True``
+        # below, or the mask that _sigma_clip_mask always returns), so
+        # ``masked`` collides with that and ``return_bounds`` would return a
+        # tuple this method cannot consume; reject both on every namespace
+        # rather than let them reach astropy as an accidental "multiple
+        # values" TypeError or an AttributeError on the tuple.
+        disallowed = sorted({"masked", "return_bounds"} & kwd.keys())
+        if disallowed:
+            raise TypeError(
+                f"sigma_clipping does not accept {disallowed}: it always "
+                "requests the mask itself from astropy.stats.sigma_clip, "
+                "on every array namespace."
+            )
 
         if array_api_compat.is_numpy_namespace(xp):
             clipped = sigma_clip(
@@ -752,9 +771,8 @@ class Combiner:
                 raise TypeError(
                     "sigma_clipping got unexpected keyword argument(s) "
                     f"{sorted(kwd)}. These are options of "
-                    "astropy.stats.sigma_clip (such as grow, masked or "
-                    "return_bounds) and are only available when the array "
-                    "namespace is numpy."
+                    "astropy.stats.sigma_clip (such as grow) and are only "
+                    "available when the array namespace is numpy."
                 )
             clipped = _sigma_clip_mask(
                 self._data_arr,

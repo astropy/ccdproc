@@ -4,8 +4,9 @@ import warnings
 import array_api_extra as xpx
 import numpy as np
 import pytest
+from astropy.stats import median_absolute_deviation
 
-from ccdproc._nanfuncs import median, nanmean, nanmedian, nanstd, nansum
+from ccdproc._nanfuncs import median, nanmad, nanmean, nanmedian, nanstd, nansum
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 
@@ -103,6 +104,18 @@ def test_nansum_all_nan_slice_is_zero():
     result = nansum(data, axis=0)
 
     assert xp.all(xpx.isclose(result, xp.asarray([3.0, 0.0], device=xp_device)))
+
+
+@pytest.mark.parametrize("axis", [0, 1, -1])
+def test_nanmad_matches_astropy(axis):
+    """``nanmad`` reproduces ``median_absolute_deviation(ignore_nan=True)``."""
+    result = nanmad(xp.asarray(_some_nan, device=xp_device), axis=axis)
+    expected = xp.asarray(
+        median_absolute_deviation(_some_nan, axis=axis, ignore_nan=True),
+        device=xp_device,
+    )
+    assert result.shape == expected.shape
+    assert bool(xp.all(xpx.isclose(result, expected, equal_nan=True)))
 
 
 @pytest.mark.parametrize("func", [nansum, nanmean, nanstd, nanmedian, median])
