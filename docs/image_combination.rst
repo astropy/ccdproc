@@ -68,9 +68,9 @@ the list of images.
 
 The `~ccdproc.combiner.Combiner.sigma_clipping` method is very flexible: you can
 specify both the function for calculating the central value and the function
-for calculating the deviation. The default is to use the mean (ignoring any
-masked pixels) for the central value and the standard deviation (again
-ignoring any masked values) for the deviation.
+for calculating the deviation. The default is to use the mean for the
+central value and the standard deviation for the deviation; pixels that
+are already masked are not excluded from these statistics but stay masked.
 
 You can mask pixels more than 5 standard deviations above or 2 standard
 deviations below the median with
@@ -82,10 +82,11 @@ deviations below the median with
     to passing a function: they work with every array library, and for
     NumPy data they use the compiled fast path of
     :func:`~astropy.stats.sigma_clip`. A NaN-aware function such as
-    ``np.nanmedian`` also works; ``np.ma.median`` can be very slow in
-    exactly the situation typically encountered in reducing ccd data: a
-    cube of data in which one dimension (in this case the number of frames
-    in the combiner) is much smaller than the number of pixels.
+    ``np.nanmedian`` also works for NumPy data; ``np.ma.median`` can be
+    very slow in exactly the situation typically encountered in reducing
+    ccd data: a cube of data in which one dimension (in this case the
+    number of frames in the combiner) is much smaller than the number of
+    pixels.
 
 
 Extrema clipping
