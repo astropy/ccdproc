@@ -26,6 +26,35 @@ import array_api_compat
 __all__ = ["median", "nanmean", "nanmedian", "nanstd", "nansum"]
 
 
+def _promote_to_real(x, xp, device):
+    """
+    Promote integer and boolean ``x`` to the namespace's default real
+    floating dtype; a real floating ``x``, including float32, passes
+    through unchanged.
+
+    Parameters
+    ----------
+    x : array
+        Input array.
+    xp : array namespace
+        Namespace to use.
+    device : device
+        Device on which to resolve the default real floating dtype.
+
+    Returns
+    -------
+    array
+        ``x``, promoted if necessary.
+    """
+    if xp.isdtype(x.dtype, "real floating"):
+        return x
+    # Promote to the namespace's default real dtype rather than hardcoding
+    # float64: jax without JAX_ENABLE_X64 has no float64 and warns when one
+    # is requested, which pytest's filterwarnings turns into an error.
+    info = xp.__array_namespace_info__()
+    return xp.astype(x, info.default_dtypes(device=device)["real floating"])
+
+
 def _setup(x, axis, xp):
     """
     Validate ``axis``, resolve the namespace and device, promote to float.
@@ -83,13 +112,7 @@ def _setup(x, axis, xp):
     axis = axis % ndim
 
     device = array_api_compat.device(x)
-
-    if not xp.isdtype(x.dtype, "real floating"):
-        # Promote to the namespace's default real dtype rather than hardcoding
-        # float64: jax without JAX_ENABLE_X64 has no float64 and warns when one
-        # is requested, which pytest's filterwarnings turns into an error.
-        info = xp.__array_namespace_info__()
-        x = xp.astype(x, info.default_dtypes(device=device)["real floating"])
+    x = _promote_to_real(x, xp, device)
 
     return x, axis, xp, device
 

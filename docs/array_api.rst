@@ -169,8 +169,10 @@ What limitations should I be aware of?
   is a median absolute deviation. For `numpy`_ arrays it calls
   ``astropy.stats.median_absolute_deviation``, which is numpy-only; for
   every other array library it uses a version written purely in terms of
-  the array API standard, built on the sort-based medians above, so it
-  shares their cost and their silence on all-NaN slices.
+  the array API standard, preferring the library's own ``median``/
+  ``nanmedian`` and falling back to the sort-based medians above only when
+  the library has neither, so the extra sort cost and the silence on
+  all-NaN slices apply only there.
 
 Which array library should I use?
 ---------------------------------
