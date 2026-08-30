@@ -127,9 +127,9 @@ Bug Fixes
   ``astropy.stats.median_absolute_deviation``. Numpy input still uses
   astropy. [#1000]
 - ``sigma_func`` now always excludes the masked pixels of a masked
-  ``CCDData``. Previously the mask was only honoured on numpy for small
-  arrays with a single integer ``axis`` and ``ignore_nan=True``, and never
-  when bottleneck is installed. [#1000]
+  ``CCDData``. Previously the mask was only honored on numpy for small
+  arrays with a single integer ``axis`` and ``ignore_nan=True``, and, when
+  bottleneck is installed, not for float64 data at all. [#1000]
 
 2.5.1 (2025-07-05)
 ------------------
