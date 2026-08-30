@@ -9,6 +9,13 @@ New Features
 - Allow ``ImageFileCollection.ccds`` to override the collection's FITS
   extension per call with ``ccd_kwargs["hdu"]`` while preserving ``ext=`` as
   a header filter. [#960]
+- ``Combiner.sigma_clipping`` now clips data in a non-NumPy array namespace
+  with an implementation written in terms of the array API standard that
+  reproduces ``astropy.stats.sigma_clip``'s result up to floating-point
+  rounding of the reductions: a value lying exactly on a bound can be
+  classified differently from astropy (NumPy data still use astropy);
+  ``'median'``/``'mean'``/``'std'``/``'mad_std'`` use the namespace's
+  NaN-aware reductions or ccdproc's fallbacks. [#1001]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -134,6 +141,11 @@ Bug Fixes
   ``CCDData``. Previously the mask was only honored on numpy for small
   arrays with a single integer ``axis`` and ``ignore_nan=True``, and, when
   bottleneck is installed, not for float64 data at all. [#1000]
+- Passing ``axis``, ``copy`` or ``maxiters`` to ``Combiner.sigma_clipping``
+  no longer raises ``TypeError``. [#1001]
+- Correct the ``Combiner.sigma_clipping`` docstring, which said the
+  default ``func`` was ``'median'``; the runtime default has always been
+  ``'mean'``. [#1001]
 
 2.5.1 (2025-07-05)
 ------------------

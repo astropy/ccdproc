@@ -173,6 +173,18 @@ What limitations should I be aware of?
   ``nanmedian`` and falling back to the sort-based medians above only when
   the library has neither, so the extra sort cost and the silence on
   all-NaN slices apply only there.
++ ``Combiner.sigma_clipping`` uses ``astropy.stats.sigma_clip`` only for
+  `numpy`_ arrays. For any other array library it uses an implementation
+  written in terms of the array API standard that reproduces astropy's
+  result up to floating-point rounding of the reductions: a value lying
+  exactly on a bound can be classified differently from astropy.
+  Astropy-only options such as ``grow`` are not available there and raise
+  ``TypeError``; ``masked`` and ``return_bounds`` are not accepted by
+  ``sigma_clipping`` at all, on any array library, because the wrapper
+  always asks astropy for the mask itself. On a lazy library such as
+  `dask`_, prefer an integer ``maxiters``: ``maxiters=None`` has to
+  compute the data after every iteration to find out whether anything
+  else was rejected.
 
 Which array library should I use?
 ---------------------------------

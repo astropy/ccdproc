@@ -20,10 +20,11 @@ keeps the five functions consistent with each other.
 """
 
 import operator
+from functools import partial
 
 import array_api_compat
 
-__all__ = ["median", "nanmean", "nanmedian", "nanstd", "nansum"]
+__all__ = ["median", "nanmad", "nanmean", "nanmedian", "nanstd", "nansum"]
 
 
 def _promote_to_real(x, xp, device):
@@ -411,3 +412,38 @@ def median(x, /, *, axis=0, xp=None):
     x, axis, xp, device = _setup(x, axis, xp)
     nan = xp.asarray(xp.nan, dtype=x.dtype, device=device)
     return xp.where(xp.any(xp.isnan(x), axis=axis), nan, nanmedian(x, axis=axis, xp=xp))
+
+
+def nanmad(x, /, *, axis=0, xp=None, median=None):
+    """
+    Median absolute deviation along ``axis``, ignoring NaNs.
+
+    Parameters
+    ----------
+    x : array
+        Input array. Integer and boolean inputs are promoted to the
+        namespace's default real floating dtype.
+    axis : int, optional
+        Axis along which to compute the deviation. Default is 0. Booleans,
+        ``None`` and tuples of axes are not supported; numpy integer
+        scalars are accepted.
+    xp : array namespace, optional
+        Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
+    median : callable, optional
+        Reduction used for both medians, called as ``median(x, axis=axis)``.
+        Default is `nanmedian`. A keyword rather than a module-level tier
+        (as `ccdproc.combiner._default_median` provides) so this module has
+        no dependency on `ccdproc.combiner`.
+
+    Returns
+    -------
+    array
+        ``median(|x - median(x)|)`` along ``axis``, with that axis removed.
+        Unscaled: multiply by ``1.482602218505602`` for an estimate of the
+        standard deviation, as `astropy.stats.mad_std` does.
+    """
+    x, axis, xp, device = _setup(x, axis, xp)
+    if median is None:
+        median = partial(nanmedian, xp=xp)
+    center = xp.expand_dims(median(x, axis=axis), axis=axis)
+    return median(xp.abs(x - center), axis=axis)

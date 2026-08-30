@@ -14,7 +14,6 @@
 # that will never leave. Verify/adjust the seeded tags by hand.
 #
 combiner.py  combine                      numpy.asarray     BOUNDARY: astropy CCDData mask/uncertainty attributes are numpy-backed
-combiner.py  sigma_clipping               numpy.asanyarray  BOUNDARY: astropy.stats.sigma_clip is numpy-only
 core.py      _cosmicray_median_array      numpy.asarray     BOUNDARY: scipy.ndimage median_filter/maximum_filter are numpy-only
 core.py      _to_numpy                    numpy.asarray     BOUNDARY: deliberate host copy for numpy-only consumers (combine() writes output_file through astropy.io.fits)
 core.py      background_deviation_filter  numpy.asarray     BOUNDARY: scipy.ndimage.generic_filter is numpy-only
