@@ -20,6 +20,11 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- The ``py313-strict`` CI job (the ``array-api-strict`` suite on a
+  non-default device) is now part of the regular CI matrix and fails CI on
+  a test failure; the expected-failures carve-out and the
+  ``strict_status.yml`` reporting workflow are retired now that the suite
+  is green on that backend. [#1005]
 - Add triage tooling for array-API backend failures: ``backend_xfail`` /
   ``backend_skip`` markers, an escape-site report
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
