@@ -129,22 +129,12 @@ Reading the strict CI signal
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ``ubuntu-py313-strict`` job in the main CI matrix runs the test suite
-against `array-api-strict`_, but it is marked ``continue-on-error``, so it
-always shows green in the pull-request checks rollup regardless of the test
-outcome. The real result is posted as a separate check run, also named
-``ubuntu-py313-strict``, by the "Strict array API status" workflow. Its
-conclusion is:
-
-+ ``success`` -- the strict test suite passed;
-+ ``neutral``, with a "failing (expected)" message -- the strict suite
-  failed, which is expected while known array-API bugs remain;
-+ ``failure`` -- the job itself broke (an infrastructure problem rather
-  than the expected test failures).
-
-Because that workflow is triggered by ``workflow_run``, it executes from the
-repository's default branch: the separate check only appears once
-the workflow file exists on the default branch, and changes to it take
-effect only after they are merged.
+against `array-api-strict`_ on a non-default device, a CPU-only proxy for
+GPU-style device behavior. It is a regular matrix job: a test failure fails
+the job and the pull-request checks rollup, like any other backend. A
+failure there usually means a numpy-ism (a numpy-only method or type, a
+missing ``device=``) crept into a code path that the more permissive
+backends accept silently; reproduce it locally with ``tox -e strict``.
 
 What limitations should I be aware of?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
