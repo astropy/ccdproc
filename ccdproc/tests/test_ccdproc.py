@@ -445,21 +445,47 @@ def test_mad_fallback_matches_astropy(data, axis, ignore_nan):
     assert xp.all(xpx.isclose(result, expected, equal_nan=True))
 
 
-# Duplicate (including a negative alias) and out-of-bounds entries in a
-# tuple axis raise ValueError instead of silently reducing the wrong axes.
+# Duplicate (including a negative alias), out-of-bounds and bool entries in
+# a tuple axis raise instead of silently reducing the wrong axes.
 @pytest.mark.parametrize(
-    ("axis", "match"),
+    ("axis", "error", "match"),
     [
-        pytest.param((0, 0), "repeated axis", id="duplicate"),
+        pytest.param((0, 0), ValueError, "repeated axis", id="duplicate"),
         # -3 is axis 0 of a 3-D array, so this is a duplicate too.
-        pytest.param((0, -3), "repeated axis", id="duplicate-negative-alias"),
-        pytest.param((0, 3), "out of bounds", id="out-of-bounds"),
+        pytest.param(
+            (0, -3), ValueError, "repeated axis", id="duplicate-negative-alias"
+        ),
+        pytest.param((0, 3), ValueError, "out of bounds", id="out-of-bounds"),
+        # normalize_axis_tuple would silently treat True as 1.
+        pytest.param((0, True), TypeError, "not bool", id="bool-entry"),
     ],
 )
-def test_mad_fallback_rejects_bad_axis_tuple(axis, match):
+def test_mad_fallback_rejects_bad_axis_tuple(axis, error, match):
     data = xp.asarray(_MAD_3D, device=xp_device)
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(error, match=match):
         _mad_fallback(data, axis, True)
+
+
+# The except branch of _mad_fallback's med() only runs naturally on
+# namespaces without a native nanmedian/median (array-api-strict is the only
+# such backend in CI, and it does not report coverage), so hide the native
+# functions behind a proxy namespace that otherwise delegates to the backend
+# under test, as test_median_fallback_without_native_median does.
+@pytest.mark.parametrize("ignore_nan", [False, True])
+def test_mad_fallback_without_native_medians(ignore_nan):
+    class _NamespaceWithoutMedians(types.ModuleType):
+        def __getattr__(self, name):
+            if name in ("median", "nanmedian"):
+                raise AttributeError(name)
+            return getattr(xp, name)
+
+    proxy = _NamespaceWithoutMedians("xp_without_medians")
+    data = xp.asarray(_MAD_3D, device=xp_device)
+
+    result = _mad_fallback(data, 0, ignore_nan, xp=proxy)
+
+    expected = _mad_fallback(data, 0, ignore_nan)
+    assert xp.all(xpx.isclose(result, expected, equal_nan=True))
 
 
 # The public entry point matches astropy.stats.mad_std, stays in the
