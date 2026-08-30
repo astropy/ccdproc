@@ -32,6 +32,7 @@ from ._ccddata_wrapper_for_array_api import (
 )
 from ._nanfuncs import _promote_to_real
 from ._nanfuncs import median as _nanfuncs_median
+from ._nanfuncs import nanmad as _nanfuncs_nanmad
 from ._nanfuncs import nanmedian as _nanfuncs_nanmedian
 from .log_meta import log_to_metadata
 from .utils.slices import slice_from_string
@@ -364,15 +365,16 @@ def _mad_fallback(data, axis, ignore_nan, xp=None):
         )
         axis = -1
 
-    def med(d, ax):
+    def med(d, axis):
         try:
-            return (xp.nanmedian if ignore_nan else xp.median)(d, axis=ax)
+            return (xp.nanmedian if ignore_nan else xp.median)(d, axis=axis)
         except AttributeError:
             fallback = _nanfuncs_nanmedian if ignore_nan else _nanfuncs_median
-            return fallback(d, axis=ax, xp=xp)
+            return fallback(d, axis=axis, xp=xp)
 
-    center = med(data, axis)
-    return med(xp.abs(data - xp.expand_dims(center, axis=axis)), axis)
+    # The deviation itself is _nanfuncs.nanmad, the same computation
+    # Combiner._nanmadstd uses; only the median tier passed in differs.
+    return _nanfuncs_nanmad(data, axis=axis, xp=xp, median=med)
 
 
 @log_to_metadata
