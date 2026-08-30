@@ -17,10 +17,10 @@ authors = [
 dependencies = [
     "array_api_compat>=1.12.0",
     "array_api_extra>=0.7.0",
-    "astropy>=6.0.1",
-    "astroscrappy>=1.1.0",
-    "numpy>=1.26",
-    "reproject>=0.9.1",
+    "astropy>=6.1",
+    "astroscrappy>=1.2",
+    "numpy>=2.0",
+    "reproject>=0.14",
     "scipy",
 ]
 

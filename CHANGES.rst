@@ -22,6 +22,10 @@ Other Changes and Additions
   without having to name the interpreter. [#986]
 - ``combine`` no longer accepts an array as its ``array_package`` argument;
   pass the array namespace or module instead, as for ``Combiner``. [#997]
+- The minimum supported numpy is now 2.0 (``normalize_axis_tuple`` is
+  imported from its numpy 2 location with no 1.26 fallback), which raises
+  the minimum astropy to 6.1, reproject to 0.14 and astroscrappy to 1.2,
+  the oldest releases that work with numpy 2. [#1000]
 
 Bug Fixes
 ^^^^^^^^^
@@ -121,6 +125,15 @@ Bug Fixes
   dtype instead of passing it through unchanged. [#999]
 - Size the overscan model fit in ``subtract_overscan`` with ``shape``
   instead of ``len``, which the array API standard does not provide. [#999]
+- Compute ``sigma_func`` (the ``median_combine`` uncertainty) with a median
+  absolute deviation written purely in terms of the array API when the array
+  namespace is not numpy, instead of converting the data to numpy through
+  ``astropy.stats.median_absolute_deviation``. Numpy input still uses
+  astropy. [#1000]
+- ``sigma_func`` now always excludes the masked pixels of a masked
+  ``CCDData``. Previously the mask was only honored on numpy for small
+  arrays with a single integer ``axis`` and ``ignore_nan=True``, and, when
+  bottleneck is installed, not for float64 data at all. [#1000]
 
 2.5.1 (2025-07-05)
 ------------------

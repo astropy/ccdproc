@@ -23,5 +23,4 @@ core.py      block_reduce                 numpy.asanyarray  BOUNDARY: astropy.nd
 core.py      block_replicate              numpy.asanyarray  BOUNDARY: astropy.nddata.block_replicate is numpy-only
 core.py      cosmicray_median             numpy.asarray     BOUNDARY: scipy.ndimage median_filter/maximum_filter are numpy-only
 core.py      create_deviation             numpy.asarray     BOUNDARY: astropy CCDData.copy()/StdDevUncertainty are numpy-backed
-core.py      sigma_func                   numpy.asanyarray  BOUNDARY: astropy.stats.median_absolute_deviation is numpy-only
 core.py      subtract_overscan            numpy.asanyarray  BOUNDARY: astropy.modeling fit/evaluation (model= path) is numpy-only

@@ -149,14 +149,30 @@ effect only after they are merged.
 What limitations should I be aware of?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-+ The ``median`` function is not part of the array API, but most array libraries
-  do provide a NaN-aware ``nanmedian``. When combining images, `ccdproc`_ uses
-  ``nanmedian`` from `bottleneck`_ for `numpy`_ arrays if `bottleneck`_ is
-  installed; otherwise it uses the ``nanmedian`` of the selected array library.
-  If that library has no ``nanmedian`` (for example ``array-api-strict``),
-  `ccdproc`_ falls back to a sort-based implementation written purely in terms
-  of the array API standard. That fallback is correct but slower
-  (O(n log n) along the combination axis rather than O(n)).
++ The NaN-aware reductions ``nansum``, ``nanmean``, ``nanstd`` and
+  ``nanmedian`` are not part of the array API, but most array libraries do
+  provide them. When combining images, `ccdproc`_ uses the versions from
+  `bottleneck`_ for `numpy`_ arrays if `bottleneck`_ is installed; otherwise
+  it uses the ones the selected array library provides. If that library has
+  none (for example ``array-api-strict``), `ccdproc`_ falls back to
+  implementations written purely in terms of the array API standard. They
+  are correct but slower: the sum, mean and standard deviation take a few
+  extra passes over the data, and the median is sort-based (O(n log n)
+  along the combination axis rather than O(n)). The fallbacks promote
+  integer and boolean input to the library's default real floating dtype
+  and yield NaN silently for slices that are entirely NaN.
++ ``median`` is not part of the array API either. ``subtract_overscan``
+  uses the ``median`` of the selected array library when there is one, and
+  otherwise the same sort-based fallback, propagating NaNs as
+  ``numpy.median`` does.
++ ``sigma_func``, the default uncertainty estimate of ``median_combine``,
+  is a median absolute deviation. For `numpy`_ arrays it calls
+  ``astropy.stats.median_absolute_deviation``, which is numpy-only; for
+  every other array library it uses a version written purely in terms of
+  the array API standard, preferring the library's own ``median``/
+  ``nanmedian`` and falling back to the sort-based medians above only when
+  the library has neither, so the extra sort cost and the silence on
+  all-NaN slices apply only there.
 
 Which array library should I use?
 ---------------------------------

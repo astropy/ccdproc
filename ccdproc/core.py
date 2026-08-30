@@ -21,6 +21,7 @@ from astropy.units.quantity import Quantity
 from astropy.utils import deprecated, deprecated_renamed_argument
 from astropy.wcs.utils import proj_plane_pixel_area
 from numpy import mgrid as np_mgrid
+from numpy.lib.array_utils import normalize_axis_tuple
 from numpy.ma import nomask as np_ma_nomask
 from packaging import version as pkgversion
 from scipy import ndimage
@@ -29,7 +30,9 @@ from ._ccddata_wrapper_for_array_api import (
     _unwrap_ccddata_for_array_api,
     _wrap_ccddata_for_array_api,
 )
+from ._nanfuncs import _promote_to_real
 from ._nanfuncs import median as _nanfuncs_median
+from ._nanfuncs import nanmedian as _nanfuncs_nanmedian
 from .log_meta import log_to_metadata
 from .utils.slices import slice_from_string
 
@@ -284,6 +287,92 @@ def _median_fallback(array, axis, xp=None):
         # implementation built on nanmedian, which also matches
         # numpy.median's NaN-propagating semantics.
         return _nanfuncs_median(array, axis=axis, xp=xp)
+
+
+def _mad_fallback(data, axis, ignore_nan, xp=None):
+    """
+    Median absolute deviation written purely in terms of the array API.
+
+    This is the non-numpy branch of `sigma_func`;
+    `astropy.stats.median_absolute_deviation` is numpy-only, so any other
+    namespace computes the deviation here, on the device of ``data``.
+
+    Parameters
+    ----------
+    data : array
+        Array whose median absolute deviation is to be calculated. Integer
+        and boolean input is promoted to the namespace's default real
+        floating dtype.
+
+    axis : int, tuple of int, list of int or None
+        Axis or axes along which the deviation is computed. ``None``
+        flattens ``data`` first; a tuple or list reduces over all the
+        listed axes. Negative values count from the last axis.
+
+    ignore_nan : bool
+        If `True`, NaNs are ignored; otherwise a NaN anywhere in a reduced
+        slice makes that slice's result NaN, as `numpy.median` does.
+
+    xp : array namespace, optional
+        Namespace to use. If not provided, it is determined from ``data``.
+
+    Returns
+    -------
+    mad : array
+        Median absolute deviation of ``data`` along ``axis``, with the
+        reduced axes removed (0-d when ``axis`` is `None`), in the namespace
+        and on the device of ``data``.
+
+    Raises
+    ------
+    ValueError
+        If a tuple or list ``axis`` is out of bounds for ``data`` or lists
+        an axis more than once (including via a negative alias).
+    TypeError
+        If a tuple or list ``axis`` contains a bool or a non-integer entry.
+
+    Notes
+    -----
+    The namespace's own ``nanmedian``/``median`` is used when it has one;
+    otherwise the sort-based fallbacks from `ccdproc._nanfuncs` are used
+    instead, which cost O(n log n) along the reduced axes rather than the
+    O(n) of a native median, and yield NaN for an entirely NaN slice
+    without the ``RuntimeWarning`` numpy emits.
+    """
+    xp = xp or array_api_compat.array_namespace(data)
+    device = array_api_compat.device(data)
+
+    # The medians below promote internally, but ``data - center`` below
+    # needs the promoted input too: subtracting a float from an integer array
+    # is not allowed by the standard and raises on array-api-strict.
+    data = _promote_to_real(data, xp, device)
+
+    if axis is None:
+        data = xp.reshape(data, (-1,))
+        axis = 0
+    elif isinstance(axis, (tuple, list)):
+        if any(isinstance(ax, bool) for ax in axis):
+            raise TypeError("axis entries must be integers, not bool")
+        ndim = data.ndim
+        axes = normalize_axis_tuple(axis, ndim)
+        # Move the reduced axes to the end and merge them into one, so that
+        # the single-axis medians below reduce over all of them at once.
+        kept = [ax for ax in range(ndim) if ax not in axes]
+        data = xp.permute_dims(data, tuple(kept + list(axes)))
+        data = xp.reshape(
+            data, tuple(data.shape[ax] for ax in range(len(kept))) + (-1,)
+        )
+        axis = -1
+
+    def med(d, ax):
+        try:
+            return (xp.nanmedian if ignore_nan else xp.median)(d, axis=ax)
+        except AttributeError:
+            fallback = _nanfuncs_nanmedian if ignore_nan else _nanfuncs_median
+            return fallback(d, axis=ax, xp=xp)
+
+    center = med(data, axis)
+    return med(xp.abs(data - xp.expand_dims(center, axis=axis)), axis)
 
 
 @log_to_metadata
@@ -1385,7 +1474,7 @@ def sigma_func(arr, axis=None, ignore_nan=False):
 
     Parameters
     ----------
-    arr : `~astropy.nddata.CCDData` or `numpy.ndarray`
+    arr : `~astropy.nddata.CCDData` or array
         Array whose deviation is to be calculated.
 
     axis : int, tuple of ints or None, optional
@@ -1395,20 +1484,57 @@ def sigma_func(arr, axis=None, ignore_nan=False):
         it counts from the last to the first axis.
         Default is ``None``.
 
+    ignore_nan : bool, optional
+        If `True`, NaNs are ignored when computing the medians; otherwise a
+        NaN in a reduced slice makes that slice's result NaN.
+        Default is ``False``.
+
     Returns
     -------
-    uncertainty : float
-        uncertainty of array estimated from median absolute deviation.
+    uncertainty : array
+        Uncertainty of the array estimated from the median absolute
+        deviation, in the array namespace and on the device of the input.
+        It is 0-d when ``axis`` is ``None``.
+
+    Notes
+    -----
+    For numpy input the deviation is computed by
+    `astropy.stats.median_absolute_deviation`, exactly as before. For every
+    other array namespace it is computed by a fallback written purely in
+    terms of the array API standard, on the device of the input, using the
+    namespace's own ``median``/``nanmedian`` when it provides one and
+    otherwise a sort-based implementation that costs O(n log n) along the
+    reduced axes rather than O(n); it promotes integer and boolean input to
+    the namespace's default real floating dtype, and it yields NaN silently
+    for slices that are entirely NaN, where numpy would warn.
+
+    The masked pixels of a masked `~astropy.nddata.CCDData` are excluded
+    from the statistics on every backend, which implies ``ignore_nan``; a
+    slice that is entirely masked gives NaN.
     """
     if isinstance(arr, CCDData):
-        xp = array_api_compat.array_namespace(arr.data)
+        data = arr.data
+        mask = arr.mask
     else:
-        xp = array_api_compat.array_namespace(arr)
+        data = arr
+        mask = None
+    xp = array_api_compat.array_namespace(data)
 
-    return xp.asarray(
-        stats.median_absolute_deviation(arr, axis=axis, ignore_nan=ignore_nan)
-        * 1.482602218505602
-    )
+    if mask is not None:
+        device = array_api_compat.device(data)
+        # The promotion has to happen before the ``where`` below: on
+        # array-api-strict, ``xp.where(mask, float_nan, int_data)`` raises
+        # rather than silently promoting the way numpy does.
+        data = _promote_to_real(data, xp, device)
+        nan = xp.asarray(xp.nan, dtype=data.dtype, device=device)
+        data = xp.where(xp.asarray(mask, device=device), nan, data)
+        ignore_nan = True
+
+    if array_api_compat.is_numpy_namespace(xp):
+        result = stats.median_absolute_deviation(data, axis=axis, ignore_nan=ignore_nan)
+        return xp.asarray(result * 1.482602218505602)
+
+    return _mad_fallback(data, axis, ignore_nan, xp=xp) * 1.482602218505602
 
 
 def setbox(x, y, mbox, xmax, ymax):
