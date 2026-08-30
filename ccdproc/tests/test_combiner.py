@@ -1970,6 +1970,11 @@ def test_sigma_clipping_dispatch(monkeypatch, force_fallback):
     )
     assert bool(xp.all(c._data_arr_mask == xp.asarray(expected, device=xp_device)))
 
+    # masked and return_bounds are rejected on every namespace: the method
+    # always requests the mask itself from astropy.
+    with pytest.raises(TypeError, match="masked"):
+        c.sigma_clipping(masked=True, return_bounds=True)
+
     if uses_astropy:
         # Forwarded to astropy as before.
         c.sigma_clipping(grow=1)
