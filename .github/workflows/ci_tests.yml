@@ -56,7 +56,7 @@ jobs:
           - name: 'ubuntu-py312-bottleneck'
             os: ubuntu-latest
             python: '3.12'
-            tox_env: 'py312-test-alldeps-numpy126-bottleneck'
+            tox_env: 'py312-test-alldeps-numpy200-bottleneck'
 
           - name: 'macos-py312-dask'
             os: macos-latest

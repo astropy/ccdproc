@@ -22,6 +22,10 @@ Other Changes and Additions
   without having to name the interpreter. [#986]
 - ``combine`` no longer accepts an array as its ``array_package`` argument;
   pass the array namespace or module instead, as for ``Combiner``. [#997]
+- The minimum supported numpy is now 2.0 (``normalize_axis_tuple`` is
+  imported from its numpy 2 location with no 1.26 fallback), which raises
+  the minimum astropy to 6.1, reproject to 0.14 and astroscrappy to 1.2,
+  the oldest releases that work with numpy 2. [#1000]
 
 Bug Fixes
 ^^^^^^^^^
