@@ -20,6 +20,9 @@ New Features
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- The ``py313-strict`` CI job is now part of the regular CI matrix and fails
+  CI on a test failure; the expected-failures carve-out and the
+  ``strict_status.yml`` reporting workflow are retired. [#1005]
 - Add triage tooling for array-API backend failures: ``backend_xfail`` /
   ``backend_skip`` markers, an escape-site report
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
@@ -37,6 +40,9 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- ``flat_correct`` now checks the flat's mask with ``xp.any`` instead of the
+  ``mask.any()`` method, which arrays of spec-only array-API namespaces do
+  not have. [#1005]
 - Exclude masked and clipped pixels, and their weights, when computing weighted
   average combinations. [#952]
 - ``cosmicray_median`` now honors the mask of a ``CCDData`` or masked-array

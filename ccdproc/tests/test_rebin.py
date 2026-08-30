@@ -64,7 +64,22 @@ def test_rebin_smaller():
 
 
 # test rebinning with ccddata object
-@pytest.mark.parametrize("mask_data, uncertainty", [(False, False), (True, True)])
+@pytest.mark.parametrize(
+    "mask_data, uncertainty",
+    [
+        (False, False),
+        pytest.param(
+            True,
+            True,
+            marks=pytest.mark.backend_xfail(
+                "array-api-strict",
+                reason="astropy's CCDData.mask setter coerces the mask with "
+                "np.asarray, which fails for an array-api-strict array on "
+                "the non-default device",
+            ),
+        ),
+    ],
+)
 def test_rebin_ccddata(mask_data, uncertainty):
     ccd_data = ccd_data_func(data_size=10)
     if mask_data:
