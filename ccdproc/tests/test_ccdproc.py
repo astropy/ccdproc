@@ -502,9 +502,11 @@ def test_sigma_func_matches_mad_std(
         assert float(result) == pytest.approx(float(expected_np))
 
 
-# Masked CCDData pixels are excluded on every backend (numpy via numpy.ma,
-# the rest via the fallback), equivalent to NaN-filling with ignore_nan on;
-# an all-masked slice gives NaN, not 0.0.
+# Masked CCDData pixels are excluded on every backend by the same mask->NaN
+# substitution in sigma_func (which forces ignore_nan on); an all-masked
+# slice gives NaN, not 0.0. The ignore mark: the NaN-filled data reach
+# numpy.nanmedian, which warns on the entirely masked column and on the
+# all-masked input.
 @pytest.mark.filterwarnings("ignore:All-NaN slice encountered:RuntimeWarning")
 @pytest.mark.parametrize(
     ("axis", "ignore_nan", "all_masked"),
