@@ -38,6 +38,11 @@ _DATA = [
     (_some_nan, 1),  # a non-zero axis
     (_some_nan, -1),  # a negative axis
     (_some_nan, np.int64(1)),  # a numpy integer axis
+    (_some_nan, None),  # reduce over everything
+    (_some_nan, (0, 1)),  # a tuple covering every axis
+    (_rng.normal(size=(5, 4, 3)), (0, 2)),  # a tuple of axes
+    (_rng.normal(size=(5, 4, 3)), (-1, 0)),  # a negative entry in a tuple
+    (_rng.normal(size=(5, 4, 3)), (1,)),  # a single-entry tuple
     (np.array([[1.0, np.nan], [2.0, np.nan], [3.0, np.nan]]), 0),  # all-NaN column
     (np.array([[1.0, np.nan], [np.nan, np.nan]]), 0),  # single non-NaN in a slice
     (np.array([np.nan, np.nan, np.nan]), 0),  # every value NaN
@@ -106,7 +111,7 @@ def test_nansum_all_nan_slice_is_zero():
     assert xp.all(xpx.isclose(result, xp.asarray([3.0, 0.0], device=xp_device)))
 
 
-@pytest.mark.parametrize("axis", [0, 1, -1])
+@pytest.mark.parametrize("axis", [0, 1, -1, (0, 1), None], ids=str)
 def test_nanmad_matches_astropy(axis):
     """``nanmad`` reproduces ``median_absolute_deviation(ignore_nan=True)``."""
     result = nanmad(xp.asarray(_some_nan, device=xp_device), axis=axis)
@@ -119,14 +124,24 @@ def test_nanmad_matches_astropy(axis):
 
 
 @pytest.mark.parametrize("func", [nansum, nanmean, nanstd, nanmedian, median])
+def test_list_axis_matches_tuple(func):
+    """A list of axes means the same as a tuple (numpy itself rejects it)."""
+    data = xp.asarray(_rng.normal(size=(4, 3, 2)), device=xp_device)
+    assert bool(xp.all(func(data, axis=[0, 2]) == func(data, axis=(0, 2))))
+
+
+@pytest.mark.parametrize("func", [nansum, nanmean, nanstd, nanmedian, median])
 @pytest.mark.parametrize(
     ("axis", "error"),
     [
-        (None, NotImplementedError),
-        (True, NotImplementedError),  # bool subclasses int; reject it anyway
-        ((0, 1), NotImplementedError),
+        (True, TypeError),  # bool subclasses int; reject it anyway
+        (1.5, TypeError),
         (2, ValueError),
         (-3, ValueError),
+        ((0, 0), ValueError),  # repeated axis
+        ((0, -2), ValueError),  # repeated via a negative alias
+        ((0, 2), ValueError),  # out-of-bounds entry
+        ((0, True), TypeError),  # bool entry in a tuple
     ],
 )
 def test_bad_axis(func, axis, error):

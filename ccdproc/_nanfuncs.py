@@ -24,6 +24,10 @@ from functools import partial
 
 import array_api_compat
 
+# Host-side axis normalisation for tuple axes: operates on python ints
+# only, never on array data, so it does not tie the fallbacks to numpy.
+from numpy.lib.array_utils import normalize_axis_tuple
+
 __all__ = ["median", "nanmad", "nanmean", "nanmedian", "nanstd", "nansum"]
 
 
@@ -58,16 +62,24 @@ def _promote_to_real(x, xp, device):
 
 def _setup(x, axis, xp):
     """
-    Validate ``axis``, resolve the namespace and device, promote to float.
+    Normalise ``axis``, resolve the namespace and device, promote to float.
+
+    ``axis`` may be a single integer, ``None`` or a tuple/list of integers.
+    ``None`` flattens ``x`` so the caller reduces over everything; a tuple
+    or list moves the listed axes to the end and merges them into one, so
+    the caller's single-axis reduction reduces over all of them at once.
+    Either way the caller only ever sees a single non-negative integer
+    axis.
 
     Parameters
     ----------
     x : array
         Input array.
-    axis : int
-        Axis along which the caller will reduce. Booleans, ``None`` and
-        tuples of axes are rejected; anything else goes through
-        `operator.index`, so numpy integer scalars are accepted.
+    axis : int, tuple of int, list of int or None
+        Axis or axes along which the caller will reduce. Booleans are
+        rejected -- bool subclasses int, so ``axis=True`` would silently
+        mean axis 1 -- while numpy integer scalars are accepted. Negative
+        values count from the last axis.
     xp : array namespace or None
         Namespace to use. ``None`` resolves it from ``x``.
 
@@ -75,47 +87,82 @@ def _setup(x, axis, xp):
     -------
     x : array
         The input, promoted if necessary to the namespace's default real
-        floating dtype.
+        floating dtype, flattened when ``axis`` is ``None``, and with the
+        listed axes moved to the end and merged into one when ``axis`` is
+        a tuple or list.
     axis : int
-        The axis, normalised to a non-negative integer.
+        The single axis of the returned ``x`` to reduce, normalised to a
+        non-negative integer.
     xp : array namespace
         The resolved namespace.
     device : device
         The device ``x`` lives on.
+    restore : callable
+        Maps an array shaped like the returned ``x`` back to the layout of
+        the input ``x``; the identity for a single integer ``axis``.
+        Reductions remove the reduced axis and never need it;
+        ``ccdproc.combiner._sigma_clip_mask`` keeps the full shape and
+        uses it to hand its mask back in the caller's layout.
 
     Raises
     ------
-    NotImplementedError
-        If ``axis`` is not a single integer.
+    TypeError
+        If ``axis``, or an entry of a tuple/list ``axis``, is a bool or
+        not an integer.
     ValueError
-        If ``axis`` is out of bounds for ``x``.
+        If ``axis``, or an entry of a tuple/list ``axis``, is out of
+        bounds for ``x``, or a tuple/list names an axis more than once
+        (including via a negative alias).
     """
+    if xp is None:
+        xp = array_api_compat.array_namespace(x)
+    device = array_api_compat.device(x)
+    x = _promote_to_real(x, xp, device)
+    ndim = x.ndim
+
+    if axis is None:
+        shape = x.shape
+
+        def restore(a):
+            return xp.reshape(a, shape)
+
+        return xp.reshape(x, (-1,)), 0, xp, device, restore
+
+    if isinstance(axis, tuple | list):
+        # normalize_axis_tuple would silently treat True as 1.
+        if any(isinstance(ax, bool) for ax in axis):
+            raise TypeError("axis entries must be integers, not bool")
+        axes = normalize_axis_tuple(axis, ndim)
+        # Move the reduced axes to the end and merge them into one, so that
+        # a single-axis reduction reduces over all of them at once.
+        kept = tuple(ax for ax in range(ndim) if ax not in axes)
+        order = kept + axes
+        permuted_shape = tuple(x.shape[ax] for ax in order)
+        x = xp.reshape(xp.permute_dims(x, order), permuted_shape[: len(kept)] + (-1,))
+        inverse = tuple(order.index(ax) for ax in range(ndim))
+
+        def restore(a):
+            return xp.permute_dims(xp.reshape(a, permuted_shape), inverse)
+
+        return x, len(kept), xp, device, restore
+
     # bool subclasses int -- axis=True would silently mean axis 1 -- so it is
     # rejected explicitly, while operator.index accepts the numpy integer
     # scalars that isinstance(axis, int) would refuse.
-    if axis is None or isinstance(axis, bool):
-        raise NotImplementedError(
-            "NaN-aware reduction fallbacks support only a single integer axis."
-        )
+    if isinstance(axis, bool):
+        raise TypeError("axis must be an integer, not bool")
     try:
         axis = operator.index(axis)
     except TypeError:
-        raise NotImplementedError(
-            "NaN-aware reduction fallbacks support only a single integer axis."
+        raise TypeError(
+            f"axis must be an integer, a tuple or list of integers, or None, "
+            f"got {axis!r}"
         ) from None
 
-    if xp is None:
-        xp = array_api_compat.array_namespace(x)
-
-    ndim = x.ndim
     if not -ndim <= axis < ndim:
         raise ValueError(f"axis {axis} is out of bounds for array of dimension {ndim}")
-    axis = axis % ndim
 
-    device = array_api_compat.device(x)
-    x = _promote_to_real(x, xp, device)
-
-    return x, axis, xp, device
+    return x, axis % ndim, xp, device, lambda a: a
 
 
 def _sum_and_count(x, axis, xp, device, *, keepdims):
@@ -197,19 +244,20 @@ def nansum(x, /, *, axis=0, xp=None):
     x : array
         Input array. Integer and boolean inputs are promoted to the
         namespace's default real floating dtype.
-    axis : int, optional
-        Axis along which to sum. Default is 0. ``None`` and tuples of axes
-        are not supported.
+    axis : int, tuple of int, list of int or None, optional
+        Axis or axes along which to sum. Default is 0. ``None`` sums over
+        every axis; a tuple or list sums over all the listed axes at once.
     xp : array namespace, optional
         Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
 
     Returns
     -------
     array
-        Sum of ``x`` along ``axis``, with that axis removed. Slices that are
-        entirely NaN sum to zero, matching `numpy.nansum`.
+        Sum of ``x`` along ``axis``, with the reduced axes removed (0-d
+        when ``axis`` is ``None``). Slices that are entirely NaN sum to
+        zero, matching `numpy.nansum`.
     """
-    x, axis, xp, device = _setup(x, axis, xp)
+    x, axis, xp, device, _ = _setup(x, axis, xp)
     total, _ = _sum_and_count(x, axis, xp, device, keepdims=False)
     return total
 
@@ -223,21 +271,22 @@ def nanmean(x, /, *, axis=0, xp=None):
     x : array
         Input array. Integer and boolean inputs are promoted to the
         namespace's default real floating dtype.
-    axis : int, optional
-        Axis along which to average. Default is 0. ``None`` and tuples of
-        axes are not supported.
+    axis : int, tuple of int, list of int or None, optional
+        Axis or axes along which to average. Default is 0. ``None``
+        averages over every axis; a tuple or list over all the listed axes.
     xp : array namespace, optional
         Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
 
     Returns
     -------
     array
-        Mean of ``x`` along ``axis``, with that axis removed. Slices that
-        are entirely NaN yield NaN silently, matching ``bottleneck.nanmean``
+        Mean of ``x`` along ``axis``, with the reduced axes removed (0-d
+        when ``axis`` is ``None``). Slices that are entirely NaN yield
+        NaN silently, matching ``bottleneck.nanmean``
         (the numpy-backend default); `numpy.nanmean` warns here, but a fully
         masked pixel is a routine input for the combiner, not an anomaly.
     """
-    x, axis, xp, device = _setup(x, axis, xp)
+    x, axis, xp, device, _ = _setup(x, axis, xp)
     total, count = _sum_and_count(x, axis, xp, device, keepdims=False)
     return _safe_divide(total, count, xp, device)
 
@@ -255,16 +304,18 @@ def nanstd(x, /, *, axis=0, xp=None):
     x : array
         Input array. Integer and boolean inputs are promoted to the
         namespace's default real floating dtype.
-    axis : int, optional
-        Axis along which to compute the deviation. Default is 0. ``None``
-        and tuples of axes are not supported.
+    axis : int, tuple of int, list of int or None, optional
+        Axis or axes along which to compute the deviation. Default is 0.
+        ``None`` reduces over every axis; a tuple or list over all the
+        listed axes.
     xp : array namespace, optional
         Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
 
     Returns
     -------
     array
-        Standard deviation of ``x`` along ``axis``, with that axis removed.
+        Standard deviation of ``x`` along ``axis``, with the reduced axes
+        removed (0-d when ``axis`` is ``None``).
         Slices that are entirely NaN yield NaN silently, matching
         ``bottleneck.nanstd`` (the numpy-backend default); `numpy.nanstd`
         warns here, but a fully masked pixel is a routine input for the
@@ -279,7 +330,7 @@ def nanstd(x, /, *, axis=0, xp=None):
     single-pass form suffers when the values are large relative to their
     spread, which is not unusual for CCD counts.
     """
-    x, axis, xp, device = _setup(x, axis, xp)
+    x, axis, xp, device, _ = _setup(x, axis, xp)
 
     isnan = xp.isnan(x)
     zero = xp.asarray(0, dtype=x.dtype, device=device)
@@ -314,18 +365,20 @@ def nanmedian(x, /, *, axis=0, xp=None):
     x : array
         Input array. Integer and boolean inputs are promoted to the
         namespace's default real floating dtype.
-    axis : int, optional
-        Axis along which to compute the median. Default is 0. Booleans,
-        ``None`` and tuples of axes are not supported; numpy integer
-        scalars are accepted.
+    axis : int, tuple of int, list of int or None, optional
+        Axis or axes along which to compute the median. Default is 0.
+        ``None`` reduces over every axis and a tuple or list over all the
+        listed axes; booleans are rejected, numpy integer scalars are
+        accepted.
     xp : array namespace, optional
         Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
 
     Returns
     -------
     array
-        Median of ``x`` along ``axis``, with that axis removed. Slices that
-        are entirely NaN yield NaN silently, matching
+        Median of ``x`` along ``axis``, with the reduced axes removed (0-d
+        when ``axis`` is ``None``). Slices that are entirely NaN yield NaN
+        silently, matching
         ``bottleneck.nanmedian`` (the numpy-backend default);
         `numpy.nanmedian` warns here, but a fully masked pixel is a routine
         input for the combiner, not an anomaly.
@@ -337,7 +390,7 @@ def nanmedian(x, /, *, axis=0, xp=None):
     or ``bottleneck.nanmedian``. Prefer a native ``nanmedian`` when the
     namespace offers one.
     """
-    x, axis, xp, device = _setup(x, axis, xp)
+    x, axis, xp, device, _ = _setup(x, axis, xp)
     ndim = x.ndim
 
     # Replacing NaNs with +inf keeps them past every real value regardless of
@@ -385,18 +438,20 @@ def median(x, /, *, axis=0, xp=None):
     x : array
         Input array. Integer and boolean inputs are promoted to the
         namespace's default real floating dtype.
-    axis : int, optional
-        Axis along which to compute the median. Default is 0. Booleans,
-        ``None`` and tuples of axes are not supported; numpy integer
-        scalars are accepted.
+    axis : int, tuple of int, list of int or None, optional
+        Axis or axes along which to compute the median. Default is 0.
+        ``None`` reduces over every axis and a tuple or list over all the
+        listed axes; booleans are rejected, numpy integer scalars are
+        accepted.
     xp : array namespace, optional
         Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
 
     Returns
     -------
     array
-        Median of ``x`` along ``axis``, with that axis removed. Slices that
-        contain any NaN yield NaN, matching `numpy.median`; this is the
+        Median of ``x`` along ``axis``, with the reduced axes removed (0-d
+        when ``axis`` is ``None``). Slices that contain any NaN yield NaN,
+        matching `numpy.median`; this is the
         difference from `nanmedian`, which ignores NaNs entirely.
 
     Notes
@@ -409,7 +464,7 @@ def median(x, /, *, axis=0, xp=None):
     with a final `where` over whether any NaN is present along ``axis``,
     since `nanmedian` alone would silently drop NaNs instead.
     """
-    x, axis, xp, device = _setup(x, axis, xp)
+    x, axis, xp, device, _ = _setup(x, axis, xp)
     nan = xp.asarray(xp.nan, dtype=x.dtype, device=device)
     return xp.where(xp.any(xp.isnan(x), axis=axis), nan, nanmedian(x, axis=axis, xp=xp))
 
@@ -423,14 +478,17 @@ def nanmad(x, /, *, axis=0, xp=None, median=None):
     x : array
         Input array. Integer and boolean inputs are promoted to the
         namespace's default real floating dtype.
-    axis : int, optional
-        Axis along which to compute the deviation. Default is 0. Booleans,
-        ``None`` and tuples of axes are not supported; numpy integer
-        scalars are accepted.
+    axis : int, tuple of int, list of int or None, optional
+        Axis or axes along which to compute the deviation. Default is 0.
+        ``None`` reduces over every axis and a tuple or list over all the
+        listed axes; booleans are rejected, numpy integer scalars are
+        accepted.
     xp : array namespace, optional
         Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
     median : callable, optional
-        Reduction used for both medians, called as ``median(x, axis=axis)``.
+        Reduction used for both medians, called as ``median(x, axis=axis)``,
+        always with a single integer ``axis``: a ``None`` or tuple/list
+        ``axis`` has already been flattened or merged away by `_setup`.
         Default is `nanmedian`. A keyword rather than a module-level tier
         (as `ccdproc.combiner._default_median` provides) so this module has
         no dependency on `ccdproc.combiner`.
@@ -438,11 +496,12 @@ def nanmad(x, /, *, axis=0, xp=None, median=None):
     Returns
     -------
     array
-        ``median(|x - median(x)|)`` along ``axis``, with that axis removed.
+        ``median(|x - median(x)|)`` along ``axis``, with the reduced axes
+        removed (0-d when ``axis`` is ``None``).
         Unscaled: multiply by ``1.482602218505602`` for an estimate of the
         standard deviation, as `astropy.stats.mad_std` does.
     """
-    x, axis, xp, device = _setup(x, axis, xp)
+    x, axis, xp, device, _ = _setup(x, axis, xp)
     if median is None:
         median = partial(nanmedian, xp=xp)
     center = xp.expand_dims(median(x, axis=axis), axis=axis)

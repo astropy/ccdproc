@@ -195,15 +195,17 @@ def _sigma_clip_mask(
         Number of deviations below/above the center beyond which a value is
         clipped. As in astropy, ``None`` and ``0`` mean ``3``. Default is
         ``3``.
-    axis : int, optional
-        Axis along which the center and deviation are computed. Only a single
-        integer axis is supported. Default is ``0``.
+    axis : int, tuple of int, list of int or None, optional
+        Axis or axes along which the center and deviation are computed.
+        ``None`` computes them over the whole array. Default is ``0``.
     maxiters : int or None, optional
         Number of clipping iterations. ``None`` iterates until no more values
         are rejected. Default is ``1``.
     cenfunc : {'median', 'mean'} or callable, optional
         Statistic for the center. A callable must accept ``(data, axis=axis)``
-        and ignore NaNs. Default is ``'median'``.
+        and ignore NaNs; it is always called with a single integer axis (a
+        ``None`` or tuple/list ``axis`` is flattened or merged away first).
+        Default is ``'median'``.
     stdfunc : {'std', 'mad_std'} or callable, optional
         Statistic for the deviation, same requirements as ``cenfunc``.
         Default is ``'std'``.
@@ -213,16 +215,17 @@ def _sigma_clip_mask(
     Returns
     -------
     array of bool
-        Mask of the clipped values, ``True`` where a value is rejected, in
-        the namespace and on the device of ``data``.
+        Mask of the clipped values, ``True`` where a value is rejected,
+        shaped like ``data``, in its namespace and on its device.
 
     Raises
     ------
-    NotImplementedError
-        If ``axis`` is not a single integer.
+    TypeError
+        If ``axis`` is a bool or is not made of integers.
     ValueError
-        If ``axis`` is out of bounds, ``maxiters`` is not positive, or a
-        string ``cenfunc``/``stdfunc`` is not one of the options.
+        If ``axis`` is out of bounds or repeats an axis, ``maxiters`` is
+        not positive, or a string ``cenfunc``/``stdfunc`` is not one of
+        the options.
 
     Notes
     -----
@@ -258,7 +261,7 @@ def _sigma_clip_mask(
     iteration whether anything was rejected, which forces a compute per
     iteration on such backends; prefer an integer there.
     """
-    data, axis, xp, device = _setup(data, axis, xp)
+    data, axis, xp, device, restore = _setup(data, axis, xp)
 
     if isinstance(cenfunc, str) and isinstance(stdfunc, str):
         # B1: widen (never narrow) to the namespace's default real floating
@@ -311,7 +314,9 @@ def _sigma_clip_mask(
             break
         filtered = xp.where(rejected, nan, filtered)
 
-    return invalid | (data < lower) | (data > upper)
+    # ``restore`` maps the mask back to the caller's layout when _setup
+    # flattened (``axis=None``) or merged (tuple ``axis``) the data.
+    return restore(invalid | (data < lower) | (data > upper))
 
 
 class Combiner:
@@ -699,11 +704,11 @@ class Combiner:
 
         kwd
             ``axis`` (default ``0``) and ``maxiters`` (default ``1``) are
-            honoured for every array namespace. Outside numpy ``axis`` must
-            be a single integer: ``None`` and a tuple of axes, both of
-            which :func:`~astropy.stats.sigma_clip` accepts, raise
-            `NotImplementedError` there. ``masked`` and ``return_bounds``
-            are never accepted, on any array namespace -- this method
+            honoured for every array namespace; like
+            :func:`~astropy.stats.sigma_clip`, ``axis`` may be a single
+            integer, ``None`` or a tuple of axes on every one. ``masked``
+            and ``return_bounds`` are never accepted, on any array
+            namespace -- this method
             always asks astropy for the mask itself -- and raise
             `TypeError`. ``copy`` (default `False`) and any other
             astropy-only keyword argument, such as ``grow``, are passed to
