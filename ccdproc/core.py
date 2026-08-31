@@ -1014,7 +1014,8 @@ def subtract_dark(
     """
     if ccd.shape != master.shape:
         err_str = (
-            f"operands could not be subtracted with shapes {ccd.shape} {master.shape}"
+            f"operands could not be subtracted with "
+            f"shapes {ccd.shape} {master.shape}"
         )
         raise ValueError(err_str)
 
@@ -1728,7 +1729,7 @@ def rebin(ccd, newshape):
     else:
         # check to see that the two arrays are going to be the same length
         if len(ccd.shape) != len(newshape):
-            raise ValueError("newshape does not have the same dimensions as ccd.")
+            raise ValueError("newshape does not have the same dimensions as " "ccd.")
 
         slices = [
             slice(0, old, old / new)
@@ -2062,7 +2063,8 @@ def cosmicray_lacosmic(
             s = "s" if len(bad_args) > 1 else ""
             bads = ", ".join(bad_args)
             raise TypeError(
-                f"The argument{s} {bads} only valid for astroscrappy 1.1.0 or higher."
+                f"The argument{s} {bads} only valid for astroscrappy "
+                "1.1.0 or higher."
             )
 
         if pssl != 0:
@@ -2750,13 +2752,13 @@ class Keyword:
             self._value = value
         elif isinstance(value, str):
             if self.unit is not None:
-                raise ValueError("keyword with a unit cannot have a string value.")
+                raise ValueError("keyword with a unit cannot have a " "string value.")
             else:
                 self._value = value
         else:
             if self.unit is None:
                 raise ValueError(
-                    "no unit provided. Set value with an astropy.units.Quantity."
+                    "no unit provided. Set value with " "an astropy.units.Quantity."
                 )
             self._value = value * self.unit
 

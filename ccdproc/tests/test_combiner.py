@@ -1752,17 +1752,22 @@ def _sigma_clip_reference(np_data, **kwargs):
     checked against it too: that is what numpy data get from
     ``Combiner.sigma_clipping``, and the other backends must agree with it.
     """
+    # Normalize a tuple axis once, up front: astropy's bottleneck dispatch
+    # cannot take negative tuple entries, and the bounds shape below needs
+    # the non-negative values too.
+    axis = kwargs.get("axis", 0)
+    if isinstance(axis, tuple):
+        kwargs["axis"] = axis = tuple(ax % np_data.ndim for ax in axis)
     _, lower, upper = sigma_clip(
         np_data.copy(), masked=False, return_bounds=True, **kwargs
     )
     # The compiled path drops the clipped axes from the bounds while the
     # python loop keeps them with length one; either way, make them
     # broadcast. ``axis`` may be an int, a tuple of ints or None here.
-    axis = kwargs.get("axis", 0)
     if axis is None:
         axes = tuple(range(np_data.ndim))
     elif isinstance(axis, tuple):
-        axes = tuple(ax % np_data.ndim for ax in axis)
+        axes = axis
     else:
         axes = (axis % np_data.ndim,)
     shape = tuple(1 if dim in axes else n for dim, n in enumerate(np_data.shape))
@@ -1910,17 +1915,11 @@ def test_sigma_clip_mask_axis_forms(axis):
         data, sigma_lower=2, sigma_upper=2, axis=axis, maxiters=2, xp=xp
     )
 
-    # The reference gets a tuple axis with its negative entries normalised:
-    # astropy's bottleneck dispatch transposes with the tuple as given and
-    # raises on a negative entry. The helper receives the tuple as written.
-    ref_axis = axis
-    if isinstance(axis, tuple):
-        ref_axis = tuple(ax % np_data.ndim for ax in axis)
     expected = _sigma_clip_reference(
         np_data,
         sigma_lower=2,
         sigma_upper=2,
-        axis=ref_axis,
+        axis=axis,
         maxiters=2,
         cenfunc="median",
         stdfunc="std",
@@ -2053,7 +2052,7 @@ def test_combine_sigma_clip_on_any_backend():
 @pytest.mark.parametrize("axis", [None, (1, 2)], ids=str)
 def test_sigma_clipping_axis_forms_any_backend(axis):
     # astropy's sigma_clip accepts axis=None and a tuple of axes;
-    # Combiner.sigma_clipping must honour them off the numpy path too,
+    # Combiner.sigma_clipping must honor them off the numpy path too,
     # with the mask coming back in the data's own shape.
     c = Combiner(_sigma_clip_ccd_list())
     c.sigma_clipping(

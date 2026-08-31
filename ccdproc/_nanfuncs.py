@@ -19,13 +19,16 @@ caller in `ccdproc` combines floating point image data, and the promotion
 keeps the five functions consistent with each other.
 """
 
+import math
 import operator
 from functools import partial
 
 import array_api_compat
 
-# Host-side axis normalisation for tuple axes: operates on python ints
-# only, never on array data, so it does not tie the fallbacks to numpy.
+# Host-side axis handling: normalize_axis_tuple operates on python ints
+# only, never on array data, and np.bool_ appears only in the guards that
+# reject boolean axes, so neither ties the fallbacks to numpy.
+import numpy as np
 from numpy.lib.array_utils import normalize_axis_tuple
 
 __all__ = ["median", "nanmad", "nanmean", "nanmedian", "nanstd", "nansum"]
@@ -62,14 +65,7 @@ def _promote_to_real(x, xp, device):
 
 def _setup(x, axis, xp):
     """
-    Normalise ``axis``, resolve the namespace and device, promote to float.
-
-    ``axis`` may be a single integer, ``None`` or a tuple/list of integers.
-    ``None`` flattens ``x`` so the caller reduces over everything; a tuple
-    or list moves the listed axes to the end and merges them into one, so
-    the caller's single-axis reduction reduces over all of them at once.
-    Either way the caller only ever sees a single non-negative integer
-    axis.
+    Normalize ``axis``, resolve the namespace and device, promote to float.
 
     Parameters
     ----------
@@ -91,7 +87,7 @@ def _setup(x, axis, xp):
         listed axes moved to the end and merged into one when ``axis`` is
         a tuple or list.
     axis : int
-        The single axis of the returned ``x`` to reduce, normalised to a
+        The single axis of the returned ``x`` to reduce, normalized to a
         non-negative integer.
     xp : array namespace
         The resolved namespace.
@@ -113,6 +109,15 @@ def _setup(x, axis, xp):
         If ``axis``, or an entry of a tuple/list ``axis``, is out of
         bounds for ``x``, or a tuple/list names an axis more than once
         (including via a negative alias).
+
+    Notes
+    -----
+    ``axis`` may be a single integer, ``None`` or a tuple/list of integers.
+    ``None`` flattens ``x`` so the caller reduces over everything; a tuple
+    or list moves the listed axes to the end and merges them into one, so
+    the caller's single-axis reduction reduces over all of them at once.
+    Either way the caller only ever sees a single non-negative integer
+    axis.
     """
     if xp is None:
         xp = array_api_compat.array_namespace(x)
@@ -121,24 +126,37 @@ def _setup(x, axis, xp):
     ndim = x.ndim
 
     if axis is None:
-        shape = x.shape
-
-        def restore(a):
-            return xp.reshape(a, shape)
-
-        return xp.reshape(x, (-1,)), 0, xp, device, restore
+        # Reducing over everything is the same as naming every axis.
+        axis = tuple(range(ndim))
 
     if isinstance(axis, tuple | list):
-        # normalize_axis_tuple would silently treat True as 1.
-        if any(isinstance(ax, bool) for ax in axis):
+        # normalize_axis_tuple would treat a bool as an axis: operator.index
+        # turns True into 1, and on the oldest supported numpy (2.0) it
+        # still accepts np.bool_ too, with only a DeprecationWarning.
+        if any(isinstance(ax, bool | np.bool_) for ax in axis):
             raise TypeError("axis entries must be integers, not bool")
+        # Host-side validation and normalization in one call: entries go
+        # through operator.index, negatives are wrapped mod ndim,
+        # out-of-bounds raises AxisError, and a duplicate (even via a
+        # negative alias) raises ValueError.
         axes = normalize_axis_tuple(axis, ndim)
-        # Move the reduced axes to the end and merge them into one, so that
-        # a single-axis reduction reduces over all of them at once.
+        # Move the reduced axes to the end and merge them into one trailing
+        # axis, so that a single-axis reduction reduces over all of them at
+        # once. How the merge interleaves elements is irrelevant: every
+        # reduction here is order-insensitive within the reduced set.
         kept = tuple(ax for ax in range(ndim) if ax not in axes)
         order = kept + axes
         permuted_shape = tuple(x.shape[ax] for ax in order)
-        x = xp.reshape(xp.permute_dims(x, order), permuted_shape[: len(kept)] + (-1,))
+        # The merged length is spelled out because reshape cannot infer it
+        # from -1 when a kept axis has size 0 (total size 0 is ambiguous);
+        # numpy returns an empty result there, and so does this.
+        merged = math.prod(permuted_shape[len(kept) :])
+        x = xp.reshape(
+            xp.permute_dims(x, order), permuted_shape[: len(kept)] + (merged,)
+        )
+        # ``inverse`` undoes ``order``; ``restore`` maps a full-shape array
+        # in the permuted-merged layout back to the caller's layout by
+        # un-merging (reshape) and un-permuting.
         inverse = tuple(order.index(ax) for ax in range(ndim))
 
         def restore(a):
@@ -146,10 +164,11 @@ def _setup(x, axis, xp):
 
         return x, len(kept), xp, device, restore
 
-    # bool subclasses int -- axis=True would silently mean axis 1 -- so it is
-    # rejected explicitly, while operator.index accepts the numpy integer
-    # scalars that isinstance(axis, int) would refuse.
-    if isinstance(axis, bool):
+    # bool subclasses int -- axis=True would silently mean axis 1 -- and on
+    # numpy 2.0 operator.index still accepts np.bool_ as well, so both are
+    # rejected explicitly, while numpy integer scalars (which
+    # isinstance(axis, int) would refuse) are accepted.
+    if isinstance(axis, bool | np.bool_):
         raise TypeError("axis must be an integer, not bool")
     try:
         axis = operator.index(axis)
@@ -159,10 +178,10 @@ def _setup(x, axis, xp):
             f"got {axis!r}"
         ) from None
 
-    if not -ndim <= axis < ndim:
-        raise ValueError(f"axis {axis} is out of bounds for array of dimension {ndim}")
-
-    return x, axis % ndim, xp, device, lambda a: a
+    # normalize_axis_tuple wraps a negative axis and raises AxisError -- a
+    # ValueError subclass with numpy's own message -- when it is out of
+    # bounds, exactly as the tuple branch above does for entries.
+    return x, normalize_axis_tuple(axis, ndim)[0], xp, device, lambda a: a
 
 
 def _sum_and_count(x, axis, xp, device, *, keepdims):
@@ -174,7 +193,7 @@ def _sum_and_count(x, axis, xp, device, *, keepdims):
     x : array
         Input array, already promoted to a real floating dtype.
     axis : int
-        Axis to reduce, already normalised to a non-negative integer.
+        Axis to reduce, already normalized to a non-negative integer.
     xp : array namespace
         Namespace to use.
     device : device

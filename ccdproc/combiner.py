@@ -704,9 +704,9 @@ class Combiner:
 
         kwd
             ``axis`` (default ``0``) and ``maxiters`` (default ``1``) are
-            honoured for every array namespace; like
+            honored for every array namespace; like
             :func:`~astropy.stats.sigma_clip`, ``axis`` may be a single
-            integer, ``None`` or a tuple of axes on every one. ``masked``
+            integer, ``None`` or a tuple or list of axes on every one. ``masked``
             and ``return_bounds`` are never accepted, on any array
             namespace -- this method
             always asks astropy for the mask itself -- and raise

@@ -17,10 +17,12 @@ New Features
   ``'median'``/``'mean'``/``'std'``/``'mad_std'`` use the namespace's
   NaN-aware reductions or ccdproc's fallbacks. [#1001]
 - ``Combiner.sigma_clipping`` outside NumPy now accepts ``axis=None`` and a
-  tuple of axes, as ``astropy.stats.sigma_clip`` does on the NumPy path, and
-  the reduction fallbacks in ``ccdproc._nanfuncs`` gained the same axis
-  forms; the None/tuple axis handling formerly in ``_mad_fallback`` moved
-  into the shared ``_nanfuncs._setup``. [#1006]
+  tuple or list of axes, as ``astropy.stats.sigma_clip`` does on the NumPy
+  path, and the reduction fallbacks in ``ccdproc._nanfuncs`` gained the same
+  axis forms; the None/tuple axis handling formerly in ``_mad_fallback``
+  moved into the shared ``_nanfuncs._setup``, and a bool or otherwise
+  non-integer ``axis`` now raises ``TypeError`` rather than
+  ``NotImplementedError``. [#1006]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

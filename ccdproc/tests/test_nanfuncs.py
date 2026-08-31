@@ -43,6 +43,10 @@ _DATA = [
     (_rng.normal(size=(5, 4, 3)), (0, 2)),  # a tuple of axes
     (_rng.normal(size=(5, 4, 3)), (-1, 0)),  # a negative entry in a tuple
     (_rng.normal(size=(5, 4, 3)), (1,)),  # a single-entry tuple
+    (_some_nan, ()),  # an empty tuple reduces over no axes (elementwise)
+    (_some_nan, (np.int64(0), np.int64(1))),  # numpy integers in a tuple
+    (np.zeros((0, 3, 4)), (1, 2)),  # size-0 kept axis: empty result, no error
+    (np.ones((2, 0)), (1,)),  # reducing an axis of size 0
     (np.array([[1.0, np.nan], [2.0, np.nan], [3.0, np.nan]]), 0),  # all-NaN column
     (np.array([[1.0, np.nan], [np.nan, np.nan]]), 0),  # single non-NaN in a slice
     (np.array([np.nan, np.nan, np.nan]), 0),  # every value NaN
@@ -58,10 +62,17 @@ _DATA = [
 @pytest.mark.filterwarnings("ignore:Mean of empty slice:RuntimeWarning")
 @pytest.mark.filterwarnings("ignore:Degrees of freedom <= 0:RuntimeWarning")
 @pytest.mark.filterwarnings("ignore:All-NaN slice encountered:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore:invalid value encountered:RuntimeWarning")
 @pytest.mark.parametrize(("func", "reference"), _FUNCS)
 @pytest.mark.parametrize(("data", "axis"), _DATA)
 def test_matches_numpy(func, reference, data, axis):
     """The fallback reproduces its numpy counterpart, in shape and value."""
+    if reference is np.median and isinstance(axis, tuple) and data.size == 0:
+        # numpy.median's own tuple-axis merge reshapes with -1 and trips
+        # over the size-0 case (numpy/numpy _function_base_impl merge) --
+        # the very failure _setup avoids by spelling the merged length
+        # out. On NaN-free input nanmedian is an exact stand-in.
+        reference = np.nanmedian
     converted = xp.asarray(data, device=xp_device)
     if data is _ill_conditioned and bool(xp.all(converted == converted[0])):
         # A float32-default backend (jax without JAX_ENABLE_X64) collapses
@@ -96,10 +107,14 @@ def test_no_warning_on_all_nan_slice(func):
     data = xp.asarray(
         np.array([[1.0, np.nan], [2.0, np.nan], [3.0, np.nan]]), device=xp_device
     )
+    # A slice of size zero is just as routine to stay silent on: several
+    # numpy counterparts warn there too (np.median even divides 0 by 0).
+    empty = xp.asarray(np.ones((2, 0)), device=xp_device)
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         func(data, axis=0)
+        func(empty, axis=1)
 
 
 def test_nansum_all_nan_slice_is_zero():
@@ -125,26 +140,47 @@ def test_nanmad_matches_astropy(axis):
 
 @pytest.mark.parametrize("func", [nansum, nanmean, nanstd, nanmedian, median])
 def test_list_axis_matches_tuple(func):
-    """A list of axes means the same as a tuple (numpy itself rejects it)."""
+    """
+    A list of axes means exactly what the equivalent tuple means.
+
+    Worth pinning because the two dispatch paths disagree upstream:
+    numpy's reductions reject a list axis outright while
+    ``astropy.stats.sigma_clip`` accepts one, and
+    ``Combiner.sigma_clipping`` forwards ``axis`` verbatim to whichever
+    path the namespace selects. If the fallbacks copied numpy's rejection,
+    a list would work for numpy data and raise for every other backend, so
+    ``_setup`` treats it like a tuple.
+    """
     data = xp.asarray(_rng.normal(size=(4, 3, 2)), device=xp_device)
     assert bool(xp.all(func(data, axis=[0, 2]) == func(data, axis=(0, 2))))
 
 
 @pytest.mark.parametrize("func", [nansum, nanmean, nanstd, nanmedian, median])
 @pytest.mark.parametrize(
-    ("axis", "error"),
+    ("axis", "error", "match"),
     [
-        (True, TypeError),  # bool subclasses int; reject it anyway
-        (1.5, TypeError),
-        (2, ValueError),
-        (-3, ValueError),
-        ((0, 0), ValueError),  # repeated axis
-        ((0, -2), ValueError),  # repeated via a negative alias
-        ((0, 2), ValueError),  # out-of-bounds entry
-        ((0, True), TypeError),  # bool entry in a tuple
+        (True, TypeError, "not bool"),  # bool subclasses int; reject it anyway
+        # np.bool_ is not a python bool: numpy 2.0 converts it to 1 with
+        # only a DeprecationWarning, so without an explicit guard these
+        # would silently reduce the wrong axes there.
+        (np.True_, TypeError, "not bool"),
+        ((0, np.True_), TypeError, "not bool"),
+        (1.5, TypeError, "must be an integer"),
+        (2, ValueError, "out of bounds"),
+        (-3, ValueError, "out of bounds"),
+        ((0, 0), ValueError, "repeated axis"),  # repeated axis
+        ((0, -2), ValueError, "repeated axis"),  # repeated via a negative alias
+        ((0, 2), ValueError, "out of bounds"),  # out-of-bounds entry
+        ((0, True), TypeError, "not bool"),  # bool entry in a tuple
     ],
 )
-def test_bad_axis(func, axis, error):
-    """Axes the fallbacks cannot handle are rejected instead of silently wrong."""
-    with pytest.raises(error):
+def test_bad_axis(func, axis, error, match):
+    """
+    Axes the fallbacks cannot handle are rejected instead of silently
+    wrong, with the message pinned: ``_mad_fallback`` and the combiner
+    lean on ``_setup`` for axis validation, so
+    ``test_ccdproc.py::test_mad_fallback_bad_axis_propagates`` checks only
+    the delegation and relies on this grid for the message contract.
+    """
+    with pytest.raises(error, match=match):
         func(xp.asarray(np.ones((2, 2)), device=xp_device), axis=axis)
