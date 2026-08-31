@@ -21,6 +21,7 @@ keeps the five functions consistent with each other.
 
 import math
 import operator
+import textwrap
 from functools import partial
 
 import array_api_compat
@@ -32,6 +33,41 @@ import numpy as np
 from numpy.lib.array_utils import normalize_axis_tuple
 
 __all__ = ["median", "nanmad", "nanmean", "nanmedian", "nanstd", "nansum"]
+
+# The ``x``/``axis``/``xp`` parameters mean the same thing for every public
+# function here, so their docstring entries are written once and filled into
+# each docstring's ``{params}`` placeholder by ``_fill_doc``; only the axis
+# action phrase differs. Function-specific behaviour (what an all-NaN slice
+# yields, NaN propagation, ...) stays inline in each Returns section.
+_COMMON_PARAMS = """\
+x : array
+    Input array. Integer and boolean inputs are promoted to the
+    namespace's default real floating dtype.
+axis : int, tuple of int, list of int or None, optional
+    Axis or axes along which {action}. Default is 0. ``None`` reduces
+    over every axis; a tuple or list over all the listed axes at once.
+    Booleans are rejected, numpy integer scalars are accepted.
+xp : array namespace, optional
+    Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.\
+"""
+
+
+def _fill_doc(**substitutions):
+    """
+    Fill a function docstring's ``{params}`` placeholder with
+    `_COMMON_PARAMS`, applying ``substitutions`` to the template first.
+    """
+
+    def decorator(func):
+        # ``python -OO`` strips docstrings; there is nothing to fill then.
+        if func.__doc__:
+            params = _COMMON_PARAMS.format(**substitutions)
+            func.__doc__ = func.__doc__.format(
+                params=textwrap.indent(params, "    ").lstrip()
+            )
+        return func
+
+    return decorator
 
 
 def _promote_to_real(x, xp, device):
@@ -254,20 +290,14 @@ def _safe_divide(total, count, xp, device):
     return xp.where(count == 0, nan, quotient)
 
 
+@_fill_doc(action="to sum")
 def nansum(x, /, *, axis=0, xp=None):
     """
     Sum along an axis, ignoring NaNs, using only array-API functions.
 
     Parameters
     ----------
-    x : array
-        Input array. Integer and boolean inputs are promoted to the
-        namespace's default real floating dtype.
-    axis : int, tuple of int, list of int or None, optional
-        Axis or axes along which to sum. Default is 0. ``None`` sums over
-        every axis; a tuple or list sums over all the listed axes at once.
-    xp : array namespace, optional
-        Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
+    {params}
 
     Returns
     -------
@@ -281,20 +311,14 @@ def nansum(x, /, *, axis=0, xp=None):
     return total
 
 
+@_fill_doc(action="to average")
 def nanmean(x, /, *, axis=0, xp=None):
     """
     Mean along an axis, ignoring NaNs, using only array-API functions.
 
     Parameters
     ----------
-    x : array
-        Input array. Integer and boolean inputs are promoted to the
-        namespace's default real floating dtype.
-    axis : int, tuple of int, list of int or None, optional
-        Axis or axes along which to average. Default is 0. ``None``
-        averages over every axis; a tuple or list over all the listed axes.
-    xp : array namespace, optional
-        Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
+    {params}
 
     Returns
     -------
@@ -310,6 +334,7 @@ def nanmean(x, /, *, axis=0, xp=None):
     return _safe_divide(total, count, xp, device)
 
 
+@_fill_doc(action="to compute the deviation")
 def nanstd(x, /, *, axis=0, xp=None):
     """
     Standard deviation along an axis, ignoring NaNs, via array-API functions.
@@ -320,15 +345,7 @@ def nanstd(x, /, *, axis=0, xp=None):
 
     Parameters
     ----------
-    x : array
-        Input array. Integer and boolean inputs are promoted to the
-        namespace's default real floating dtype.
-    axis : int, tuple of int, list of int or None, optional
-        Axis or axes along which to compute the deviation. Default is 0.
-        ``None`` reduces over every axis; a tuple or list over all the
-        listed axes.
-    xp : array namespace, optional
-        Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
+    {params}
 
     Returns
     -------
@@ -368,6 +385,7 @@ def nanstd(x, /, *, axis=0, xp=None):
     return xp.squeeze(xp.sqrt(variance), axis=axis)
 
 
+@_fill_doc(action="to compute the median")
 def nanmedian(x, /, *, axis=0, xp=None):
     """
     Median along an axis, ignoring NaNs, using only array-API functions.
@@ -381,16 +399,7 @@ def nanmedian(x, /, *, axis=0, xp=None):
 
     Parameters
     ----------
-    x : array
-        Input array. Integer and boolean inputs are promoted to the
-        namespace's default real floating dtype.
-    axis : int, tuple of int, list of int or None, optional
-        Axis or axes along which to compute the median. Default is 0.
-        ``None`` reduces over every axis and a tuple or list over all the
-        listed axes; booleans are rejected, numpy integer scalars are
-        accepted.
-    xp : array namespace, optional
-        Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
+    {params}
 
     Returns
     -------
@@ -448,22 +457,14 @@ def nanmedian(x, /, *, axis=0, xp=None):
     return xp.where(xp.squeeze(n, axis=axis) == 0, nan, result)
 
 
+@_fill_doc(action="to compute the median")
 def median(x, /, *, axis=0, xp=None):
     """
     Median along an axis, using only array-API functions.
 
     Parameters
     ----------
-    x : array
-        Input array. Integer and boolean inputs are promoted to the
-        namespace's default real floating dtype.
-    axis : int, tuple of int, list of int or None, optional
-        Axis or axes along which to compute the median. Default is 0.
-        ``None`` reduces over every axis and a tuple or list over all the
-        listed axes; booleans are rejected, numpy integer scalars are
-        accepted.
-    xp : array namespace, optional
-        Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
+    {params}
 
     Returns
     -------
@@ -488,22 +489,14 @@ def median(x, /, *, axis=0, xp=None):
     return xp.where(xp.any(xp.isnan(x), axis=axis), nan, nanmedian(x, axis=axis, xp=xp))
 
 
+@_fill_doc(action="to compute the deviation")
 def nanmad(x, /, *, axis=0, xp=None, median=None):
     """
     Median absolute deviation along ``axis``, ignoring NaNs.
 
     Parameters
     ----------
-    x : array
-        Input array. Integer and boolean inputs are promoted to the
-        namespace's default real floating dtype.
-    axis : int, tuple of int, list of int or None, optional
-        Axis or axes along which to compute the deviation. Default is 0.
-        ``None`` reduces over every axis and a tuple or list over all the
-        listed axes; booleans are rejected, numpy integer scalars are
-        accepted.
-    xp : array namespace, optional
-        Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.
+    {params}
     median : callable, optional
         Reduction used for both medians, called as ``median(x, axis=axis)``,
         always with a single integer ``axis``: a ``None`` or tuple/list
