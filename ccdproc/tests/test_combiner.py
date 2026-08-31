@@ -1752,13 +1752,25 @@ def _sigma_clip_reference(np_data, **kwargs):
     checked against it too: that is what numpy data get from
     ``Combiner.sigma_clipping``, and the other backends must agree with it.
     """
+    # Normalize a tuple axis once, up front: astropy's bottleneck dispatch
+    # cannot take negative tuple entries, and the bounds shape below needs
+    # the non-negative values too.
+    axis = kwargs.get("axis", 0)
+    if isinstance(axis, tuple):
+        kwargs["axis"] = axis = tuple(ax % np_data.ndim for ax in axis)
     _, lower, upper = sigma_clip(
         np_data.copy(), masked=False, return_bounds=True, **kwargs
     )
-    # The compiled path drops the clipped axis from the bounds while the
-    # python loop keeps it with length one; either way, make them broadcast.
-    axis = kwargs.get("axis", 0) % np_data.ndim
-    shape = tuple(1 if dim == axis else n for dim, n in enumerate(np_data.shape))
+    # The compiled path drops the clipped axes from the bounds while the
+    # python loop keeps them with length one; either way, make them
+    # broadcast. ``axis`` may be an int, a tuple of ints or None here.
+    if axis is None:
+        axes = tuple(range(np_data.ndim))
+    elif isinstance(axis, tuple):
+        axes = axis
+    else:
+        axes = (axis % np_data.ndim,)
+    shape = tuple(1 if dim in axes else n for dim, n in enumerate(np_data.shape))
     lower = np.reshape(lower, shape)
     upper = np.reshape(upper, shape)
     with np.errstate(invalid="ignore"):
@@ -1891,6 +1903,32 @@ def test_sigma_clip_mask_argument_handling():
         _sigma_clip_mask(data, stdfunc="var", xp=xp)
 
 
+# Axis forms beyond a single integer: _nanfuncs._setup flattens the data
+# for ``axis=None`` and merges a tuple of axes into one, and the mask must
+# come back in the shape and layout of the input on every backend.
+@pytest.mark.parametrize("axis", [None, (0, 1), (1, 2), (0, -1)], ids=str)
+def test_sigma_clip_mask_axis_forms(axis):
+    data = xp.asarray(_sigma_clip_datasets()["normal"], device=xp_device)
+    np_data = _to_numpy(data)
+
+    result = _sigma_clip_mask(
+        data, sigma_lower=2, sigma_upper=2, axis=axis, maxiters=2, xp=xp
+    )
+
+    expected = _sigma_clip_reference(
+        np_data,
+        sigma_lower=2,
+        sigma_upper=2,
+        axis=axis,
+        maxiters=2,
+        cenfunc="median",
+        stdfunc="std",
+    )
+
+    assert result.shape == data.shape
+    assert bool(xp.all(result == xp.asarray(expected, device=xp_device)))
+
+
 def _sigma_clip_ccd_list():
     """
     The ``normal`` set of `_sigma_clip_datasets` as a list of `CCDData`,
@@ -2008,3 +2046,33 @@ def test_combine_sigma_clip_on_any_backend():
     expected = np.ma.average(np.ma.array(np_data, mask=mask), axis=0)
     assert_allclose(_to_numpy(result.data), expected)
     assert not np.allclose(_to_numpy(result.data), np_data.mean(axis=0))
+
+
+@pytest.mark.filterwarnings("ignore::astropy.utils.exceptions.AstropyUserWarning")
+@pytest.mark.parametrize("axis", [None, (1, 2)], ids=str)
+def test_sigma_clipping_axis_forms_any_backend(axis):
+    # astropy's sigma_clip accepts axis=None and a tuple of axes;
+    # Combiner.sigma_clipping must honor them off the numpy path too,
+    # with the mask coming back in the data's own shape.
+    c = Combiner(_sigma_clip_ccd_list())
+    c.sigma_clipping(
+        low_thresh=2,
+        high_thresh=2,
+        func="median",
+        dev_func="std",
+        axis=axis,
+        maxiters=2,
+    )
+
+    expected = _sigma_clip_reference(
+        _to_numpy(c._data_arr),
+        sigma_lower=2,
+        sigma_upper=2,
+        axis=axis,
+        maxiters=2,
+        cenfunc="median",
+        stdfunc="std",
+    )
+
+    assert c._data_arr_mask.shape == c._data_arr.shape
+    assert bool(xp.all(c._data_arr_mask == xp.asarray(expected, device=xp_device)))

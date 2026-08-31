@@ -445,25 +445,16 @@ def test_mad_fallback_matches_astropy(data, axis, ignore_nan):
     assert xp.all(xpx.isclose(result, expected, equal_nan=True))
 
 
-# Duplicate (including a negative alias), out-of-bounds and bool entries in
-# a tuple axis raise instead of silently reducing the wrong axes.
-@pytest.mark.parametrize(
-    ("axis", "error", "match"),
-    [
-        pytest.param((0, 0), ValueError, "repeated axis", id="duplicate"),
-        # -3 is axis 0 of a 3-D array, so this is a duplicate too.
-        pytest.param(
-            (0, -3), ValueError, "repeated axis", id="duplicate-negative-alias"
-        ),
-        pytest.param((0, 3), ValueError, "out of bounds", id="out-of-bounds"),
-        # normalize_axis_tuple would silently treat True as 1.
-        pytest.param((0, True), TypeError, "not bool", id="bool-entry"),
-    ],
-)
-def test_mad_fallback_rejects_bad_axis_tuple(axis, error, match):
+def test_mad_fallback_bad_axis_propagates():
+    """
+    ``_mad_fallback`` delegates axis validation to ``_nanfuncs._setup``
+    (via ``nanmad``) and lets its error out unchanged; the full grid of
+    bad axis forms, messages included, lives in
+    ``test_nanfuncs.py::test_bad_axis``.
+    """
     data = xp.asarray(_MAD_3D, device=xp_device)
-    with pytest.raises(error, match=match):
-        _mad_fallback(data, axis, True)
+    with pytest.raises(ValueError, match="repeated axis"):
+        _mad_fallback(data, (0, 0), True)
 
 
 # The except branch of _mad_fallback's med() only runs naturally on

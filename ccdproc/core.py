@@ -21,7 +21,6 @@ from astropy.units.quantity import Quantity
 from astropy.utils import deprecated, deprecated_renamed_argument
 from astropy.wcs.utils import proj_plane_pixel_area
 from numpy import mgrid as np_mgrid
-from numpy.lib.array_utils import normalize_axis_tuple
 from numpy.ma import nomask as np_ma_nomask
 from packaging import version as pkgversion
 from scipy import ndimage
@@ -341,29 +340,6 @@ def _mad_fallback(data, axis, ignore_nan, xp=None):
     without the ``RuntimeWarning`` numpy emits.
     """
     xp = xp or array_api_compat.array_namespace(data)
-    device = array_api_compat.device(data)
-
-    # The medians below promote internally, but ``data - center`` below
-    # needs the promoted input too: subtracting a float from an integer array
-    # is not allowed by the standard and raises on array-api-strict.
-    data = _promote_to_real(data, xp, device)
-
-    if axis is None:
-        data = xp.reshape(data, (-1,))
-        axis = 0
-    elif isinstance(axis, (tuple, list)):
-        if any(isinstance(ax, bool) for ax in axis):
-            raise TypeError("axis entries must be integers, not bool")
-        ndim = data.ndim
-        axes = normalize_axis_tuple(axis, ndim)
-        # Move the reduced axes to the end and merge them into one, so that
-        # the single-axis medians below reduce over all of them at once.
-        kept = [ax for ax in range(ndim) if ax not in axes]
-        data = xp.permute_dims(data, tuple(kept + list(axes)))
-        data = xp.reshape(
-            data, tuple(data.shape[ax] for ax in range(len(kept))) + (-1,)
-        )
-        axis = -1
 
     def med(d, axis):
         try:
@@ -374,6 +350,10 @@ def _mad_fallback(data, axis, ignore_nan, xp=None):
 
     # The deviation itself is _nanfuncs.nanmad, the same computation
     # Combiner._nanmadstd uses; only the median tier passed in differs.
+    # nanmad's _setup owns the axis handling (``None`` flattens, a tuple
+    # or list is merged into a single trailing axis) and the promotion to
+    # the namespace's default real floating dtype, so ``med`` only ever
+    # sees a single integer axis.
     return _nanfuncs_nanmad(data, axis=axis, xp=xp, median=med)
 
 
