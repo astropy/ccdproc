@@ -949,12 +949,14 @@ def subtract_overscan(
         oscan = xp.mean(overscan.data, axis=overscan_axis)
 
     if model is not None:
+        # astropy.modeling is numpy-only, so the copy to the host is made
+        # explicitly here and the fitted overscan converted back below.
+        _warn_host_copy("subtract_overscan", xp, stacklevel=4)
+        oscan_np = _to_numpy(oscan)
         of = fitting.LinearLSQFitter()
-        yarr = xp.arange(oscan.shape[0])
-        oscan = of(model, yarr, oscan)
-        # The model will return something array-like but it may not be the same array
-        # library that we started with, so convert it back to the original
-        oscan = xp.asarray(oscan(yarr))
+        yarr = np.arange(oscan_np.shape[0])
+        fitted = of(model, yarr, oscan_np)
+        oscan = _from_numpy(fitted(yarr), like=ccd.data, xp=xp)
         if overscan_axis == 1:
             oscan = xp.reshape(oscan, (oscan.size, 1))
         else:
