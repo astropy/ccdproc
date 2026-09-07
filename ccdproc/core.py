@@ -2541,13 +2541,15 @@ def _astroscrappy_gain_apply_helper(cleaned_data, gain, gain_apply, old_interfac
     Helper function for logic determining how to apply gain to cleaned
     data. In the old astroscrappy interface cleaned data was always
     gain-corrected. In the new interface it is not. This function works out
-    the Right Thing to do given the inputs.
+    the Right Thing to do given the inputs. It only multiplies and divides,
+    so it works in any array namespace.
 
-    cleaned_data : `numpy.ndarray`
-        The cleaned data.
+    cleaned_data : array
+        The cleaned data, in the caller's array namespace.
 
     gain: float
-        The gain to (maybe) be applied.
+        The gain to (maybe) be applied. A Python float: a numpy scalar is
+        not a valid operand for a strict array-API namespace.
 
     gain_apply : bool
         If ``True``, the cleaned data should have the gain applied, otherwise
