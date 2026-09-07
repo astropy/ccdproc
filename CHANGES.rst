@@ -75,7 +75,7 @@ New Features
   call site with the new ``ccdproc.HostCopyWarning`` (a subclass of
   ``AstropyUserWarning``); NumPy input is neither copied nor warned about,
   and ``combine(output_file=...)`` still copies silently because nothing
-  from that copy returns to the caller. [#930, #933, #935]
+  from that copy returns to the caller. [#930, #933, #935, #1011]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -102,7 +102,7 @@ Bug Fixes
 
 - ``wcs_project`` no longer returns a NumPy-backed ``CCDData`` for non-NumPy
   input: the reprojected data and mask are converted back to the array
-  namespace and device of the input image. [#930]
+  namespace and device of the input image. [#930, #1011]
 - ``flat_correct`` now checks the flat's mask with ``xp.any`` instead of the
   ``mask.any()`` method, which arrays of spec-only array-API namespaces do
   not have. [#1005]
