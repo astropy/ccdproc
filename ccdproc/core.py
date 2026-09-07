@@ -2555,7 +2555,14 @@ def cosmicray_lacosmic(
             # here that we later add in then take out.
             data_offset = pssl
 
-        asy_background_kwargs = dict(inbkg=inbkg, invar=invar)
+        # astroscrappy is numpy-only, so array-valued backgrounds and
+        # variances are copied to the host here. Anything that is not an
+        # array (None, or a bad value the caller wants an error for) is
+        # passed straight through.
+        asy_background_kwargs = dict(
+            inbkg=_to_numpy(inbkg) if _is_array(inbkg) else inbkg,
+            invar=_to_numpy(invar) if _is_array(invar) else invar,
+        )
 
     if isinstance(ccd, CCDData):
         # Start with a check for a special case: ccd is in electron, and
@@ -2588,9 +2595,14 @@ def cosmicray_lacosmic(
                     + f" ccd ({ccd.unit}) and readnoise ({readnoise.unit})."
                 )
 
+        xp = array_api_compat.array_namespace(ccd.data)
+        # astroscrappy is numpy-only, so the copy to the host is made
+        # explicitly here and every result is converted back below.
+        _warn_host_copy("cosmicray_lacosmic", xp, stacklevel=4)
+
         crmask, cleanarr = detect_cosmics(
-            ccd.data + data_offset,
-            inmask=ccd.mask,
+            _to_numpy(ccd.data + data_offset),
+            inmask=None if ccd.mask is None else _to_numpy(ccd.mask),
             sigclip=sigclip,
             sigfrac=sigfrac,
             objlim=objlim,
@@ -2614,17 +2626,21 @@ def cosmicray_lacosmic(
         # Wrap the CCDData object to ensure it is compatible with array API
         _ccd = _wrap_ccddata_for_array_api(ccd)
         nccd = _ccd.copy()
-        xp = array_api_compat.array_namespace(_ccd.data)
+
+        # Back to the caller's namespace and device before any arithmetic,
+        # so that everything below runs natively.
+        cleanarr = _from_numpy(cleanarr, like=_ccd.data, xp=xp)
+        crmask = _from_numpy(crmask, like=_ccd.data, xp=xp)
 
         cleanarr = cleanarr - data_offset
         cleanarr = _astroscrappy_gain_apply_helper(
-            cleanarr, gain.value, gain_apply, old_astroscrappy_interface
+            cleanarr, float(gain.value), gain_apply, old_astroscrappy_interface
         )
 
         if gain_apply:
             if nccd.uncertainty is not None:
                 gain_value = xp.asarray(
-                    gain.value, device=array_api_compat.device(_ccd.data)
+                    float(gain.value), device=array_api_compat.device(_ccd.data)
                 )
                 gain_corrected = _ccd.multiply(
                     gain_value, xp=xp, handle_mask=xp.logical_or
@@ -2632,20 +2648,29 @@ def cosmicray_lacosmic(
                 nccd.uncertainty = gain_corrected.uncertainty
             nccd.unit = _ccd.unit * gain.unit
 
-        nccd.data = xp.asarray(cleanarr)
-        if nccd.mask is None:
-            nccd.mask = crmask
+        nccd.data = cleanarr
+        # TODO: the private _mask attribute is set here to avoid the mask
+        # setters, which do not preserve the device of the data.
+        if nccd.mask is None or nccd.mask is np_ma_nomask:
+            nccd._mask = crmask
         else:
-            nccd.mask = nccd.mask + crmask
+            existing_mask = xp.asarray(
+                nccd.mask, dtype=xp.bool, device=array_api_compat.device(_ccd.data)
+            )
+            nccd._mask = xp.logical_or(existing_mask, crmask)
 
         # Unwrap the CCDData object to ensure it is compatible with array API
         nccd = _unwrap_ccddata_for_array_api(nccd)
         return nccd
     elif _is_array(ccd):
         data = ccd
+        xp = array_api_compat.array_namespace(data)
+        # astroscrappy is numpy-only, so the copy to the host is made
+        # explicitly here and every result is converted back below.
+        _warn_host_copy("cosmicray_lacosmic", xp, stacklevel=4)
 
         crmask, cleanarr = detect_cosmics(
-            data + data_offset,
+            _to_numpy(data + data_offset),
             inmask=None,
             sigclip=sigclip,
             sigfrac=sigfrac,
@@ -2666,9 +2691,14 @@ def cosmicray_lacosmic(
             **asy_background_kwargs,
         )
 
+        # Back to the caller's namespace and device before any arithmetic,
+        # so that everything below runs natively.
+        cleanarr = _from_numpy(cleanarr, like=data, xp=xp)
+        crmask = _from_numpy(crmask, like=data, xp=xp)
+
         cleanarr = cleanarr - data_offset
         cleanarr = _astroscrappy_gain_apply_helper(
-            cleanarr, gain.value, gain_apply, old_astroscrappy_interface
+            cleanarr, float(gain.value), gain_apply, old_astroscrappy_interface
         )
 
         return cleanarr, crmask
