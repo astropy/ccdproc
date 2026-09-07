@@ -292,3 +292,59 @@ def test_ccddata_input_warns_once_about_ignored_attributes(function):
     assert array_api_compat.array_namespace(result) is array_api_compat.array_namespace(
         ccd.data
     )
+
+
+@pytest.mark.parametrize(
+    ("function", "reference_function"),
+    [
+        pytest.param(core.block_reduce, nddata.block_reduce, id="block_reduce"),
+        pytest.param(
+            core.block_average,
+            lambda data, block_size: nddata.block_reduce(data, block_size, np.mean),
+            id="block_average",
+        ),
+        pytest.param(
+            core.block_replicate, nddata.block_replicate, id="block_replicate"
+        ),
+    ],
+)
+def test_core_wrappers_honour_an_explicit_xp(function, reference_function):
+    """
+    An explicit ``xp`` is used as given instead of being inferred from the
+    data, and the result is unchanged by passing it.
+
+    The ``xp`` keyword is part of the wrappers' public signature so a
+    caller can name the namespace up front; this pins that the keyword is
+    honoured on every backend and still selects the astropy path on numpy.
+    """
+    data = _to_xp(_2D)
+    result = function(data, 2, xp=xp)
+    _assert_matches(result, reference_function(_2D, 2))
+    assert array_api_compat.array_namespace(result) is array_api_compat.array_namespace(
+        data
+    )
+
+
+@pytest.mark.parametrize(
+    "block_size",
+    [
+        pytest.param(float("nan"), id="nan"),
+        pytest.param(float("inf"), id="inf"),
+        pytest.param((2, float("inf")), id="inf-entry"),
+    ],
+)
+def test_non_finite_block_size_is_rejected_as_non_integral(block_size):
+    """
+    A NaN or infinite ``block_size`` raises astropy's "must be integers"
+    error rather than escaping as a `ValueError` or `OverflowError` from
+    ``int()``.
+
+    NaN passes the positivity check (every comparison with it is false),
+    so it reaches the integrality check, where ``int(nan)`` raises
+    `ValueError` and ``int(inf)`` raises `OverflowError`; both are caught
+    and reported as astropy does. The message is hard-coded rather than
+    compared against astropy's live output because astropy's own check
+    first emits a numpy cast warning for these values.
+    """
+    with pytest.raises(ValueError, match="block_size elements must be integers"):
+        _blocks.block_reduce(_to_xp(_2D), block_size)
