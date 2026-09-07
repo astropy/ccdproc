@@ -28,6 +28,7 @@ from ccdproc._windowfilters import (
 )
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
+from ccdproc.core import _dispatch_median_filter, _dispatch_percentile_filter
 
 _rng = np.random.default_rng(20260907)
 
@@ -423,3 +424,62 @@ def test_warns_when_a_single_row_exceeds_the_budget():
 
     with pytest.warns(AstropyUserWarning, match="more than the 256 MiB"):
         assert _default_band_rows(data, (25, 25), xp) == 1
+
+
+# ccdmask's default window shapes: (nlmed, ncmed) for the median it
+# subtracts, and (nlsig, ncsig) for the two percentiles it takes of the
+# residual.
+_CCDMASK_SIZES = {50.0: (7, 7), 30.9: (15, 15), 69.1: (15, 15)}
+
+
+def _flat_ratio_with_non_finite_pixels():
+    """
+    A flat-ratio image of the kind ``ccdmask`` is given, carrying the
+    non-finite pixels a ratio of two flats really does contain: an
+    isolated 0/0, a dead block wider than half the median window, and a
+    divide-by-zero of each sign.
+    """
+    ratio = _rng.normal(loc=1.0, scale=0.02, size=(31, 29))
+    ratio[4, 5] = np.nan
+    ratio[10:15, 8:13] = np.nan
+    ratio[20, 3] = np.inf
+    ratio[22, 25] = -np.inf
+    return ratio
+
+
+@pytest.mark.parametrize("percentile", sorted(_CCDMASK_SIZES), ids=str)
+def test_ccdmask_window_filters_exclude_nan_off_numpy(percentile):
+    """
+    On a non-numpy namespace ``ccdmask``'s window filters drop NaNs out of
+    each window; on numpy they keep ndimage's ordering, which sorts NaNs
+    in with the values.
+
+    ``ccdmask`` is the one caller whose input routinely carries non-finite
+    pixels -- it opens by masking them -- so it is the one place the
+    divergence documented in ``docs/array_api.rst`` is reachable, and this
+    pins it rather than leaving it to be discovered. The nan-aware side is
+    checked against an explicit `sliding_window_view` rank reference,
+    since ndimage cannot produce it; the two references are asserted to
+    disagree first, or the test would pass whichever way the dispatcher
+    went. Infinities are not part of the divergence: both implementations
+    treat them as ordinary large values, and they are here only because a
+    real flat ratio has them.
+    """
+    size = _CCDMASK_SIZES[percentile]
+    ratio = _flat_ratio_with_non_finite_pixels()
+    data = _as_test_array(ratio)
+
+    if percentile == 50.0:
+        result = _dispatch_median_filter(data, size, xp=xp)
+        from_ndimage = ndimage.median_filter(ratio, size=size)
+    else:
+        result = _dispatch_percentile_filter(data, percentile, size, xp=xp)
+        from_ndimage = ndimage.percentile_filter(ratio, percentile, size=size)
+
+    nan_aware = _rank_reference(ratio, size, percentile)
+    assert not np.allclose(nan_aware, from_ndimage, equal_nan=True)
+
+    if array_api_compat.is_numpy_namespace(xp):
+        _assert_matches(result, from_ndimage)
+    else:
+        _assert_matches(result, nan_aware)

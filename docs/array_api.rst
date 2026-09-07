@@ -214,12 +214,22 @@ What limitations should I be aware of?
   ``size`` and ``mode`` -- ``footprint``, ``origin``, ``output``, ``cval``
   and ``axes`` raise ``TypeError`` naming the argument. Convert the data
   to `numpy`_ to use `scipy.ndimage`_'s full interface.
-+ The two window filters that take an order statistic exclude NaNs from
-  each window rather than sorting them in with the values, which is what
-  `scipy.ndimage`_ does. The results therefore differ near a non-finite
-  pixel: ``ccdmask``, whose input is a flat ratio that may well contain
-  NaN or infinity, can produce a slightly different mask on a non-`numpy`_
-  array library than on `numpy`_. Every other caller filters finite data.
++ The two window filters that take an order statistic -- the median and
+  the percentile -- **exclude NaNs from a window** and take the rank among
+  the values that remain, where `scipy.ndimage`_ instead **sorts NaNs in
+  with the values**, which puts them above every real number. So near a
+  NaN the two disagree: ndimage's rank lands lower among the real values
+  the more NaNs the window holds, and becomes NaN itself once more than
+  the rank's worth of the window is NaN, while the array-API version
+  ignores them and reports the statistic of the real values, giving NaN
+  only for a window with no real value at all. Infinities are ordinary
+  values to both. The one `ccdproc`_ function this reaches is ``ccdmask``,
+  whose input is a flat ratio that may well contain NaN -- it opens by
+  masking the non-finite pixels -- so a ratio with NaN in it can give a
+  slightly different mask on a non-`numpy`_ array library than on
+  `numpy`_. Every other caller filters finite data. (The exclusion is
+  deliberate: it is what will let ``cosmicray_median`` keep masked pixels
+  out of its median.)
 
 Which array library should I use?
 ---------------------------------
