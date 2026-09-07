@@ -295,11 +295,6 @@ def test_subtract_overscan(median, transpose, data_rectangle):
 
 
 # A more substantial test of overscan modeling
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="subtract_overscan model fitting goes through astropy.modeling, "
-    "which is NumPy-only (#933)",
-)
 @pytest.mark.parametrize("transpose", [True, False])
 def test_subtract_overscan_model(transpose):
     ccd_data = ccd_data_func()
@@ -1189,11 +1184,6 @@ def test_cosmicray_median_does_not_change_input():
     assert original.unit == ccd_data.unit
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
-    "and fails on a non-default device",
-)
 def test_cosmicray_lacosmic_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
@@ -1268,19 +1258,12 @@ def wcs_for_testing(shape):
     return w
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="wcs_project uses reproject.reproject_interp, which requires "
-    "numpy and fails on a non-default device",
-)
 def test_wcs_project_onto_same_wcs():
     ccd_data = ccd_data_func()
     # The trivial case, same WCS, no mask.
     target_wcs = wcs_for_testing(ccd_data.shape)
     ccd_data.wcs = wcs_for_testing(ccd_data.shape)
 
-    # TODO: remove hack for numpy-specific check in astropy.wcs
-    ccd_data.data = np_array(ccd_data.data)
     new_ccd = wcs_project(ccd_data, target_wcs)
 
     # Make sure new image has correct WCS.
@@ -1290,11 +1273,6 @@ def test_wcs_project_onto_same_wcs():
     assert xp.all(xpx.isclose(ccd_data.data, new_ccd.data, rtol=1e-5))
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="wcs_project uses reproject.reproject_interp, which requires "
-    "numpy and fails on a non-default device",
-)
 def test_wcs_project_onto_same_wcs_remove_headers():
     ccd_data = ccd_data_func()
     # Remove an example WCS keyword from the header
@@ -1302,19 +1280,12 @@ def test_wcs_project_onto_same_wcs_remove_headers():
     ccd_data.wcs = wcs_for_testing(ccd_data.shape)
     ccd_data.header = ccd_data.wcs.to_header()
 
-    # TODO: remove hack for numpy-specific check in astropy.wcs
-    ccd_data.data = np_array(ccd_data.data)
     new_ccd = wcs_project(ccd_data, target_wcs)
 
     for k in ccd_data.wcs.to_header():
         assert k not in new_ccd.header
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="wcs_project uses reproject.reproject_interp, which requires "
-    "numpy and fails on a non-default device",
-)
 def test_wcs_project_onto_shifted_wcs():
     ccd_data = ccd_data_func()
     # Just make the target WCS the same as the initial with the center
@@ -1324,11 +1295,11 @@ def test_wcs_project_onto_shifted_wcs():
     target_wcs = wcs_for_testing(ccd_data.shape)
     target_wcs.wcs.crpix += [1, 1]
 
-    # TODO: change back to .mask when CCDData is array-api complian
-    ccd_data._mask = RNG().choice([0, 1], size=ccd_data.shape)
+    # TODO: change back to .mask when CCDData is array-api compliant
+    ccd_data._mask = xp.asarray(
+        RNG().choice([False, True], size=ccd_data.shape), device=xp_device
+    )
 
-    # TODO: remove hack for numpy-specific check in astropy.wcs
-    ccd_data.data = np_array(ccd_data.data)
     new_ccd = wcs_project(ccd_data, target_wcs)
 
     # Make sure new image has correct WCS.
@@ -1348,15 +1319,11 @@ def test_wcs_project_onto_shifted_wcs():
     # In the case of a shift, one row and one column should be nan, and they
     # will share one common nan where they intersect, so we know how many nan
     # there should be.
-    assert xp.sum(xp.isnan(new_ccd.data)) == xp.sum(xp.asarray(new_ccd.shape)) - 1
+    n_nan = int(xp.sum(xp.astype(xp.isnan(new_ccd.data), xp.int64)))
+    assert n_nan == sum(new_ccd.shape) - 1
 
 
 # Use an odd number of pixels to make a well-defined center pixel
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="wcs_project uses reproject.reproject_interp, which requires "
-    "numpy and fails on a non-default device",
-)
 def test_wcs_project_onto_scale_wcs():
     # Make the target WCS with half the pixel scale and number of pixels
     # and the values should drop by a factor of 4.
@@ -1372,22 +1339,21 @@ def test_wcs_project_onto_scale_wcs():
 
     # Make mask zero...
     # TODO: change back to .mask when CCDData is array-api compliant
-    ccd_data._mask = xp.zeros_like(ccd_data.data)
+    ccd_data._mask = xp.zeros_like(ccd_data.data, dtype=xp.bool)
     # ...except the center pixel, which is one.
     ccd_data._mask = xpx.at(ccd_data._mask)[
         int(ccd_data.wcs.wcs.crpix[0]), int(ccd_data.wcs.wcs.crpix[1])
-    ].set(1)
+    ].set(True)
 
     target_wcs = wcs_for_testing(ccd_data.shape)
     target_wcs.wcs.cdelt /= 2
 
     # Choice below ensures we are really at the center pixel of an odd range.
-    target_shape = 2 * xp.asarray(ccd_data.shape) + 1
+    # ``target_shape`` is a shape, not data, so keep it a plain tuple: it is
+    # handed straight to reproject, which needs something with ``len``.
+    target_shape = tuple(2 * size + 1 for size in ccd_data.shape)
     target_wcs.wcs.crpix = 2 * target_wcs.wcs.crpix + 1 + 0.5
 
-    # TODO: rm hack for numpy-specific check in astropy.wcs
-    ccd_data.data = np_array(ccd_data.data)
-    ccd_data._mask = np_array(ccd_data._mask)
     # Explicitly set the interpolation method so we know what to
     # expect for the mass.
     new_ccd = wcs_project(
@@ -1398,8 +1364,14 @@ def test_wcs_project_onto_scale_wcs():
     assert new_ccd.wcs.wcs.compare(target_wcs.wcs)
 
     # Define a cutout from the new array that should match the old.
-    new_lower_bound = (xp.asarray(new_ccd.shape) - xp.asarray(ccd_data.shape)) // 2
-    new_upper_bound = (xp.asarray(new_ccd.shape) + xp.asarray(ccd_data.shape)) // 2
+    # Shapes are plain tuples of Python ints, so keep the bounds Python ints
+    # too: array-API arrays are not valid slice bounds.
+    new_lower_bound = [
+        (n - o) // 2 for n, o in zip(new_ccd.shape, ccd_data.shape, strict=True)
+    ]
+    new_upper_bound = [
+        (n + o) // 2 for n, o in zip(new_ccd.shape, ccd_data.shape, strict=True)
+    ]
     data_cutout = new_ccd.data[
         new_lower_bound[0] : new_upper_bound[0], new_lower_bound[1] : new_upper_bound[1]
     ]
@@ -1410,7 +1382,7 @@ def test_wcs_project_onto_scale_wcs():
 
     # Mask should be true for four pixels (all nearest neighbors)
     # of the single pixel we masked initially.
-    new_center = xp.asarray(new_ccd.wcs.wcs.crpix, dtype=int)
+    new_center = [int(crpix) for crpix in new_ccd.wcs.wcs.crpix]
     assert xp.all(
         new_ccd.mask[
             new_center[0] : new_center[0] + 2, new_center[1] : new_center[1] + 2
@@ -1420,7 +1392,9 @@ def test_wcs_project_onto_scale_wcs():
     # Those four, and any that reproject made nan because they draw on
     # pixels outside the footprint of the original image, are the only
     # pixels that should be masked.
-    assert new_ccd.mask.sum() == 4 + xp.isnan(new_ccd.data).sum()
+    n_masked = int(xp.sum(xp.astype(new_ccd.mask, xp.int64)))
+    n_nan = int(xp.sum(xp.astype(xp.isnan(new_ccd.data), xp.int64)))
+    assert n_masked == 4 + n_nan
 
 
 def test_ccd_process_does_not_change_input():
