@@ -36,7 +36,7 @@ from ccdproc import (
 # Set up the array library to be used in tests
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
-from ccdproc.core import _from_numpy
+from ccdproc.core import _from_numpy, _to_numpy
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 
 IS_NUMPY = array_api_compat.is_numpy_namespace(xp)
@@ -199,6 +199,40 @@ def test_cosmicray_lacosmic_bare_array_returns_caller_namespace():
     for result in (cleaned, crmask):
         assert array_api_compat.array_namespace(result) is input_namespace
         assert array_api_compat.device(result) == input_device
+
+
+def test_cosmicray_lacosmic_merges_existing_mask():
+    """
+    A ``CCDData`` that already carries a mask gets back the union of that
+    mask and the cosmic-ray mask, in its own namespace and on its own
+    device. The union is computed after the round trip, so it is the one
+    place where a host-copied mask meets a native one; the bare-array call
+    on the same data supplies the cosmic-ray mask to compare against.
+    """
+    ccd = ccd_data_func(data_size=DATA_SIZE)
+    device = array_api_compat.device(ccd.data)
+
+    # Plant one unmistakable cosmic ray so that the detected mask is not
+    # empty. Edit on the host, as in test_cosmicray.add_cosmicrays, because
+    # not every library supports item assignment.
+    data_as_np = np.array(_to_numpy(ccd.data))
+    data_as_np[10, 10] = 500.0
+    ccd.data = xp.asarray(data_as_np, device=device)
+
+    existing = np.zeros(ccd.shape, dtype=bool)
+    existing[2, 3] = True
+    # TODO: change back to .mask when CCDData is array-api compliant
+    ccd._mask = xp.asarray(existing, device=device)
+
+    _, crmask = cosmicray_lacosmic(ccd.data)
+    result = cosmicray_lacosmic(ccd)
+
+    assert bool(crmask[10, 10])
+    assert not bool(crmask[2, 3])
+    assert bool(result.mask[2, 3])
+    assert bool(xp.all(result.mask == xp.logical_or(ccd.mask, crmask)))
+    assert array_api_compat.array_namespace(result.mask) is xp
+    assert array_api_compat.device(result.mask) == device
 
 
 @pytest.mark.skipif(IS_NUMPY, reason="NumPy input is never copied to the host")
