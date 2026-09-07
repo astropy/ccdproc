@@ -226,6 +226,48 @@ What limitations should I be aware of?
   unknown chunk sizes must have ``compute_chunk_sizes()`` called on it
   first.
 
+Which operations run on the CPU?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A few `ccdproc`_ functions are built on libraries that only understand
+`numpy`_ arrays. Three of them are:
+
++ ``wcs_project``, which reprojects through `reproject`_;
++ ``subtract_overscan`` when a ``model`` is given, which fits it with
+  `astropy.modeling`;
++ ``cosmicray_lacosmic``, which detects cosmic rays with `astroscrappy`_.
+
+These functions copy their input to host memory, run there, and copy every
+array they return -- the data and the mask -- back to the array namespace
+and the device of the array you passed in. You never get a `numpy`_ array
+back in place of what you handed over, whatever array library you use.
+
+Because that round trip can be expensive -- it computes a lazy `dask`_
+array, or moves data off a GPU and back -- each of these functions warns
+once per call site with a ``HostCopyWarning``, naming the function that
+made the copy. The warning is a subclass of ``AstropyUserWarning`` and is
+silenced like any other warning:
+
+.. code-block:: python
+
+    import warnings
+    import ccdproc
+
+    warnings.filterwarnings("ignore", category=ccdproc.HostCopyWarning)
+
+`numpy`_ input is never copied and never warns.
+
+There is one deliberate exception to the warning. ``combine`` with an
+``output_file`` writes the combined image through `astropy.io.fits`, which
+also needs a host copy, but nothing from that copy comes back into your
+pipeline -- the combined image ``combine`` returns is still in your array
+namespace -- so it copies silently.
+
+`ccdproc`_ does not offer a way to turn the conversion off: without it the
+operation would simply fail. Nor is a native reimplementation planned;
+wcslib, `astroscrappy`_'s C code and astropy's fitters are outside the
+scope of this project.
+
 Which array library should I use?
 ---------------------------------
 
@@ -291,6 +333,7 @@ There are two ways to use the array API in `ccdproc`_:
 
 .. _array API: https://data-apis.org/array-api/latest/index.html
 .. _array-api-compat: https://data-apis.org/array-api-compat
+.. _astroscrappy: https://astroscrappy.readthedocs.io/en/latest/
 .. _array-api-strict: https://data-apis.org/array-api-strict/
 .. _bottleneck: https://bottleneck.readthedocs.io/en/latest/
 .. _ccdproc: https://ccdproc.readthedocs.io/en/latest/
@@ -298,5 +341,6 @@ There are two ways to use the array API in `ccdproc`_:
 .. _dask: https://docs.dask.org/en/stable/
 .. _jax: https://docs.jax.dev/en/latest/index.html
 .. _numpy: https://numpy.org/doc/stable/reference/array_api.html
+.. _reproject: https://reproject.readthedocs.io/en/stable/
 .. _scipy.ndimage: https://docs.scipy.org/doc/scipy/reference/ndimage.html
 .. _sparse: https://sparse.pydata.org/en/stable/

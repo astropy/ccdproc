@@ -1010,6 +1010,13 @@ def subtract_overscan(
     pythonic, way of specifying the overscan is to do it by indexing the data
     array directly with the ``overscan`` argument.
 
+    Fitting a ``model`` goes through ``astropy.modeling``, which is
+    NumPy-only, so that path runs on the host CPU. If ``ccd`` is not backed
+    by NumPy the overscan is copied to the host to be fit and the fitted
+    overscan is copied back to the array namespace and device of the input;
+    the copy is announced with a `HostCopyWarning`. The median and mean
+    paths stay in the input's array namespace.
+
     Examples
     --------
     Creating a 100x100 array containing ones just for demonstration purposes::
@@ -1621,6 +1628,14 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
     -------
     ccd : `~astropy.nddata.CCDData`
         A transformed CCDData object.
+
+    Notes
+    -----
+    The reprojection is done by ``reproject``, which is NumPy-only, so this
+    function runs on the host CPU. If ``ccd`` is not backed by NumPy its
+    data and mask are copied to the host, and the reprojected data and mask
+    are copied back to the array namespace and device of the input; the
+    copy is announced with a `HostCopyWarning`.
     """
     from astropy.nddata.ccddata import _generate_wcs_and_update_header
     from reproject import reproject_interp
@@ -2455,6 +2470,13 @@ def cosmicray_lacosmic(
     -----
     Implementation of the cosmic ray identification L.A.Cosmic:
     http://www.astro.yale.edu/dokkum/lacosmic/
+
+    The detection is done by ``astroscrappy``, which is NumPy-only, so this
+    function runs on the host CPU. If ``ccd`` is not backed by NumPy its
+    data and mask, and any array-valued ``inbkg`` or ``invar``, are copied
+    to the host, and the cleaned data and cosmic-ray mask are copied back to
+    the array namespace and device of the input; the copy is announced with
+    a `HostCopyWarning`.
 
     Returns
     -------

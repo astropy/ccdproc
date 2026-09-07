@@ -65,6 +65,17 @@ New Features
   ``background_deviation_box``, and ``background_deviation_box`` now
   accepts a plain array-like such as a nested list, as its docstring has
   always promised. [#1010]
+- The three operations that depend on a NumPy-only library --
+  ``wcs_project`` (reproject), ``subtract_overscan`` with a ``model``
+  (``astropy.modeling``) and ``cosmicray_lacosmic`` (astroscrappy) -- now
+  make that host round trip explicitly: they copy their input to NumPy on
+  the host, run, and copy every array they return, data and mask alike,
+  back to the array namespace and device of the input, so a non-NumPy
+  caller never receives a NumPy array in its place. Each warns once per
+  call site with the new ``ccdproc.HostCopyWarning`` (a subclass of
+  ``AstropyUserWarning``); NumPy input is neither copied nor warned about,
+  and ``combine(output_file=...)`` still copies silently because nothing
+  from that copy returns to the caller. [#930, #933, #935]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -89,6 +100,9 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- ``wcs_project`` no longer returns a NumPy-backed ``CCDData`` for non-NumPy
+  input: the reprojected data and mask are converted back to the array
+  namespace and device of the input image. [#930]
 - ``flat_correct`` now checks the flat's mask with ``xp.any`` instead of the
   ``mask.any()`` method, which arrays of spec-only array-API namespaces do
   not have. [#1005]
