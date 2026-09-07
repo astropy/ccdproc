@@ -28,6 +28,7 @@ from ccdproc import (
     HostCopyWarning,
     combine,
     cosmicray_lacosmic,
+    gain_correct,
     subtract_overscan,
     wcs_project,
 )
@@ -215,3 +216,29 @@ def test_combine_output_file_does_not_warn(tmp_path):
         combine([ccd, ccd_times_2], output_file=tmp_path / "combined.fits")
 
     assert not [w for w in record if issubclass(w.category, HostCopyWarning)]
+
+
+def test_scalar_quantity_gain_keeps_namespace_and_device():
+    """
+    Closes #936: a scalar ``Quantity`` gain does not drag the data out of its
+    namespace or off its device. ``gain_correct`` and ``cosmicray_lacosmic``
+    are the two public functions that build arrays from ``gain.value``, so
+    they are the ones pinned here.
+    """
+    gain = 2.0 * u.electron / u.adu
+
+    input_namespace = array_api_compat.array_namespace(
+        ccd_data_func(data_size=DATA_SIZE).data
+    )
+
+    ccd = ccd_data_func(data_size=DATA_SIZE)
+    gain_corrected = gain_correct(ccd, gain=gain)
+    assert array_api_compat.array_namespace(gain_corrected.data) is input_namespace
+    assert array_api_compat.device(gain_corrected.data) == array_api_compat.device(
+        ccd.data
+    )
+
+    ccd = ccd_data_func(data_size=DATA_SIZE)
+    cleaned = cosmicray_lacosmic(ccd, gain=gain, gain_apply=True)
+    assert array_api_compat.array_namespace(cleaned.data) is input_namespace
+    assert array_api_compat.device(cleaned.data) == array_api_compat.device(ccd.data)
