@@ -180,12 +180,12 @@ What limitations should I be aware of?
   implementation written purely in terms of the array API standard for
   every other array library, so the result stays in the array library you
   passed in. The two give identical results, with one exception:
-  ``block_replicate(..., conserve_sum=True)`` on integer or boolean input
-  promotes to the array library's default real floating dtype before
-  dividing, because some libraries (``array-api-strict``) refuse integer
-  division rather than promoting. `numpy`_ returns ``float64`` there
-  anyway, so this differs only for a library whose default real dtype is
-  not ``float64``.
+  ``block_average`` and ``block_replicate(..., conserve_sum=True)`` promote
+  integer and boolean input to the array library's default real floating
+  dtype, because some libraries (``array-api-strict``) refuse to divide or
+  average integers rather than promoting them. `numpy`_ returns ``float64``
+  in both cases anyway, so this differs only for a library whose default
+  real dtype is not ``float64``.
 
 Which array library should I use?
 ---------------------------------

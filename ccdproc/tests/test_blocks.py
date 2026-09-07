@@ -128,6 +128,35 @@ def test_block_reduce_integer_input_matches_astropy():
     assert xp.isdtype(result.dtype, "integral")
 
 
+@pytest.mark.parametrize(
+    "function",
+    [
+        pytest.param(_blocks.block_average, id="native"),
+        pytest.param(core.block_average, id="core-wrapper"),
+    ],
+)
+@pytest.mark.parametrize(
+    "data",
+    [pytest.param(_2D, id="float-input"), pytest.param(_INT, id="integer-input")],
+)
+def test_block_average_matches_astropy(function, data):
+    """
+    ``block_average`` reproduces ``astropy.nddata.block_reduce(..., np.mean)``
+    for float and for integer input, and always returns a float.
+
+    numpy's ``mean`` promotes an integer array on its own, and jax and dask
+    follow it, but array-api-strict refuses a non-floating ``mean``
+    outright. Without the explicit promotion the native path does before
+    averaging, an integer image would average fine on three backends and
+    raise on the fourth; this pins that all four behave the way numpy
+    already did.
+    """
+    reference = nddata.block_reduce(data, 2, np.mean)
+    result = function(_to_xp(data), 2)
+    _assert_matches(result, reference)
+    assert xp.isdtype(result.dtype, "real floating")
+
+
 @pytest.mark.parametrize("conserve_sum", [True, False])
 def test_block_replicate_integer_input_matches_astropy(conserve_sum):
     """
@@ -187,6 +216,7 @@ def test_invalid_block_size_matches_astropy_message(function, block_size):
     "function",
     [
         pytest.param(_blocks.block_reduce, id="block_reduce"),
+        pytest.param(_blocks.block_average, id="block_average"),
         pytest.param(_blocks.block_replicate, id="block_replicate"),
     ],
 )
@@ -233,6 +263,7 @@ def test_core_wrappers_preserve_namespace_and_device(function):
     "function",
     [
         pytest.param(_blocks.block_reduce, id="block_reduce"),
+        pytest.param(_blocks.block_average, id="block_average"),
         pytest.param(_blocks.block_replicate, id="block_replicate"),
     ],
 )

@@ -28,10 +28,10 @@ New Features
   non-NumPy namespaces: they use an implementation written in terms of the
   array API standard instead of ``astropy.nddata``, which coerces its input
   to NumPy (NumPy data still use ``astropy.nddata``). Results are identical
-  except that ``block_replicate(..., conserve_sum=True)`` promotes integer
-  and boolean input to the namespace's default real floating dtype, which
-  matches NumPy's ``float64`` unless the namespace's default is not
-  ``float64``. [#971]
+  except that ``block_average`` and ``block_replicate(...,
+  conserve_sum=True)`` promote integer and boolean input to the namespace's
+  default real floating dtype, which matches NumPy's ``float64`` unless the
+  namespace's default is not ``float64``. [#971]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

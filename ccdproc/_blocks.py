@@ -5,28 +5,32 @@ Block downsampling and upsampling written only in terms of the array API.
 `astropy.nddata.block_reduce` and `astropy.nddata.block_replicate` begin by
 calling `numpy.asanyarray` on their input, so on a non-numpy array library
 they silently hand back a numpy array (dask, jax) or fail outright when the
-data live on a device numpy cannot reach (array-api-strict, cupy). The two
+data live on a device numpy cannot reach (array-api-strict, cupy). The
 functions here do the same work using only array API operations --
 ``reshape``, ``permute_dims``, ``repeat`` and slicing -- so the result stays
 in the caller's namespace and on the caller's device.
 
 `ccdproc.core` uses these only for non-numpy namespaces; numpy input keeps
-going to `astropy.nddata`. Apart from the shared float-promotion helper,
-this module is free of ccdproc specifics, so that it can be offered upstream
-(astropy #15073); once astropy's own ``blocks.py`` is array-API aware, this
-module and the dispatch in `ccdproc.core` can both be deleted.
+going to `astropy.nddata`. Apart from the shared float-promotion helper and
+`block_average` -- which is ccdproc's own thin wrapper, with no counterpart
+in `astropy.nddata` -- this module is free of ccdproc specifics, so that
+`block_reduce` and `block_replicate` can be offered upstream (astropy
+#15073); once astropy's own ``blocks.py`` is array-API aware, this module
+and the dispatch in `ccdproc.core` can both be deleted.
 
-Both functions are decorated with `astropy.nddata.support_nddata`, exactly
+Every function is decorated with `astropy.nddata.support_nddata`, exactly
 as astropy's are, so a `~astropy.nddata.CCDData` argument is unpacked to its
 ``.data`` and the "following attributes were set ... but will be ignored"
 `~astropy.utils.exceptions.AstropyUserWarning` is emitted identically.
 
-The one deliberate difference from astropy is dtype: with
-``conserve_sum=True``, `block_replicate` promotes integer and boolean input
-to the namespace's default real floating dtype before dividing, because
-array-api-strict rejects integer true division outright. numpy returns
-float64 for integer input anyway, so this only differs for a library whose
-default real dtype is not float64.
+The deliberate differences from astropy are both about dtype, and both are
+promotions of integer and boolean input to the namespace's default real
+floating dtype: `block_replicate` with ``conserve_sum=True`` promotes
+before dividing, because array-api-strict rejects integer true division
+outright, and `block_average` promotes before averaging, because
+array-api-strict rejects a non-floating ``mean``. numpy returns float64 in
+both cases anyway, so these differ only for a library whose default real
+dtype is not float64.
 """
 
 import math
@@ -37,10 +41,10 @@ from astropy.nddata import support_nddata
 
 from ._nanfuncs import _fill_doc, _promote_to_real
 
-__all__ = ["block_reduce", "block_replicate"]
+__all__ = ["block_average", "block_reduce", "block_replicate"]
 
-# ``data``, ``block_size`` and ``xp`` mean the same thing for both public
-# functions here, so their docstring entries are written once and filled
+# ``data``, ``block_size`` and ``xp`` mean the same thing for every public
+# function here, so their docstring entries are written once and filled
 # into each docstring's ``{params}`` placeholder by ``_fill_doc``; the
 # function-specific parameter that sits between ``block_size`` and ``xp``
 # is supplied as ``{extra}``.
@@ -53,8 +57,7 @@ block_size : int or sequence of int
     The integer block size along each axis. A scalar is used for every
     axis. Integral floats (``2.0``) are accepted, as in `astropy.nddata`,
     but non-integral ones (``2.1``) are not.
-{extra}
-xp : array namespace, optional
+{extra}xp : array namespace, optional
     Namespace to use. Defaults to
     ``array_api_compat.array_namespace(data)``.\
 """
@@ -138,7 +141,7 @@ func : callable, optional
     Reduction applied to each block, called as ``func(blocks, axis=axis)``
     with a tuple ``axis`` naming the trailing block axes, exactly as
     `astropy.nddata.block_reduce` calls it. Default is ``xp.sum``, which
-    conserves the data sum.\
+    conserves the data sum.
 """,
 )
 def block_reduce(data, block_size, func=None, *, xp=None):
@@ -192,12 +195,48 @@ def block_reduce(data, block_size, func=None, *, xp=None):
 
 
 @support_nddata
+@_fill_doc(_COMMON_PARAMS, extra="")
+def block_average(data, block_size, *, xp=None):
+    """
+    Downsample a data array by averaging local blocks.
+
+    `block_reduce` with ``func=xp.mean``, plus the dtype promotion that
+    needs: `astropy.nddata` inherits numpy's, which turns an integer mean
+    into a float, while array-API namespaces do not all agree -- jax and
+    dask follow numpy, but array-api-strict rejects a non-floating
+    ``mean`` outright. Promoting integer and boolean input first makes
+    every namespace behave the way numpy already does.
+
+    An axis that ``block_size`` does not divide evenly is trimmed from the
+    end, as in `astropy.nddata.block_reduce`.
+
+    Parameters
+    ----------
+    {params}
+
+    Returns
+    -------
+    array
+        The resampled data, in the namespace and on the device of ``data``.
+        Always floating point: integer and boolean input is promoted to the
+        namespace's default real floating dtype first.
+    """
+    if xp is None:
+        xp = array_api_compat.array_namespace(data)
+    if xp.isdtype(data.dtype, ("integral", "bool")):
+        data = _promote_to_real(data, xp, array_api_compat.device(data))
+    # ``data`` is a bare array by now, so the inner ``support_nddata`` has
+    # nothing left to unpack and cannot warn a second time.
+    return block_reduce(data, block_size, xp.mean, xp=xp)
+
+
+@support_nddata
 @_fill_doc(
     _COMMON_PARAMS,
     extra="""\
 conserve_sum : bool, optional
     If `True` (the default) the sum of the block-replicated data equals
-    the sum of the input ``data``.\
+    the sum of the input ``data``.
 """,
 )
 def block_replicate(data, block_size, conserve_sum=True, *, xp=None):

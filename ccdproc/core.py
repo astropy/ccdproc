@@ -1794,8 +1794,9 @@ def block_average(ccd, block_size, xp=None):
     if array_api_compat.is_numpy_namespace(xp):
         data = nddata.block_reduce(ccd, block_size, xp.mean)
     else:
-        # Like in block_reduce:
-        data = _blocks.block_reduce(ccd, block_size, xp.mean, xp=xp)
+        # Like in block_reduce, except that the native version also promotes
+        # integer and boolean input, which numpy's mean does on its own.
+        data = _blocks.block_average(ccd, block_size, xp=xp)
     # Like in block_reduce:
     if isinstance(ccd, CCDData):
         data = CCDData(data, unit=ccd.unit, meta=ccd.meta.copy())
