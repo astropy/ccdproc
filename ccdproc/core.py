@@ -1520,44 +1520,64 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
     if target_shape is None:
         target_shape = ccd.shape
 
+    # reproject is numpy-only, so the copy to the host is made explicitly
+    # here and every result is converted back below.
+    _warn_host_copy("wcs_project", xp, stacklevel=4)
+
     projected_image_raw, _ = reproject_interp(
-        (ccd.data, ccd.wcs), target_wcs, shape_out=target_shape, order=order
+        (_to_numpy(ccd.data), ccd.wcs),
+        target_wcs,
+        shape_out=target_shape,
+        order=order,
     )
+    projected = _from_numpy(projected_image_raw, like=ccd.data, xp=xp)
 
     reprojected_mask = None
     if ccd.mask is not None:
         reprojected_mask, _ = reproject_interp(
-            (ccd.mask, ccd.wcs), target_wcs, shape_out=target_shape, order=order
+            (_to_numpy(ccd.mask), ccd.wcs),
+            target_wcs,
+            shape_out=target_shape,
+            order=order,
         )
         # Make the mask 1 if the reprojected mask pixel value is non-zero.
         # A small threshold is included to allow for some rounding in
         # reproject_interp.
-        reprojected_mask = reprojected_mask > 1e-8
+        reprojected_mask = _from_numpy(reprojected_mask, like=ccd.data, xp=xp) > 1e-8
 
     # The reprojection will contain nan for any pixels for which the source
     # was outside the original image. Those should be masked also.
-    output_mask = xp.isnan(projected_image_raw)
+    output_mask = xp.isnan(projected)
 
     if reprojected_mask is not None:
         output_mask = output_mask | reprojected_mask
 
-    # Need to scale counts by ratio of pixel areas
-    area_ratio = proj_plane_pixel_area(target_wcs) / proj_plane_pixel_area(ccd.wcs)
+    # Need to scale counts by ratio of pixel areas. Make it a Python float:
+    # astropy returns a numpy scalar, which strict namespaces refuse as an
+    # operand.
+    area_ratio = float(
+        proj_plane_pixel_area(target_wcs) / proj_plane_pixel_area(ccd.wcs)
+    )
 
-    # If nothing ended up masked, don't create a mask.
-    if not output_mask.any():
+    # If nothing ended up masked, don't create a mask. ``any`` is a method
+    # only on numpy-like arrays, so go through the namespace.
+    if not bool(xp.any(output_mask)):
         output_mask = None
 
     # If there are any wcs keywords in the header, remove them
     hdr, _ = _generate_wcs_and_update_header(ccd.header)
 
     nccd = CCDData(
-        area_ratio * projected_image_raw,
+        area_ratio * projected,
         wcs=target_wcs,
-        mask=output_mask,
         header=hdr,
         unit=ccd.unit,
     )
+    # TODO: the private _mask attribute is set here to avoid the
+    # astropy CCDData mask setter, which coerces the mask with
+    # np.asarray and so would pull it out of its array namespace.
+    if output_mask is not None:
+        nccd._mask = output_mask
 
     return nccd
 
