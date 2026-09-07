@@ -71,8 +71,8 @@ _ITEMSIZES = {"bool": 1, "float16": 2, "float32": 4, "float64": 8}
 # goes, so that the rendered Parameters section keeps signature order.
 _COMMON_PARAMS = """\
 x : array
-    Input array of any rank. {dtype}
-size : int or sequence of int
+    Input array of any rank.
+{dtype}size : int or sequence of int
     Window shape: an integer uses the same length along every axis, a
     sequence gives one length per axis of ``x``. The window for index
     ``i`` along an axis whose window length is ``k`` spans ``i - k // 2``
@@ -95,10 +95,10 @@ xp : array namespace, optional
     Namespace to use. Defaults to ``array_api_compat.array_namespace(x)``.\
 """
 
-_PROMOTED_DTYPE = (
-    "Integer and boolean input is promoted to the namespace's default real "
-    "floating dtype, which `scipy.ndimage` does not do."
-)
+_PROMOTED_DTYPE = """\
+    Integer and boolean input is promoted to the namespace's default
+    real floating dtype, which `scipy.ndimage` does not do.
+"""
 
 _PERCENTILE_PARAM = """\
 percentile : float
@@ -675,7 +675,7 @@ def window_median(x, size, *, mode="reflect", band_rows=None, xp=None):
     return window_rank(x, size, 50.0, mode=mode, band_rows=band_rows, xp=xp)
 
 
-@_window_doc(dtype="Cast to boolean; any non-zero value counts as true.")
+@_window_doc(dtype="    Cast to boolean; any non-zero value counts as true.\n")
 def window_any(x, size, *, mode="reflect", band_rows=None, xp=None):
     """
     Whether any value in a moving window is true, via array-API functions.

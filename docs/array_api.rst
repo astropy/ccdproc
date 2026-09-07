@@ -204,8 +204,8 @@ What limitations should I be aware of?
   purely in terms of the array API standard, which stacks each pixel's
   window along a new axis and reduces over it. It agrees with
   `scipy.ndimage`_ exactly on finite input, but it is markedly more
-  expensive: a k-by-k window costs O(k² log k²) per pixel, from a sort,
-  against ndimage's O(k²) selection, and the stack itself holds k² copies
+  expensive: a k-by-k window costs O(k**2 log k**2) per pixel, from a sort,
+  against ndimage's O(k**2) selection, and the stack itself holds k**2 copies
   of the image (processed in bands of rows to bound the peak memory).
 + Those filters promote integer input to the library's default real
   floating dtype; `scipy.ndimage`_ keeps an integer dtype. Only

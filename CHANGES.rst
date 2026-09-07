@@ -40,8 +40,8 @@ New Features
   array to the host: NumPy input still goes to ``scipy.ndimage`` unchanged,
   while every other array namespace is served by a new implementation
   written purely in terms of the array API standard, which reproduces
-  ``scipy.ndimage`` exactly on finite input. It costs O(k² log k²) per pixel
-  for a k-by-k window rather than ndimage's O(k²), promotes integer input to
+  ``scipy.ndimage`` exactly on finite input. It costs O(k**2 log k**2) per pixel
+  for a k-by-k window rather than ndimage's O(k**2), promotes integer input to
   a floating dtype, implements only ndimage's ``'reflect'`` and
   ``'nearest'`` boundary modes, and excludes NaNs from a window rather than
   sorting them in with the values. On a non-NumPy array ``median_filter``
