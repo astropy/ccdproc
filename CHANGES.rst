@@ -35,6 +35,20 @@ New Features
   explicit ``func=xp.mean`` promotes integer and boolean input to a floating
   dtype, as ``block_average`` does, so that it gives NumPy's result on every
   backend. [#1009]
+- The local window filters used by ``median_filter``, ``cosmicray_median``,
+  ``background_deviation_filter`` and ``ccdmask`` no longer copy a non-NumPy
+  array to the host: NumPy input still goes to ``scipy.ndimage`` unchanged,
+  while every other array namespace is served by a new implementation
+  written purely in terms of the array API standard, which reproduces
+  ``scipy.ndimage`` exactly on finite input. It costs O(k² log k²) per pixel
+  for a k-by-k window rather than ndimage's O(k²), promotes integer input to
+  a floating dtype, implements only ndimage's ``'reflect'`` and
+  ``'nearest'`` boundary modes, and excludes NaNs from a window rather than
+  sorting them in with the values. On a non-NumPy array ``median_filter``
+  now accepts only ``size`` and ``mode``, raising ``TypeError`` for any
+  other ``scipy.ndimage`` argument. ``background_deviation_filter`` gained
+  an ``xp`` argument, matching ``background_deviation_box``. Part of the
+  array API migration tracked in #971. [#1007]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
