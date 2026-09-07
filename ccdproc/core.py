@@ -1804,7 +1804,7 @@ def background_deviation_filter(data, bbox, xp=None):
     -----
     For numpy input the deviation of each box is computed by
     `scipy.ndimage.generic_filter`, exactly as before. Every other namespace
-    uses `ccdproc._windowfilters.window_reduce`, which hands `sigma_func` a
+    uses ``ccdproc._windowfilters.window_reduce``, which hands `sigma_func` a
     whole band of boxes at a time instead of one box at a time; integer
     input is promoted to a floating dtype there, which ndimage does not do.
     """
@@ -2190,7 +2190,7 @@ def median_filter(data, *args, **kwargs):
     -----
     numpy input is filtered by `scipy.ndimage.median_filter` and accepts
     everything that function's signature does. Input from any other array
-    namespace is filtered by `ccdproc._windowfilters.window_median`, which
+    namespace is filtered by ``ccdproc._windowfilters.window_median``, which
     accepts only ``size`` and ``mode`` -- anything else raises `TypeError`
     naming the argument -- implements only ndimage's ``"reflect"`` and
     ``"nearest"`` boundary modes, and promotes integer input to a floating
