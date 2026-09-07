@@ -86,14 +86,21 @@ def _ccdmask_in_active_namespace(data, **kwargs):
     return result
 
 
-def _ones_like_filter(data, size):
+# The two stand-ins below replace ccdmask's window filters wholesale, so
+# their signatures are those of ccdproc.core._dispatch_median_filter and
+# _dispatch_percentile_filter -- which is also what pins that ccdmask calls
+# the dispatchers rather than either implementation directly, on every
+# backend, and that it asks for ndimage's default boundary mode.
+def _ones_like_filter(data, size, *, xp, mode="reflect"):
     assert size == (3, 3)
+    assert mode == "reflect"
     return xp.ones_like(data)
 
 
-def _zeros_like_percentile_filter(data, percentile, size):
+def _zeros_like_percentile_filter(data, percentile, size, *, xp, mode="reflect"):
     assert percentile in (30.9, 69.1)
     assert size == (3, 3)
+    assert mode == "reflect"
     return xp.zeros_like(data)
 
 
@@ -315,7 +322,7 @@ def test_ccdmask_pixels():
 @pytest.mark.parametrize("findbadcolumns", [False, True])
 def test_ccdmask_byblocks_with_immutable_array(monkeypatch, findbadcolumns):
     monkeypatch.setattr(
-        "ccdproc.core.ndimage.median_filter",
+        "ccdproc.core._dispatch_median_filter",
         _ones_like_filter,
     )
     monkeypatch.setattr(
@@ -355,11 +362,11 @@ def test_ccdmask_byblocks_with_immutable_array(monkeypatch, findbadcolumns):
 
 def test_ccdmask_column_gap_with_immutable_array(monkeypatch):
     monkeypatch.setattr(
-        "ccdproc.core.ndimage.median_filter",
+        "ccdproc.core._dispatch_median_filter",
         _ones_like_filter,
     )
     monkeypatch.setattr(
-        "ccdproc.core.ndimage.percentile_filter",
+        "ccdproc.core._dispatch_percentile_filter",
         _zeros_like_percentile_filter,
     )
     data = np.ones((8, 8))

@@ -2,6 +2,7 @@
 
 """This module implements the base CCDPROC functions"""
 
+import inspect
 import logging
 import math
 import numbers
@@ -35,6 +36,7 @@ from ._nanfuncs import _promote_to_real
 from ._nanfuncs import median as _nanfuncs_median
 from ._nanfuncs import nanmad as _nanfuncs_nanmad
 from ._nanfuncs import nanmedian as _nanfuncs_nanmedian
+from ._windowfilters import window_any, window_median, window_rank, window_reduce
 from .log_meta import log_to_metadata
 from .utils.slices import slice_from_string
 
@@ -314,6 +316,136 @@ def _median_fallback(array, axis, xp=None):
         # implementation built on nanmedian, which also matches
         # numpy.median's NaN-propagating semantics.
         return _nanfuncs_median(array, axis=axis, xp=xp)
+
+
+# ---------------------------------------------------------------------------
+# Window-filter dispatch
+#
+# scipy.ndimage's window filters are numpy-only, so numpy input keeps going
+# to them -- unchanged, and with ndimage's own selection algorithm -- while
+# every other namespace is served by ccdproc._windowfilters, which is written
+# purely in terms of the array API. The four wrappers below are the only
+# places that choice is made, so that the call sites read the same whichever
+# backend they run on and so that a test can monkeypatch one filter.
+#
+# The two implementations agree exactly on finite input. They part company on
+# NaN: ndimage sorts NaNs in with the rest of a window, the native rank
+# filters exclude them. That difference is what issue #984 will use to drop
+# masked pixels out of the median, at which point these wrappers grow a mask
+# argument and numpy input with a mask starts taking the native path too.
+# ---------------------------------------------------------------------------
+
+
+def _dispatch_median_filter(data, size, *, xp, mode="reflect"):
+    """
+    Median over a moving window, from ndimage or from `_windowfilters`.
+
+    Parameters
+    ----------
+    data : array
+        Array to filter.
+    size : int or tuple of int
+        Window shape.
+    xp : array namespace
+        Namespace of ``data``, which selects the implementation.
+    mode : str, optional
+        Boundary mode. Default is ``"reflect"``, which is ndimage's.
+
+    Returns
+    -------
+    array
+        Same shape as ``data``.
+    """
+    if array_api_compat.is_numpy_namespace(xp):
+        return ndimage.median_filter(data, size=size, mode=mode)
+    return window_median(data, size, mode=mode, xp=xp)
+
+
+def _dispatch_percentile_filter(data, percentile, size, *, xp, mode="reflect"):
+    """
+    Order statistic over a moving window, from ndimage or `_windowfilters`.
+
+    Parameters
+    ----------
+    data : array
+        Array to filter.
+    percentile : float
+        Percentile to take, in ``[0, 100]``.
+    size : int or tuple of int
+        Window shape.
+    xp : array namespace
+        Namespace of ``data``, which selects the implementation.
+    mode : str, optional
+        Boundary mode. Default is ``"reflect"``, which is ndimage's.
+
+    Returns
+    -------
+    array
+        Same shape as ``data``.
+    """
+    if array_api_compat.is_numpy_namespace(xp):
+        return ndimage.percentile_filter(data, percentile, size=size, mode=mode)
+    return window_rank(data, size, percentile, mode=mode, xp=xp)
+
+
+def _dispatch_maximum_filter(data, size, *, xp, mode="reflect"):
+    """
+    Maximum over a moving window, from ndimage or from `_windowfilters`.
+
+    Parameters
+    ----------
+    data : array
+        Array to filter. The only caller passes a boolean mask, for which
+        the maximum is "is any pixel in the window set", which is what the
+        native implementation computes.
+    size : int or tuple of int
+        Window shape.
+    xp : array namespace
+        Namespace of ``data``, which selects the implementation.
+    mode : str, optional
+        Boundary mode. Default is ``"reflect"``, which is ndimage's.
+
+    Returns
+    -------
+    array
+        Same shape as ``data``.
+    """
+    if array_api_compat.is_numpy_namespace(xp):
+        return ndimage.maximum_filter(data, size=size, mode=mode)
+    return window_any(data, size, mode=mode, xp=xp)
+
+
+def _dispatch_generic_filter(data, func, size, *, xp, mode="reflect"):
+    """
+    Arbitrary reduction over a moving window, from ndimage or
+    `_windowfilters`.
+
+    Parameters
+    ----------
+    data : array
+        Array to filter.
+    func : callable
+        The window reduction. ndimage calls it once per window with that
+        window's values flattened; `ccdproc._windowfilters.window_reduce`
+        calls it as ``func(stack, axis=-1)`` on a whole band at a time. A
+        reduction that accepts an ``axis`` keyword and defaults to reducing
+        everything -- `sigma_func` is the only one ccdproc passes -- suits
+        both.
+    size : int or tuple of int
+        Window shape.
+    xp : array namespace
+        Namespace of ``data``, which selects the implementation.
+    mode : str, optional
+        Boundary mode. Default is ``"reflect"``, which is ndimage's.
+
+    Returns
+    -------
+    array
+        Same shape as ``data``.
+    """
+    if array_api_compat.is_numpy_namespace(xp):
+        return ndimage.generic_filter(data, func, size=size, mode=mode)
+    return window_reduce(data, size, func, mode=mode, xp=xp)
 
 
 def _mad_fallback(data, axis, ignore_nan, xp=None):
@@ -1640,18 +1772,22 @@ def background_deviation_box(data, bbox, xp=None):
     return barr
 
 
-def background_deviation_filter(data, bbox):
+def background_deviation_filter(data, bbox, xp=None):
     """
     Determine the background deviation for each pixel from a box with size of
     bbox.
 
     Parameters
     ----------
-    data : `numpy.ndarray`
+    data : `numpy.ndarray` or other array_like
         Data to measure background deviation.
 
     bbox : int
         Box size for calculating background deviation.
+
+    xp : array namespace, optional
+        Array namespace to use for calculations. If not provided, the
+        namespace will be determined from the array.
 
     Raises
     ------
@@ -1660,14 +1796,27 @@ def background_deviation_filter(data, bbox):
 
     Returns
     -------
-    background : `numpy.ndarray`
-        An array with the measured background deviation in each pixel.
+    background : array
+        An array with the measured background deviation in each pixel, in
+        the array namespace and on the device of ``data``.
+
+    Notes
+    -----
+    For numpy input the deviation of each box is computed by
+    `scipy.ndimage.generic_filter`, exactly as before. Every other namespace
+    uses `ccdproc._windowfilters.window_reduce`, which hands `sigma_func` a
+    whole band of boxes at a time instead of one box at a time; integer
+    input is promoted to a floating dtype there, which ndimage does not do.
     """
     # Check to make sure the background box is an appropriate size
     if bbox < 1:
         raise ValueError("bbox must be greater than 1.")
 
-    return ndimage.generic_filter(data, sigma_func, size=(bbox, bbox))
+    if xp is None:
+        # Get the array namespace
+        xp = array_api_compat.array_namespace(data)
+
+    return _dispatch_generic_filter(data, sigma_func, (bbox, bbox), xp=xp)
 
 
 @deprecated(
@@ -1970,19 +2119,89 @@ def block_replicate(ccd, block_size, conserve_sum=True, xp=None):
 __all__ += ["block_average", "block_reduce", "block_replicate"]
 
 
+def _median_filter_array(data, args, kwargs):
+    """
+    The array half of `median_filter`: dispatch on the namespace of ``data``
+    and, off numpy, reject the ndimage arguments the native filter has no
+    equivalent for.
+
+    Parameters
+    ----------
+    data : array
+        Array to filter.
+    args : tuple
+        Positional arguments `median_filter` was called with, less ``data``.
+    kwargs : dict
+        Keyword arguments `median_filter` was called with.
+
+    Returns
+    -------
+    array
+        Same shape as ``data``.
+
+    Raises
+    ------
+    TypeError
+        On a non-numpy namespace, if ``size`` was not given or if any
+        argument other than ``size`` and ``mode`` was. The message names
+        the argument.
+    """
+    xp = array_api_compat.array_namespace(data)
+    if array_api_compat.is_numpy_namespace(xp):
+        # Unchanged passthrough: every ndimage argument, and ndimage's own
+        # errors for the ones it does not like.
+        return ndimage.median_filter(data, *args, **kwargs)
+
+    # Let ndimage's own signature sort positional arguments from keyword
+    # ones, and raise for a repeated or unknown one, rather than
+    # duplicating its parameter list here.
+    given = set(
+        inspect.signature(ndimage.median_filter).bind(data, *args, **kwargs).arguments
+    ) - {"input"}
+
+    unsupported = sorted(given - {"size", "mode"})
+    if unsupported:
+        raise TypeError(
+            f"median_filter on a {xp.__name__} array supports only the size "
+            f"and mode arguments, not "
+            f"{', '.join(repr(name) for name in unsupported)}; convert the "
+            f"data to numpy to use scipy.ndimage's full interface"
+        )
+    if "size" not in given:
+        raise TypeError(
+            f"median_filter on a {xp.__name__} array requires a size; "
+            f"footprint is not supported"
+        )
+
+    arguments = {**dict(zip(("size", "mode"), args, strict=False)), **kwargs}
+    return window_median(
+        data, arguments["size"], mode=arguments.get("mode", "reflect"), xp=xp
+    )
+
+
 def median_filter(data, *args, **kwargs):
     """See `scipy.ndimage.median_filter` for arguments.
 
     If the ``data`` is a `~astropy.nddata.CCDData` object the result will be another
     `~astropy.nddata.CCDData` object with the median filtered data as ``data`` and
     copied ``unit`` and ``meta``.
+
+    Notes
+    -----
+    numpy input is filtered by `scipy.ndimage.median_filter` and accepts
+    everything that function's signature does. Input from any other array
+    namespace is filtered by `ccdproc._windowfilters.window_median`, which
+    accepts only ``size`` and ``mode`` -- anything else raises `TypeError`
+    naming the argument -- implements only ndimage's ``"reflect"`` and
+    ``"nearest"`` boundary modes, and promotes integer input to a floating
+    dtype, which ndimage does not.
     """
     if isinstance(data, CCDData):
         out_kwargs = {"meta": data.meta.copy(), "unit": data.unit}
-        result = ndimage.median_filter(data.data, *args, **kwargs)
+        result = _median_filter_array(data.data, args, kwargs)
         return CCDData(result, **out_kwargs)
     else:
-        return ndimage.median_filter(data, *args, **kwargs)
+        return _median_filter_array(data, args, kwargs)
 
 
 # This originally used the "message" argument but that is not
@@ -2534,10 +2753,25 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0, x
         # create the new ccd data object
         nccd = ccd.copy()
         nccd.data = data
+        # TODO: the private _mask attribute is set here to avoid the
+        # mask.setter, which runs the mask through np.asarray and so would
+        # copy a non-numpy mask to the host (and fail outright for one on a
+        # non-default device). This can be removed when CCDData supports
+        # array namespaces. ccd_process does the same thing for the same
+        # reason.
         if nccd.mask is None:
-            nccd.mask = crarr
+            nccd._mask = crarr
         else:
-            nccd.mask = nccd.mask | crarr
+            # The incoming mask is whatever the caller put on the CCDData,
+            # typically numpy, while ``crarr`` is in the namespace of the
+            # data; ``numpy_mask | foreign_array`` would send the latter
+            # through np.asarray, so bring the mask across first.
+            nccd._mask = (
+                xp.asarray(
+                    nccd.mask, dtype=xp.bool, device=array_api_compat.device(crarr)
+                )
+                | crarr
+            )
         return nccd
 
     else:
@@ -2573,9 +2807,10 @@ def _cosmicray_median_array(data, in_mask, error_image, thresh, mbox, gbox, rbox
         if not _is_array(error_image):
             raise TypeError("error_image is not a float or ndarray.")
 
-    # create the median image. Note that scipy.ndimage knows nothing about
-    # masks, so masked pixels are included in the median like any other.
-    marr = xp.asarray(ndimage.median_filter(data, size=(mbox, mbox)))
+    # create the median image. Note that neither filter knows anything about
+    # masks, so masked pixels are included in the median like any other; that
+    # is issue #984.
+    marr = _dispatch_median_filter(data, (mbox, mbox), xp=xp)
 
     # Find the residual image
     rarr = (data - marr) / error_image
@@ -2590,7 +2825,7 @@ def _cosmicray_median_array(data, in_mask, error_image, thresh, mbox, gbox, rbox
 
     # grow the pixels
     if gbox > 0:
-        crarr = xp.asarray(ndimage.maximum_filter(crarr, gbox))
+        crarr = _dispatch_maximum_filter(crarr, gbox, xp=xp)
         if in_mask is not None:
             # Growth must not extend into masked pixels either.
             crarr = crarr & ~in_mask
@@ -2599,7 +2834,7 @@ def _cosmicray_median_array(data, in_mask, error_image, thresh, mbox, gbox, rbox
     ndata = xp.asarray(data, copy=True)
     if rbox > 0:
         # make sure that mdata is the same type as data
-        mdata = xp.asarray(ndimage.median_filter(data, rbox))
+        mdata = _dispatch_median_filter(data, rbox, xp=xp)
         ndata = xp.where(crarr, mdata, data)
 
     return ndata, crarr
@@ -2743,7 +2978,7 @@ def ccdmask(
         )
 
     mask = ~xp.isfinite(ratio.data)
-    medsub = ratio.data - ndimage.median_filter(ratio.data, size=(nlmed, ncmed))
+    medsub = ratio.data - _dispatch_median_filter(ratio.data, (nlmed, ncmed), xp=xp)
 
     if byblocks:
         nlinesblock = int(math.ceil(nlines / nlsig))
@@ -2789,8 +3024,8 @@ def ccdmask(
 
                 mask = xpx.at(mask)[l1:l2, c1:c2].set(block_mask)
     else:
-        high = ndimage.percentile_filter(medsub, 69.1, size=(nlsig, ncsig))
-        low = ndimage.percentile_filter(medsub, 30.9, size=(nlsig, ncsig))
+        high = _dispatch_percentile_filter(medsub, 69.1, (nlsig, ncsig), xp=xp)
+        low = _dispatch_percentile_filter(medsub, 30.9, (nlsig, ncsig), xp=xp)
         sigmas = (high - low) / 2.0
         mask |= _sigma_mask(medsub, sigmas, lsigma, hsigma)
 

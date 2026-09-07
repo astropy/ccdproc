@@ -1180,11 +1180,6 @@ def test_create_deviation_does_not_change_input():
     assert original.unit == ccd_data.unit
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
-    "requires numpy and fails on a non-default device",
-)
 def test_cosmicray_median_does_not_change_input():
     ccd_data = ccd_data_func()
     original = ccd_data.copy()
