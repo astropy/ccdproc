@@ -13,12 +13,16 @@ import array_api_compat
 import array_api_extra as xpx
 import numpy as np
 import pytest
+from astropy.nddata import CCDData
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.lib.stride_tricks import sliding_window_view
 from scipy import ndimage
 
+from ccdproc import core
 from ccdproc._windowfilters import (
+    _ITEMSIZES,
     _default_band_rows,
+    _itemsize,
     _normalize_size,
     _window_stack,
     window_any,
@@ -483,3 +487,112 @@ def test_ccdmask_window_filters_exclude_nan_off_numpy(percentile):
         _assert_matches(result, from_ndimage)
     else:
         _assert_matches(result, nan_aware)
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param(lambda data: core.median_filter(data, 3), id="positional-size"),
+        pytest.param(lambda data: core.median_filter(data, size=3), id="keyword-size"),
+        pytest.param(
+            lambda data: core.median_filter(data, (3, 5), mode="nearest"),
+            id="rectangular-nearest",
+        ),
+    ],
+)
+@pytest.mark.parametrize("wrap", [False, True], ids=["array", "CCDData"])
+def test_public_median_filter_matches_ndimage(call, wrap):
+    """
+    The public `ccdproc.median_filter` gives ndimage's answer for a bare
+    array and for a `~astropy.nddata.CCDData`, in the caller's namespace.
+
+    ``test_wrapped_external_funcs`` only ever hands it numpy, so this is
+    the one place the off-numpy dispatch through ``_median_filter_array``
+    (size positional or keyword, rectangular window, ``mode``) is
+    exercised end to end; on numpy it pins the ndimage passthrough.
+    """
+    expected = call(_IMAGE)
+    data = _as_test_array(_IMAGE)
+    if wrap:
+        data = CCDData(data, unit="adu")
+
+    result = call(data)
+
+    if wrap:
+        assert isinstance(result, CCDData)
+        assert result.unit == "adu"
+        result = result.data
+    assert array_api_compat.array_namespace(result) is xp
+    _assert_matches(result, expected)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        pytest.param({"size": 3, "cval": 1.0}, "not 'cval'", id="cval"),
+        pytest.param(
+            {"size": 3, "origin": 1, "output": None},
+            "not 'origin', 'output'",
+            id="two-unsupported",
+        ),
+        pytest.param({"footprint": np.ones((3, 3))}, "not 'footprint'", id="footprint"),
+        pytest.param({}, "requires a size", id="no-size"),
+    ],
+)
+def test_public_median_filter_rejects_ndimage_only_arguments_off_numpy(kwargs, match):
+    """
+    Off numpy, `ccdproc.median_filter` refuses any ndimage argument the
+    native filter cannot honour, naming the argument, and insists on
+    ``size`` when nothing else is wrong.
+
+    Silently ignoring ``cval`` or ``origin`` would give a different answer
+    from the numpy path with no warning; the error is the documented
+    contract. A ``footprint`` is reported as an unsupported argument
+    rather than as a missing ``size``, so the missing-size error is only
+    reachable with no arguments at all. numpy is skipped because there
+    every argument is passed through to ndimage unchanged.
+    """
+    if array_api_compat.is_numpy_namespace(xp):
+        pytest.skip("numpy input is passed through to ndimage unchanged")
+    with pytest.raises(TypeError, match=match):
+        core.median_filter(_as_test_array(_IMAGE), **kwargs)
+
+
+def test_nearest_padding_of_an_empty_axis_raises():
+    """
+    ``'nearest'`` padding of an empty axis is refused: there is no edge
+    sample to repeat.
+
+    ``'reflect'`` on the same input is already refused by the
+    too-large-window check; this pins that ``'nearest'`` does not slip
+    through to a confusing error from ``concat`` instead.
+    """
+    with pytest.raises(ValueError, match="cannot pad axis 0, which is empty"):
+        window_median(_as_test_array(np.ones((0, 5))), 3, mode="nearest")
+
+
+def test_itemsize_falls_back_to_the_widest_known_dtype():
+    """
+    A dtype the band-size estimate does not know is costed as the widest
+    one it does, so the estimate errs towards smaller bands, never a
+    wrong result.
+
+    ``_windowed`` only ever sees the promoted real dtypes and bool, but
+    ``_default_band_rows`` is reachable with any dtype and must not fail
+    on one it has no entry for.
+    """
+    assert _itemsize(xp.float32, xp) == 4
+    assert _itemsize(xp.int32, xp) == max(_ITEMSIZES.values())
+
+
+def test_zero_width_image_is_one_band():
+    """
+    An image with no columns costs nothing per row, so the whole of it is
+    a single band rather than a division by zero.
+
+    Pinned because ``_default_band_rows`` divides the budget by the row
+    cost, and a zero-width input is the one shape that makes that cost
+    zero.
+    """
+    assert _default_band_rows(_as_test_array(np.zeros((5, 0))), (3, 3), xp) == 5
+    assert _default_band_rows(_as_test_array(np.zeros((0, 0))), (3, 3), xp) == 1
