@@ -160,6 +160,11 @@ filterwarnings= [
     # later when the spot in create_deviation where a square root is
     # calculated.
     "ignore:invalid value encountered in sqrt:RuntimeWarning",
+    # The three CPU-only operations warn on every non-numpy backend. The
+    # warning contract is pinned once, in ccdproc/tests/test_hostcopy.py,
+    # rather than by wrapping every lacosmic/wcs_project/overscan-model
+    # test in pytest.warns.
+    "ignore::ccdproc.HostCopyWarning",
 ]
 markers = [
     "data_size(N): set dimension of square data array for ccd_data fixture",

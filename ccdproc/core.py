@@ -21,6 +21,7 @@ from astropy.nddata.bitmask import (
 )
 from astropy.units.quantity import Quantity
 from astropy.utils import deprecated, deprecated_renamed_argument
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import proj_plane_pixel_area
 from numpy import mgrid as np_mgrid
 from numpy.ma import nomask as np_ma_nomask
@@ -63,6 +64,7 @@ __all__ = [
     "median_filter",
     "ccdmask",
     "bitfield_to_boolean_mask",
+    "HostCopyWarning",
 ]
 
 # The dictionary below is used to translate actual function names to names
@@ -168,6 +170,90 @@ def _to_numpy(arr):
     if default_device is not None:
         arr = array_api_compat.to_device(arr, default_device)
     return np.asarray(arr)
+
+
+class HostCopyWarning(AstropyUserWarning):
+    """
+    A non-NumPy array was copied to the host CPU to run a NumPy-only
+    operation, and the result was copied back.
+
+    Silence it with::
+
+        import warnings
+        import ccdproc
+
+        warnings.filterwarnings("ignore", category=ccdproc.HostCopyWarning)
+    """
+
+
+def _from_numpy(arr, like, *, xp=None):
+    """
+    Return ``arr`` in the array namespace and on the device of ``like``.
+
+    Parameters
+    ----------
+    arr : `numpy.ndarray` or None
+        The NumPy array to convert. `None` is passed through unchanged, so
+        that an absent mask needs no special case at the call site.
+    like : array
+        The array whose namespace and device the result should have.
+    xp : array namespace, optional
+        Array namespace to convert into. If not provided, the namespace is
+        determined from ``like``.
+
+    Returns
+    -------
+    array or None
+        ``arr`` as an array of ``xp`` on the device of ``like``, with its
+        dtype preserved, or `None` if ``arr`` is `None`.
+
+    Notes
+    -----
+    This is the inverse of `_to_numpy`: it returns the result of a
+    NumPy-only operation to the caller's array namespace and device, so
+    that the caller never receives a NumPy array in place of what it
+    passed in.
+    """
+    if arr is None:
+        return None
+    xp = xp or array_api_compat.array_namespace(like)
+    return xp.asarray(arr, device=array_api_compat.device(like))
+
+
+def _warn_host_copy(function_name, xp, stacklevel=3):
+    """
+    Warn that ``function_name`` is about to copy its input to the host.
+
+    Parameters
+    ----------
+    function_name : str
+        Name of the public function doing the copy, as it appears in the
+        warning message.
+    xp : array namespace
+        The namespace of the caller's data. Nothing is warned about when
+        this is NumPy, since no copy happens then.
+    stacklevel : int, optional
+        Stack level of the warning, counted from this function. The default
+        of ``3`` (this helper, the public function, the caller) is right for
+        an undecorated public function; add one for every decorator wrapping
+        it, so that the warning is attributed to the user's call rather than
+        to a decorator inside ``ccdproc``.
+
+    Notes
+    -----
+    Exactly one warning is issued per call of the public function, before
+    any conversion happens, however many arrays end up crossing to the
+    host. Python's own once-per-location default filter then collapses
+    repeated calls from the same place in the user's code.
+    """
+    if array_api_compat.is_numpy_namespace(xp):
+        return
+    warnings.warn(
+        f"{function_name} runs on the host CPU: its input was copied from "
+        f"{xp.__name__} to numpy and the result copied back.",
+        HostCopyWarning,
+        stacklevel=stacklevel,
+    )
 
 
 def _namespace_dtype(dtype, xp):
