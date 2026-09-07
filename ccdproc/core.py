@@ -1492,8 +1492,9 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
         WCS onto which all images should be projected.
 
     target_shape : two element list-like or None, optional
-        Shape of the output image. If omitted, defaults to the shape of the
-        input image.
+        Shape of the output image. Any sequence or array of two integers is
+        accepted, including an array from ``ccd``'s namespace. If omitted,
+        defaults to the shape of the input image.
         Default is ``None``.
 
     order : str, optional
@@ -1536,6 +1537,11 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
 
     if target_shape is None:
         target_shape = ccd.shape
+    # A shape is metadata, not data: make it a tuple of Python ints so that
+    # reproject, which needs ``len`` and elementwise comparison, accepts it
+    # whatever it was given as, including an array-API array that supports
+    # neither (array-api-strict has no ``len``).
+    target_shape = tuple(int(size) for size in target_shape)
 
     # reproject is numpy-only, so the copy to the host is made explicitly
     # here and every result is converted back below.

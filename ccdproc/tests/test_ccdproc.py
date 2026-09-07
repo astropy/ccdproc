@@ -1278,6 +1278,30 @@ def test_wcs_project_onto_same_wcs():
     assert xp.all(xpx.isclose(ccd_data.data, new_ccd.data, rtol=1e-5))
 
 
+def test_wcs_project_accepts_an_array_target_shape():
+    """
+    ``target_shape`` may be an array from the test namespace, on the test
+    device, and gives the same result as the equivalent tuple.
+
+    reproject needs ``len`` of the shape and array-api-strict arrays have
+    none, so without the coercion in `wcs_project` an array shape works on
+    numpy, jax and dask but not on strict; this pins that the documented
+    "list-like" includes an array on every backend.
+    """
+    ccd_data = ccd_data_func()
+    target_wcs = wcs_for_testing(ccd_data.shape)
+    ccd_data.wcs = wcs_for_testing(ccd_data.shape)
+    shape_tuple = tuple(size + 2 for size in ccd_data.shape)
+    shape_array = xp.asarray(shape_tuple, device=xp_device)
+
+    from_tuple = wcs_project(ccd_data, target_wcs, target_shape=shape_tuple)
+    from_array = wcs_project(ccd_data, target_wcs, target_shape=shape_array)
+
+    assert from_array.shape == shape_tuple
+    assert from_array.shape == from_tuple.shape
+    assert bool(xp.all(xpx.isclose(from_array.data, from_tuple.data, equal_nan=True)))
+
+
 def test_wcs_project_onto_same_wcs_remove_headers():
     ccd_data = ccd_data_func()
     # Remove an example WCS keyword from the header
