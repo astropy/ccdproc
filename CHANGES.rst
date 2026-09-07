@@ -48,7 +48,7 @@ New Features
   now accepts only ``size`` and ``mode``, raising ``TypeError`` for any
   other ``scipy.ndimage`` argument. ``background_deviation_filter`` gained
   an ``xp`` argument, matching ``background_deviation_box``. Part of the
-  array API migration tracked in #971. [#1007]
+  array API migration tracked in #971. [#1010]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
