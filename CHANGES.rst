@@ -23,6 +23,15 @@ New Features
   moved into the shared ``_nanfuncs._setup``, and a bool or otherwise
   non-integer ``axis`` now raises ``TypeError`` rather than
   ``NotImplementedError``. [#1006]
+- ``block_reduce``, ``block_average`` and ``block_replicate`` now return an
+  array in the caller's array namespace, and on the caller's device, for
+  non-NumPy namespaces: they use an implementation written in terms of the
+  array API standard instead of ``astropy.nddata``, which coerces its input
+  to NumPy (NumPy data still use ``astropy.nddata``). Results are identical
+  except that ``block_replicate(..., conserve_sum=True)`` promotes integer
+  and boolean input to the namespace's default real floating dtype, which
+  matches NumPy's ``float64`` unless the namespace's default is not
+  ``float64``. [#971]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

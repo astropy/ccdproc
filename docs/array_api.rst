@@ -175,6 +175,17 @@ What limitations should I be aware of?
   `dask`_, prefer an integer ``maxiters``: ``maxiters=None`` has to
   compute the data after every iteration to find out whether anything
   else was rejected.
++ ``block_reduce``, ``block_average`` and ``block_replicate`` call
+  ``astropy.nddata``, which is numpy-only, for `numpy`_ arrays and an
+  implementation written purely in terms of the array API standard for
+  every other array library, so the result stays in the array library you
+  passed in. The two give identical results, with one exception:
+  ``block_replicate(..., conserve_sum=True)`` on integer or boolean input
+  promotes to the array library's default real floating dtype before
+  dividing, because some libraries (``array-api-strict``) refuse integer
+  division rather than promoting. `numpy`_ returns ``float64`` there
+  anyway, so this differs only for a library whose default real dtype is
+  not ``float64``.
 
 Which array library should I use?
 ---------------------------------
