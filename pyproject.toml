@@ -163,8 +163,12 @@ filterwarnings= [
     # The three CPU-only operations warn on every non-numpy backend. The
     # warning contract is pinned once, in ccdproc/tests/test_hostcopy.py,
     # rather than by wrapping every lacosmic/wcs_project/overscan-model
-    # test in pytest.warns.
-    "ignore::ccdproc.HostCopyWarning",
+    # test in pytest.warns. Matched by message rather than as
+    # "ignore::ccdproc.HostCopyWarning": pytest imports the category while
+    # it parses this file, which under "pytest --pyargs ccdproc" loads
+    # ccdproc from site-packages before the source-tree conftest and fails
+    # with an ImportPathMismatchError.
+    "ignore:.* runs on the host CPU",
 ]
 markers = [
     "data_size(N): set dimension of square data array for ccd_data fixture",
