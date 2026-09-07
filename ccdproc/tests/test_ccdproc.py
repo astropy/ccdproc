@@ -1039,11 +1039,6 @@ def test_transform_image(mask_data, uncertainty):
 
 # Test block_reduce and block_replicate wrapper
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="astropy.nddata.block_reduce is not array-API aware and "
-    "silently converts back to numpy, which fails on a non-default device",
-)
 def test_block_reduce():
     ccd = CCDData(
         xp.ones((4, 4)),
@@ -1052,7 +1047,7 @@ def test_block_reduce():
         uncertainty=StdDevUncertainty(xp.ones((4, 4))),
     )
     # TODO: Set mask in caller above when CCDData is array-api compliant
-    ccd._mask = xp.zeros((4, 4), dtype=bool)
+    ccd._mask = xp.zeros((4, 4), dtype=xp.bool)
     with pytest.warns(AstropyUserWarning) as w:
         ccd_summed = block_reduce(ccd, (2, 2))
     assert len(w) == 1
@@ -1073,11 +1068,6 @@ def test_block_reduce():
 
 
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="astropy.nddata.block_reduce is not array-API aware and "
-    "silently converts back to numpy, which fails on a non-default device",
-)
 def test_block_average():
     data = xp.asarray(
         [
@@ -1091,7 +1081,7 @@ def test_block_average():
         data,
         unit="adu",
         meta={"testkw": 1},
-        mask=xp.zeros((4, 4), dtype=bool),
+        mask=xp.zeros((4, 4), dtype=xp.bool),
         uncertainty=StdDevUncertainty(xp.ones((4, 4))),
     )
 
@@ -1117,17 +1107,12 @@ def test_block_average():
 
 
 @pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="astropy.nddata.block_replicate is not array-API aware and "
-    "silently converts back to numpy, which fails on a non-default device",
-)
 def test_block_replicate():
     ccd = CCDData(
         xp.ones((4, 4)),
         unit="adu",
         meta={"testkw": 1},
-        mask=xp.zeros((4, 4), dtype=bool),
+        mask=xp.zeros((4, 4), dtype=xp.bool),
         uncertainty=StdDevUncertainty(xp.ones((4, 4))),
     )
     with pytest.warns(AstropyUserWarning) as w:

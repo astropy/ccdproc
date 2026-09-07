@@ -25,6 +25,7 @@ from numpy.ma import nomask as np_ma_nomask
 from packaging import version as pkgversion
 from scipy import ndimage
 
+from . import _blocks
 from ._ccddata_wrapper_for_array_api import (
     _unwrap_ccddata_for_array_api,
     _wrap_ccddata_for_array_api,
@@ -1752,12 +1753,32 @@ def rebin(ccd, newshape):
         return result
 
 
+def _block_namespace(ccd, xp):
+    """
+    Namespace to use for one of the ``block_*`` functions below.
+
+    ``ccd`` is either a `~astropy.nddata.CCDData` or a bare array, as it is
+    for `sigma_func`; an explicit ``xp`` wins over both.
+    """
+    if xp is not None:
+        return xp
+    return array_api_compat.array_namespace(
+        ccd.data if isinstance(ccd, CCDData) else ccd
+    )
+
+
 def block_reduce(ccd, block_size, func=None, xp=None):
     """Thin wrapper around `astropy.nddata.block_reduce`."""
-    if func is None:
-        xp = xp or array_api_compat.array_namespace(ccd.data)
-        func = xp.sum
-    data = nddata.block_reduce(ccd, block_size, func)
+    xp = _block_namespace(ccd, xp)
+    if array_api_compat.is_numpy_namespace(xp):
+        if func is None:
+            func = xp.sum
+        data = nddata.block_reduce(ccd, block_size, func)
+    else:
+        # astropy.nddata coerces its input with numpy.asanyarray, which
+        # loses the namespace (dask, jax) or raises outright when the data
+        # are on a device numpy cannot reach (array-api-strict, cupy).
+        data = _blocks.block_reduce(ccd, block_size, func, xp=xp)
     if isinstance(ccd, CCDData):
         # unit and meta "should" be unaffected by the change of shape and can
         # be copied. However wcs, mask, uncertainty should not be copied!
@@ -1768,18 +1789,27 @@ def block_reduce(ccd, block_size, func=None, xp=None):
 def block_average(ccd, block_size, xp=None):
     """Like `block_reduce` but with predefined ``func=np.mean``."""
 
-    xp = xp or array_api_compat.array_namespace(ccd.data)
+    xp = _block_namespace(ccd, xp)
 
-    data = nddata.block_reduce(ccd, block_size, xp.mean)
+    if array_api_compat.is_numpy_namespace(xp):
+        data = nddata.block_reduce(ccd, block_size, xp.mean)
+    else:
+        # Like in block_reduce:
+        data = _blocks.block_reduce(ccd, block_size, xp.mean, xp=xp)
     # Like in block_reduce:
     if isinstance(ccd, CCDData):
         data = CCDData(data, unit=ccd.unit, meta=ccd.meta.copy())
     return data
 
 
-def block_replicate(ccd, block_size, conserve_sum=True):
+def block_replicate(ccd, block_size, conserve_sum=True, xp=None):
     """Thin wrapper around `astropy.nddata.block_replicate`."""
-    data = nddata.block_replicate(ccd, block_size, conserve_sum)
+    xp = _block_namespace(ccd, xp)
+    if array_api_compat.is_numpy_namespace(xp):
+        data = nddata.block_replicate(ccd, block_size, conserve_sum)
+    else:
+        # Like in block_reduce:
+        data = _blocks.block_replicate(ccd, block_size, conserve_sum, xp=xp)
     # Like in block_reduce:
     if isinstance(ccd, CCDData):
         data = CCDData(data, unit=ccd.unit, meta=ccd.meta.copy())
