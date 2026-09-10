@@ -179,13 +179,19 @@ What limitations should I be aware of?
   ``astropy.nddata``, which is numpy-only, for `numpy`_ arrays and an
   implementation written purely in terms of the array API standard for
   every other array library, so the result stays in the array library you
-  passed in. The two give identical results, with one exception:
+  passed in. The two differ only in dtype handling. First,
   ``block_average`` and ``block_replicate(..., conserve_sum=True)`` promote
   integer and boolean input to the array library's default real floating
   dtype, because some libraries (``array-api-strict``) refuse to divide or
   average integers rather than promoting them. `numpy`_ returns ``float64``
   in both cases anyway, so this differs only for a library whose default
-  real dtype is not ``float64``.
+  real dtype is not ``float64``. Second, on non-NumPy backends
+  ``block_replicate(..., conserve_sum=True)`` preserves a real floating
+  input's dtype (``float32`` stays ``float32``), whereas ``astropy.nddata``
+  upcasts ``float32`` and ``float16`` input to ``float64`` there. Note also
+  that the default ``block_reduce`` sum of integer or boolean input uses
+  the array library's default integer width, which is ``int32`` on `jax`_
+  unless 64-bit mode is enabled, so large blocks can overflow there.
 
 Which array library should I use?
 ---------------------------------

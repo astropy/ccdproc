@@ -52,18 +52,16 @@ xp : array namespace, optional
 """
 
 
-def _fill_doc(template=_COMMON_PARAMS, /, **substitutions):
+def _fill_doc(**substitutions):
     """
-    Fill a function docstring's ``{params}`` placeholder with ``template``
-    (`_COMMON_PARAMS` by default), applying ``substitutions`` to the
-    template first. The template is positional-only so that every keyword
-    is free to be a substitution; `ccdproc._blocks` passes its own.
+    Fill a function docstring's ``{params}`` placeholder with
+    `_COMMON_PARAMS`, applying ``substitutions`` to the template first.
     """
 
     def decorator(func):
         # ``python -OO`` strips docstrings; there is nothing to fill then.
         if func.__doc__:
-            params = template.format(**substitutions)
+            params = _COMMON_PARAMS.format(**substitutions)
             func.__doc__ = func.__doc__.format(
                 params=textwrap.indent(params, "    ").lstrip()
             )
