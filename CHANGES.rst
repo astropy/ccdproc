@@ -28,8 +28,8 @@ New Features
   it to NumPy through ``astropy.nddata``. ``block_average`` and
   ``block_replicate(..., conserve_sum=True)`` promote integer and boolean
   input to the library's default real floating dtype; the latter also
-  preserves a floating input's dtype, where ``astropy.nddata`` upcasts to
-  ``float64``. [#971]
+  preserves a floating input's dtype, where ``astropy.nddata`` currently
+  upcasts to ``float64`` (astropy/astropy#20360). [#971]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

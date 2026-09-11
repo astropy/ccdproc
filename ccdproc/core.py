@@ -1787,10 +1787,6 @@ def _namespace_for(ccd, xp):
     accepts working: they end up on the `astropy.nddata` path, which is
     where they went before any of this was array-API aware. Nothing here
     turns such an input into a non-numpy array.
-
-    Several functions in this module resolve a namespace this way inline
-    (`sigma_func`, `rebin`, `cosmicray_median`); this helper is written to
-    be usable by all of them, not just by the ``block_*`` wrappers below.
     """
     if xp is not None:
         return xp
@@ -1812,8 +1808,11 @@ def _block_dispatch(ccd, xp, astropy_func, native_func, *args):
     ccd : `~astropy.nddata.CCDData` or array-like
         The data to resample. A `~astropy.nddata.CCDData` comes back as a
         `~astropy.nddata.CCDData`; anything else comes back as an array.
-    xp : array namespace
-        The namespace the data belong to, as resolved by `_namespace_for`.
+    xp : array namespace or None
+        The namespace the data belong to, or `None` to infer it from
+        ``ccd``; either way it is resolved through `_namespace_for`. An
+        explicit namespace must be that of the data in ``ccd``; this is not
+        checked.
     astropy_func : callable
         The `astropy.nddata` function to call for a numpy namespace, as
         ``astropy_func(ccd, *args)``.
@@ -1837,6 +1836,7 @@ def _block_dispatch(ccd, xp, astropy_func, native_func, *args):
     array-API aware, this function and `ccdproc._blocks` are what gets
     deleted.
     """
+    xp = _namespace_for(ccd, xp)
     if array_api_compat.is_numpy_namespace(xp):
         data = astropy_func(ccd, *args)
     else:
@@ -1854,22 +1854,15 @@ def block_reduce(ccd, block_size, func=None, xp=None):
     # astropy's ``numpy.sum``, and ``xp.sum`` in the native version, which
     # promotes boolean input the way ``numpy.sum`` does.
     args = (block_size,) if func is None else (block_size, func)
-    return _block_dispatch(
-        ccd,
-        _namespace_for(ccd, xp),
-        nddata.block_reduce,
-        _blocks.block_reduce,
-        *args,
-    )
+    return _block_dispatch(ccd, xp, nddata.block_reduce, _blocks.block_reduce, *args)
 
 
 def block_average(ccd, block_size, xp=None):
     """Like `block_reduce` but with predefined ``func=np.mean``."""
-    xp = _namespace_for(ccd, xp)
     return _block_dispatch(
         ccd,
         xp,
-        partial(nddata.block_reduce, func=xp.mean),
+        partial(nddata.block_reduce, func=np.mean),
         _blocks.block_average,
         block_size,
     )
@@ -1879,7 +1872,7 @@ def block_replicate(ccd, block_size, conserve_sum=True, xp=None):
     """Thin wrapper around `astropy.nddata.block_replicate`."""
     return _block_dispatch(
         ccd,
-        _namespace_for(ccd, xp),
+        xp,
         nddata.block_replicate,
         _blocks.block_replicate,
         block_size,

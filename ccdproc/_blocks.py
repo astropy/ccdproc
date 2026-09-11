@@ -109,13 +109,34 @@ def _block_size(block_size, ndim):
     return tuple(int(size) for size in sizes)
 
 
+def _promote_for_division(data, xp):
+    """
+    Promote integer and boolean ``data`` for a true division; complex is
+    already floating and passes through unchanged.
+
+    Parameters
+    ----------
+    data : array
+        Input array.
+    xp : array namespace
+        Namespace to use.
+
+    Returns
+    -------
+    array
+        ``data``, promoted to the namespace's default real floating dtype
+        if it was integer or boolean; any floating input, real or complex,
+        is returned as it is.
+    """
+    if xp.isdtype(data.dtype, "complex floating"):
+        return data
+    return _promote_to_real(data, xp, array_api_compat.device(data))
+
+
 @support_nddata
 def block_reduce(data, block_size, func=None, *, xp=None):
     """
     Downsample a data array by applying a function to local blocks.
-
-    An axis that ``block_size`` does not divide evenly is trimmed from the
-    end, as in `astropy.nddata.block_reduce`.
 
     Parameters
     ----------
@@ -134,7 +155,8 @@ def block_reduce(data, block_size, func=None, *, xp=None):
         conserves the data sum.
     xp : array namespace, optional
         Namespace to use. Defaults to
-        ``array_api_compat.array_namespace(data)``.
+        ``array_api_compat.array_namespace(data)``. Must be the namespace of
+        ``data``; this is not checked.
 
     Returns
     -------
@@ -146,6 +168,9 @@ def block_reduce(data, block_size, func=None, *, xp=None):
 
     Notes
     -----
+    An axis that ``block_size`` does not divide evenly is trimmed from the
+    end, as in `astropy.nddata.block_reduce`.
+
     Boolean input is cast to the namespace's default integral dtype before
     the default ``xp.sum``, so that block-summing a mask counts the flagged
     pixels per block as `astropy.nddata.block_reduce` does; array-api-strict
@@ -153,7 +178,8 @@ def block_reduce(data, block_size, func=None, *, xp=None):
     ``func`` is left as it is, since promoting for an arbitrary reduction
     would be a guess: calling this with ``func=xp.mean`` on integer or
     boolean input therefore raises on array-api-strict, which is what
-    `block_average` promotes to avoid.
+    `block_average` promotes to avoid; the same applies to ``func=xp.sum``
+    given explicitly, which bypasses the promotion.
     """
     if xp is None:
         xp = array_api_compat.array_namespace(data)
@@ -210,7 +236,8 @@ def block_average(data, block_size, *, xp=None):
         but non-integral ones (``2.1``) are not.
     xp : array namespace, optional
         Namespace to use. Defaults to
-        ``array_api_compat.array_namespace(data)``.
+        ``array_api_compat.array_namespace(data)``. Must be the namespace of
+        ``data``; this is not checked.
 
     Returns
     -------
@@ -232,7 +259,7 @@ def block_average(data, block_size, *, xp=None):
     """
     if xp is None:
         xp = array_api_compat.array_namespace(data)
-    data = _promote_to_real(data, xp, array_api_compat.device(data))
+    data = _promote_for_division(data, xp)
     # ``data`` is a bare array by now, so the inner ``support_nddata`` has
     # nothing left to unpack and cannot warn a second time.
     return block_reduce(data, block_size, xp.mean, xp=xp)
@@ -258,7 +285,8 @@ def block_replicate(data, block_size, conserve_sum=True, *, xp=None):
         the sum of the input ``data``.
     xp : array namespace, optional
         Namespace to use. Defaults to
-        ``array_api_compat.array_namespace(data)``.
+        ``array_api_compat.array_namespace(data)``. Must be the namespace of
+        ``data``; this is not checked.
 
     Returns
     -------
@@ -276,7 +304,8 @@ def block_replicate(data, block_size, conserve_sum=True, *, xp=None):
     where `astropy.nddata.block_replicate` returns float64 for float32 (and
     for float16, and complex128 for complex64): it divides by
     ``numpy.prod(block_size)``, an ``int64`` scalar that NEP 50 promotes
-    against, while the divisor here is a Python int.
+    against, while the divisor here is a Python int (reported as
+    astropy/astropy#20360).
     """
     if xp is None:
         xp = array_api_compat.array_namespace(data)
@@ -288,9 +317,7 @@ def block_replicate(data, block_size, conserve_sum=True, *, xp=None):
         # array. math.prod, not xp.prod: the divisor is a Python int built
         # from host-side block sizes and dividing by it keeps the dtype of
         # ``data``, while an array divisor could promote it.
-        data = _promote_to_real(data, xp, array_api_compat.device(data)) / math.prod(
-            sizes
-        )
+        data = _promote_for_division(data, xp) / math.prod(sizes)
 
     # Give every axis a length-1 companion, broadcast that companion out to
     # the block size, then merge each pair back into one axis. This is the

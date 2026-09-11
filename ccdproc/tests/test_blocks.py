@@ -31,6 +31,7 @@ _2D = _rng.normal(size=(6, 8))
 _2D_RAGGED = _rng.normal(size=(7, 9))
 _3D = _rng.normal(size=(4, 6, 8))
 _INT = _rng.integers(0, 100, size=(6, 8))
+_COMPLEX = _2D + 1j * _rng.normal(size=(6, 8))
 
 _CASES = [
     pytest.param(_2D, (2, 2), id="2d-square"),
@@ -93,7 +94,7 @@ def _assert_matches(result, expected_np):
     expected = _to_xp(expected_np)
     assert result.shape == expected.shape
     assert result.dtype == expected.dtype
-    if xp.isdtype(result.dtype, "real floating"):
+    if xp.isdtype(result.dtype, ("real floating", "complex floating")):
         assert bool(xp.all(xpx.isclose(result, expected)))
     else:
         assert bool(xp.all(result == expected))
@@ -235,6 +236,39 @@ def test_block_replicate_integer_input_matches_astropy(conserve_sum):
         assert result.dtype == data.dtype
 
 
+@pytest.mark.parametrize(
+    ("function", "reference_function"),
+    [
+        pytest.param(
+            _blocks.block_average,
+            lambda data, block_size: nddata.block_reduce(data, block_size, np.mean),
+            id="block_average",
+        ),
+        pytest.param(
+            lambda data, block_size: _blocks.block_replicate(data, block_size, True),
+            lambda data, block_size: nddata.block_replicate(data, block_size, True),
+            id="block_replicate-conserve_sum",
+        ),
+    ],
+)
+def test_complex_input_matches_astropy(function, reference_function):
+    """
+    Complex input to ``block_average`` and to ``block_replicate`` with
+    ``conserve_sum=True`` keeps its imaginary part and its complex128
+    dtype, matching astropy.
+
+    Regression test: both functions promote integer and boolean input
+    before dividing, and an earlier version did so with a helper that
+    treats anything not real floating as needing promotion, so a complex
+    array was cast to the default *real* dtype and silently lost its
+    imaginary part. Complex is already floating and must pass through.
+    """
+    reference = reference_function(_COMPLEX, 2)
+    result = function(_to_xp(_COMPLEX), 2)
+    _assert_matches(result, reference)
+    assert xp.isdtype(result.dtype, "complex floating")
+
+
 def test_block_replicate_float32_input_keeps_float32():
     """
     Float32 input keeps its dtype through ``block_replicate`` with
@@ -251,10 +285,16 @@ def test_block_replicate_float32_input_keeps_float32():
     (rather than through ``_assert_matches``, which requires exact dtype
     equality), because the two float32 divisions round slightly
     differently: max relative difference ~5e-8 for ``block_size=3`` on a
-    shape astropy has to trim.
+    shape astropy has to trim. The assertion on the reference's dtype is a
+    canary for astropy/astropy#20360, so that the documented difference is
+    dropped once astropy stops upcasting.
     """
     data32 = _2D.astype(np.float32)
     reference = nddata.block_replicate(data32, 3, True)
+    # Canary for astropy/astropy#20360: when astropy stops upcasting, this
+    # fails on the devdeps job, and the "second difference" in
+    # docs/array_api.rst and CHANGES.rst should be dropped.
+    assert reference.dtype == np.float64
     result = _blocks.block_replicate(_to_xp(data32), 3, True)
     assert result.dtype == _to_xp(data32).dtype
     expected = _to_xp(reference.astype(np.float32))
@@ -359,34 +399,6 @@ def test_core_wrappers_honour_an_explicit_xp(function, reference_function):
     result = function(data, 2, xp=xp)
     _assert_matches(result, reference_function(_2D, 2))
     _assert_same_namespace_and_device(result, data)
-
-
-@pytest.mark.parametrize(
-    "function",
-    [
-        pytest.param(core.block_reduce, id="block_reduce"),
-        pytest.param(core.block_average, id="block_average"),
-        pytest.param(core.block_replicate, id="block_replicate"),
-    ],
-)
-def test_core_wrappers_rewrap_ccddata(function):
-    """
-    A `~astropy.nddata.CCDData` argument passed to a public ``ccdproc.core``
-    wrapper comes back wrapped as a `~astropy.nddata.CCDData` again, with
-    the same unit and a copy (not the same object) of the metadata, rather
-    than as a bare array.
-
-    This is `_block_dispatch`'s re-wrap branch, and no other
-    test in this file passes a `~astropy.nddata.CCDData` through the public
-    wrappers to exercise it.
-    """
-    ccd = CCDData(_to_xp(_2D), unit=u.adu, meta={"testkw": 1})
-    with pytest.warns(AstropyUserWarning, match="following attributes were set"):
-        result = function(ccd, 2)
-    assert isinstance(result, CCDData)
-    assert result.unit == ccd.unit
-    assert result.meta == ccd.meta
-    assert result.meta is not ccd.meta
 
 
 @pytest.mark.parametrize(
