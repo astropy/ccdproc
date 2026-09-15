@@ -233,14 +233,18 @@ def _sigma_clip_mask(
     original data, ``~isfinite(data) | (data < lower) | (data > upper)``,
     rather than the union of the values rejected in each iteration: an
     earlier iteration's rejection can be undone if the bounds widen.
-    Non-finite values are always masked. A slice whose values are all
-    rejected before the last iteration gets NaN bounds and so keeps only
-    its non-finite entries masked. This is what astropy's compiled path
-    does on every astropy version. Astropy's python loop, taken when
-    ``cenfunc`` or ``stdfunc`` is a callable, did the same with
-    ``copy=False`` up to astropy 8.0 but from 8.1 masks the union of every
-    iteration's rejections, so for a callable the numpy path of
-    `Combiner.sigma_clipping` can differ from this one in those corners.
+    Non-finite values are always masked. A slice whose remaining values
+    are all rejected by an iteration stops iterating there and keeps that
+    iteration's bounds, so every value in it ends up masked. This is what
+    astropy's compiled path does once fixed for astropy/astropy#20331
+    (astropy 8.0.2); before that fix it went on iterating the empty slice,
+    which read out of bounds and, when it did not crash, returned NaN
+    bounds that left the slice's finite values unmasked. Astropy's python
+    loop, taken when ``cenfunc`` or ``stdfunc`` is a callable, applied the
+    last iteration's bounds with ``copy=False`` up to astropy 8.0 but from
+    8.1 masks the union of every iteration's rejections, so for a callable
+    the numpy path of `Combiner.sigma_clipping` can differ from this one
+    when the bounds widen between iterations.
 
     The ``'median'``, ``'mean'``, ``'std'`` and ``'mad_std'`` options use
     the same NaN-aware reductions as the ``Combiner`` combination methods.
@@ -300,6 +304,7 @@ def _sigma_clip_mask(
     invalid = ~xp.isfinite(data)
     filtered = xp.where(invalid, nan, data)
 
+    lower = upper = None
     for _ in range(maxiters) if maxiters else itertools.count():
         with warnings.catch_warnings():
             # All-NaN slices make numpy's nan-functions warn; astropy
@@ -307,8 +312,19 @@ def _sigma_clip_mask(
             warnings.simplefilter("ignore", RuntimeWarning)
             center = xp.expand_dims(center_func(filtered, axis=axis), axis=axis)
             deviation = xp.expand_dims(std_func(filtered, axis=axis), axis=axis)
-        lower = center - deviation * sigma_lower
-        upper = center + deviation * sigma_upper
+        new_lower = center - deviation * sigma_lower
+        new_upper = center + deviation * sigma_upper
+        if lower is not None:
+            # A slice that the previous iteration emptied has all-NaN
+            # statistics now (a slice with at least one value left has
+            # finite ones). astropy's compiled path stops iterating such a
+            # slice and keeps the bounds that emptied it (astropy#20393),
+            # so keep them here too; the comparison below then rejects
+            # nothing more in the slice, its values being NaN already.
+            emptied = xp.isnan(new_lower)
+            new_lower = xp.where(emptied, lower, new_lower)
+            new_upper = xp.where(emptied, upper, new_upper)
+        lower, upper = new_lower, new_upper
         rejected = (filtered < lower) | (filtered > upper)
         if maxiters is None and not bool(xp.any(rejected)):
             break

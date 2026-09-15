@@ -1745,12 +1745,24 @@ def _sigma_clip_reference(np_data, **kwargs):
     same with ``copy=False``, which is what ``Combiner.sigma_clipping``
     passes, up to astropy 8.0; from 8.1 (astropy#19858) it masks the union
     of every iteration's rejections whatever ``copy`` is. The two differ
-    only when the bounds widen between iterations or a slice is clipped
-    entirely, which the mad_std cases of the data sets provoke.
-    ``_sigma_clip_mask`` follows the compiled path, so the reference is
-    built from the bounds. For the compiled path astropy's own mask is
-    checked against it too: that is what numpy data get from
-    ``Combiner.sigma_clipping``, and the other backends must agree with it.
+    only when the bounds widen between iterations, which the mad_std cases
+    of the data sets provoke. ``_sigma_clip_mask`` follows the compiled
+    path, so the reference is built from the bounds. For the compiled path
+    astropy's own mask is checked against it too: that is what numpy data
+    get from ``Combiner.sigma_clipping``, and the other backends must
+    agree with it.
+
+    A slice that an iteration empties (also provoked by the mad_std cases)
+    comes back with NaN bounds from the python loop and from the compiled
+    path of astropy versions without the fix for astropy#20331 (astropy
+    PR #20393, in 8.0.2), which iterated on over the empty slice; the
+    fixed compiled path stops at the iteration that emptied the slice and
+    returns its finite bounds. Both the reference and ``_sigma_clip_mask``
+    mask such a slice entirely, as the fixed compiled path does, so NaN
+    bounds are read here as "everything rejected". Astropy's own mask is
+    then checked only where its bounds are finite (or the data are not),
+    because the unfixed compiled path leaves an emptied slice's finite
+    values unmasked; on a fixed astropy that is the whole array.
     """
     # Normalize a tuple axis once, up front: astropy's bottleneck dispatch
     # cannot take negative tuple entries, and the bounds shape below needs
@@ -1774,7 +1786,12 @@ def _sigma_clip_reference(np_data, **kwargs):
     lower = np.reshape(lower, shape)
     upper = np.reshape(upper, shape)
     with np.errstate(invalid="ignore"):
-        expected = ~np.isfinite(np_data) | (np_data < lower) | (np_data > upper)
+        expected = (
+            ~np.isfinite(np_data)
+            | (np_data < lower)
+            | (np_data > upper)
+            | np.isnan(lower)  # an emptied slice: everything rejected
+        )
 
     if isinstance(kwargs.get("cenfunc", "median"), str) and isinstance(
         kwargs.get("stdfunc", "std"), str
@@ -1782,7 +1799,8 @@ def _sigma_clip_reference(np_data, **kwargs):
         from_astropy = np.ma.getmaskarray(
             sigma_clip(np_data.copy(), masked=True, copy=False, **kwargs)
         )
-        assert np.array_equal(from_astropy, expected)
+        checked = ~np.isnan(lower) | ~np.isfinite(np_data)
+        assert np.array_equal(from_astropy[checked], expected[checked])
     return expected
 
 
