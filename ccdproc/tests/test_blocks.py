@@ -272,29 +272,26 @@ def test_complex_input_matches_astropy(function, reference_function):
 def test_block_replicate_float32_input_keeps_float32():
     """
     Float32 input keeps its dtype through ``block_replicate`` with
-    ``conserve_sum=True``, where `astropy.nddata.block_replicate` promotes
-    it to float64.
+    ``conserve_sum=True``, on any astropy version.
 
-    This is a documented difference: astropy divides by ``numpy.prod(block_size)``,
-    an ``int64`` scalar that NEP 50 promotes against, while the native
-    version divides by a Python int and so keeps the input's floating
-    dtype -- deliberately, since FITS images are overwhelmingly float32 and
-    doubling their size on upsampling is the wrong default for the GPU and
-    lazy backends this module exists for. Values are compared after casting
-    astropy's float64 reference down to float32, with a relaxed ``rtol``
-    (rather than through ``_assert_matches``, which requires exact dtype
-    equality), because the two float32 divisions round slightly
-    differently: max relative difference ~5e-8 for ``block_size=3`` on a
-    shape astropy has to trim. The assertion on the reference's dtype is a
-    canary for astropy/astropy#20360, so that the documented difference is
-    dropped once astropy stops upcasting.
+    `astropy.nddata.block_replicate` promoted such input to float64 before
+    the fix for astropy/astropy#20360 (astropy PR #20364, in 7.2.3 and
+    8.0.2): it divided by ``numpy.prod(block_size)``, an ``int64`` scalar
+    that NEP 50 promotes against, while the native version divides by a
+    Python int and so keeps the input's floating dtype -- deliberately,
+    since FITS images are overwhelmingly float32 and doubling their size on
+    upsampling is the wrong default for the GPU and lazy backends this
+    module exists for. The test does not depend on which astropy it runs
+    against: it accepts either reference dtype and compares values after
+    casting the reference to float32, with a relaxed ``rtol`` rather than
+    through ``_assert_matches``, which requires exact dtype equality,
+    because a float64 division rounded to float32 can differ from a
+    float32 division: max relative difference ~5e-8 for ``block_size=3``
+    on a shape astropy has to trim.
     """
     data32 = _2D.astype(np.float32)
     reference = nddata.block_replicate(data32, 3, True)
-    # Canary for astropy/astropy#20360: when astropy stops upcasting, this
-    # fails on the devdeps job, and the "second difference" in
-    # docs/array_api.rst and CHANGES.rst should be dropped.
-    assert reference.dtype == np.float64
+    assert reference.dtype in (np.float32, np.float64)
     result = _blocks.block_replicate(_to_xp(data32), 3, True)
     assert result.dtype == _to_xp(data32).dtype
     expected = _to_xp(reference.astype(np.float32))

@@ -187,10 +187,11 @@ What limitations should I be aware of?
   in both cases anyway, so this differs only for a library whose default
   real dtype is not ``float64``. Second, on non-NumPy backends
   ``block_replicate(..., conserve_sum=True)`` preserves a real floating
-  input's dtype (``float32`` stays ``float32``), whereas ``astropy.nddata``
-  upcasts ``float32`` and ``float16`` input to ``float64`` there
-  (`astropy/astropy#20360 <https://github.com/astropy/astropy/issues/20360>`_;
-  this difference goes away once that is fixed). Note also
+  input's dtype (``float32`` stays ``float32``), which ``astropy.nddata``
+  only does from the fix for
+  `astropy/astropy#20360 <https://github.com/astropy/astropy/issues/20360>`_
+  (astropy 7.2.3 and 8.0.2); earlier versions upcast ``float32`` and
+  ``float16`` input to ``float64`` there. Note also
   that the default ``block_reduce`` sum of integer or boolean input uses
   the array library's default integer width, which is ``int32`` on `jax`_
   unless 64-bit mode is enabled, so large blocks can overflow there.
