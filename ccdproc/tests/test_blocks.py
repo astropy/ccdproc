@@ -9,6 +9,9 @@ The reference values always come from ``astropy.nddata`` applied to the
 implementation the numpy code path still uses.
 """
 
+import importlib
+from functools import partial
+
 import array_api_compat
 import array_api_extra as xpx
 import numpy as np
@@ -21,6 +24,11 @@ from astropy.utils.exceptions import AstropyUserWarning
 from ccdproc import _blocks, core
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
+
+# The array library itself rather than the array-api-compat wrapper the rest
+# of the suite uses. For numpy and dask the two differ; for jax and
+# array-api-strict, which are their own compat namespace, they coincide.
+_RAW_MODULE = importlib.import_module(xp.__name__.removeprefix("array_api_compat."))
 
 _rng = np.random.default_rng(3141)
 
@@ -46,14 +54,25 @@ _CASES = [
     pytest.param(_3D, 2, id="3d-scalar"),
 ]
 
+# Block sizes for which no axis pair has to be merged, so the reshape at the
+# end of ``block_replicate`` can return a view of its input rather than a
+# fresh array. Paired with ``conserve_sum`` because that decides whether the
+# view is of the caller's own data or of a freshly divided copy.
+_DEGENERATE_REPLICATE_CASES = [
+    pytest.param(_2D, 1, True, id="all-ones-conserve_sum"),
+    pytest.param(_2D, 1, False, id="all-ones-no-conserve_sum"),
+    pytest.param(_2D[:3, :1], (1, 4), False, id="singleton-axis-no-conserve_sum"),
+]
+
 # ``block_size`` values astropy rejects, paired with a substring of the
-# `ValueError` astropy raises for each. The order of the three checks
-# matters: (0, 2.5) is caught by the positivity check, not the integrality
-# one, so its expected substring is the positivity one. The substrings are
-# asserted with ``pytest.raises(..., match=...)`` rather than compared
-# byte-for-byte against astropy's live message: astropy's exact wording is a
-# private implementation detail this suite should not be coupled to, only
-# which of the three checks fires.
+# `ValueError` raised for each. The order of the three checks matters:
+# (0, 2.5) is caught by the positivity check, not the integrality one, so its
+# expected substring is the positivity one. NaN passes the positivity check,
+# since every comparison with it is false, and so reaches the integrality
+# one. The substrings are asserted with ``pytest.raises(..., match=...)``
+# rather than compared byte-for-byte against astropy's live message:
+# astropy's exact wording is a private implementation detail this suite
+# should not be coupled to, only which of the three checks fires.
 _INVALID_BLOCK_SIZES = [
     pytest.param(0, "strictly positive", id="zero"),
     pytest.param(-2, "strictly positive", id="negative"),
@@ -64,19 +83,70 @@ _INVALID_BLOCK_SIZES = [
         (2, 2, 2), "same length as the number of data dimensions", id="too-long"
     ),
     pytest.param((0, 2.5), "strictly positive", id="positivity-beats-integrality"),
+    pytest.param(float("nan"), "must be integers", id="nan"),
+    pytest.param(float("inf"), "must be integers", id="inf"),
+    pytest.param((2, float("inf")), "must be integers", id="inf-entry"),
+]
+
+
+def _astropy_block_average(data, block_size):
+    """astropy's spelling of ``block_average``: ``block_reduce`` with ``np.mean``."""
+    return nddata.block_reduce(data, block_size, np.mean)
+
+
+# The native ``_blocks`` functions, each paired with the plain
+# ``astropy.nddata`` call it must agree with value for value.
+_NATIVE_AND_REFERENCES = [
+    pytest.param(_blocks.block_reduce, nddata.block_reduce, id="block_reduce"),
+    pytest.param(
+        partial(_blocks.block_reduce, func=xp.mean),
+        _astropy_block_average,
+        id="block_reduce-explicit-mean",
+    ),
+    pytest.param(_blocks.block_average, _astropy_block_average, id="block_average"),
+    pytest.param(
+        partial(_blocks.block_replicate, conserve_sum=True),
+        partial(nddata.block_replicate, conserve_sum=True),
+        id="block_replicate-conserve_sum",
+    ),
+    pytest.param(
+        partial(_blocks.block_replicate, conserve_sum=False),
+        partial(nddata.block_replicate, conserve_sum=False),
+        id="block_replicate-no-conserve_sum",
+    ),
 ]
 
 # The public ``ccdproc.core`` wrappers, each paired with the plain
 # ``astropy.nddata`` call it must agree with. Shared by every test that
 # needs both halves of that pairing, so the pairing itself is written once.
+# The last two rows cover the wrappers' own argument forwarding: the
+# ``args = (block_size,) if func is None else ...`` branch in
+# ``core.block_reduce`` and ``conserve_sum`` in ``core.block_replicate``.
 _CORE_WRAPPERS_AND_REFERENCES = [
     pytest.param(core.block_reduce, nddata.block_reduce, id="block_reduce"),
-    pytest.param(
-        core.block_average,
-        lambda data, block_size: nddata.block_reduce(data, block_size, np.mean),
-        id="block_average",
-    ),
+    pytest.param(core.block_average, _astropy_block_average, id="block_average"),
     pytest.param(core.block_replicate, nddata.block_replicate, id="block_replicate"),
+    pytest.param(
+        partial(core.block_reduce, func=xp.mean),
+        _astropy_block_average,
+        id="block_reduce-explicit-func",
+    ),
+    pytest.param(
+        partial(core.block_replicate, conserve_sum=False),
+        partial(nddata.block_replicate, conserve_sum=False),
+        id="block_replicate-no-conserve",
+    ),
+]
+
+# The same pairings minus the explicit-``func`` row, for the tests whose
+# input is always numpy and so always takes the astropy path: there astropy
+# would call the backend's ``mean`` -- ``dask.array.mean``, say -- on a numpy
+# array and hand back something that is not a `numpy.ndarray`, which says
+# nothing about ccdproc's dispatch.
+_CORE_WRAPPERS_ON_NUMPY_INPUT = [
+    case
+    for case in _CORE_WRAPPERS_AND_REFERENCES
+    if case.id != "block_reduce-explicit-func"
 ]
 
 
@@ -111,39 +181,25 @@ def _assert_same_namespace_and_device(result, data):
     assert array_api_compat.device(result) == array_api_compat.device(data)
 
 
-@pytest.mark.parametrize(
-    ("func", "reference_func"),
-    [
-        pytest.param(None, np.sum, id="default-sum"),
-        pytest.param(xp.mean, np.mean, id="mean"),
-    ],
-)
+@pytest.mark.parametrize(("function", "reference_function"), _NATIVE_AND_REFERENCES)
 @pytest.mark.parametrize(("data", "block_size"), _CASES)
-def test_block_reduce_matches_astropy(data, block_size, func, reference_func):
+def test_native_block_functions_match_astropy(
+    data, block_size, function, reference_function
+):
     """
-    The native ``block_reduce`` reproduces `astropy.nddata.block_reduce` for
-    square, rectangular and scalar block sizes, 1-d/2-d/3-d input, and
-    shapes the block size does not divide evenly (which astropy trims).
-    Parity with astropy is the whole contract of the native path: numpy
-    input still goes to astropy, so any divergence would make a result
-    depend on the array library.
-    """
-    reference = nddata.block_reduce(data, block_size, reference_func)
-    result = _blocks.block_reduce(_to_xp(data), block_size, func)
-    _assert_matches(result, reference)
+    Each native block function reproduces its `astropy.nddata` counterpart,
+    value for value and dtype for dtype, over square, rectangular and scalar
+    block sizes, 1-d/2-d/3-d input, and shapes the block size does not divide
+    evenly (which astropy trims).
 
-
-@pytest.mark.parametrize("conserve_sum", [True, False])
-@pytest.mark.parametrize(("data", "block_size"), _CASES)
-def test_block_replicate_matches_astropy(data, block_size, conserve_sum):
+    Parity with the numpy path is the whole contract of the native path:
+    numpy input still goes to astropy, so any divergence would make a result
+    depend on which array library the caller happens to use. The dtype
+    differences that *are* deliberate are floating-point-only here and are
+    pinned by the integer, boolean, complex and float32 tests below.
     """
-    The native ``block_replicate`` reproduces
-    `astropy.nddata.block_replicate` for the same block-size and
-    dimensionality spread, with ``conserve_sum`` both on and off. Same
-    reason as for ``block_reduce``: the two code paths must not disagree.
-    """
-    reference = nddata.block_replicate(data, block_size, conserve_sum)
-    result = _blocks.block_replicate(_to_xp(data), block_size, conserve_sum)
+    reference = reference_function(data, block_size)
+    result = function(_to_xp(data), block_size)
     _assert_matches(result, reference)
 
 
@@ -157,7 +213,6 @@ def test_block_reduce_integer_input_matches_astropy():
     reference = nddata.block_reduce(_INT, 2)
     result = _blocks.block_reduce(_to_xp(_INT), 2)
     _assert_matches(result, reference)
-    assert xp.isdtype(result.dtype, "integral")
 
 
 def test_block_reduce_bool_input_matches_astropy():
@@ -176,7 +231,23 @@ def test_block_reduce_bool_input_matches_astropy():
     reference = nddata.block_reduce(mask, 2)
     result = _blocks.block_reduce(_to_xp(mask), 2)
     _assert_matches(result, reference)
-    assert xp.isdtype(result.dtype, "integral")
+
+
+def test_block_reduce_explicit_sum_matches_the_default_on_a_boolean_mask():
+    """
+    Spelling out the default reduction, ``func=xp.sum``, gives the same
+    result on a boolean mask as omitting ``func`` altogether.
+
+    The boolean-to-integer promotion above used to be gated on ``func is
+    None``, so a caller who wrote the documented default out, or factored it
+    into a variable, got a ``TypeError`` from array-api-strict where the
+    plain call worked. The gate now also accepts ``xp.sum`` itself.
+    """
+    mask = _to_xp(_rng.integers(0, 2, size=(4, 4)).astype(bool))
+    default = core.block_reduce(mask, 2)
+    explicit = core.block_reduce(mask, 2, func=xp.sum)
+    assert explicit.dtype == default.dtype
+    assert bool(xp.all(explicit == default))
 
 
 @pytest.mark.parametrize(
@@ -186,14 +257,10 @@ def test_block_reduce_bool_input_matches_astropy():
         pytest.param(core.block_average, id="core-wrapper"),
     ],
 )
-@pytest.mark.parametrize(
-    "data",
-    [pytest.param(_2D, id="float-input"), pytest.param(_INT, id="integer-input")],
-)
-def test_block_average_matches_astropy(function, data):
+def test_block_average_integer_input_matches_astropy(function):
     """
     ``block_average`` reproduces ``astropy.nddata.block_reduce(..., np.mean)``
-    for float and for integer input, and always returns a float.
+    for integer input, returning a float.
 
     numpy's ``mean`` promotes an integer array on its own, and jax and dask
     follow it, but array-api-strict refuses a non-floating ``mean``
@@ -202,10 +269,9 @@ def test_block_average_matches_astropy(function, data):
     raise on the fourth; this pins that all four behave the way numpy
     already did.
     """
-    reference = nddata.block_reduce(data, 2, np.mean)
-    result = function(_to_xp(data), 2)
+    reference = _astropy_block_average(_INT, 2)
+    result = function(_to_xp(_INT), 2)
     _assert_matches(result, reference)
-    assert xp.isdtype(result.dtype, "real floating")
 
 
 @pytest.mark.parametrize("conserve_sum", [True, False])
@@ -227,12 +293,7 @@ def test_block_replicate_integer_input_matches_astropy(conserve_sum):
     result = _blocks.block_replicate(data, 2, conserve_sum)
     _assert_matches(result, reference)
 
-    if conserve_sum:
-        default_real = xp.__array_namespace_info__().default_dtypes(device=xp_device)[
-            "real floating"
-        ]
-        assert result.dtype == default_real
-    else:
+    if not conserve_sum:
         assert result.dtype == data.dtype
 
 
@@ -241,7 +302,7 @@ def test_block_replicate_integer_input_matches_astropy(conserve_sum):
     [
         pytest.param(
             _blocks.block_average,
-            lambda data, block_size: nddata.block_reduce(data, block_size, np.mean),
+            _astropy_block_average,
             id="block_average",
         ),
         pytest.param(
@@ -266,7 +327,6 @@ def test_complex_input_matches_astropy(function, reference_function):
     reference = reference_function(_COMPLEX, 2)
     result = function(_to_xp(_COMPLEX), 2)
     _assert_matches(result, reference)
-    assert xp.isdtype(result.dtype, "complex floating")
 
 
 def test_block_replicate_float32_input_keeps_float32():
@@ -282,20 +342,75 @@ def test_block_replicate_float32_input_keeps_float32():
     since FITS images are overwhelmingly float32 and doubling their size on
     upsampling is the wrong default for the GPU and lazy backends this
     module exists for. The test does not depend on which astropy it runs
-    against: it accepts either reference dtype and compares values after
-    casting the reference to float32, with a relaxed ``rtol`` rather than
-    through ``_assert_matches``, which requires exact dtype equality,
-    because a float64 division rounded to float32 can differ from a
-    float32 division: max relative difference ~5e-8 for ``block_size=3``
-    on a shape astropy has to trim.
+    against: it compares values after casting the reference to float32, with
+    a relaxed ``rtol`` rather than through ``_assert_matches``, which
+    requires exact dtype equality, because a float64 division rounded to
+    float32 can differ from a float32 division: max relative difference
+    ~5e-8 for ``block_size=3`` on a shape astropy has to trim.
     """
     data32 = _2D.astype(np.float32)
     reference = nddata.block_replicate(data32, 3, True)
-    assert reference.dtype in (np.float32, np.float64)
     result = _blocks.block_replicate(_to_xp(data32), 3, True)
-    assert result.dtype == _to_xp(data32).dtype
+    assert result.dtype == xp.float32
     expected = _to_xp(reference.astype(np.float32))
     assert bool(xp.all(xpx.isclose(result, expected, rtol=1e-6)))
+
+
+@pytest.mark.parametrize(
+    ("data", "block_size", "conserve_sum"), _DEGENERATE_REPLICATE_CASES
+)
+def test_block_replicate_degenerate_block_size_matches_astropy(
+    data, block_size, conserve_sum
+):
+    """
+    A block size that replicates nothing -- all ones, or a size greater than
+    one only on a length-one axis -- still gives astropy's shape, values and
+    dtype.
+
+    These are the cases in which the final ``reshape`` has no axis pair to
+    merge and so can hand back a view; the copy that fixes that (pinned by
+    the test below) must not change the result itself, and nothing else in
+    the suite exercises a block size of one.
+    """
+    reference = nddata.block_replicate(data, block_size, conserve_sum)
+    result = _blocks.block_replicate(_to_xp(data), block_size, conserve_sum)
+    _assert_matches(result, reference)
+
+
+@pytest.mark.backend_skip(
+    "jax",
+    reason="jax arrays are immutable, so neither the input nor the result of "
+    "any function can be assigned into",
+)
+@pytest.mark.parametrize(
+    ("data", "block_size", "conserve_sum"), _DEGENERATE_REPLICATE_CASES
+)
+def test_block_replicate_degenerate_block_size_returns_a_fresh_writable_array(
+    data, block_size, conserve_sum
+):
+    """
+    For a block size that replicates nothing, the result is a fresh writable
+    array rather than a view of the input.
+
+    When every axis has ``length == 1`` or ``size == 1`` the broadcast is a
+    no-op and the final ``reshape`` returns a view, which with
+    ``conserve_sum=False`` is the caller's own data: mutating the input
+    changed the result, and the result was read-only, so assigning into it
+    raised and a `~astropy.nddata.CCDData` built from it had read-only
+    ``.data``. astropy's ``numpy.repeat`` always returns a fresh writable
+    array, so this pinned parity was quietly missing.
+    """
+    # A private copy: on the numpy backend ``_to_xp`` hands back the module
+    # level array itself, and this test writes into its input.
+    source = _to_xp(data.copy())
+    result = _blocks.block_replicate(source, block_size, conserve_sum)
+    before = xp.asarray(result, copy=True)
+
+    source[0, 0] = xp.asarray(-999.0, device=xp_device)
+    assert bool(xp.all(result == before))
+
+    result[0, 0] = xp.asarray(1.0, device=xp_device)
+    assert float(result[0, 0]) == 1.0
 
 
 @pytest.mark.parametrize(
@@ -306,25 +421,56 @@ def test_block_replicate_float32_input_keeps_float32():
     ],
 )
 @pytest.mark.parametrize(("block_size", "match"), _INVALID_BLOCK_SIZES)
-def test_invalid_block_size_matches_astropy_message(function, block_size, match):
+def test_invalid_block_size_is_rejected(function, block_size, match):
     """
-    An invalid ``block_size`` raises `ValueError` on both the astropy and
-    native paths, and the same one of astropy's three checks (positivity,
-    then length, then integrality) fires first on each -- ``(0, 2.5)`` is
-    invalid twice over and must report the same one of the two as astropy.
+    An invalid ``block_size`` raises `ValueError`, and the expected one of
+    the three checks (positivity, then length, then integrality) fires
+    first -- ``(0, 2.5)`` is invalid twice over and must report the
+    positivity failure, and a NaN or infinite size must report the
+    integrality one rather than escaping as a `ValueError` or
+    `OverflowError` from ``int()``.
 
-    The substrings, not astropy's exact wording, are what is pinned:
-    the parity was already leaky (e.g. a 2-d block size raises a different
-    message than astropy for some invalid shapes, and non-finite sizes
-    diverge further, see ``test_non_finite_block_size_is_rejected_as_non_integral``
-    below), and no other test in this suite compares error text to another
-    library byte for byte.
+    Only ccdproc's own messages are pinned, by substring: astropy's live
+    error text is not something this suite should assert on, since a
+    rewording upstream would fail the devdeps job for a reason ccdproc does
+    not control, and ``_block_size`` explicitly does not undertake to track
+    that wording.
     """
-    astropy_function = getattr(nddata, function.__name__)
-    with pytest.raises(ValueError, match=match):
-        astropy_function(_2D, block_size)
     with pytest.raises(ValueError, match=match):
         function(_to_xp(_2D), block_size)
+
+
+@pytest.mark.backend_skip(
+    "numpy",
+    "jax",
+    "array-api-strict",
+    "cupy",
+    reason="only dask produces arrays whose shape is not fully known",
+)
+@pytest.mark.parametrize(
+    "function",
+    [
+        pytest.param(core.block_reduce, id="block_reduce"),
+        pytest.param(core.block_average, id="block_average"),
+        pytest.param(core.block_replicate, id="block_replicate"),
+    ],
+)
+def test_unknown_shape_is_rejected_with_a_clear_message(function):
+    """
+    A dask array with unknown chunk sizes is rejected with a message that
+    names the fix, rather than with whatever the Python arithmetic on the
+    shape happens to raise.
+
+    The native path computes block counts from ``data.shape`` in plain
+    Python, and dask reports an unknown chunk size as a ``nan`` float, so
+    without this check the call died with ``cannot convert float NaN to
+    integer``, which names neither dask nor chunks.
+    """
+    unknown = _to_xp(_2D)
+    unknown = unknown[unknown[:, 0] > -1]
+    assert any(not isinstance(length, int) for length in unknown.shape)
+    with pytest.raises(ValueError, match="fully known shape"):
+        function(unknown, 2)
 
 
 @pytest.mark.parametrize(
@@ -383,23 +529,31 @@ def test_ccddata_input_preserves_device():
 @pytest.mark.parametrize(
     ("function", "reference_function"), _CORE_WRAPPERS_AND_REFERENCES
 )
-def test_core_wrappers_honour_an_explicit_xp(function, reference_function):
+@pytest.mark.parametrize(
+    "namespace",
+    [pytest.param(xp, id="compat"), pytest.param(_RAW_MODULE, id="raw-module")],
+)
+def test_core_wrappers_honour_an_explicit_xp(namespace, function, reference_function):
     """
     An explicit ``xp`` is used as given instead of being inferred from the
-    data, and the result is unchanged by passing it.
+    data, and the result is unchanged by passing it, whether the caller
+    names the array-api-compat namespace or the plain array library module.
 
-    The ``xp`` keyword is part of the wrappers' public signature so a
-    caller can name the namespace up front; this pins that the keyword is
-    honoured on every backend and still selects the astropy path on numpy.
+    The ``xp`` keyword is part of the wrappers' public signature so a caller
+    can name the namespace up front. Regression test for the raw-module
+    half: a plain module such as ``dask.array`` used to be forwarded
+    verbatim to ``_blocks``, which needs the array-API spellings
+    ``isdtype``, ``permute_dims`` and ``__array_namespace_info__`` that such
+    a module may not have, so all three wrappers raised `AttributeError`.
     """
     data = _to_xp(_2D)
-    result = function(data, 2, xp=xp)
+    result = function(data, 2, xp=namespace)
     _assert_matches(result, reference_function(_2D, 2))
     _assert_same_namespace_and_device(result, data)
 
 
 @pytest.mark.parametrize(
-    ("function", "reference_function"), _CORE_WRAPPERS_AND_REFERENCES
+    ("function", "reference_function"), _CORE_WRAPPERS_ON_NUMPY_INPUT
 )
 @pytest.mark.parametrize(
     "wrap",
@@ -414,7 +568,7 @@ def test_core_wrappers_accept_nddata_and_list_input(function, reference_function
     path and comes back as a plain `numpy.ndarray`, matching astropy, on
     every backend the suite runs against.
 
-    Regression test: an earlier version of ``_namespace_for`` only
+    Regression test: an earlier version of the namespace resolution only
     unwrapped `~astropy.nddata.CCDData` and let
     ``array_api_compat.array_namespace`` reject everything else, so a plain
     `~astropy.nddata.NDData` or nested list raised `TypeError` where
@@ -427,28 +581,3 @@ def test_core_wrappers_accept_nddata_and_list_input(function, reference_function
     assert isinstance(result, np.ndarray)
     assert not isinstance(result, CCDData)
     np.testing.assert_array_equal(result, reference_function(_2D, 2))
-
-
-@pytest.mark.parametrize(
-    "block_size",
-    [
-        pytest.param(float("nan"), id="nan"),
-        pytest.param(float("inf"), id="inf"),
-        pytest.param((2, float("inf")), id="inf-entry"),
-    ],
-)
-def test_non_finite_block_size_is_rejected_as_non_integral(block_size):
-    """
-    A NaN or infinite ``block_size`` raises the "must be integers" error
-    rather than escaping as a `ValueError` or `OverflowError` from
-    ``int()``.
-
-    NaN passes the positivity check (every comparison with it is false),
-    so it reaches the integrality check, and ``float(x).is_integer()`` is
-    false for both NaN and infinity, so neither ever reaches ``int()``.
-    The message is hard-coded rather than compared against astropy's live
-    output because astropy's own check first emits a numpy cast warning
-    for these values.
-    """
-    with pytest.raises(ValueError, match="block_size elements must be integers"):
-        _blocks.block_reduce(_to_xp(_2D), block_size)

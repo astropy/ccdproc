@@ -9,11 +9,6 @@ import warnings
 from functools import partial
 
 import array_api_compat
-
-# The numpy namespace is the fallback in _namespace_for for array-likes no
-# array library claims; importing the submodule makes it an attribute of
-# array_api_compat.
-import array_api_compat.numpy  # noqa: F401
 import array_api_extra as xpx
 import numpy as np
 from astropy import nddata, stats
@@ -1759,46 +1754,6 @@ def rebin(ccd, newshape):
         return result
 
 
-def _namespace_for(ccd, xp):
-    """
-    Resolve the array namespace to use for an input that may be nddata.
-
-    Parameters
-    ----------
-    ccd : `~astropy.nddata.NDData` or array-like
-        The input to a public function. An `~astropy.nddata.NDData` -- which
-        includes `~astropy.nddata.CCDData` -- is inspected through its
-        ``.data``; anything else is passed to
-        ``array_api_compat.array_namespace`` as-is.
-    xp : array namespace or None
-        Namespace given explicitly by the caller. When not `None` it is
-        returned unchanged, without inspecting ``ccd``.
-
-    Returns
-    -------
-    array namespace
-        ``xp`` if given, otherwise the namespace of the data in ``ccd``,
-        falling back to the numpy namespace when ``ccd`` is an array-like
-        that no array library claims, such as a list or a scalar.
-
-    Notes
-    -----
-    The numpy fallback is what keeps the array-likes `numpy.asanyarray`
-    accepts working: they end up on the `astropy.nddata` path, which is
-    where they went before any of this was array-API aware. Nothing here
-    turns such an input into a non-numpy array.
-    """
-    if xp is not None:
-        return xp
-    data = ccd.data if isinstance(ccd, NDData) else ccd
-    try:
-        return array_api_compat.array_namespace(data)
-    except TypeError:
-        # Lists, tuples, scalars: array-likes that astropy's np.asanyarray
-        # accepts but that no array library claims.
-        return array_api_compat.numpy
-
-
 def _block_dispatch(ccd, xp, astropy_func, native_func, *args):
     """
     Apply one ``block_*`` operation, choosing astropy or the native version.
@@ -1810,9 +1765,8 @@ def _block_dispatch(ccd, xp, astropy_func, native_func, *args):
         `~astropy.nddata.CCDData`; anything else comes back as an array.
     xp : array namespace or None
         The namespace the data belong to, or `None` to infer it from
-        ``ccd``; either way it is resolved through `_namespace_for`. An
-        explicit namespace must be that of the data in ``ccd``; this is not
-        checked.
+        ``ccd``. An explicit namespace must be that of the data in ``ccd``;
+        this is not checked.
     astropy_func : callable
         The `astropy.nddata` function to call for a numpy namespace, as
         ``astropy_func(ccd, *args)``.
@@ -1836,7 +1790,18 @@ def _block_dispatch(ccd, xp, astropy_func, native_func, *args):
     array-API aware, this function and `ccdproc._blocks` are what gets
     deleted.
     """
-    xp = _namespace_for(ccd, xp)
+    if xp is None:
+        data = ccd.data if isinstance(ccd, NDData) else ccd
+        try:
+            xp = array_api_compat.array_namespace(data)
+        except TypeError:
+            # Lists, tuples, scalars: array-likes that astropy's np.asanyarray
+            # accepts but that no array library claims.
+            xp = np
+    else:
+        # A plain module such as ``dask.array`` may lack the array-API
+        # spellings ``_blocks`` uses; normalise it as ``Combiner`` does.
+        xp = array_api_compat.array_namespace(xp.asarray(0))
     if array_api_compat.is_numpy_namespace(xp):
         data = astropy_func(ccd, *args)
     else:
@@ -1849,7 +1814,38 @@ def _block_dispatch(ccd, xp, astropy_func, native_func, *args):
 
 
 def block_reduce(ccd, block_size, func=None, xp=None):
-    """Thin wrapper around `astropy.nddata.block_reduce`."""
+    """
+    Downsample data by applying a function to local blocks.
+
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`, `~astropy.nddata.NDData` or array-like
+        The data to be resampled. A `~astropy.nddata.CCDData` comes back as
+        a `~astropy.nddata.CCDData` with its ``unit`` and ``meta`` copied
+        and no ``mask``, ``uncertainty`` or ``wcs``.
+    block_size : int or sequence of int
+        The block size along each axis. A scalar applies to every axis.
+    func : callable, optional
+        Reduction applied to each block, called as
+        ``func(blocks, axis=axis)``. Default is the sum in the array
+        namespace of ``ccd``.
+    xp : array namespace or module, optional
+        Namespace of the data in ``ccd``; inferred from the data when
+        `None`.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData` or array
+        The resampled data, in the array namespace and on the device of
+        the input.
+
+    Notes
+    -----
+    NumPy data go to `astropy.nddata.block_reduce`; data in any other
+    namespace are reduced by ccdproc's own array-API implementation, which
+    reproduces astropy's result for the same input. An axis that
+    ``block_size`` does not divide evenly is trimmed from the end.
+    """
     # A missing ``func`` is left to each implementation's own default sum:
     # astropy's ``numpy.sum``, and ``xp.sum`` in the native version, which
     # promotes boolean input the way ``numpy.sum`` does.
@@ -1858,7 +1854,36 @@ def block_reduce(ccd, block_size, func=None, xp=None):
 
 
 def block_average(ccd, block_size, xp=None):
-    """Like `block_reduce` but with predefined ``func=np.mean``."""
+    """
+    Downsample data by averaging local blocks.
+
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`, `~astropy.nddata.NDData` or array-like
+        The data to be resampled. A `~astropy.nddata.CCDData` comes back as
+        a `~astropy.nddata.CCDData` with its ``unit`` and ``meta`` copied
+        and no ``mask``, ``uncertainty`` or ``wcs``.
+    block_size : int or sequence of int
+        The block size along each axis. A scalar applies to every axis.
+    xp : array namespace or module, optional
+        Namespace of the data in ``ccd``; inferred from the data when
+        `None`.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData` or array
+        The resampled data, in the array namespace and on the device of
+        the input. Always floating point.
+
+    Notes
+    -----
+    NumPy data go to `astropy.nddata.block_reduce` with ``func=numpy.mean``;
+    data in any other namespace are averaged by ccdproc's own array-API
+    implementation, which promotes integer and boolean input to the
+    namespace's default real floating dtype first and otherwise reproduces
+    astropy's result for the same input. An axis that ``block_size`` does
+    not divide evenly is trimmed from the end.
+    """
     return _block_dispatch(
         ccd,
         xp,
@@ -1869,7 +1894,39 @@ def block_average(ccd, block_size, xp=None):
 
 
 def block_replicate(ccd, block_size, conserve_sum=True, xp=None):
-    """Thin wrapper around `astropy.nddata.block_replicate`."""
+    """
+    Upsample data by block replication.
+
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`, `~astropy.nddata.NDData` or array-like
+        The data to be resampled. A `~astropy.nddata.CCDData` comes back as
+        a `~astropy.nddata.CCDData` with its ``unit`` and ``meta`` copied
+        and no ``mask``, ``uncertainty`` or ``wcs``.
+    block_size : int or sequence of int
+        The block size along each axis. A scalar applies to every axis.
+    conserve_sum : bool, optional
+        If `True` (the default), the sum of the block-replicated data
+        equals the sum of the input data.
+    xp : array namespace or module, optional
+        Namespace of the data in ``ccd``; inferred from the data when
+        `None`.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData` or array
+        The block-replicated data, in the array namespace and on the device
+        of the input.
+
+    Notes
+    -----
+    NumPy data go to `astropy.nddata.block_replicate`; data in any other
+    namespace are replicated by ccdproc's own array-API implementation,
+    which reproduces astropy's result for the same input except that, with
+    ``conserve_sum=True``, it keeps a float32 input in float32 where
+    `astropy.nddata.block_replicate` before astropy 7.2.3 and 8.0.2 upcast
+    it to float64 (astropy/astropy#20360).
+    """
     return _block_dispatch(
         ccd,
         xp,
@@ -1880,14 +1937,7 @@ def block_replicate(ccd, block_size, conserve_sum=True, xp=None):
     )
 
 
-try:
-    # Append original docstring to docstrings of these functions
-    block_reduce.__doc__ += nddata.block_reduce.__doc__
-    block_replicate.__doc__ += nddata.block_replicate.__doc__
-    __all__ += ["block_average", "block_reduce", "block_replicate"]
-except AttributeError:
-    # Astropy 1.0 has no block_reduce, block_average
-    del block_reduce, block_average, block_replicate
+__all__ += ["block_average", "block_reduce", "block_replicate"]
 
 
 def median_filter(data, *args, **kwargs):

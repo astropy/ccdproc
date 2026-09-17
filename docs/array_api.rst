@@ -194,7 +194,9 @@ What limitations should I be aware of?
   ``float16`` input to ``float64`` there. Note also
   that the default ``block_reduce`` sum of integer or boolean input uses
   the array library's default integer width, which is ``int32`` on `jax`_
-  unless 64-bit mode is enabled, so large blocks can overflow there.
+  unless 64-bit mode is enabled, so large blocks can overflow there. All
+  three functions need a fully known shape, so a `dask`_ array with unknown
+  chunk sizes must have ``compute_chunk_sizes()`` called on it first.
 
 Which array library should I use?
 ---------------------------------
