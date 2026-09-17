@@ -40,6 +40,10 @@ _2D_RAGGED = _rng.normal(size=(7, 9))
 _3D = _rng.normal(size=(4, 6, 8))
 _INT = _rng.integers(0, 100, size=(6, 8))
 _COMPLEX = _2D + 1j * _rng.normal(size=(6, 8))
+_BOOL = _rng.integers(0, 2, size=(6, 8)).astype(bool)
+# An array with an empty axis: the other case in which the final reshape in
+# ``block_replicate`` has nothing to merge and can hand back a view.
+_2D_EMPTY = _rng.normal(size=(0, 4))
 
 _CASES = [
     pytest.param(_2D, (2, 2), id="2d-square"),
@@ -54,14 +58,18 @@ _CASES = [
     pytest.param(_3D, 2, id="3d-scalar"),
 ]
 
-# Block sizes for which no axis pair has to be merged, so the reshape at the
-# end of ``block_replicate`` can return a view of its input rather than a
-# fresh array. Paired with ``conserve_sum`` because that decides whether the
-# view is of the caller's own data or of a freshly divided copy.
+# Inputs for which the reshape at the end of ``block_replicate`` can return
+# a view of its input rather than a fresh array: block sizes for which no
+# axis pair has to be merged, and shapes with an empty axis, where the
+# broadcast is a no-op whatever the block size. Paired with ``conserve_sum``
+# because that decides whether the view is of the caller's own data or of a
+# freshly divided copy.
 _DEGENERATE_REPLICATE_CASES = [
     pytest.param(_2D, 1, True, id="all-ones-conserve_sum"),
     pytest.param(_2D, 1, False, id="all-ones-no-conserve_sum"),
     pytest.param(_2D[:3, :1], (1, 4), False, id="singleton-axis-no-conserve_sum"),
+    pytest.param(_2D_EMPTY, 2, True, id="empty-axis-conserve_sum"),
+    pytest.param(_2D_EMPTY, 2, False, id="empty-axis-no-conserve_sum"),
 ]
 
 # ``block_size`` values astropy rejects, paired with a substring of the
@@ -251,6 +259,36 @@ def test_block_reduce_explicit_sum_matches_the_default_on_a_boolean_mask():
 
 
 @pytest.mark.parametrize(
+    "data", [pytest.param(_INT, id="int"), pytest.param(_BOOL, id="bool")]
+)
+@pytest.mark.parametrize(
+    "function",
+    [
+        pytest.param(partial(_blocks.block_reduce, func=xp.mean), id="native"),
+        pytest.param(partial(core.block_reduce, func=xp.mean), id="core-wrapper"),
+    ],
+)
+def test_block_reduce_explicit_mean_on_non_float_input_matches_astropy(function, data):
+    """
+    Spelling the average out as ``block_reduce(..., func=xp.mean)`` gives
+    astropy's float result for integer and boolean input, the same as
+    ``block_average``.
+
+    The promotion used to fire only for ``func is xp.sum``, so the
+    ``func=xp.mean`` rows of ``_NATIVE_AND_REFERENCES`` and
+    ``_CORE_WRAPPERS_AND_REFERENCES`` -- whose data, ``_CASES``, is all
+    float -- never saw a non-floating array, and the one call
+    ``block_average`` exists to serve raised ``TypeError: Only
+    floating-point dtypes are allowed in mean`` on array-api-strict while
+    working on numpy, dask and jax, which promote inside ``mean``
+    themselves.
+    """
+    reference = _astropy_block_average(data, 2)
+    result = function(_to_xp(data), 2)
+    _assert_matches(result, reference)
+
+
+@pytest.mark.parametrize(
     "function",
     [
         pytest.param(_blocks.block_average, id="native"),
@@ -392,18 +430,28 @@ def test_block_replicate_degenerate_block_size_returns_a_fresh_writable_array(
     For a block size that replicates nothing, the result is a fresh writable
     array rather than a view of the input.
 
-    When every axis has ``length == 1`` or ``size == 1`` the broadcast is a
-    no-op and the final ``reshape`` returns a view, which with
-    ``conserve_sum=False`` is the caller's own data: mutating the input
-    changed the result, and the result was read-only, so assigning into it
-    raised and a `~astropy.nddata.CCDData` built from it had read-only
-    ``.data``. astropy's ``numpy.repeat`` always returns a fresh writable
-    array, so this pinned parity was quietly missing.
+    When every axis has ``length == 1`` or ``size == 1``, and likewise when
+    an axis is empty, the broadcast is a no-op and the final ``reshape``
+    returns a view, which with ``conserve_sum=False`` is the caller's own
+    data: mutating the input changed the result, and the result was
+    read-only, so assigning into it raised and a `~astropy.nddata.CCDData`
+    built from it had read-only ``.data``. astropy's ``numpy.repeat`` always
+    returns a fresh writable array, so this pinned parity was quietly
+    missing. Every write into an empty array is a no-op, but a read-only one
+    still raises on the *attempt*, which is the difference being pinned
+    there.
     """
     # A private copy: on the numpy backend ``_to_xp`` hands back the module
     # level array itself, and this test writes into its input.
     source = _to_xp(data.copy())
     result = _blocks.block_replicate(source, block_size, conserve_sum)
+
+    if result.size == 0:
+        # No element to write into and no input element to mutate, so the
+        # whole-array assignment is all there is to check.
+        result[...] = xp.asarray(1.0, device=xp_device)
+        return
+
     before = xp.asarray(result, copy=True)
 
     source[0, 0] = xp.asarray(-999.0, device=xp_device)
@@ -581,3 +629,79 @@ def test_core_wrappers_accept_nddata_and_list_input(function, reference_function
     assert isinstance(result, np.ndarray)
     assert not isinstance(result, CCDData)
     np.testing.assert_array_equal(result, reference_function(_2D, 2))
+
+
+class _RaisingNamespaceArray:
+    """
+    An array-like whose ``__array_namespace__`` raises `TypeError`, standing
+    in for a real array whose namespace lookup fails (an uninitialised CuPy
+    context, say).
+    """
+
+    def __array_namespace__(self, **kwargs):
+        raise TypeError("namespace lookup failed")
+
+
+class _StaleSignatureNamespaceArray:
+    """
+    An array-like spelling the dunder the older, simpler way, without the
+    ``api_version`` keyword ``array_api_compat`` passes.
+    """
+
+    def __array_namespace__(self):
+        raise AssertionError("never reached: the call itself raises TypeError")
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param(_RaisingNamespaceArray(), id="dunder-raises"),
+        pytest.param(_StaleSignatureNamespaceArray(), id="stale-dunder-signature"),
+    ],
+)
+def test_failing_array_namespace_dunder_is_not_swallowed(data):
+    """
+    An object that claims to be an array by defining
+    ``__array_namespace__`` but whose namespace lookup raises `TypeError`
+    surfaces that `TypeError` instead of falling back to numpy.
+
+    ``array_api_compat.array_namespace`` calls the dunder unguarded and as
+    ``__array_namespace__(api_version=...)``, so a broken array -- or merely
+    one spelling the dunder without that keyword -- raises `TypeError` from
+    inside the lookup. Caught by the fallback that exists for lists and
+    tuples, such an object went to `astropy.nddata`, where
+    ``numpy.asanyarray`` made a 0-d object array and the failure resurfaced
+    as a `ValueError` about ``block_size``, naming neither the object nor
+    its namespace.
+    """
+    with pytest.raises(TypeError):
+        core.block_reduce(data, 2)
+
+
+@pytest.mark.parametrize(
+    ("data", "expectation"),
+    [
+        pytest.param([[1.0, 2.0], [3.0, 4.0]], "ok", id="list"),
+        pytest.param(((1.0, 2.0), (3.0, 4.0)), "ok", id="tuple"),
+        pytest.param(3.0, ValueError, id="scalar"),
+        pytest.param(True, ValueError, id="bool-scalar"),
+    ],
+)
+def test_plain_array_likes_still_fall_back_to_numpy(data, expectation):
+    """
+    Array-likes that no array library claims still take the numpy/astropy
+    path, so a nested list or tuple is reduced as astropy reduces it and a
+    scalar gets astropy's own complaint about its zero dimensions.
+
+    Companion to the test above: the re-raise added there must key on the
+    ``__array_namespace__`` attribute, which none of these have, so none of
+    them changes. Only the *type* of the scalar failure is asserted, not its
+    message, which is astropy's wording and not something this suite pins.
+    """
+    if expectation == "ok":
+        result = core.block_reduce(data, 2)
+        assert isinstance(result, np.ndarray)
+        np.testing.assert_array_equal(result, nddata.block_reduce(data, 2))
+    else:
+        with pytest.raises(expectation):
+            core.block_reduce(data, 2)

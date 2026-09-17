@@ -23,7 +23,13 @@ from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
 
 from ._nanfuncs import _setup, nanmad, nanmean, nanmedian, nanstd, nansum
-from .core import _namespace_dtype, _native_numpy, _to_numpy, sigma_func
+from .core import (
+    _namespace_dtype,
+    _namespace_from_module,
+    _native_numpy,
+    _to_numpy,
+    sigma_func,
+)
 
 __all__ = ["Combiner", "combine"]
 
@@ -426,14 +432,12 @@ class Combiner:
                 if not (default_unit == ccd.unit):
                     raise TypeError("CCDData objects don't have the same unit.")
 
-        # Set array namespace. A raw module such as ``numpy`` or ``dask.array``
-        # may lack array-API features that are used below (``xp.bool``, the
-        # ``device`` keyword), so normalise whatever the caller passed to the
-        # array-api-compat namespace of one of its arrays.
+        # Set array namespace, normalising whatever the caller passed (see
+        # ``_namespace_from_module``).
         if xp is None:
             xp = array_api_compat.array_namespace(ccd_list[0].data)
         else:
-            xp = array_api_compat.array_namespace(xp.asarray(0))
+            xp = _namespace_from_module(xp)
         self._xp = xp
         if dtype is None:
             dtype = xp.float64
@@ -1397,12 +1401,7 @@ def combine(
         # The ccd object will always read as numpy, so convert it to the
         # requested namespace if there is one.
         if array_package is not None:
-            # ``array_package`` may be a raw module such as ``numpy`` or
-            # ``dask.array``; normalise it to the array-api-compat namespace
-            # the same way ``Combiner.__init__`` does, so the conversions
-            # below can rely on array-API features (e.g. the ``device``
-            # keyword) that a raw module may not provide.
-            xp = array_api_compat.array_namespace(array_package.asarray(0))
+            xp = _namespace_from_module(array_package)
 
             # ccd.data (and its uncertainty, if any) were just read from a
             # FITS file, so they are NumPy arrays, possibly in big-endian

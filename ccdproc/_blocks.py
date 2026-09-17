@@ -115,7 +115,8 @@ def block_reduce(data, block_size, func=None, *, xp=None):
         The resampled data, in the namespace and on the device of ``data``.
         Its dtype is whatever ``func`` returns; the default ``xp.sum``
         preserves a floating dtype and, for integer or boolean input, gives
-        the namespace's default integer dtype.
+        the namespace's default integer dtype, while ``func=xp.mean`` always
+        gives a floating dtype.
 
     Notes
     -----
@@ -125,21 +126,47 @@ def block_reduce(data, block_size, func=None, *, xp=None):
     Boolean input is cast to the namespace's default integral dtype before a
     default or explicit ``xp.sum``, so that block-summing a mask counts the
     flagged pixels per block as `astropy.nddata.block_reduce` does;
-    array-api-strict rejects a boolean ``sum`` outright. Data handed to any
-    other ``func`` is left as it is, since promoting for an arbitrary
-    reduction would be a guess.
+    array-api-strict rejects a boolean ``sum`` outright. Integer and boolean
+    input is promoted to the namespace's default real floating dtype before
+    an explicit ``func=xp.mean``, which array-api-strict rejects for
+    non-floating input while numpy, dask and jax promote it themselves, so
+    that averaging a mask or an integer image gives numpy's answer on every
+    backend. Data handed to any other ``func`` is left as it is, since
+    promoting for an arbitrary reduction would be a guess.
+
+    Both promotions are keyed on the exact ``xp.sum`` and ``xp.mean``
+    objects, so a `functools.partial` or ``lambda`` wrapping either one opts
+    out of them.
+    """
+    if xp is None:
+        xp = array_api_compat.array_namespace(data)
+    return _block_reduce(data, block_size, func, xp)
+
+
+def _block_reduce(data, block_size, func, xp):
+    """
+    Downsample ``data`` by applying ``func`` to local blocks.
+
+    Notes
+    -----
+    The undecorated body of `block_reduce`, shared with `block_average`,
+    whose own `astropy.nddata.support_nddata` decorator has already unpacked
+    any `~astropy.nddata.NDData` argument by the time it gets here.
     """
     if not all(isinstance(length, int) for length in data.shape):
         raise ValueError(_UNKNOWN_SHAPE_MESSAGE)
 
-    if xp is None:
-        xp = array_api_compat.array_namespace(data)
     if func is None or func is xp.sum:
         func = xp.sum
         if xp.isdtype(data.dtype, "bool"):
             info = xp.__array_namespace_info__()
             device = array_api_compat.device(data)
             data = xp.astype(data, info.default_dtypes(device=device)["integral"])
+    elif func is xp.mean:
+        # array-api-strict rejects a non-floating ``mean``, where numpy,
+        # dask and jax promote on their own; this is what makes
+        # ``block_average`` (below) the same call on every backend.
+        data = _promote_for_division(data, xp)
 
     ndim = data.ndim
     sizes = _block_size(block_size, ndim)
@@ -194,10 +221,7 @@ def block_average(data, block_size, *, xp=None):
     """
     if xp is None:
         xp = array_api_compat.array_namespace(data)
-    data = _promote_for_division(data, xp)
-    # ``data`` is a bare array by now, so the inner ``support_nddata`` has
-    # nothing left to unpack and cannot warn a second time.
-    return block_reduce(data, block_size, xp.mean, xp=xp)
+    return _block_reduce(data, block_size, xp.mean, xp)
 
 
 @support_nddata
@@ -265,8 +289,10 @@ def block_replicate(data, block_size, conserve_sum=True, *, xp=None):
     full = tuple(extent for pair in pairs for extent in pair)
     replicated = tuple(length * size for length, size in pairs)
     out = xp.reshape(xp.broadcast_to(xp.reshape(data, inner), full), replicated)
-    if all(length == 1 or size == 1 for length, size in pairs):
-        # No axis pair had to be merged, so ``reshape`` may have returned a
-        # read-only view that, with ``conserve_sum=False``, aliases ``data``.
+    if 0 in shape or all(length == 1 or size == 1 for length, size in pairs):
+        # No axis pair had to be merged, or an axis is empty, so ``reshape``
+        # may have returned a read-only view that, with
+        # ``conserve_sum=False``, aliases ``data``. Copying an empty array
+        # costs nothing.
         out = xp.asarray(out, copy=True)
     return out

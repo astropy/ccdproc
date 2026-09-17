@@ -203,6 +203,31 @@ def _namespace_dtype(dtype, xp):
     return getattr(xp, name, dtype)
 
 
+def _namespace_from_module(module):
+    """
+    Normalise a user-supplied array namespace or module.
+
+    Parameters
+    ----------
+    module : array namespace or module
+        A raw module such as `numpy` or ``dask.array``, or an
+        array-api-compat namespace.
+
+    Returns
+    -------
+    array namespace
+        The array-api-compat namespace of ``module``.
+
+    Notes
+    -----
+    A raw module may lack array-API spellings this package relies on
+    (``xp.bool``, the ``device`` keyword), so it is round-tripped through
+    one of its own arrays to get the array-api-compat namespace. A namespace
+    that is already a compat one comes back unchanged.
+    """
+    return array_api_compat.array_namespace(module.asarray(0))
+
+
 def _percentile_fallback(array, percentiles, xp=None):
     """
     Try calculating percentile using namespace, otherwise fall back to
@@ -1795,13 +1820,18 @@ def _block_dispatch(ccd, xp, astropy_func, native_func, *args):
         try:
             xp = array_api_compat.array_namespace(data)
         except TypeError:
+            if hasattr(data, "__array_namespace__"):
+                # A real array whose own namespace lookup failed; don't hide
+                # that behind astropy's numpy coercion, which would turn it
+                # into a 0-d object array and complain about ``block_size``.
+                # Note the gate cannot come *first*: array_api_compat
+                # recognises dask arrays by module, and they have no dunder.
+                raise
             # Lists, tuples, scalars: array-likes that astropy's np.asanyarray
             # accepts but that no array library claims.
             xp = np
     else:
-        # A plain module such as ``dask.array`` may lack the array-API
-        # spellings ``_blocks`` uses; normalise it as ``Combiner`` does.
-        xp = array_api_compat.array_namespace(xp.asarray(0))
+        xp = _namespace_from_module(xp)
     if array_api_compat.is_numpy_namespace(xp):
         data = astropy_func(ccd, *args)
     else:

@@ -31,7 +31,10 @@ New Features
 - ``block_reduce``, ``block_average`` and ``block_replicate`` keep non-NumPy
   input in its own array library and on its own device instead of coercing
   it to NumPy through ``astropy.nddata``; ``block_replicate`` gained the
-  ``xp`` keyword the other two already had. [#1009]
+  ``xp`` keyword the other two already had. ``block_reduce`` with an
+  explicit ``func=xp.mean`` promotes integer and boolean input to a floating
+  dtype, as ``block_average`` does, so that it gives NumPy's result on every
+  backend. [#1009]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
