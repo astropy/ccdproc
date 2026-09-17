@@ -35,6 +35,9 @@ from ccdproc.core import (
     Keyword,
     _mad_fallback,
     _median_fallback,
+    block_average,
+    block_reduce,
+    block_replicate,
     ccd_process,
     cosmicray_lacosmic,
     cosmicray_median,
@@ -50,13 +53,6 @@ from ccdproc.core import (
     wcs_project,
 )
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
-
-try:
-    from ..core import block_average, block_reduce, block_replicate
-
-    HAS_BLOCK_X_FUNCS = True
-except ImportError:
-    HAS_BLOCK_X_FUNCS = False
 
 RNG = np_random.default_rng
 
@@ -1038,8 +1034,17 @@ def test_transform_image(mask_data, uncertainty):
 
 
 # Test block_reduce and block_replicate wrapper
-@pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
 def test_block_reduce():
+    """Pin the ``CCDData`` round trip through the public ``block_reduce``.
+
+    Notes
+    -----
+    This is the only coverage of ``block_reduce`` on a ``CCDData``: the
+    block sums come back as a ``CCDData`` that carries the input's ``unit``
+    and a copy of its ``meta`` which is not aliased to the input's, while
+    ``mask`` and ``uncertainty`` are dropped, and dropping them raises
+    exactly one ``AstropyUserWarning``.
+    """
     ccd = CCDData(
         xp.ones((4, 4)),
         unit="adu",
@@ -1067,8 +1072,19 @@ def test_block_reduce():
     assert "testkw2" not in ccd.meta
 
 
-@pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
 def test_block_average():
+    """Pin the ``CCDData`` round trip through the public ``block_average``.
+
+    Notes
+    -----
+    This is the only coverage of ``block_average`` on a ``CCDData``: the
+    block averages come back as a ``CCDData`` that carries the input's
+    ``unit`` and a copy of its ``meta`` which is not aliased to the
+    input's, while ``mask``, ``uncertainty`` and ``wcs`` are dropped.
+    Requiring exactly one ``AstropyUserWarning`` also pins that the nested
+    ``support_nddata`` decorators do not warn twice: ``_blocks.block_average``
+    is decorated and calls the likewise decorated ``_blocks.block_reduce``.
+    """
     data = xp.asarray(
         [
             [2.0, 1.0, 2.0, 1.0],
@@ -1106,8 +1122,17 @@ def test_block_average():
     assert "testkw2" not in ccd.meta
 
 
-@pytest.mark.skipif(not HAS_BLOCK_X_FUNCS, reason="needs astropy >= 1.1.x")
 def test_block_replicate():
+    """Pin the ``CCDData`` round trip through the public ``block_replicate``.
+
+    Notes
+    -----
+    This is the only coverage of ``block_replicate`` on a ``CCDData``: the
+    replicated data come back as a ``CCDData`` that carries the input's
+    ``unit`` and a copy of its ``meta`` which is not aliased to the input's,
+    while ``mask``, ``uncertainty`` and ``wcs`` are dropped, and dropping
+    them raises exactly one ``AstropyUserWarning``.
+    """
     ccd = CCDData(
         xp.ones((4, 4)),
         unit="adu",
