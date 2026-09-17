@@ -12,8 +12,9 @@ New Features
 - ``Combiner.sigma_clipping`` now clips data in a non-NumPy array namespace
   with an implementation written in terms of the array API standard that
   reproduces ``astropy.stats.sigma_clip``'s result up to floating-point
-  rounding of the reductions: a value lying exactly on a bound can be
-  classified differently from astropy (NumPy data still use astropy);
+  rounding of the reductions, except for a slice an iteration empties (see
+  the #1009 entry): a value lying exactly on a bound can be classified
+  differently from astropy (NumPy data still use astropy);
   ``'median'``/``'mean'``/``'std'``/``'mad_std'`` use the namespace's
   NaN-aware reductions or ccdproc's fallbacks. [#1001]
 - ``Combiner.sigma_clipping`` outside NumPy now accepts ``axis=None`` and a
@@ -23,6 +24,17 @@ New Features
   moved into the shared ``_nanfuncs._setup``, and a bool or otherwise
   non-integer ``axis`` now raises ``TypeError`` rather than
   ``NotImplementedError``. [#1006]
+- ``Combiner.sigma_clipping`` outside NumPy now masks every value of a
+  slice that an iteration empties, as ``astropy.stats.sigma_clip`` does
+  from astropy 8.0.2; on earlier astropy the NumPy path leaves such a
+  slice's finite values unmasked. [#1009]
+- ``block_reduce``, ``block_average`` and ``block_replicate`` keep non-NumPy
+  input in its own array library and on its own device instead of coercing
+  it to NumPy through ``astropy.nddata``; ``block_replicate`` gained the
+  ``xp`` keyword the other two already had. ``block_reduce`` with an
+  explicit ``func=xp.mean`` promotes integer and boolean input to a floating
+  dtype, as ``block_average`` does, so that it gives NumPy's result on every
+  backend. [#1009]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
