@@ -6,7 +6,15 @@ import numpy as np
 import pytest
 from astropy.stats import median_absolute_deviation
 
-from ccdproc._nanfuncs import median, nanmad, nanmean, nanmedian, nanstd, nansum
+from ccdproc._nanfuncs import (
+    _nanrank,
+    median,
+    nanmad,
+    nanmean,
+    nanmedian,
+    nanstd,
+    nansum,
+)
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 
@@ -184,3 +192,73 @@ def test_bad_axis(func, axis, error, match):
     """
     with pytest.raises(error, match=match):
         func(xp.asarray(np.ones((2, 2)), device=xp_device), axis=axis)
+
+
+def _rank_reference(data, fraction, axis):
+    """
+    Reference order statistic: the element at rank
+    ``min(floor(n * fraction), n - 1)`` among the non-NaN values of each
+    slice, computed with plain numpy sorting and indexing.
+    """
+    sorted_data = np.sort(np.where(np.isnan(data), np.inf, data), axis=axis)
+    n = np.count_nonzero(~np.isnan(data), axis=axis, keepdims=True)
+    index = np.minimum(np.trunc(n * fraction).astype(int), n - 1)
+    picked = np.take_along_axis(sorted_data, np.maximum(index, 0), axis=axis)
+    return np.where(n == 0, np.nan, picked).squeeze(axis=axis)
+
+
+@pytest.mark.parametrize("fraction", [0.0, 0.309, 0.5, 0.691, 1.0])
+@pytest.mark.parametrize(("data", "axis"), [(_some_nan, 0), (_some_nan, 1)])
+def test_nanrank_matches_rank_reference(fraction, axis, data):
+    """
+    ``_nanrank`` picks the element at ``min(floor(n * fraction), n - 1)``
+    among a slice's non-NaN values.
+
+    That rank is exactly the one `scipy.ndimage.percentile_filter` uses, so
+    this is what makes ``ccdproc._windowfilters.window_rank`` reproduce
+    ndimage; pinned against an independent numpy sort-and-index reference
+    rather than against ndimage itself, because ndimage has no NaN-aware
+    mode to compare with on the NaN-carrying rows here.
+    """
+    result = _nanrank(xp.asarray(data, device=xp_device), fraction, axis, xp)
+    expected = xp.asarray(_rank_reference(data, fraction, axis), device=xp_device)
+
+    assert result.shape == expected.shape
+    assert bool(xp.all(xpx.isclose(result, expected, equal_nan=True)))
+
+
+def test_nanrank_half_is_upper_middle_not_the_average():
+    """
+    At ``fraction=0.5`` an even-length slice yields its upper-middle value,
+    not the average of the middle two that `nanmedian` yields.
+
+    This is the ndimage convention, and it is the whole reason
+    ``window_median`` is built on ``_nanrank`` rather than on ``nanmedian``:
+    without it the native window filters would disagree with
+    `scipy.ndimage.median_filter` on every even-sized window.
+    """
+    data = xp.asarray(np.array([[0.0], [1.0], [4.0], [5.0]]), device=xp_device)
+
+    assert float(_nanrank(data, 0.5, 0, xp)[0]) == 4.0
+    assert float(nanmedian(data, axis=0)[0]) == 2.5
+
+
+def test_nanrank_all_nan_slice_is_nan_and_silent():
+    """
+    A slice with no non-NaN values yields NaN, without warning.
+
+    The index for such a slice is -1 before clamping, so it would otherwise
+    gather one of the ``+inf`` sentinels ``_nanrank`` sorts NaNs to; the
+    silence matters because ccdproc's pytest configuration turns warnings
+    into errors and a fully masked window is routine input.
+    """
+    data = xp.asarray(
+        np.array([[1.0, np.nan], [2.0, np.nan], [3.0, np.nan]]), device=xp_device
+    )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result = _nanrank(data, 0.5, 0, xp)
+
+    assert bool(result[0] == 2.0)
+    assert bool(xp.isnan(result[1]))

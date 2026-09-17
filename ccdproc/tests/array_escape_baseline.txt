@@ -13,10 +13,7 @@
 # BOUNDARY = a numpy-only dependency (scipy/astroscrappy/reproject)
 # that will never leave. Verify/adjust the seeded tags by hand.
 #
-combiner.py  combine                      numpy.asarray     BOUNDARY: astropy CCDData mask/uncertainty attributes are numpy-backed
-core.py      _cosmicray_median_array      numpy.asarray     BOUNDARY: scipy.ndimage median_filter/maximum_filter are numpy-only
-core.py      _to_numpy                    numpy.asarray     BOUNDARY: deliberate host copy for numpy-only consumers (combine() writes output_file through astropy.io.fits)
-core.py      background_deviation_filter  numpy.asarray     BOUNDARY: scipy.ndimage.generic_filter is numpy-only
-core.py      cosmicray_median             numpy.asarray     BOUNDARY: scipy.ndimage median_filter/maximum_filter are numpy-only
-core.py      create_deviation             numpy.asarray     BOUNDARY: astropy CCDData.copy()/StdDevUncertainty are numpy-backed
-core.py      subtract_overscan            numpy.asanyarray  BOUNDARY: astropy.modeling fit/evaluation (model= path) is numpy-only
+combiner.py  combine            numpy.asarray     BOUNDARY: astropy CCDData mask/uncertainty attributes are numpy-backed
+core.py      _to_numpy          numpy.asarray     BOUNDARY: deliberate host copy for numpy-only consumers (combine() writes output_file through astropy.io.fits)
+core.py      create_deviation   numpy.asarray     BOUNDARY: astropy CCDData.copy()/StdDevUncertainty are numpy-backed
+core.py      subtract_overscan  numpy.asanyarray  BOUNDARY: astropy.modeling fit/evaluation (model= path) is numpy-only

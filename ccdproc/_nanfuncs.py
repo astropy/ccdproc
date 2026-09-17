@@ -385,6 +385,98 @@ def nanstd(x, /, *, axis=0, xp=None):
     return xp.squeeze(xp.sqrt(variance), axis=axis)
 
 
+def _sorted_with_nan_last(x, axis, xp, device):
+    """
+    Sort ``x`` along ``axis`` with NaNs pushed past every real value, and
+    count the non-NaN entries.
+
+    Parameters
+    ----------
+    x : array
+        Input array, already promoted to a real floating dtype.
+    axis : int
+        Axis to sort along, already normalized to a non-negative integer.
+    xp : array namespace
+        Namespace to use.
+    device : device
+        Device on which to build scalar constants.
+
+    Returns
+    -------
+    s : array
+        ``x`` sorted along ``axis``, with every NaN replaced by ``+inf``
+        first, so that positions ``0 .. n - 1`` hold the non-NaN values in
+        ascending order no matter where the namespace's ``sort`` places
+        NaNs -- the standard leaves that implementation-defined. Genuine
+        ``+inf`` entries compare equal to the sentinels, so the positions
+        below ``n`` are unaffected either way.
+    n : array
+        Number of non-NaN entries along ``axis``, as ``int32`` and with
+        ``axis`` kept at size one so it broadcasts against ``s``.
+    """
+    s = xp.sort(
+        xp.where(xp.isnan(x), xp.asarray(xp.inf, dtype=x.dtype, device=device), x),
+        axis=axis,
+    )
+    n = xp.sum(xp.astype(~xp.isnan(x), xp.int32), axis=axis, keepdims=True)
+    return s, n
+
+
+def _gather_at_index(s, index, axis, xp, device):
+    """
+    Pick the element of ``s`` at ``index`` along ``axis``.
+
+    Parameters
+    ----------
+    s : array
+        Array to gather from.
+    index : array
+        Integer index along ``axis``, with ``axis`` kept at size one so it
+        broadcasts against ``s``. Negative entries -- which the callers
+        here produce for an empty slice, where the "middle" index is -1 --
+        are clamped to 0 rather than wrapping around; every caller
+        overwrites those positions with NaN afterwards, so which in-range
+        element is gathered for them does not matter.
+    axis : int
+        Axis to gather along, already normalized to a non-negative integer.
+    xp : array namespace
+        Namespace to use.
+    device : device
+        Device on which to build constants.
+
+    Returns
+    -------
+    array
+        ``s`` gathered at ``index``, with ``axis`` removed.
+
+    Notes
+    -----
+    ``take_along_axis`` is used when the namespace has one (numpy, jax and
+    array-api-strict do; array-api-compat's dask wrapper does not), because
+    it reads the one wanted element per slice. The fallback builds a
+    position grid and sums ``where(positions == index, s, 0)``, which costs
+    a full extra pass over ``s`` and a temporary its size -- the reason the
+    fast path is worth the branch for the window filters, whose ``s`` is
+    the whole ``k**2``-deep window stack.
+
+    A zero-length ``axis`` takes the fallback too: there is no in-range
+    index to clamp to there, so ``take_along_axis`` would raise, while the
+    fallback's sum over nothing gives the zero the callers then overwrite
+    with NaN.
+    """
+    index = xp.maximum(index, xp.asarray(0, dtype=index.dtype, device=device))
+
+    take_along_axis = getattr(xp, "take_along_axis", None)
+    if take_along_axis is not None and s.shape[axis] > 0:
+        return xp.squeeze(take_along_axis(s, index, axis=axis), axis=axis)
+
+    shape = [1] * s.ndim
+    shape[axis] = s.shape[axis]
+    positions = xp.reshape(xp.arange(s.shape[axis], device=device), tuple(shape))
+    zero = xp.asarray(0, dtype=s.dtype, device=device)
+    return xp.sum(xp.where(positions == index, s, zero), axis=axis)
+
+
 @_fill_doc(action="to compute the median")
 def nanmedian(x, /, *, axis=0, xp=None):
     """
@@ -419,40 +511,85 @@ def nanmedian(x, /, *, axis=0, xp=None):
     namespace offers one.
     """
     x, axis, xp, device, _ = _setup(x, axis, xp)
-    ndim = x.ndim
 
-    # Replacing NaNs with +inf keeps them past every real value regardless of
-    # how the namespace orders NaNs in ``sort``. Genuine +inf entries compare
-    # equal to the sentinels, so positions below ``n`` are unaffected.
-    s = xp.sort(
-        xp.where(xp.isnan(x), xp.asarray(xp.inf, dtype=x.dtype, device=device), x),
-        axis=axis,
-    )
-
-    # Number of non-NaN values along the axis, kept broadcastable.
-    n = xp.sum(xp.astype(~xp.isnan(x), xp.int32), axis=axis, keepdims=True)
+    s, n = _sorted_with_nan_last(x, axis, xp, device)
     # For odd ``n`` these collapse to the same index, so the middle entry is
     # picked twice and averaged with itself -- exact, bar overflow when the
     # value exceeds half the dtype's maximum (numpy.nanmedian overflows there
-    # too). For ``n == 0`` ``lo`` is -1, which matches no index; see below.
-    lo = (n - 1) // 2
-    hi = n // 2
-
-    # Index along ``axis``, shaped to broadcast against ``s``.
-    shape = [1] * ndim
-    shape[axis] = x.shape[axis]
-    idx = xp.reshape(xp.arange(x.shape[axis], device=device), tuple(shape))
-
-    zero = xp.asarray(0, dtype=s.dtype, device=device)
-    lo_val = xp.sum(xp.where(idx == lo, s, zero), axis=axis)
-    hi_val = xp.sum(xp.where(idx == hi, s, zero), axis=axis)
+    # too). For ``n == 0`` ``lo`` is -1, which ``_gather_at_index`` clamps to
+    # 0; see below.
+    lo_val = _gather_at_index(s, (n - 1) // 2, axis, xp, device)
+    hi_val = _gather_at_index(s, n // 2, axis, xp, device)
     result = (lo_val + hi_val) / 2
 
     # This guard is load-bearing, not defensive: for an all-NaN slice ``n`` is
-    # 0, so ``lo`` is -1 and matches no index (``lo_val`` sums to zero) while
-    # ``hi`` is 0 and picks s[0], which is one of the +inf sentinels above.
-    # ``result`` is therefore +inf rather than NaN, and only this ``where``
-    # makes an all-NaN slice yield NaN. Do not remove it as redundant.
+    # 0, so both indices land on s[0], which is one of the +inf sentinels
+    # above. ``result`` is therefore +inf rather than NaN, and only this
+    # ``where`` makes an all-NaN slice yield NaN. Do not remove it as
+    # redundant.
+    nan = xp.asarray(xp.nan, dtype=s.dtype, device=device)
+    return xp.where(xp.squeeze(n, axis=axis) == 0, nan, result)
+
+
+def _nanrank(x, fraction, axis, xp):
+    """
+    Order statistic along ``axis``, ignoring NaNs, via array-API functions.
+
+    The value returned for each slice is the one at rank
+    ``min(floor(n * fraction), n - 1)`` among that slice's ``n`` non-NaN
+    values, counting from the smallest. This is the rank
+    `scipy.ndimage.percentile_filter` uses -- it takes the element at
+    ``int(size * percentile / 100)`` -- so with ``fraction = 0.5`` it is
+    also `scipy.ndimage.median_filter`'s ``size // 2``: the upper-middle
+    element of an even-length slice, *not* the average of the middle two
+    that `nanmedian` returns.
+
+    Parameters
+    ----------
+    x : array
+        Input array. Integer and boolean inputs are promoted to the
+        namespace's default real floating dtype.
+    fraction : float
+        Position in ``[0, 1]`` of the wanted order statistic; 0 selects the
+        minimum of the non-NaN values and 1 their maximum.
+    axis : int, tuple of int, list of int or None
+        Axis or axes along which to select. ``None`` reduces over every
+        axis; a tuple or list over all the listed axes at once.
+    xp : array namespace or None
+        Namespace to use. ``None`` resolves it from ``x``.
+
+    Returns
+    -------
+    array
+        The selected value along ``axis``, with the reduced axes removed
+        (0-d when ``axis`` is ``None``). Slices that are entirely NaN yield
+        NaN, silently, as `nanmedian` does.
+
+    Notes
+    -----
+    Private rather than public because, unlike the ``nan*`` functions here,
+    it has no ``numpy`` counterpart to be a fallback for: it exists so
+    `ccdproc._windowfilters.window_rank` can reuse the sentinel-sort
+    machinery `nanmedian` is built on. Like `nanmedian` it costs
+    O(n log n) along ``axis``, from a full sort, rather than the O(n) of a
+    selection algorithm.
+    """
+    x, axis, xp, device, _ = _setup(x, axis, xp)
+
+    s, n = _sorted_with_nan_last(x, axis, xp, device)
+    # ``fraction`` is applied in the dtype of ``x`` rather than to the
+    # integer count so that the truncation matches ndimage's, which also
+    # multiplies in floating point. Clamping to ``n - 1`` is what keeps
+    # ``fraction = 1`` selecting the maximum instead of running off the end
+    # of the non-NaN values; ndimage raises there instead.
+    index = xp.astype(xp.astype(n, s.dtype) * fraction, n.dtype)
+    index = xp.minimum(index, n - 1)
+    result = _gather_at_index(s, index, axis, xp, device)
+
+    # For an all-NaN slice ``n`` is 0, so ``index`` is -1, clamped to 0 by
+    # ``_gather_at_index``, and picks one of the +inf sentinels; as in
+    # ``nanmedian`` this ``where`` is the only thing that turns that into a
+    # NaN. Do not remove it as redundant.
     nan = xp.asarray(xp.nan, dtype=s.dtype, device=device)
     return xp.where(xp.squeeze(n, axis=axis) == 0, nan, result)
 
