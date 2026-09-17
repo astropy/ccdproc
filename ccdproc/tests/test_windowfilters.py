@@ -527,6 +527,51 @@ def test_public_median_filter_matches_ndimage(call, wrap):
 
 
 @pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param(_IMAGE.tolist(), id="list"),
+        pytest.param(tuple(row.tolist() for row in _IMAGE), id="tuple-of-lists"),
+    ],
+)
+def test_public_median_filter_still_takes_a_plain_array_like(data):
+    """
+    `ccdproc.median_filter` keeps accepting a nested list or tuple, filtering
+    it with ndimage exactly as it did before the native filters existed.
+
+    ``median_filter`` documents itself as a passthrough for
+    `scipy.ndimage.median_filter`, which takes any array-like. Resolving the
+    namespace with a bare ``array_api_compat.array_namespace`` would raise
+    ``TypeError: list is not a supported array type`` for these, so
+    ``_median_filter_array`` falls back to numpy for an input no array
+    library claims -- the same guard `~ccdproc.core._block_dispatch` uses.
+    This runs on every backend: the input is numpy-ish whatever
+    ``CCDPROC_ARRAY_LIBRARY`` says, so it must always take the ndimage path.
+    """
+    result = core.median_filter(data, size=3)
+
+    assert array_api_compat.is_numpy_namespace(array_api_compat.array_namespace(result))
+    np.testing.assert_allclose(result, ndimage.median_filter(_IMAGE, size=3))
+
+
+def test_public_median_filter_reraises_for_a_broken_array():
+    """
+    An object that advertises ``__array_namespace__`` but whose namespace
+    lookup fails still raises, rather than being quietly handed to ndimage.
+
+    The array-like fallback above must not swallow a genuine namespace
+    failure: ndimage would coerce such an object into a 0-d object array and
+    report something unrelated. This is the second half of the
+    `~ccdproc.core._block_dispatch` guard.
+    """
+
+    class Broken:
+        __array_namespace__ = None
+
+    with pytest.raises(TypeError):
+        core.median_filter(Broken(), size=3)
+
+
+@pytest.mark.parametrize(
     ("kwargs", "match"),
     [
         pytest.param({"size": 3, "cval": 1.0}, "not 'cval'", id="cval"),

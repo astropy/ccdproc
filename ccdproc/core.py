@@ -2146,7 +2146,19 @@ def _median_filter_array(data, args, kwargs):
         argument other than ``size`` and ``mode`` was. The message names
         the argument.
     """
-    xp = array_api_compat.array_namespace(data)
+    try:
+        xp = array_api_compat.array_namespace(data)
+    except TypeError:
+        if hasattr(data, "__array_namespace__"):
+            # A real array whose own namespace lookup failed; don't hide that
+            # behind ndimage's numpy coercion. Note the gate cannot come
+            # *first*: array_api_compat recognises dask arrays by module, and
+            # they have no dunder. This is the shape `_block_dispatch` uses.
+            raise
+        # Lists, tuples and other array-likes that no array library claims.
+        # ndimage takes them, and did on every earlier ccdproc, so they keep
+        # going there.
+        xp = np
     if array_api_compat.is_numpy_namespace(xp):
         # Unchanged passthrough: every ndimage argument, and ndimage's own
         # errors for the ones it does not like.
