@@ -20,6 +20,7 @@ from astropy.nddata.bitmask import (
 )
 from astropy.units.quantity import Quantity
 from astropy.utils import deprecated, deprecated_renamed_argument
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs.utils import proj_plane_pixel_area
 from numpy import mgrid as np_mgrid
 from numpy.ma import nomask as np_ma_nomask
@@ -61,6 +62,7 @@ __all__ = [
     "median_filter",
     "ccdmask",
     "bitfield_to_boolean_mask",
+    "HostCopyWarning",
 ]
 
 # The dictionary below is used to translate actual function names to names
@@ -166,6 +168,90 @@ def _to_numpy(arr):
     if default_device is not None:
         arr = array_api_compat.to_device(arr, default_device)
     return np.asarray(arr)
+
+
+class HostCopyWarning(AstropyUserWarning):
+    """
+    A non-NumPy array was copied to the host CPU to run a NumPy-only
+    operation, and the result was copied back.
+
+    Silence it with::
+
+        import warnings
+        import ccdproc
+
+        warnings.filterwarnings("ignore", category=ccdproc.HostCopyWarning)
+    """
+
+
+def _from_numpy(arr, like, *, xp=None):
+    """
+    Return ``arr`` in the array namespace and on the device of ``like``.
+
+    Parameters
+    ----------
+    arr : `numpy.ndarray` or None
+        The NumPy array to convert. `None` is passed through unchanged, so
+        that an absent mask needs no special case at the call site.
+    like : array
+        The array whose namespace and device the result should have.
+    xp : array namespace, optional
+        Array namespace to convert into. If not provided, the namespace is
+        determined from ``like``.
+
+    Returns
+    -------
+    array or None
+        ``arr`` as an array of ``xp`` on the device of ``like``, with its
+        dtype preserved, or `None` if ``arr`` is `None`.
+
+    Notes
+    -----
+    This is the inverse of `_to_numpy`: it returns the result of a
+    NumPy-only operation to the caller's array namespace and device, so
+    that the caller never receives a NumPy array in place of what it
+    passed in.
+    """
+    if arr is None:
+        return None
+    xp = xp or array_api_compat.array_namespace(like)
+    return xp.asarray(arr, device=array_api_compat.device(like))
+
+
+def _warn_host_copy(function_name, xp, stacklevel=3):
+    """
+    Warn that ``function_name`` is about to copy its input to the host.
+
+    Parameters
+    ----------
+    function_name : str
+        Name of the public function doing the copy, as it appears in the
+        warning message.
+    xp : array namespace
+        The namespace of the caller's data. Nothing is warned about when
+        this is NumPy, since no copy happens then.
+    stacklevel : int, optional
+        Stack level of the warning, counted from this function. The default
+        of ``3`` (this helper, the public function, the caller) is right for
+        an undecorated public function; add one for every decorator wrapping
+        it, so that the warning is attributed to the user's call rather than
+        to a decorator inside ``ccdproc``.
+
+    Notes
+    -----
+    Exactly one warning is issued per call of the public function, before
+    any conversion happens, however many arrays end up crossing to the
+    host. Python's own once-per-location default filter then collapses
+    repeated calls from the same place in the user's code.
+    """
+    if array_api_compat.is_numpy_namespace(xp):
+        return
+    warnings.warn(
+        f"{function_name} runs on the host CPU: its input was copied from "
+        f"{xp.__name__} to numpy and the result copied back.",
+        HostCopyWarning,
+        stacklevel=stacklevel,
+    )
 
 
 def _namespace_dtype(dtype, xp):
@@ -812,6 +898,13 @@ def subtract_overscan(
     pythonic, way of specifying the overscan is to do it by indexing the data
     array directly with the ``overscan`` argument.
 
+    Fitting a ``model`` goes through ``astropy.modeling``, which is
+    NumPy-only, so that path runs on the host CPU. If ``ccd`` is not backed
+    by NumPy the overscan is copied to the host to be fit and the fitted
+    overscan is copied back to the array namespace and device of the input;
+    the copy is announced with a `HostCopyWarning`. The median and mean
+    paths stay in the input's array namespace.
+
     Examples
     --------
     Creating a 100x100 array containing ones just for demonstration purposes::
@@ -863,12 +956,14 @@ def subtract_overscan(
         oscan = xp.mean(overscan.data, axis=overscan_axis)
 
     if model is not None:
+        # astropy.modeling is numpy-only, so the copy to the host is made
+        # explicitly here and the fitted overscan converted back below.
+        _warn_host_copy("subtract_overscan", xp, stacklevel=4)
+        oscan_np = _to_numpy(oscan)
         of = fitting.LinearLSQFitter()
-        yarr = xp.arange(oscan.shape[0])
-        oscan = of(model, yarr, oscan)
-        # The model will return something array-like but it may not be the same array
-        # library that we started with, so convert it back to the original
-        oscan = xp.asarray(oscan(yarr))
+        yarr = np.arange(oscan_np.shape[0])
+        fitted = of(model, yarr, oscan_np)
+        oscan = _from_numpy(fitted(yarr), like=ccd.data, xp=xp)
         if overscan_axis == 1:
             oscan = xp.reshape(oscan, (oscan.size, 1))
         else:
@@ -1397,8 +1492,9 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
         WCS onto which all images should be projected.
 
     target_shape : two element list-like or None, optional
-        Shape of the output image. If omitted, defaults to the shape of the
-        input image.
+        Shape of the output image. Any sequence or array of two integers is
+        accepted, including an array from ``ccd``'s namespace. If omitted,
+        defaults to the shape of the input image.
         Default is ``None``.
 
     order : str, optional
@@ -1421,6 +1517,14 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
     -------
     ccd : `~astropy.nddata.CCDData`
         A transformed CCDData object.
+
+    Notes
+    -----
+    The reprojection is done by ``reproject``, which is NumPy-only, so this
+    function runs on the host CPU. If ``ccd`` is not backed by NumPy its
+    data and mask are copied to the host, and the reprojected data and mask
+    are copied back to the array namespace and device of the input; the
+    copy is announced with a `HostCopyWarning`.
     """
     from astropy.nddata.ccddata import _generate_wcs_and_update_header
     from reproject import reproject_interp
@@ -1433,45 +1537,70 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
 
     if target_shape is None:
         target_shape = ccd.shape
+    # A shape is metadata, not data: make it a tuple of Python ints so that
+    # reproject, which needs ``len`` and elementwise comparison, accepts it
+    # whatever it was given as, including an array-API array that supports
+    # neither (array-api-strict has no ``len``).
+    target_shape = tuple(int(size) for size in target_shape)
+
+    # reproject is numpy-only, so the copy to the host is made explicitly
+    # here and every result is converted back below.
+    _warn_host_copy("wcs_project", xp, stacklevel=4)
 
     projected_image_raw, _ = reproject_interp(
-        (ccd.data, ccd.wcs), target_wcs, shape_out=target_shape, order=order
+        (_to_numpy(ccd.data), ccd.wcs),
+        target_wcs,
+        shape_out=target_shape,
+        order=order,
     )
+    projected = _from_numpy(projected_image_raw, like=ccd.data, xp=xp)
 
     reprojected_mask = None
     if ccd.mask is not None:
         reprojected_mask, _ = reproject_interp(
-            (ccd.mask, ccd.wcs), target_wcs, shape_out=target_shape, order=order
+            (_to_numpy(ccd.mask), ccd.wcs),
+            target_wcs,
+            shape_out=target_shape,
+            order=order,
         )
         # Make the mask 1 if the reprojected mask pixel value is non-zero.
         # A small threshold is included to allow for some rounding in
         # reproject_interp.
-        reprojected_mask = reprojected_mask > 1e-8
+        reprojected_mask = _from_numpy(reprojected_mask, like=ccd.data, xp=xp) > 1e-8
 
     # The reprojection will contain nan for any pixels for which the source
     # was outside the original image. Those should be masked also.
-    output_mask = xp.isnan(projected_image_raw)
+    output_mask = xp.isnan(projected)
 
     if reprojected_mask is not None:
         output_mask = output_mask | reprojected_mask
 
-    # Need to scale counts by ratio of pixel areas
-    area_ratio = proj_plane_pixel_area(target_wcs) / proj_plane_pixel_area(ccd.wcs)
+    # Need to scale counts by ratio of pixel areas. Make it a Python float:
+    # astropy returns a numpy scalar, which strict namespaces refuse as an
+    # operand.
+    area_ratio = float(
+        proj_plane_pixel_area(target_wcs) / proj_plane_pixel_area(ccd.wcs)
+    )
 
-    # If nothing ended up masked, don't create a mask.
-    if not output_mask.any():
+    # If nothing ended up masked, don't create a mask. ``any`` is a method
+    # only on numpy-like arrays, so go through the namespace.
+    if not bool(xp.any(output_mask)):
         output_mask = None
 
     # If there are any wcs keywords in the header, remove them
     hdr, _ = _generate_wcs_and_update_header(ccd.header)
 
     nccd = CCDData(
-        area_ratio * projected_image_raw,
+        area_ratio * projected,
         wcs=target_wcs,
-        mask=output_mask,
         header=hdr,
         unit=ccd.unit,
     )
+    # TODO: the private _mask attribute is set here to avoid the
+    # astropy CCDData mask setter, which coerces the mask with
+    # np.asarray and so would pull it out of its array namespace.
+    if output_mask is not None:
+        nccd._mask = output_mask
 
     return nccd
 
@@ -2155,6 +2284,13 @@ def cosmicray_lacosmic(
     Implementation of the cosmic ray identification L.A.Cosmic:
     http://www.astro.yale.edu/dokkum/lacosmic/
 
+    The detection is done by ``astroscrappy``, which is NumPy-only, so this
+    function runs on the host CPU. If ``ccd`` is not backed by NumPy its
+    data and mask, and any array-valued ``inbkg`` or ``invar``, are copied
+    to the host, and the cleaned data and cosmic-ray mask are copied back to
+    the array namespace and device of the input; the copy is announced with
+    a `HostCopyWarning`.
+
     Returns
     -------
     nccd : `~astropy.nddata.CCDData` or `numpy.ndarray`
@@ -2254,7 +2390,14 @@ def cosmicray_lacosmic(
             # here that we later add in then take out.
             data_offset = pssl
 
-        asy_background_kwargs = dict(inbkg=inbkg, invar=invar)
+        # astroscrappy is numpy-only, so array-valued backgrounds and
+        # variances are copied to the host here. Anything that is not an
+        # array (None, or a bad value the caller wants an error for) is
+        # passed straight through.
+        asy_background_kwargs = dict(
+            inbkg=_to_numpy(inbkg) if _is_array(inbkg) else inbkg,
+            invar=_to_numpy(invar) if _is_array(invar) else invar,
+        )
 
     if isinstance(ccd, CCDData):
         # Start with a check for a special case: ccd is in electron, and
@@ -2287,9 +2430,14 @@ def cosmicray_lacosmic(
                     + f" ccd ({ccd.unit}) and readnoise ({readnoise.unit})."
                 )
 
+        xp = array_api_compat.array_namespace(ccd.data)
+        # astroscrappy is numpy-only, so the copy to the host is made
+        # explicitly here and every result is converted back below.
+        _warn_host_copy("cosmicray_lacosmic", xp, stacklevel=4)
+
         crmask, cleanarr = detect_cosmics(
-            ccd.data + data_offset,
-            inmask=ccd.mask,
+            _to_numpy(ccd.data + data_offset),
+            inmask=None if ccd.mask is None else _to_numpy(ccd.mask),
             sigclip=sigclip,
             sigfrac=sigfrac,
             objlim=objlim,
@@ -2313,17 +2461,21 @@ def cosmicray_lacosmic(
         # Wrap the CCDData object to ensure it is compatible with array API
         _ccd = _wrap_ccddata_for_array_api(ccd)
         nccd = _ccd.copy()
-        xp = array_api_compat.array_namespace(_ccd.data)
+
+        # Back to the caller's namespace and device before any arithmetic,
+        # so that everything below runs natively.
+        cleanarr = _from_numpy(cleanarr, like=_ccd.data, xp=xp)
+        crmask = _from_numpy(crmask, like=_ccd.data, xp=xp)
 
         cleanarr = cleanarr - data_offset
         cleanarr = _astroscrappy_gain_apply_helper(
-            cleanarr, gain.value, gain_apply, old_astroscrappy_interface
+            cleanarr, float(gain.value), gain_apply, old_astroscrappy_interface
         )
 
         if gain_apply:
             if nccd.uncertainty is not None:
                 gain_value = xp.asarray(
-                    gain.value, device=array_api_compat.device(_ccd.data)
+                    float(gain.value), device=array_api_compat.device(_ccd.data)
                 )
                 gain_corrected = _ccd.multiply(
                     gain_value, xp=xp, handle_mask=xp.logical_or
@@ -2331,20 +2483,29 @@ def cosmicray_lacosmic(
                 nccd.uncertainty = gain_corrected.uncertainty
             nccd.unit = _ccd.unit * gain.unit
 
-        nccd.data = xp.asarray(cleanarr)
-        if nccd.mask is None:
-            nccd.mask = crmask
+        nccd.data = cleanarr
+        # TODO: the private _mask attribute is set here to avoid the mask
+        # setters, which do not preserve the device of the data.
+        if nccd.mask is None or nccd.mask is np_ma_nomask:
+            nccd._mask = crmask
         else:
-            nccd.mask = nccd.mask + crmask
+            existing_mask = xp.asarray(
+                nccd.mask, dtype=xp.bool, device=array_api_compat.device(_ccd.data)
+            )
+            nccd._mask = xp.logical_or(existing_mask, crmask)
 
         # Unwrap the CCDData object to ensure it is compatible with array API
         nccd = _unwrap_ccddata_for_array_api(nccd)
         return nccd
     elif _is_array(ccd):
         data = ccd
+        xp = array_api_compat.array_namespace(data)
+        # astroscrappy is numpy-only, so the copy to the host is made
+        # explicitly here and every result is converted back below.
+        _warn_host_copy("cosmicray_lacosmic", xp, stacklevel=4)
 
         crmask, cleanarr = detect_cosmics(
-            data + data_offset,
+            _to_numpy(data + data_offset),
             inmask=None,
             sigclip=sigclip,
             sigfrac=sigfrac,
@@ -2365,9 +2526,14 @@ def cosmicray_lacosmic(
             **asy_background_kwargs,
         )
 
+        # Back to the caller's namespace and device before any arithmetic,
+        # so that everything below runs natively.
+        cleanarr = _from_numpy(cleanarr, like=data, xp=xp)
+        crmask = _from_numpy(crmask, like=data, xp=xp)
+
         cleanarr = cleanarr - data_offset
         cleanarr = _astroscrappy_gain_apply_helper(
-            cleanarr, gain.value, gain_apply, old_astroscrappy_interface
+            cleanarr, float(gain.value), gain_apply, old_astroscrappy_interface
         )
 
         return cleanarr, crmask
@@ -2381,13 +2547,15 @@ def _astroscrappy_gain_apply_helper(cleaned_data, gain, gain_apply, old_interfac
     Helper function for logic determining how to apply gain to cleaned
     data. In the old astroscrappy interface cleaned data was always
     gain-corrected. In the new interface it is not. This function works out
-    the Right Thing to do given the inputs.
+    the Right Thing to do given the inputs. It only multiplies and divides,
+    so it works in any array namespace.
 
-    cleaned_data : `numpy.ndarray`
-        The cleaned data.
+    cleaned_data : array
+        The cleaned data, in the caller's array namespace.
 
     gain: float
-        The gain to (maybe) be applied.
+        The gain to (maybe) be applied. A Python float: a numpy scalar is
+        not a valid operand for a strict array-API namespace.
 
     gain_apply : bool
         If ``True``, the cleaned data should have the gain applied, otherwise
