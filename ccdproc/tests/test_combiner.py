@@ -6,12 +6,14 @@ from functools import partial
 
 import array_api_compat
 import array_api_extra as xpx
+import astropy
 import astropy.units as u
 import numpy as np
 import pytest
 from astropy.nddata import CCDData
 from astropy.stats import median_absolute_deviation as mad
 from astropy.stats import sigma_clip
+from astropy.utils import minversion
 from astropy.utils.data import get_pkg_data_filename
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
@@ -1717,7 +1719,17 @@ def _sigma_clip_datasets():
     }
 
 
-def _sigma_clip_reference(np_data, **kwargs):
+# astropy's compiled path masks a slice that an iteration empties only once
+# astropy/astropy#20331 is fixed (astropy PR #20393, released in 8.0.2);
+# before that it kept iterating on the empty slice, read out of bounds and
+# returned NaN bounds that left the slice's finite values unmasked. Once
+# 8.0.2 is the floor in pyproject.toml, this flag, the numpy carve-out in
+# _sigma_clip_reference and its ``checked`` line can all go: ``expected``
+# then always masks an emptied slice and astropy's own mask always agrees.
+_ASTROPY_MASKS_EMPTIED_SLICE = minversion(astropy, "8.0.2")
+
+
+def _sigma_clip_reference(np_data, *, via_sigma_clipping=False, **kwargs):
     """
     Mask of ``astropy.stats.sigma_clip``'s final bounds applied to ``np_data``.
 
@@ -1725,6 +1737,12 @@ def _sigma_clip_reference(np_data, **kwargs):
     ----------
     np_data : numpy.ndarray
         Data to clip, in numpy (the values the backend under test sees).
+    via_sigma_clipping : bool, optional
+        Whether the mask this reference will be compared against came from
+        `~ccdproc.Combiner.sigma_clipping`, which hands numpy data to
+        astropy, rather than from ``_sigma_clip_mask`` called directly.
+        Only that route can see an unfixed astropy's emptied-slice
+        behaviour. Default is `False`.
     **kwargs
         Passed to `astropy.stats.sigma_clip`: ``sigma_lower``,
         ``sigma_upper``, ``maxiters``, ``cenfunc``, ``stdfunc``, ``axis``.
@@ -1757,12 +1775,20 @@ def _sigma_clip_reference(np_data, **kwargs):
     path of astropy versions without the fix for astropy#20331 (astropy
     PR #20393, in 8.0.2), which iterated on over the empty slice; the
     fixed compiled path stops at the iteration that emptied the slice and
-    returns its finite bounds. Both the reference and ``_sigma_clip_mask``
-    mask such a slice entirely, as the fixed compiled path does, so NaN
-    bounds are read here as "everything rejected". Astropy's own mask is
-    then checked only where its bounds are finite (or the data are not),
-    because the unfixed compiled path leaves an emptied slice's finite
-    values unmasked; on a fixed astropy that is the whole array.
+    returns its finite bounds and so masks the slice entirely, as
+    ``_sigma_clip_mask`` does. NaN bounds therefore mean "everything in
+    this slice rejected" -- except on the one path that does not do that,
+    numpy data on an astropy without the fix, which
+    `Combiner.sigma_clipping` hands straight to astropy. The reference has
+    to produce what the code under test produces, so that term is dropped
+    exactly there: ``via_sigma_clipping`` and a numpy namespace, the
+    module level ``xp`` that every caller of this helper clips in. Reading
+    the predicate here rather than caching it keeps the reference on the
+    branch a call actually took: ``test_sigma_clipping_dispatch``
+    monkeypatches ``array_api_compat.is_numpy_namespace`` to force the
+    array API branch on numpy too. Astropy's own mask is checked for the
+    same reason only where its bounds are finite (or the data are not); on
+    a fixed astropy that is the whole array.
     """
     # Normalize a tuple axis once, up front: astropy's bottleneck dispatch
     # cannot take negative tuple entries, and the bounds shape below needs
@@ -1785,13 +1811,14 @@ def _sigma_clip_reference(np_data, **kwargs):
     shape = tuple(1 if dim in axes else n for dim, n in enumerate(np_data.shape))
     lower = np.reshape(lower, shape)
     upper = np.reshape(upper, shape)
+    emptied = np.isnan(lower)
     with np.errstate(invalid="ignore"):
-        expected = (
-            ~np.isfinite(np_data)
-            | (np_data < lower)
-            | (np_data > upper)
-            | np.isnan(lower)  # an emptied slice: everything rejected
-        )
+        expected = ~np.isfinite(np_data) | (np_data < lower) | (np_data > upper)
+    if _ASTROPY_MASKS_EMPTIED_SLICE or not (
+        via_sigma_clipping and array_api_compat.is_numpy_namespace(xp)
+    ):
+        # An emptied slice: everything in it rejected.
+        expected |= emptied
 
     if isinstance(kwargs.get("cenfunc", "median"), str) and isinstance(
         kwargs.get("stdfunc", "std"), str
@@ -1799,7 +1826,14 @@ def _sigma_clip_reference(np_data, **kwargs):
         from_astropy = np.ma.getmaskarray(
             sigma_clip(np_data.copy(), masked=True, copy=False, **kwargs)
         )
-        checked = ~np.isnan(lower) | ~np.isfinite(np_data)
+        # An unfixed astropy leaves an emptied slice's finite values
+        # unmasked. ``np.ones_like(emptied)`` has the bounds' reduced
+        # shape, which cannot index the mask, hence the full-shape ones.
+        checked = (
+            np.ones(np_data.shape, dtype=bool)
+            if _ASTROPY_MASKS_EMPTIED_SLICE
+            else ~emptied | ~np.isfinite(np_data)
+        )
         assert np.array_equal(from_astropy[checked], expected[checked])
     return expected
 
@@ -1947,6 +1981,78 @@ def test_sigma_clip_mask_axis_forms(axis):
     assert bool(xp.all(result == xp.asarray(expected, device=xp_device)))
 
 
+def _std_nan_below_four(values, axis=None, *, xp):
+    """
+    ``nanstd``, but NaN for a slice with fewer than four values left.
+
+    Notes
+    -----
+    A stand-in for the kind of user callable Copilot raised on #1009: one
+    that returns NaN for a slice that still holds values, rather than only
+    for the empty slice that ``_sigma_clip_mask``'s freeze block is named
+    for. ``ddof`` is the realistic reason (``nanstd(..., ddof=1)`` on one
+    remaining sample); a count threshold pins the same behaviour without
+    depending on how many values a given iteration happens to leave.
+    """
+    remaining = xp.sum(xp.astype(~xp.isnan(values), xp.int32), axis=axis)
+    deviation = nanstd(values, axis=axis, xp=xp)
+    nan = xp.asarray(
+        xp.nan, dtype=deviation.dtype, device=array_api_compat.device(values)
+    )
+    return xp.where(remaining < 4, nan, deviation)
+
+
+def test_sigma_clip_mask_callable_nan_statistic():
+    """
+    A callable statistic that goes NaN on a slice that is *not* empty
+    leaves that slice with exactly the earlier iterations' rejections
+    masked, on every backend.
+
+    Notes
+    -----
+    ``_sigma_clip_mask`` freezes a slice's bounds as soon as an iteration's
+    statistics come back NaN. For the string options that only happens once
+    an iteration has rejected every remaining value, but a callable may do
+    it while values are left. Here ``stdfunc`` returns NaN once fewer than
+    four values remain, so the first iteration rejects ``0.05`` and ``100``
+    and iterations 2-5 keep the bounds that did it: the frozen bounds
+    reject nothing more, because every value still in the slice survived
+    them, so the two outliers stay masked and the three survivors do not.
+
+    That ``F F F T T`` is the union of every iteration's rejections, which
+    is what astropy's python loop masks from 8.1 (astropy#19858). Astropy
+    8.0 and earlier applied the last iteration's bounds with ``copy=False``
+    and so returned ``F F F F F``, and that is still what the numpy path of
+    `~ccdproc.Combiner.sigma_clipping` gives for a callable on an astropy
+    before 8.1, since it hands numpy data to astropy whatever the
+    statistics are; this test therefore calls ``_sigma_clip_mask`` itself
+    on every backend, numpy included.
+
+    It also pins the answer to the simplification declined on #1009:
+    replacing the freeze block with a ``| xp.isnan(lower)`` term in the
+    final mask would mask all five values here, matching no astropy
+    version, and detecting emptiness from the filtered data instead would
+    leave the NaN bounds in place and unmask the two outliers.
+    """
+    data = xp.asarray(
+        np.reshape([0.0, 0.0, 0.0, 0.05, 100.0], (5, 1, 1)), device=xp_device
+    )
+
+    result = _sigma_clip_mask(
+        data,
+        sigma_lower=1,
+        sigma_upper=1,
+        axis=0,
+        maxiters=5,
+        cenfunc="mean",
+        stdfunc=partial(_std_nan_below_four, xp=xp),
+        xp=xp,
+    )
+
+    expected = np.reshape([False, False, False, True, True], (5, 1, 1))
+    assert bool(xp.all(result == xp.asarray(expected, device=xp_device)))
+
+
 def _sigma_clip_ccd_list():
     """
     The ``normal`` set of `_sigma_clip_datasets` as a list of `CCDData`,
@@ -2010,6 +2116,7 @@ def test_sigma_clipping_dispatch(monkeypatch, force_fallback):
 
     expected = _sigma_clip_reference(
         _to_numpy(c._data_arr),
+        via_sigma_clipping=True,
         sigma_lower=2,
         sigma_upper=2.5,
         axis=0,
@@ -2039,6 +2146,44 @@ def test_sigma_clipping_dispatch(monkeypatch, force_fallback):
             c.sigma_clipping(grow=1)
 
 
+@pytest.mark.filterwarnings("ignore::astropy.utils.exceptions.AstropyUserWarning")
+@pytest.mark.filterwarnings("ignore:invalid value encountered:RuntimeWarning")
+def test_sigma_clipping_emptied_slice():
+    """
+    A slice that an iteration rejects entirely comes back fully masked from
+    `~ccdproc.Combiner.sigma_clipping` on every backend but numpy, and on
+    numpy too once astropy masks it (8.0.2, `_ASTROPY_MASKS_EMPTIED_SLICE`).
+
+    Notes
+    -----
+    This is the string-``func``/``dev_func`` case, the one most callers
+    hit, and the divergence the public Notes of ``sigma_clipping`` now
+    record: ``mad_std`` of ``[0., 1., 1.]`` is zero, so the first iteration
+    collapses the bounds onto the mean and rejects all three values. The
+    array API path stops there and keeps those bounds, masking everything.
+    Astropy's compiled path kept iterating on the emptied slice until
+    astropy/astropy#20331 was fixed (PR #20393, in 8.0.2), reading out of
+    bounds and returning NaN bounds that mask nothing, so numpy data get
+    that instead on any older astropy. ``maxiters=2`` is the smallest count
+    that reaches the second iteration and so the divergence; at
+    ``maxiters=1`` every version masks all three.
+
+    The ``collapse`` data set empties a slice the same way, but only for
+    ``_sigma_clip_mask`` called directly; nothing else pins what
+    ``Combiner.sigma_clipping`` does with one.
+    """
+    ccd_list = [
+        CCDData(xp.asarray(np.full((1, 1), value), device=xp_device), unit=u.adu)
+        for value in (0.0, 1.0, 1.0)
+    ]
+    c = Combiner(ccd_list)
+    c.sigma_clipping(func="mean", dev_func="mad_std", axis=0, maxiters=2)
+
+    masked = _ASTROPY_MASKS_EMPTIED_SLICE or not array_api_compat.is_numpy_namespace(xp)
+    expected = np.full((3, 1, 1), masked)
+    assert bool(xp.all(c._data_arr_mask == xp.asarray(expected, device=xp_device)))
+
+
 def test_combine_sigma_clip_on_any_backend():
     # combine() forwards the namespace's mean and std as callables to
     # sigma_clipping; check that the clipping happens on every backend.
@@ -2053,6 +2198,7 @@ def test_combine_sigma_clip_on_any_backend():
     np_data = np.stack([_to_numpy(ccd.data) for ccd in ccd_list])
     mask = _sigma_clip_reference(
         np_data,
+        via_sigma_clipping=True,
         sigma_lower=2,
         sigma_upper=2,
         axis=0,
@@ -2084,6 +2230,7 @@ def test_sigma_clipping_axis_forms_any_backend(axis):
 
     expected = _sigma_clip_reference(
         _to_numpy(c._data_arr),
+        via_sigma_clipping=True,
         sigma_lower=2,
         sigma_upper=2,
         axis=axis,

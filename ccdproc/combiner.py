@@ -233,18 +233,27 @@ def _sigma_clip_mask(
     original data, ``~isfinite(data) | (data < lower) | (data > upper)``,
     rather than the union of the values rejected in each iteration: an
     earlier iteration's rejection can be undone if the bounds widen.
-    Non-finite values are always masked. A slice whose remaining values
+    Non-finite values are always masked. With string ``cenfunc`` and
+    ``stdfunc``, the case most callers hit, a slice whose remaining values
     are all rejected by an iteration stops iterating there and keeps that
     iteration's bounds, so every value in it ends up masked. This is what
     astropy's compiled path does once fixed for astropy/astropy#20331
     (astropy 8.0.2); before that fix it went on iterating the empty slice,
     which read out of bounds and, when it did not crash, returned NaN
-    bounds that left the slice's finite values unmasked. Astropy's python
-    loop, taken when ``cenfunc`` or ``stdfunc`` is a callable, applied the
-    last iteration's bounds with ``copy=False`` up to astropy 8.0 but from
-    8.1 masks the union of every iteration's rejections, so for a callable
-    the numpy path of `Combiner.sigma_clipping` can differ from this one
-    when the bounds widen between iterations.
+    bounds that left the slice's finite values unmasked.
+
+    The bounds are frozen the same way whenever an iteration's statistics
+    come back NaN, so a callable ``cenfunc`` or ``stdfunc`` that returns
+    NaN for a slice that is *not* empty also keeps the bounds it had:
+    every value still in that slice survived them, so nothing more is
+    rejected there and the slice ends up with exactly the earlier
+    iterations' rejections masked. Astropy's python loop, taken when
+    ``cenfunc`` or ``stdfunc`` is a callable, applied the last iteration's
+    bounds with ``copy=False`` up to astropy 8.0 -- which unmasks those
+    earlier rejections -- but from 8.1 masks the union of every
+    iteration's rejections, which is what the frozen bounds give here. For
+    a callable the numpy path of `Combiner.sigma_clipping` can still
+    differ from this one when the bounds widen between iterations.
 
     The ``'median'``, ``'mean'``, ``'std'`` and ``'mad_std'`` options use
     the same NaN-aware reductions as the ``Combiner`` combination methods.
@@ -742,7 +751,10 @@ class Combiner:
         the reductions: a value lying exactly on a bound can be classified
         differently from astropy. The mask is the bounds of the last
         iteration applied to the data, and non-finite values are always
-        masked. The string options for ``func`` and ``dev_func`` use the
+        masked. A slice whose remaining values an iteration all rejects
+        ends up fully masked, as astropy does from 8.0.2; on older astropy
+        the NumPy path leaves that slice's finite values unmasked. The
+        string options for ``func`` and ``dev_func`` use the
         same NaN-aware reductions as the combination methods on every
         backend.
 
