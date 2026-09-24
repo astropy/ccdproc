@@ -43,7 +43,7 @@ Other Changes and Additions
   ``xp_device`` fixtures provide the array namespace and device. The
   ``CCDPROC_*`` environment variables, the baseline file and its format, the
   tox factors and the CI jobs are unchanged, as is
-  ``from ccdproc.conftest import testing_array_library``. [#XXXX]
+  ``from ccdproc.conftest import testing_array_library``. [#1019]
 - Add a ``strict`` tox environment for running the ``array-api-strict`` test
   suite locally: ``tox -e strict`` reproduces the CI ``py313-strict`` job
   without having to name the interpreter. [#986]
