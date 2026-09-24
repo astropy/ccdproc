@@ -29,11 +29,11 @@ from ccdproc._windowfilters import (
     window_rank,
     window_reduce,
 )
-from ccdproc.conftest import assert_same_namespace_and_device
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
-from ccdproc.conftest import to_xp as _as_test_array
 from ccdproc.core import _dispatch_median_filter, _dispatch_percentile_filter
+from ccdproc.tests.pytest_fixtures import assert_same_namespace_and_device
+from ccdproc.tests.pytest_fixtures import to_xp as _as_test_array
 
 _rng = np.random.default_rng(20260907)
 

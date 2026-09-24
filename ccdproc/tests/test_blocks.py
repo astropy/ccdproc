@@ -21,9 +21,9 @@ from astropy.nddata import CCDData, NDData, StdDevUncertainty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from ccdproc import _blocks, core
-from ccdproc.conftest import assert_same_namespace_and_device, to_xp
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
+from ccdproc.tests.pytest_fixtures import assert_same_namespace_and_device, to_xp
 
 # The array library itself rather than the array-api-compat wrapper the rest
 # of the suite uses. For numpy and dask the two differ; for jax and

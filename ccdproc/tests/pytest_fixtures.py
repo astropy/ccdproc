@@ -2,6 +2,7 @@
 
 from shutil import rmtree
 
+import array_api_compat
 import numpy as np
 import pytest
 from astropy import units as u
@@ -123,3 +124,34 @@ def triage_setup(request):
             self.test_dir = directory
 
     return Result(n_test, test_dir)
+
+
+def to_xp(data):
+    """
+    A numpy array converted into the namespace and device under test.
+
+    Every array-API test builds its input this way, and the reference it
+    compares against stays numpy, so this is the one place the backend and
+    its device enter a test.
+    """
+    # Imported here rather than at module level: conftest imports this
+    # module, so a top-level import back would be circular.
+    from ..conftest import testing_array_device, testing_array_library
+
+    return testing_array_library.asarray(data, device=testing_array_device)
+
+
+def assert_same_namespace_and_device(result, data):
+    """
+    Assert that ``result`` is in the same array-API namespace and on the
+    same device as ``data``.
+
+    This is the property the whole array-API migration exists for: the
+    ndimage and astropy calls being replaced handed back numpy arrays on
+    the host. The device half is what the array-api-strict run, whose
+    arrays live on a non-default device, is there to catch.
+    """
+    assert array_api_compat.array_namespace(result) is array_api_compat.array_namespace(
+        data
+    )
+    assert array_api_compat.device(result) == array_api_compat.device(data)
