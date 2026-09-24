@@ -19,7 +19,9 @@ at all -- there is no ``as_strided``, no ``sliding_window_view``, not even a
 ``pad`` -- and it is also what makes it expensive: the stack holds
 ``prod(size)`` copies of the input, and the rank filters sort it, costing
 O(k**2 log k**2) per pixel for a k-by-k window where ndimage's selection
-costs O(k**2).
+costs O(k**2). `window_any` is the exception: an ``or`` never needs a
+whole window at once, so it folds the offsets into one accumulator
+instead of stacking them -- see `_band_any`.
 
 Two divergences from ndimage are deliberate, and documented on the
 functions themselves: integer input is promoted to a floating dtype, and

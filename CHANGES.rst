@@ -39,16 +39,32 @@ New Features
   ``background_deviation_filter`` and ``ccdmask`` no longer copy a non-NumPy
   array to the host: NumPy input still goes to ``scipy.ndimage`` unchanged,
   while every other array namespace is served by a new implementation
-  written purely in terms of the array API standard, which reproduces
-  ``scipy.ndimage`` exactly on finite input. It costs O(k**2 log k**2) per pixel
-  for a k-by-k window rather than ndimage's O(k**2), promotes integer input to
-  a floating dtype, implements only ndimage's ``'reflect'`` and
-  ``'nearest'`` boundary modes, and excludes NaNs from a window rather than
-  sorting them in with the values. On a non-NumPy array ``median_filter``
-  now accepts only ``size`` and ``mode``, raising ``TypeError`` for any
-  other ``scipy.ndimage`` argument. ``background_deviation_filter`` gained
-  an ``xp`` argument, matching ``background_deviation_box``. Part of the
-  array API migration tracked in #971. [#1010]
+  written purely in terms of the array API standard. Part of the array API
+  migration tracked in #971. [#1010]
+- Off NumPy those filters reproduce ``scipy.ndimage`` exactly on finite
+  input, but cost O(k**2 log k**2) per pixel for a k-by-k window rather
+  than ndimage's O(k**2), and need a fully known shape, so a dask array
+  with unknown chunk sizes must have ``compute_chunk_sizes()`` called on it
+  first. [#1010]
+- Off NumPy those filters exclude NaNs from a window and rank among the
+  values that remain, where ``scipy.ndimage`` sorts them in with the
+  values; results on data containing NaN therefore differ between NumPy
+  and every other array library. [#1010]
+- Off NumPy those filters implement only ndimage's ``'reflect'`` and
+  ``'nearest'`` boundary modes, and ``median_filter`` accepts only ``size``
+  and ``mode``, raising ``TypeError`` for any other ``scipy.ndimage``
+  argument. [#1010]
+- Off NumPy those filters promote integer and boolean input to a floating
+  dtype, which ``scipy.ndimage`` does not, and reject complex input and
+  floating input narrower than ``float32``, which ``scipy.ndimage`` rejects
+  as well. [#1010]
+- ``cosmicray_median`` now returns a floating result for integer input on
+  every array library. Previously NumPy kept the input integer dtype, dask
+  returned a float and ``array-api-strict`` raised. [#1010]
+- ``background_deviation_filter`` gained an ``xp`` argument, matching
+  ``background_deviation_box``, and ``background_deviation_box`` now
+  accepts a plain array-like such as a nested list, as its docstring has
+  always promised. [#1010]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
