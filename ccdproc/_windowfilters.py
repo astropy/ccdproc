@@ -31,12 +31,15 @@ One dask ``PerformanceWarning`` is deliberately swallowed, in
 
 import itertools
 import math
+import numbers
 import textwrap
 import warnings
+from functools import partial
 
 import array_api_compat
 from astropy.utils.exceptions import AstropyUserWarning
 
+from ._blocks import _UNKNOWN_SHAPE_MESSAGE
 from ._nanfuncs import _nanrank, _promote_to_real
 
 __all__ = ["window_any", "window_median", "window_rank", "window_reduce"]
@@ -144,19 +147,69 @@ def _normalize_size(size, ndim):
     ValueError
         If a sequence ``size`` does not have one entry per axis, or an
         entry is not a positive integer.
+
+    Notes
+    -----
+    A scalar is anything that cannot be iterated, and an integer is
+    anything registered as `numbers.Integral`, so a numpy integer is
+    accepted either way -- ``ccdmask(ratio, ncmed=np.int64(7))`` reaches
+    here. ``3.0`` is still rejected, as `scipy.ndimage` rejects it;
+    ``ccdproc._blocks._block_size`` accepts an integral float instead
+    because `astropy.nddata` does, which is why the two validators share
+    only this shape and not their bodies.
     """
-    if isinstance(size, int):
-        sizes = (size,) * ndim
-    else:
+    try:
         sizes = tuple(size)
-        if len(sizes) != ndim:
-            raise ValueError(
-                f"size must have one entry per axis: got {len(sizes)} for an "
-                f"array with {ndim} axes"
-            )
-    if any(not isinstance(k, int) or k < 1 for k in sizes):
+    except TypeError:
+        sizes = (size,) * ndim
+    if len(sizes) != ndim:
+        raise ValueError(
+            f"size must have one entry per axis: got {len(sizes)} for an "
+            f"array with {ndim} axes"
+        )
+    if any(not isinstance(k, numbers.Integral) or k < 1 for k in sizes):
         raise ValueError(f"size entries must be positive integers, got {size!r}")
-    return sizes
+    return tuple(int(k) for k in sizes)
+
+
+def _cast_real(x, xp):
+    """
+    Promote ``x`` for a rank or a general reduction, or refuse its dtype.
+
+    Parameters
+    ----------
+    x : array
+        Input array.
+    xp : array namespace
+        Namespace to use.
+
+    Returns
+    -------
+    array
+        ``x``, promoted to a real floating dtype if it was integer or
+        boolean.
+
+    Raises
+    ------
+    TypeError
+        For complex input, which `xp.sort` is not defined for and which
+        `scipy.ndimage` refuses as well -- numpy would otherwise take the
+        real part with a ``ComplexWarning`` and array-api-strict would
+        raise from inside ``astype``. Also for a floating dtype narrower
+        than ``float32``: ndimage refuses 2-D ``float16`` outright, and
+        the rank arithmetic would be wrong there anyway, since a count
+        above 2048 does not survive a round trip through binary16.
+    """
+    if xp.isdtype(x.dtype, "complex floating"):
+        raise TypeError("complex input is not supported by the window filters")
+    if xp.isdtype(x.dtype, "real floating") and xp.finfo(x.dtype).bits < 32:
+        raise TypeError(f"{x.dtype} input is not supported by the window filters")
+    return _promote_to_real(x, xp, array_api_compat.device(x))
+
+
+def _cast_bool(x, xp):
+    """``x`` as booleans; any non-zero value counts as true."""
+    return xp.astype(x, xp.bool)
 
 
 def _slice_along(x, axis, start, stop):
@@ -285,6 +338,30 @@ def _pad_windows(x, size, mode, xp):
     return x
 
 
+def _window_offsets(padded, size, shape):
+    """
+    Yield each window offset of ``padded`` as a view shaped ``shape``.
+
+    Parameters
+    ----------
+    padded : array
+        Array already padded by `_pad_windows`.
+    size : tuple of int
+        Window length along each axis.
+    shape : tuple of int
+        Shape of the output these views cover.
+
+    Yields
+    ------
+    array
+        One shifted slice per window position, in the row-major order of
+        the offsets. Nothing depends on that order: both consumers here,
+        `_stack_from_padded` and `_band_any`, are order-insensitive.
+    """
+    for offset in itertools.product(*(range(k) for k in size)):
+        yield padded[tuple(slice(o, o + n) for o, n in zip(offset, shape, strict=True))]
+
+
 def _stack_from_padded(padded, size, shape, xp):
     """
     Stack every window offset of ``padded`` into a new trailing axis.
@@ -309,21 +386,52 @@ def _stack_from_padded(padded, size, shape, xp):
         the new axis is the row-major order of the offsets, which nothing
         depends on: every reduction applied to it is order-insensitive.
     """
-    offsets = itertools.product(*(range(k) for k in size))
-    windows = [
-        padded[tuple(slice(o, o + n) for o, n in zip(offset, shape, strict=True))]
-        for offset in offsets
-    ]
+    windows = list(_window_offsets(padded, size, shape))
     with warnings.catch_warnings():
         if array_api_compat.is_dask_namespace(xp):
             # dask warns that this stack multiplies the chunk count by
             # prod(size). It does, deliberately: that is how the window
             # reduction is expressed at all, and there is nothing a caller
             # could change in response short of using a smaller window.
-            # Matched by message rather than by class so that dask need not
-            # be imported here.
-            warnings.filterwarnings("ignore", message="Increasing number of chunks")
+            from dask.array import PerformanceWarning
+
+            warnings.filterwarnings("ignore", category=PerformanceWarning)
         return xp.stack(windows, axis=-1)
+
+
+def _band_rank(padded, size, shape, xp, *, percentile):
+    """The order statistic of every window in one padded band."""
+    return _nanrank(_stack_from_padded(padded, size, shape, xp), percentile, -1, xp)
+
+
+def _band_reduce(padded, size, shape, xp, *, func):
+    """``func`` applied to the window stack of one padded band."""
+    return func(_stack_from_padded(padded, size, shape, xp), axis=-1)
+
+
+def _band_any(padded, size, shape, xp):
+    """
+    Whether any value in each window of one padded band is true.
+
+    Notes
+    -----
+    The rank filters have to hold a whole window at once to sort it; an
+    ``or`` does not, so this accumulates the shifted slices into one
+    output-sized array instead of stacking ``prod(size)`` of them. On a
+    1024x1024 boolean image with a 21x21 window that is 0.03 s and 3 MiB
+    against 2.3 s and 258 MiB for the stack.
+
+    It still runs inside `_windowed`'s bands, and so behind the same dask
+    rechunk. Accumulating over the whole padded array instead would drop
+    that rechunk, and the ``prod(size)`` differently-offset slices would
+    then land across dask's chunk boundaries every which way: measured at
+    five million tasks and ten minutes for the image above, against three
+    thousand tasks and under a second here.
+    """
+    result = None
+    for window in _window_offsets(padded, size, shape):
+        result = window if result is None else xp.logical_or(result, window)
+    return result
 
 
 def _itemsize(dtype, xp):
@@ -368,6 +476,10 @@ def _default_band_rows(x, size, xp):
         computed, the caller is only told that it will need more memory
         than the budget allows for.
     """
+    if x.ndim == 0:
+        # There are no rows to band, and no ``x.shape[0]`` to report.
+        return 1
+
     row_bytes = math.prod(x.shape[1:]) * _itemsize(x.dtype, xp) * math.prod(size)
     if row_bytes == 0:
         # A zero-width image has nothing to band; one band covers it.
@@ -389,32 +501,48 @@ def _default_band_rows(x, size, xp):
     return band_rows
 
 
-def _windowed(x, size, reduction, *, mode, band_rows, xp):
+def _windowed(x, size, reduce_band, *, cast, mode, band_rows, xp):
     """
-    Apply ``reduction`` to the window stack of ``x``, a band of rows at a
-    time.
+    Apply ``reduce_band`` to the windows of ``x``, a band of rows at a time.
+
+    This is the whole body of every public function here: they differ only
+    in the validation they do first and in the two callables they pass.
 
     Parameters
     ----------
     x : array
-        Input array, already in whatever dtype the reduction wants.
-    size : tuple of int
-        Window length along each axis, as `_normalize_size` returns.
-    reduction : callable
-        Called as ``reduction(stack)`` with an array shaped
-        ``band_shape + (prod(size),)``, and must reduce that trailing axis
-        away. It must depend on nothing but the values within each window.
+        Input array, in the dtype the caller gave.
+    size : int or sequence of int
+        Window shape as the caller gave it; normalized here.
+    reduce_band : callable
+        Called as ``reduce_band(padded, size, band_shape, xp)`` with one
+        padded band, and must return that band's output. It is given the
+        padded band rather than the window stack so that `_band_any` can
+        accumulate the window offsets instead of stacking them; the other
+        three go through `_stack_from_padded` themselves. It must depend
+        on nothing but the values within each window.
+    cast : callable
+        Called as ``cast(x, xp)`` before anything else touches ``x``.
+        This is where a dtype the filters do not support is refused.
     mode : str
         Boundary mode, one of `_MODES`.
     band_rows : int or None
         Rows per band; ``None`` asks `_default_band_rows`.
-    xp : array namespace
-        Namespace to use.
+    xp : array namespace or None
+        Namespace to use. ``None`` resolves it from ``x``.
 
     Returns
     -------
     array
         Shape ``x.shape``.
+
+    Raises
+    ------
+    ValueError
+        If ``x``'s shape is not fully known, which on dask means chunk
+        sizes that have not been computed. Without this the failure comes
+        out of ``concat`` several frames down, naming a shape with a
+        ``nan`` in it and no remedy.
 
     Notes
     -----
@@ -436,6 +564,13 @@ def _windowed(x, size, reduction, *, mode, band_rows, xp):
     what makes collapsing safe, since it is the band, not the image, that
     has to fit in memory.
     """
+    if xp is None:
+        xp = array_api_compat.array_namespace(x)
+    if not all(isinstance(length, int) for length in x.shape):
+        raise ValueError(_UNKNOWN_SHAPE_MESSAGE)
+    x = cast(x, xp)
+    size = _normalize_size(size, x.ndim)
+
     shape = x.shape
     padded = _pad_windows(x, size, mode, xp)
     dask = array_api_compat.is_dask_namespace(xp)
@@ -443,10 +578,11 @@ def _windowed(x, size, reduction, *, mode, band_rows, xp):
     if band_rows is None:
         band_rows = _default_band_rows(x, size, xp)
 
-    if band_rows >= shape[0]:
+    # A 0-d array has no rows to band, and no ``shape[0]`` to compare with.
+    if x.ndim == 0 or band_rows >= shape[0]:
         if dask:
             padded = padded.rechunk(-1)
-        return reduction(_stack_from_padded(padded, size, shape, xp))
+        return reduce_band(padded, size, shape, xp)
 
     overhang = size[0] - 1
     reduced = []
@@ -457,12 +593,9 @@ def _windowed(x, size, reduction, *, mode, band_rows, xp):
             # One chunk per band before it is sliced into window offsets;
             # see Notes.
             band = band.rechunk(-1)
-        # Reduce inside the loop: holding the band stacks and reducing
-        # afterwards would rebuild the whole-image stack the banding exists
-        # to avoid.
-        reduced.append(
-            reduction(_stack_from_padded(band, size, (rows,) + shape[1:], xp))
-        )
+        # Reduce inside the loop: holding the bands and reducing afterwards
+        # would rebuild the whole-image stack the banding exists to avoid.
+        reduced.append(reduce_band(band, size, (rows,) + shape[1:], xp))
     return xp.concat(reduced, axis=0)
 
 
@@ -490,8 +623,12 @@ def window_rank(x, size, percentile, *, mode="reflect", band_rows=None, xp=None)
     ------
     ValueError
         If ``percentile`` is outside ``[0, 100]``, if ``mode`` is not
-        implemented, if ``size`` does not match ``x``, or if a window is
-        more than twice as wide as the axis it slides along.
+        implemented, if ``size`` does not match ``x``, if ``x``'s shape is
+        not fully known, or if a window is more than twice as wide as the
+        axis it slides along.
+    TypeError
+        If ``x`` is complex or narrower than ``float32``; `scipy.ndimage`
+        refuses both as well. See `_cast_real`.
 
     Notes
     -----
@@ -514,18 +651,14 @@ def window_rank(x, size, percentile, *, mode="reflect", band_rows=None, xp=None)
     if not 0 <= percentile <= 100:
         raise ValueError(f"percentile must be in [0, 100], got {percentile!r}")
 
-    if xp is None:
-        xp = array_api_compat.array_namespace(x)
-    x = _promote_to_real(x, xp, array_api_compat.device(x))
-    size = _normalize_size(size, x.ndim)
-
     # ndimage's rank is int(size * percentile / 100); _nanrank takes the
     # same product, in the same order, against the count of non-NaN values
     # in each window.
     return _windowed(
         x,
         size,
-        lambda stack: _nanrank(stack, percentile, -1, xp),
+        partial(_band_rank, percentile=percentile),
+        cast=_cast_real,
         mode=mode,
         band_rows=band_rows,
         xp=xp,
@@ -581,18 +714,15 @@ def window_any(x, size, *, mode="reflect", band_rows=None, xp=None):
     Notes
     -----
     Alone among the filters here this one does no dtype promotion, and it
-    reduces with ``any`` rather than by sorting, so it costs a single pass
-    over the window stack.
+    never builds the window stack: an ``or`` needs no more than one
+    output-sized accumulator, so the window offsets are folded into one as
+    they are taken. See `_band_any`.
     """
-    if xp is None:
-        xp = array_api_compat.array_namespace(x)
-    x = xp.astype(x, xp.bool)
-    size = _normalize_size(size, x.ndim)
-
     return _windowed(
         x,
         size,
-        lambda stack: xp.any(stack, axis=-1),
+        _band_any,
+        cast=_cast_bool,
         mode=mode,
         band_rows=band_rows,
         xp=xp,
@@ -624,15 +754,11 @@ def window_reduce(x, size, func, *, mode="reflect", band_rows=None, xp=None):
     ordinary array-API reduction, where `generic_filter` calls its callable
     once per pixel, in Python, and is correspondingly slow.
     """
-    if xp is None:
-        xp = array_api_compat.array_namespace(x)
-    x = _promote_to_real(x, xp, array_api_compat.device(x))
-    size = _normalize_size(size, x.ndim)
-
     return _windowed(
         x,
         size,
-        lambda stack: func(stack, axis=-1),
+        partial(_band_reduce, func=func),
+        cast=_cast_real,
         mode=mode,
         band_rows=band_rows,
         xp=xp,

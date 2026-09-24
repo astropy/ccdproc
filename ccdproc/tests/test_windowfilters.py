@@ -329,6 +329,105 @@ def test_window_stack_holds_each_pixels_window():
     _assert_matches(xp.sort(stack, axis=-1), expected)
 
 
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param(lambda data: window_median(data, 3), id="window_median"),
+        pytest.param(lambda data: window_rank(data, 3, 69.1), id="window_rank"),
+        pytest.param(lambda data: window_reduce(data, 3, xp.std), id="window_reduce"),
+    ],
+)
+def test_complex_input_is_rejected(call):
+    """
+    Complex input raises rather than having its imaginary part dropped.
+
+    `scipy.ndimage` refuses complex input outright, so the numpy path was
+    already an error; without a check of its own the native path answered
+    instead, with the median of the real parts on numpy (behind a
+    ``ComplexWarning``) and a `TypeError` from inside ``astype`` on
+    array-api-strict. Three backends, three answers, none of them
+    ndimage's.
+    """
+    data = xp.astype(_as_test_array(_IMAGE), xp.complex128)
+
+    with pytest.raises(TypeError, match="complex input is not supported"):
+        call(data)
+
+
+def test_float16_input_is_rejected():
+    """
+    Floating input narrower than ``float32`` raises, as ndimage's does.
+
+    `scipy.ndimage` answers ``array type not supported`` for 2-D
+    ``float16``, and the rank arithmetic could not honour it anyway: the
+    window count itself stops being exact in binary16 above 2048, so a
+    45x47 window would rank at 1058 of 2115 rather than 1057. Refusing is
+    the only answer that is the same on every backend.
+    """
+    float16 = getattr(xp, "float16", None)
+    if float16 is None:
+        pytest.skip("this array library does not provide float16")
+    data = xp.astype(_as_test_array(_IMAGE), float16)
+
+    with pytest.raises(TypeError, match="is not supported by the window filters"):
+        window_median(data, 3)
+
+
+@pytest.mark.parametrize("size", [np.int64(3), (np.int64(3), np.int64(5))], ids=str)
+def test_numpy_integer_sizes_are_accepted(size):
+    """
+    A numpy integer window size is accepted, scalar or in a tuple.
+
+    `scipy.ndimage` takes one, so ``ccdmask(ratio, ncmed=np.int64(7))``
+    works on numpy; rejecting it here made the same call fail on every
+    other array library. ``3.0`` stays rejected -- ndimage rejects it too
+    -- which ``test_bad_size_raises`` pins.
+    """
+    result = window_median(_as_test_array(_IMAGE), size)
+
+    _assert_matches(result, ndimage.median_filter(_IMAGE, size=size))
+
+
+def test_zero_dimensional_input_matches_ndimage():
+    """
+    A 0-d array is filtered, not rejected with an ``IndexError``.
+
+    ``size=1`` on a 0-d array is the identity for
+    `scipy.ndimage.median_filter`, and the module documents ``x`` as an
+    array of any rank; before the guard in ``_windowed`` the band
+    arithmetic asked for ``x.shape[0]`` and died on the empty shape.
+    """
+    result = window_median(_as_test_array(np.asarray(1.0)), 1)
+
+    assert result.shape == ()
+    assert float(result) == float(ndimage.median_filter(np.asarray(1.0), size=1))
+
+
+@pytest.mark.backend_skip(
+    "numpy",
+    "jax",
+    "array-api-strict",
+    "cupy",
+    reason="only dask produces arrays whose shape is not fully known",
+)
+def test_unknown_shape_is_rejected_with_a_clear_message():
+    """
+    A dask array with unknown chunk sizes is rejected with the message the
+    block functions use, which names the fix.
+
+    Without it an unknown leading axis surfaced as dask's own "chunk sizes
+    are unknown" from inside the padding helper, and an unknown trailing
+    axis as ``Tried to concatenate arrays with unknown shape (1, nan)``,
+    which names neither the filter nor the remedy.
+    """
+    unknown = _as_test_array(_IMAGE)
+    unknown = unknown[unknown[:, 0] > -1e9]
+    assert any(not isinstance(length, int) for length in unknown.shape)
+
+    with pytest.raises(ValueError, match="fully known shape"):
+        window_median(unknown, 3)
+
+
 def test_unimplemented_mode_raises():
     """
     A boundary mode this module does not implement is rejected.
