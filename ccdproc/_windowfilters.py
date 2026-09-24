@@ -11,6 +11,10 @@ reductions `ccdproc.core` needs -- an order statistic, a median, a boolean
 namespace, so that `ccdproc.core` can keep calling ndimage for numpy input
 and use these everywhere else.
 
+Everything here is private. The module and its functions are an
+implementation detail of `ccdproc.core`, not part of the public API, and
+may change or disappear without a deprecation.
+
 The implementation is deliberately literal: the array is padded once, then
 each window offset is taken as a shifted slice and the offsets are stacked
 into a new trailing axis, which turns a window reduction into an ordinary
@@ -19,7 +23,7 @@ at all -- there is no ``as_strided``, no ``sliding_window_view``, not even a
 ``pad`` -- and it is also what makes it expensive: the stack holds
 ``prod(size)`` copies of the input, and the rank filters sort it, costing
 O(k**2 log k**2) per pixel for a k-by-k window where ndimage's selection
-costs O(k**2). `window_any` is the exception: an ``or`` never needs a
+costs O(k**2). `_window_any` is the exception: an ``or`` never needs a
 whole window at once, so it folds the offsets into one accumulator
 instead of stacking them -- see `_band_any`.
 
@@ -44,8 +48,6 @@ from astropy.utils.exceptions import AstropyUserWarning
 from ._blocks import _UNKNOWN_SHAPE_MESSAGE
 from ._nanfuncs import _nanrank, _promote_to_real
 
-__all__ = ["window_any", "window_median", "window_rank", "window_reduce"]
-
 # Boundary modes implemented here, in ndimage's naming. ndimage's 'mirror',
 # 'constant' and 'wrap' are each a one-line variant of the two below, but
 # nothing in ccdproc asks for them and an unimplemented mode has to raise
@@ -54,7 +56,7 @@ _MODES = ("reflect", "nearest")
 
 # Memory budget for one band of the window stack, in bytes. The stack for a
 # whole 2048x2048 float64 image is 3.8 GiB at an 11x11 window, and the sort
-# in ``window_rank`` doubles that; banding the output into groups of rows
+# in ``_window_rank`` doubles that; banding the output into groups of rows
 # holds the peak near this figure instead, at no cost in accuracy -- see
 # ``_windowed``.
 _BAND_BUDGET_BYTES = 256 * 1024 * 1024
@@ -602,7 +604,7 @@ def _windowed(x, size, reduce_band, *, cast, mode, band_rows, xp):
 
 
 @_window_doc(extra=_PERCENTILE_PARAM)
-def window_rank(x, size, percentile, *, mode="reflect", band_rows=None, xp=None):
+def _window_rank(x, size, percentile, *, mode="reflect", band_rows=None, xp=None):
     """
     Order statistic over a moving window, using only array-API functions.
 
@@ -668,7 +670,7 @@ def window_rank(x, size, percentile, *, mode="reflect", band_rows=None, xp=None)
 
 
 @_window_doc()
-def window_median(x, size, *, mode="reflect", band_rows=None, xp=None):
+def _window_median(x, size, *, mode="reflect", band_rows=None, xp=None):
     """
     Median over a moving window, using only array-API functions.
 
@@ -687,15 +689,15 @@ def window_median(x, size, *, mode="reflect", band_rows=None, xp=None):
 
     Notes
     -----
-    Exactly `window_rank` at ``percentile=50``; see there for how NaNs are
+    Exactly `_window_rank` at ``percentile=50``; see there for how NaNs are
     treated, for the even-window convention (the upper-middle value, as
     ndimage takes, not the average of the middle two) and for the cost.
     """
-    return window_rank(x, size, 50.0, mode=mode, band_rows=band_rows, xp=xp)
+    return _window_rank(x, size, 50.0, mode=mode, band_rows=band_rows, xp=xp)
 
 
 @_window_doc(dtype="    Cast to boolean; any non-zero value counts as true.\n")
-def window_any(x, size, *, mode="reflect", band_rows=None, xp=None):
+def _window_any(x, size, *, mode="reflect", band_rows=None, xp=None):
     """
     Whether any value in a moving window is true, via array-API functions.
 
@@ -732,7 +734,7 @@ def window_any(x, size, *, mode="reflect", band_rows=None, xp=None):
 
 
 @_window_doc(extra=_FUNC_PARAM)
-def window_reduce(x, size, func, *, mode="reflect", band_rows=None, xp=None):
+def _window_reduce(x, size, func, *, mode="reflect", band_rows=None, xp=None):
     """
     Reduce each moving window with ``func``, using only array-API functions.
 

@@ -227,7 +227,7 @@ def test_nanrank_matches_rank_reference(percentile, axis, data):
     values.
 
     That rank is exactly the one `scipy.ndimage.percentile_filter` uses, so
-    this is what makes ``ccdproc._windowfilters.window_rank`` reproduce
+    this is what makes ``ccdproc._windowfilters._window_rank`` reproduce
     ndimage; pinned against a numpy sort-and-index reference rather than
     against ndimage itself, because ndimage has no NaN-aware mode to
     compare with on the NaN-carrying rows here.
@@ -249,7 +249,7 @@ def test_nanrank_multiplies_the_count_by_the_percentile_before_dividing():
     The two groupings differ whenever ``percentile / 100`` rounds down in
     binary: at ``n = 100`` and ``percentile = 29`` the first gives 29 and
     the second 28, so `scipy.ndimage.percentile_filter` and
-    ``ccdproc._windowfilters.window_rank`` would return neighbouring order
+    ``ccdproc._windowfilters._window_rank`` would return neighbouring order
     statistics on the same window. A slice of 100 distinct values makes
     that off-by-one visible as a value, not just as an index.
     """
@@ -266,7 +266,7 @@ def test_nanrank_half_is_upper_middle_not_the_average():
     not the average of the middle two that `nanmedian` yields.
 
     This is the ndimage convention, and it is the whole reason
-    ``window_median`` is built on ``_nanrank`` rather than on ``nanmedian``:
+    ``_window_median`` is built on ``_nanrank`` rather than on ``nanmedian``:
     without it the native window filters would disagree with
     `scipy.ndimage.median_filter` on every even-sized window.
     """

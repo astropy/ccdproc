@@ -24,10 +24,10 @@ from ccdproc._windowfilters import (
     _itemsize,
     _pad_windows,
     _stack_from_padded,
-    window_any,
-    window_median,
-    window_rank,
-    window_reduce,
+    _window_any,
+    _window_median,
+    _window_rank,
+    _window_reduce,
 )
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
@@ -60,11 +60,11 @@ _PERCENTILES = [0.0, 29.0, 30.9, 50.0, 69.1, 100.0]
 
 # One call per public filter, with the dtype kind its result must have.
 _CALLS = [
-    pytest.param(lambda data: window_median(data, 3), "real floating", id="median"),
-    pytest.param(lambda data: window_rank(data, 3, 69.1), "real floating", id="rank"),
-    pytest.param(lambda data: window_any(data, 3), "bool", id="any"),
+    pytest.param(lambda data: _window_median(data, 3), "real floating", id="median"),
+    pytest.param(lambda data: _window_rank(data, 3, 69.1), "real floating", id="rank"),
+    pytest.param(lambda data: _window_any(data, 3), "bool", id="any"),
     pytest.param(
-        lambda data: window_reduce(data, 3, xp.std), "real floating", id="reduce"
+        lambda data: _window_reduce(data, 3, xp.std), "real floating", id="reduce"
     ),
 ]
 
@@ -78,7 +78,7 @@ def _assert_matches(result, expected):
 
 def _rank_reference(data, size, percentile, mode="reflect"):
     """
-    NaN-aware window rank, as a reference for `window_rank`.
+    NaN-aware window rank, as a reference for `_window_rank`.
 
     Notes
     -----
@@ -105,11 +105,11 @@ def _rank_reference(data, size, percentile, mode="reflect"):
 @pytest.mark.parametrize("size", [3, 4], ids=str)
 def test_window_median_matches_ndimage(size):
     """
-    ``window_median`` reproduces `scipy.ndimage.median_filter`.
+    ``_window_median`` reproduces `scipy.ndimage.median_filter`.
 
     Notes
     -----
-    ``window_median`` is a one-line delegate to ``window_rank`` at 50.0,
+    ``_window_median`` is a one-line delegate to ``_window_rank`` at 50.0,
     which ``test_window_rank_matches_ndimage`` already covers over the
     whole size and mode grid, so these two cases are here for what that
     grid cannot see: that the public name really does ask for 50.0 and
@@ -118,7 +118,7 @@ def test_window_median_matches_ndimage(size):
     kept alongside an odd one because that is where the two conventions
     could differ.
     """
-    result = window_median(_as_test_array(_IMAGE), size)
+    result = _window_median(_as_test_array(_IMAGE), size)
 
     _assert_matches(result, ndimage.median_filter(_IMAGE, size=size))
 
@@ -128,7 +128,7 @@ def test_window_median_matches_ndimage(size):
 @pytest.mark.parametrize("size", _SIZES, ids=str)
 def test_window_rank_matches_ndimage(size, mode, percentile):
     """
-    ``window_rank`` reproduces `scipy.ndimage.percentile_filter` exactly.
+    ``_window_rank`` reproduces `scipy.ndimage.percentile_filter` exactly.
 
     The 30.9 and 69.1 percentiles are the ones `ccdproc.core.ccdmask` asks
     for; 0 and 100 pin the ends, where the rank formula
@@ -137,7 +137,7 @@ def test_window_rank_matches_ndimage(size, mode, percentile):
     this clamps, so the two are compared only through the values they do
     both produce).
     """
-    result = window_rank(_as_test_array(_IMAGE), size, percentile, mode=mode)
+    result = _window_rank(_as_test_array(_IMAGE), size, percentile, mode=mode)
 
     if percentile == 100.0:
         # ndimage refuses rank == size; the maximum is the same thing.
@@ -151,7 +151,7 @@ def test_window_rank_matches_ndimage(size, mode, percentile):
 @pytest.mark.parametrize("size", _SIZES, ids=str)
 def test_window_any_matches_ndimage_maximum(size, mode):
     """
-    ``window_any`` reproduces `scipy.ndimage.maximum_filter` on booleans.
+    ``_window_any`` reproduces `scipy.ndimage.maximum_filter` on booleans.
 
     That is the substitution `ccdproc.core.cosmicray_median` makes for its
     ``gbox`` growth step, where the maximum of a boolean window is just
@@ -159,7 +159,7 @@ def test_window_any_matches_ndimage_maximum(size, mode):
     ``cosmicray_median`` goes straight on to combine it with the input mask
     using ``&``.
     """
-    result = window_any(_as_test_array(_FLAGS), size, mode=mode)
+    result = _window_any(_as_test_array(_FLAGS), size, mode=mode)
 
     assert xp.isdtype(result.dtype, "bool")
     expected = _as_test_array(ndimage.maximum_filter(_FLAGS, size=size, mode=mode))
@@ -169,15 +169,15 @@ def test_window_any_matches_ndimage_maximum(size, mode):
 @pytest.mark.parametrize("size", [3, (3, 5)], ids=str)
 def test_window_reduce_matches_ndimage_generic_filter(size):
     """
-    ``window_reduce`` reproduces `scipy.ndimage.generic_filter`.
+    ``_window_reduce`` reproduces `scipy.ndimage.generic_filter`.
 
     ``generic_filter`` calls its callable once per pixel with that window
-    flattened, while ``window_reduce`` calls it once per band with the
+    flattened, while ``_window_reduce`` calls it once per band with the
     window values on a trailing axis; this pins that the two see the same
     values, which is what lets `ccdproc.core.background_deviation_filter`
     hand the same ``sigma_func`` to either.
     """
-    result = window_reduce(_as_test_array(_IMAGE), size, xp.std)
+    result = _window_reduce(_as_test_array(_IMAGE), size, xp.std)
 
     _assert_matches(result, ndimage.generic_filter(_IMAGE, np.std, size=size))
 
@@ -200,7 +200,7 @@ def test_nan_windows_match_an_explicit_rank_reference(size, percentile):
     data[[0, 5, 11, 22], [0, 3, 16, 9]] = np.nan
     data[7:12, 6:11] = np.nan
 
-    result = window_rank(_as_test_array(data), size, percentile)
+    result = _window_rank(_as_test_array(data), size, percentile)
 
     _assert_matches(result, _rank_reference(data, size, percentile))
 
@@ -216,7 +216,7 @@ def test_window_of_only_nan_is_nan():
     data = np.full((5, 5), np.nan)
     data[0, 0] = 1.0
 
-    result = window_median(_as_test_array(data), 3)
+    result = _window_median(_as_test_array(data), 3)
 
     assert bool(result[0, 0] == 1.0)
     # The far corner's 3x3 window is entirely NaN.
@@ -238,8 +238,8 @@ def test_banded_matches_unbanded(size, band_rows):
     """
     data = _as_test_array(_IMAGE)
 
-    banded = window_median(data, size, band_rows=band_rows)
-    unbanded = window_median(data, size, band_rows=_IMAGE.shape[0])
+    banded = _window_median(data, size, band_rows=band_rows)
+    unbanded = _window_median(data, size, band_rows=_IMAGE.shape[0])
 
     assert banded.shape == unbanded.shape
     assert bool(xp.all(banded == unbanded))
@@ -249,14 +249,14 @@ def test_banded_matches_unbanded_for_window_any():
     """
     Banding is exact for the boolean filter too.
 
-    ``window_any`` reduces with ``any`` rather than by sorting and so takes
+    ``_window_any`` reduces with ``any`` rather than by sorting and so takes
     a different route through ``_windowed``; the seams are the same, but
     the concatenation of boolean bands is not covered by the float test.
     """
     data = _as_test_array(_FLAGS)
 
-    banded = window_any(data, 5, band_rows=3)
-    unbanded = window_any(data, 5, band_rows=_FLAGS.shape[0])
+    banded = _window_any(data, 5, band_rows=3)
+    unbanded = _window_any(data, 5, band_rows=_FLAGS.shape[0])
 
     assert bool(xp.all(banded == unbanded))
 
@@ -275,7 +275,7 @@ def test_result_keeps_the_namespace_device_and_promotes_the_dtype(call, dtype_ki
     device, exists to catch. The dtype is a deliberate divergence:
     `scipy.ndimage.median_filter` keeps an integer dtype where these
     promote, because the sort machinery shared with `ccdproc._nanfuncs`
-    needs a NaN for "no value". ``window_any`` is in the same list with
+    needs a NaN for "no value". ``_window_any`` is in the same list with
     ``bool`` as its kind rather than left out of the dtype half, because
     ``cosmicray_median`` combines its result with ``&``.
     """
@@ -315,9 +315,9 @@ def test_window_stack_holds_each_pixels_window():
 @pytest.mark.parametrize(
     "call",
     [
-        pytest.param(lambda data: window_median(data, 3), id="window_median"),
-        pytest.param(lambda data: window_rank(data, 3, 69.1), id="window_rank"),
-        pytest.param(lambda data: window_reduce(data, 3, xp.std), id="window_reduce"),
+        pytest.param(lambda data: _window_median(data, 3), id="_window_median"),
+        pytest.param(lambda data: _window_rank(data, 3, 69.1), id="_window_rank"),
+        pytest.param(lambda data: _window_reduce(data, 3, xp.std), id="_window_reduce"),
     ],
 )
 def test_complex_input_is_rejected(call):
@@ -353,7 +353,7 @@ def test_float16_input_is_rejected():
     data = xp.astype(_as_test_array(_IMAGE), float16)
 
     with pytest.raises(TypeError, match="is not supported by the window filters"):
-        window_median(data, 3)
+        _window_median(data, 3)
 
 
 @pytest.mark.parametrize("size", [np.int64(3), (np.int64(3), np.int64(5))], ids=str)
@@ -366,7 +366,7 @@ def test_numpy_integer_sizes_are_accepted(size):
     other array library. ``3.0`` stays rejected -- ndimage rejects it too
     -- which ``test_bad_size_raises`` pins.
     """
-    result = window_median(_as_test_array(_IMAGE), size)
+    result = _window_median(_as_test_array(_IMAGE), size)
 
     _assert_matches(result, ndimage.median_filter(_IMAGE, size=size))
 
@@ -380,7 +380,7 @@ def test_zero_dimensional_input_matches_ndimage():
     array of any rank; before the guard in ``_windowed`` the band
     arithmetic asked for ``x.shape[0]`` and died on the empty shape.
     """
-    result = window_median(_as_test_array(np.asarray(1.0)), 1)
+    result = _window_median(_as_test_array(np.asarray(1.0)), 1)
 
     assert result.shape == ()
     assert float(result) == float(ndimage.median_filter(np.asarray(1.0), size=1))
@@ -408,7 +408,7 @@ def test_unknown_shape_is_rejected_with_a_clear_message():
     assert any(not isinstance(length, int) for length in unknown.shape)
 
     with pytest.raises(ValueError, match="fully known shape"):
-        window_median(unknown, 3)
+        _window_median(unknown, 3)
 
 
 def test_unimplemented_mode_raises():
@@ -420,7 +420,7 @@ def test_unimplemented_mode_raises():
     answer rather than a missing feature.
     """
     with pytest.raises(ValueError, match="mode must be one of"):
-        window_median(_as_test_array(_IMAGE), 3, mode="wrap")
+        _window_median(_as_test_array(_IMAGE), 3, mode="wrap")
 
 
 def test_window_wider_than_twice_the_axis_raises():
@@ -432,7 +432,7 @@ def test_window_wider_than_twice_the_axis_raises():
     path.
     """
     with pytest.raises(ValueError, match="window is too large for axis"):
-        window_median(_as_test_array(np.ones((4, 4))), 11)
+        _window_median(_as_test_array(np.ones((4, 4))), 11)
 
 
 @pytest.mark.parametrize("percentile", [-1.0, 101.0])
@@ -445,7 +445,7 @@ def test_percentile_outside_the_range_raises(percentile):
     disagree, so it is refused outright.
     """
     with pytest.raises(ValueError, match=r"percentile must be in \[0, 100\]"):
-        window_rank(_as_test_array(_IMAGE), 3, percentile)
+        _window_rank(_as_test_array(_IMAGE), 3, percentile)
 
 
 @pytest.mark.parametrize(
@@ -470,7 +470,7 @@ def test_bad_size_raises(size, match):
     errors.
     """
     with pytest.raises(ValueError, match=match):
-        window_median(_as_test_array(_IMAGE), size)
+        _window_median(_as_test_array(_IMAGE), size)
 
 
 def test_band_rows_default_fits_the_budget():
@@ -724,7 +724,7 @@ def test_nearest_padding_of_an_empty_axis_raises():
     through to a confusing error from ``concat`` instead.
     """
     with pytest.raises(ValueError, match="cannot pad axis 0, which is empty"):
-        window_median(_as_test_array(np.ones((0, 5))), 3, mode="nearest")
+        _window_median(_as_test_array(np.ones((0, 5))), 3, mode="nearest")
 
 
 def test_zero_width_image_is_one_band():

@@ -570,7 +570,7 @@ def _nanrank(x, percentile, axis, xp):
     -----
     Private rather than public because, unlike the ``nan*`` functions here,
     it has no ``numpy`` counterpart to be a fallback for: it exists so
-    `ccdproc._windowfilters.window_rank` can reuse the sentinel-sort
+    `ccdproc._windowfilters._window_rank` can reuse the sentinel-sort
     machinery `nanmedian` is built on. Like `nanmedian` it costs
     O(n log n) along ``axis``, from a full sort, rather than the O(n) of a
     selection algorithm.
