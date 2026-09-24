@@ -579,15 +579,23 @@ def _nanrank(x, percentile, axis, xp):
 
     s, n = _sorted_with_nan_last(x, axis, xp, device)
     # ndimage computes the rank as ``int(float(size) * percentile / 100.0)``
-    # in C double: multiply before dividing, and never in the dtype of ``x``.
-    # Dividing first regroups the arithmetic and loses a rank -- 29% of 100
-    # is 29 this way and 28 the other -- and ``x``'s dtype would make the
-    # count itself wrong for float16, where 2115 rounds to 2116. Clamping to
-    # ``n - 1`` is what keeps ``percentile = 100`` selecting the maximum
+    # in C double. Doing that arithmetic on arrays would need float64, which
+    # jax without JAX_ENABLE_X64 lacks (and warns about), and any narrower
+    # dtype can land a rank off by one. The count ``n`` can only take
+    # ``s.shape[axis] + 1`` values, though, so the rank for each is worked
+    # out in Python floats -- which are C doubles -- and looked up. Clamping
+    # to ``k - 1`` is what keeps ``percentile = 100`` selecting the maximum
     # instead of running off the end of the non-NaN values; ndimage raises
     # there instead.
-    index = xp.astype(xp.astype(n, xp.float64) * percentile / 100, n.dtype)
-    index = xp.minimum(index, n - 1)
+    length = s.shape[axis]
+    ranks = [min(int(k * float(percentile) / 100), k - 1) for k in range(length + 1)]
+    shape = [1] * s.ndim
+    shape[axis] = length + 1
+    ranks = xp.reshape(xp.asarray(ranks, dtype=n.dtype, device=device), tuple(shape))
+    shape = list(n.shape)
+    shape[axis] = length + 1
+    ranks = xp.broadcast_to(ranks, tuple(shape))
+    index = xp.expand_dims(_gather_at_index(ranks, n, axis, xp, device), axis=axis)
     result = _gather_at_index(s, index, axis, xp, device)
 
     # For an all-NaN slice ``n`` is 0, so ``index`` is -1, clamped to 0 by

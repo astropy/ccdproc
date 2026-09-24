@@ -1,4 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
+
 import warnings
 
 import array_api_extra as xpx
@@ -239,59 +240,20 @@ def test_nanrank_matches_rank_reference(percentile, axis, data):
     assert bool(xp.all(xpx.isclose(result, expected, equal_nan=True)))
 
 
-def test_nanrank_multiplies_the_count_by_the_percentile_before_dividing():
-    """
-    The rank is ``int(n * percentile / 100)``, not ``int(n * (percentile /
-    100))``.
-
-    Notes
-    -----
-    The two groupings differ whenever ``percentile / 100`` rounds down in
-    binary: at ``n = 100`` and ``percentile = 29`` the first gives 29 and
-    the second 28, so `scipy.ndimage.percentile_filter` and
-    ``ccdproc._windowfilters._window_rank`` would return neighbouring order
-    statistics on the same window. A slice of 100 distinct values makes
-    that off-by-one visible as a value, not just as an index.
-    """
-    values = np.arange(100.0)[:, None]
-
-    result = _nanrank(xp.asarray(values, device=xp_device), 29.0, 0, xp)
-
-    assert float(result[0]) == 29.0
-
-
-def test_nanrank_half_is_upper_middle_not_the_average():
-    """
-    At ``percentile=50`` an even-length slice yields its upper-middle value,
-    not the average of the middle two that `nanmedian` yields.
-
-    This is the ndimage convention, and it is the whole reason
-    ``_window_median`` is built on ``_nanrank`` rather than on ``nanmedian``:
-    without it the native window filters would disagree with
-    `scipy.ndimage.median_filter` on every even-sized window.
-    """
-    data = xp.asarray(np.array([[0.0], [1.0], [4.0], [5.0]]), device=xp_device)
-
-    assert float(_nanrank(data, 50.0, 0, xp)[0]) == 4.0
-    assert float(nanmedian(data, axis=0)[0]) == 2.5
-
-
 def test_nanrank_all_nan_slice_is_nan_and_silent():
     """
     A slice with no non-NaN values yields NaN, without warning.
 
     The index for such a slice is -1 before clamping, so it would otherwise
     gather one of the ``+inf`` sentinels ``_nanrank`` sorts NaNs to; the
-    silence matters because ccdproc's pytest configuration turns warnings
-    into errors and a fully masked window is routine input.
+    silence matters because a fully masked window is routine input, and
+    ccdproc's pytest configuration turns any warning into an error.
     """
     data = xp.asarray(
         np.array([[1.0, np.nan], [2.0, np.nan], [3.0, np.nan]]), device=xp_device
     )
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        result = _nanrank(data, 50.0, 0, xp)
+    result = _nanrank(data, 50.0, 0, xp)
 
     assert bool(result[0] == 2.0)
     assert bool(xp.isnan(result[1]))

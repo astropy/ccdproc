@@ -36,7 +36,7 @@ from ._nanfuncs import _promote_to_real
 from ._nanfuncs import median as _nanfuncs_median
 from ._nanfuncs import nanmad as _nanfuncs_nanmad
 from ._nanfuncs import nanmedian as _nanfuncs_nanmedian
-from ._windowfilters import _window_any, _window_median, _window_rank, _window_reduce
+from ._windowfilters import _window_any, _window_rank, _window_reduce
 from .log_meta import log_to_metadata
 from .utils.slices import slice_from_string
 
@@ -324,9 +324,9 @@ def _median_fallback(array, axis, xp=None):
 # scipy.ndimage's window filters are numpy-only, so numpy input keeps going
 # to them -- unchanged, and with ndimage's own selection algorithm -- while
 # every other namespace is served by ccdproc._windowfilters, which is written
-# purely in terms of the array API. The four wrappers below are the only
+# purely in terms of the array API. The four ``_dispatch_*`` below are the only
 # places that choice is made, so that the call sites read the same whichever
-# backend they run on and so that a test can monkeypatch one filter.
+# backend they run on.
 #
 # The two implementations agree exactly on finite input. They part company on
 # NaN: ndimage sorts NaNs in with the rest of a window, the native rank
@@ -349,7 +349,7 @@ def _namespace_or_numpy(data):
     real array whose own namespace lookup failed, rather than hiding it
     behind numpy coercion; it cannot come *first*, because
     array_api_compat recognises dask arrays by module and they have no
-    such attribute. `_block_dispatch` uses the same shape.
+    such attribute.
     """
     try:
         return array_api_compat.array_namespace(data)
@@ -359,42 +359,32 @@ def _namespace_or_numpy(data):
         return np
 
 
-def _dispatch_median_filter(data, size, *, xp, mode="reflect"):
-    """Median over a moving window, from ndimage or from `_windowfilters`."""
-    if array_api_compat.is_numpy_namespace(xp):
-        return ndimage.median_filter(data, size=size, mode=mode)
-    return _window_median(data, size, mode=mode, xp=xp)
-
-
-def _dispatch_percentile_filter(data, percentile, size, *, xp, mode="reflect"):
-    """Order statistic over a moving window, from ndimage or `_windowfilters`."""
-    if array_api_compat.is_numpy_namespace(xp):
-        return ndimage.percentile_filter(data, percentile, size=size, mode=mode)
-    return _window_rank(data, size, percentile, mode=mode, xp=xp)
-
-
-def _dispatch_maximum_filter(data, size, *, xp, mode="reflect"):
-    """Maximum over a moving window, from ndimage or from `_windowfilters`."""
-    if array_api_compat.is_numpy_namespace(xp):
-        return ndimage.maximum_filter(data, size=size, mode=mode)
-    return _window_any(data, size, mode=mode, xp=xp)
-
-
-def _dispatch_generic_filter(data, func, size, *, xp, mode="reflect"):
+def _dispatch(ndimage_func, native_func, data, *args, xp, mode="reflect"):
     """
-    Arbitrary reduction over a moving window, from ndimage or
-    `_windowfilters`.
+    Call ``ndimage_func(data, *extra, size=size)`` on numpy input and
+    ``native_func(data, size, *extra)`` otherwise, where ``args`` is
+    ``(*extra, size)``: ndimage's argument order for each filter.
 
-    Notes
-    -----
-    ndimage calls ``func`` once per window with that window's values
-    flattened, where `ccdproc._windowfilters._window_reduce` calls it as
-    ``func(stack, axis=-1)`` on a whole band at a time; a reduction taking
-    an ``axis`` keyword, as `sigma_func` does, suits both.
+    ndimage calls a ``generic_filter`` callable once per window with the
+    values flattened, where `ccdproc._windowfilters._window_reduce` calls it
+    as ``func(stack, axis=-1)`` on a band at a time; a reduction taking an
+    ``axis`` keyword, as `sigma_func` does, suits both.
     """
+    *extra, size = args
     if array_api_compat.is_numpy_namespace(xp):
-        return ndimage.generic_filter(data, func, size=size, mode=mode)
-    return _window_reduce(data, size, func, mode=mode, xp=xp)
+        return ndimage_func(data, *extra, size=size, mode=mode)
+    return native_func(data, size, *extra, mode=mode, xp=xp)
+
+
+# Module globals, one per filter, so that a test can monkeypatch one.
+_dispatch_median_filter = partial(
+    _dispatch, ndimage.median_filter, partial(_window_rank, percentile=50.0)
+)
+_dispatch_percentile_filter = partial(
+    _dispatch, ndimage.percentile_filter, _window_rank
+)
+_dispatch_maximum_filter = partial(_dispatch, ndimage.maximum_filter, _window_any)
+_dispatch_generic_filter = partial(_dispatch, ndimage.generic_filter, _window_reduce)
 
 
 def _mad_fallback(data, axis, ignore_nan, xp=None):
@@ -1916,20 +1906,7 @@ def _block_dispatch(ccd, xp, astropy_func, native_func, *args):
     deleted.
     """
     if xp is None:
-        data = ccd.data if isinstance(ccd, NDData) else ccd
-        try:
-            xp = array_api_compat.array_namespace(data)
-        except TypeError:
-            if hasattr(data, "__array_namespace__"):
-                # A real array whose own namespace lookup failed; don't hide
-                # that behind astropy's numpy coercion, which would turn it
-                # into a 0-d object array and complain about ``block_size``.
-                # Note the gate cannot come *first*: array_api_compat
-                # recognises dask arrays by module, and they have no dunder.
-                raise
-            # Lists, tuples, scalars: array-likes that astropy's np.asanyarray
-            # accepts but that no array library claims.
-            xp = np
+        xp = _namespace_or_numpy(ccd.data if isinstance(ccd, NDData) else ccd)
     else:
         xp = _namespace_from_module(xp)
     if array_api_compat.is_numpy_namespace(xp):
@@ -2130,8 +2107,8 @@ def _median_filter_array(data, args, kwargs):
     arguments = {
         name: value for name, value in bound.arguments.items() if name != "input"
     }
-    return _window_median(
-        data, arguments["size"], mode=arguments.get("mode", "reflect"), xp=xp
+    return _window_rank(
+        data, arguments["size"], 50.0, mode=arguments.get("mode", "reflect"), xp=xp
     )
 
 
@@ -2146,7 +2123,7 @@ def median_filter(data, *args, **kwargs):
     -----
     numpy input is filtered by `scipy.ndimage.median_filter` and accepts
     everything that function's signature does. Input from any other array
-    namespace is filtered by ``ccdproc._windowfilters._window_median``, which
+    namespace is filtered by ``ccdproc._windowfilters._window_rank``, which
     accepts only ``size`` and ``mode`` -- anything else raises `TypeError`
     naming the argument -- implements only ndimage's ``"reflect"`` and
     ``"nearest"`` boundary modes, and promotes integer input to a floating

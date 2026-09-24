@@ -5,8 +5,8 @@ Local window (moving-window) filters written only in terms of the array API.
 `scipy.ndimage`'s ``median_filter``, ``percentile_filter``,
 ``maximum_filter`` and ``generic_filter`` are numpy-only: handing one of
 them a jax, dask, CuPy or array-api-strict array either copies it silently
-to the host or fails outright. This module provides the four window
-reductions `ccdproc.core` needs -- an order statistic, a median, a boolean
+to the host or fails outright. This module provides the three window
+reductions `ccdproc.core` needs -- an order statistic, a boolean
 "any value in the window", and a general reduction -- for any conforming
 namespace, so that `ccdproc.core` can keep calling ndimage for numpy input
 and use these everywhere else.
@@ -403,11 +403,6 @@ def _stack_from_padded(padded, size, shape, xp):
         return xp.stack(windows, axis=-1)
 
 
-def _band_rank(padded, size, shape, xp, *, percentile):
-    """The order statistic of every window in one padded band."""
-    return _nanrank(_stack_from_padded(padded, size, shape, xp), percentile, -1, xp)
-
-
 def _band_reduce(padded, size, shape, xp, *, func):
     """``func`` applied to the window stack of one padded band."""
     return func(_stack_from_padded(padded, size, shape, xp), axis=-1)
@@ -655,45 +650,14 @@ def _window_rank(x, size, percentile, *, mode="reflect", band_rows=None, xp=None
     if not 0 <= percentile <= 100:
         raise ValueError(f"percentile must be in [0, 100], got {percentile!r}")
 
-    # ndimage's rank is int(size * percentile / 100); _nanrank takes the
-    # same product, in the same order, against the count of non-NaN values
-    # in each window.
-    return _windowed(
+    return _window_reduce(
         x,
         size,
-        partial(_band_rank, percentile=percentile),
-        cast=_cast_real,
+        partial(_nanrank, percentile=percentile, xp=xp),
         mode=mode,
         band_rows=band_rows,
         xp=xp,
     )
-
-
-@_window_doc()
-def _window_median(x, size, *, mode="reflect", band_rows=None, xp=None):
-    """
-    Median over a moving window, using only array-API functions.
-
-    This is the array-API counterpart of `scipy.ndimage.median_filter`,
-    and reproduces it exactly on finite input.
-
-    Parameters
-    ----------
-    {params}
-
-    Returns
-    -------
-    array
-        Same shape as ``x``, in ``x``'s namespace and on its device, in a
-        real floating dtype.
-
-    Notes
-    -----
-    Exactly `_window_rank` at ``percentile=50``; see there for how NaNs are
-    treated, for the even-window convention (the upper-middle value, as
-    ndimage takes, not the average of the middle two) and for the cost.
-    """
-    return _window_rank(x, size, 50.0, mode=mode, band_rows=band_rows, xp=xp)
 
 
 @_window_doc(dtype="    Cast to boolean; any non-zero value counts as true.\n")

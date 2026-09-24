@@ -2,12 +2,14 @@
 """
 Tests for the array-API-native window filters in ``ccdproc._windowfilters``.
 
-The filters exist to reproduce four `scipy.ndimage` filters on namespaces
+The filters exist to reproduce `scipy.ndimage` filters on namespaces
 ndimage cannot handle, so most of what is pinned here is agreement with
 ndimage, run against whichever backend ``CCDPROC_ARRAY_LIBRARY`` selects.
 The reference is always computed with numpy on host data; only the input
 under test is converted into the active namespace.
 """
+
+from functools import partial
 
 import array_api_compat
 import array_api_extra as xpx
@@ -25,7 +27,6 @@ from ccdproc._windowfilters import (
     _pad_windows,
     _stack_from_padded,
     _window_any,
-    _window_median,
     _window_rank,
     _window_reduce,
 )
@@ -60,13 +61,16 @@ _PERCENTILES = [0.0, 29.0, 30.9, 50.0, 69.1, 100.0]
 
 # One call per public filter, with the dtype kind its result must have.
 _CALLS = [
-    pytest.param(lambda data: _window_median(data, 3), "real floating", id="median"),
     pytest.param(lambda data: _window_rank(data, 3, 69.1), "real floating", id="rank"),
     pytest.param(lambda data: _window_any(data, 3), "bool", id="any"),
     pytest.param(
         lambda data: _window_reduce(data, 3, xp.std), "real floating", id="reduce"
     ),
 ]
+
+
+# The median is the rank filter at 50, as ccdproc.core dispatches it.
+_median = partial(_window_rank, percentile=50.0)
 
 
 def _assert_matches(result, expected):
@@ -100,27 +104,6 @@ def _rank_reference(data, size, percentile, mode="reflect"):
         return values[min(int(values.size * percentile / 100), values.size - 1)]
 
     return ndimage.generic_filter(data, pick, size=size, mode=mode)
-
-
-@pytest.mark.parametrize("size", [3, 4], ids=str)
-def test_window_median_matches_ndimage(size):
-    """
-    ``_window_median`` reproduces `scipy.ndimage.median_filter`.
-
-    Notes
-    -----
-    ``_window_median`` is a one-line delegate to ``_window_rank`` at 50.0,
-    which ``test_window_rank_matches_ndimage`` already covers over the
-    whole size and mode grid, so these two cases are here for what that
-    grid cannot see: that the public name really does ask for 50.0 and
-    not 0.5, and that ``median_filter`` and ``percentile_filter(50.0)``
-    agree -- the scipy invariant the delegation rests on. An even size is
-    kept alongside an odd one because that is where the two conventions
-    could differ.
-    """
-    result = _window_median(_as_test_array(_IMAGE), size)
-
-    _assert_matches(result, ndimage.median_filter(_IMAGE, size=size))
 
 
 @pytest.mark.parametrize("percentile", _PERCENTILES)
@@ -205,27 +188,16 @@ def test_nan_windows_match_an_explicit_rank_reference(size, percentile):
     _assert_matches(result, _rank_reference(data, size, percentile))
 
 
-def test_window_of_only_nan_is_nan():
-    """
-    A window with no non-NaN value at all yields NaN, not a sentinel.
-
-    ``_nanrank`` sorts NaNs to ``+inf`` before selecting, so the failure
-    mode this guards against is a window of NaNs coming back as ``+inf``
-    -- silently plausible, and poisonous downstream.
-    """
-    data = np.full((5, 5), np.nan)
-    data[0, 0] = 1.0
-
-    result = _window_median(_as_test_array(data), 3)
-
-    assert bool(result[0, 0] == 1.0)
-    # The far corner's 3x3 window is entirely NaN.
-    assert bool(xp.isnan(result[4, 4]))
-
-
 @pytest.mark.parametrize("band_rows", [1, 2, 7, 22, 23, 1000])
 @pytest.mark.parametrize("size", [3, 4, (5, 3)], ids=str)
-def test_banded_matches_unbanded(size, band_rows):
+@pytest.mark.parametrize(
+    ("func", "image"),
+    [
+        pytest.param(_median, _IMAGE, id="median"),
+        pytest.param(_window_any, _FLAGS, id="any"),
+    ],
+)
+def test_banded_matches_unbanded(func, image, size, band_rows):
     """
     Splitting the output into bands of rows changes nothing.
 
@@ -234,30 +206,15 @@ def test_banded_matches_unbanded(size, band_rows):
     is cut from the *padded* array with the window overhang included. An
     off-by-one there would corrupt exactly the rows at the band seams,
     which is why the band sizes here divide 23 evenly, unevenly, exactly,
-    and not at all.
+    and not at all. ``_window_any`` takes a different route through
+    ``_windowed``, and concatenates boolean bands.
     """
-    data = _as_test_array(_IMAGE)
+    data = _as_test_array(image)
 
-    banded = _window_median(data, size, band_rows=band_rows)
-    unbanded = _window_median(data, size, band_rows=_IMAGE.shape[0])
+    banded = func(data, size, band_rows=band_rows)
+    unbanded = func(data, size, band_rows=image.shape[0])
 
     assert banded.shape == unbanded.shape
-    assert bool(xp.all(banded == unbanded))
-
-
-def test_banded_matches_unbanded_for_window_any():
-    """
-    Banding is exact for the boolean filter too.
-
-    ``_window_any`` reduces with ``any`` rather than by sorting and so takes
-    a different route through ``_windowed``; the seams are the same, but
-    the concatenation of boolean bands is not covered by the float test.
-    """
-    data = _as_test_array(_FLAGS)
-
-    banded = _window_any(data, 5, band_rows=3)
-    unbanded = _window_any(data, 5, band_rows=_FLAGS.shape[0])
-
     assert bool(xp.all(banded == unbanded))
 
 
@@ -312,29 +269,81 @@ def test_window_stack_holds_each_pixels_window():
     _assert_matches(xp.sort(stack, axis=-1), expected)
 
 
+def _complex():
+    return xp.astype(_as_test_array(_IMAGE), xp.complex128)
+
+
 @pytest.mark.parametrize(
-    "call",
+    ("call", "error", "match"),
     [
-        pytest.param(lambda data: _window_median(data, 3), id="_window_median"),
-        pytest.param(lambda data: _window_rank(data, 3, 69.1), id="_window_rank"),
-        pytest.param(lambda data: _window_reduce(data, 3, xp.std), id="_window_reduce"),
+        # ndimage refuses complex input outright; without a check the native
+        # path would answer with the rank of the real parts.
+        pytest.param(
+            lambda: _window_rank(_complex(), 3, 69.1),
+            TypeError,
+            "complex input is not supported",
+            id="complex-rank",
+        ),
+        pytest.param(
+            lambda: _window_reduce(_complex(), 3, xp.std),
+            TypeError,
+            "complex input is not supported",
+            id="complex-reduce",
+        ),
+        # Silently treating 'wrap' as 'reflect' would be a wrong answer.
+        pytest.param(
+            lambda: _median(_as_test_array(_IMAGE), 3, mode="wrap"),
+            ValueError,
+            "mode must be one of",
+            id="mode",
+        ),
+        # ndimage re-reflects to fill such a window; this does not.
+        pytest.param(
+            lambda: _median(_as_test_array(np.ones((4, 4))), 11),
+            ValueError,
+            "window is too large for axis",
+            id="too-wide",
+        ),
+        # ndimage takes a negative percentile as an offset from 100.
+        *(
+            pytest.param(
+                lambda p=p: _window_rank(_as_test_array(_IMAGE), 3, p),
+                ValueError,
+                r"percentile must be in \[0, 100\]",
+                id=f"percentile-{p}",
+            )
+            for p in (-1.0, 101.0)
+        ),
+        # A short size would be zipped against the axes it does have, and a
+        # zero-length window would give NaN everywhere.
+        *(
+            pytest.param(
+                lambda size=size: _median(_as_test_array(_IMAGE), size),
+                ValueError,
+                match,
+                id=f"size-{size}",
+            )
+            for size, match in [
+                ((3, 3, 3), "one entry per axis"),
+                ((3,), "one entry per axis"),
+                (0, "positive integers"),
+                ((3, -1), "positive integers"),
+                ((3, 2.5), "positive integers"),
+            ]
+        ),
+        # 'nearest' has no edge sample to repeat on an empty axis.
+        pytest.param(
+            lambda: _median(_as_test_array(np.ones((0, 5))), 3, mode="nearest"),
+            ValueError,
+            "cannot pad axis 0, which is empty",
+            id="nearest-empty",
+        ),
     ],
 )
-def test_complex_input_is_rejected(call):
-    """
-    Complex input raises rather than having its imaginary part dropped.
-
-    `scipy.ndimage` refuses complex input outright, so the numpy path was
-    already an error; without a check of its own the native path answered
-    instead, with the median of the real parts on numpy (behind a
-    ``ComplexWarning``) and a `TypeError` from inside ``astype`` on
-    array-api-strict. Three backends, three answers, none of them
-    ndimage's.
-    """
-    data = xp.astype(_as_test_array(_IMAGE), xp.complex128)
-
-    with pytest.raises(TypeError, match="complex input is not supported"):
-        call(data)
+def test_invalid_input_raises(call, error, match):
+    """Input the filters cannot honour raises, naming the problem."""
+    with pytest.raises(error, match=match):
+        call()
 
 
 def test_float16_input_is_rejected():
@@ -353,20 +362,24 @@ def test_float16_input_is_rejected():
     data = xp.astype(_as_test_array(_IMAGE), float16)
 
     with pytest.raises(TypeError, match="is not supported by the window filters"):
-        _window_median(data, 3)
+        _median(data, 3)
 
 
-@pytest.mark.parametrize("size", [np.int64(3), (np.int64(3), np.int64(5))], ids=str)
-def test_numpy_integer_sizes_are_accepted(size):
+@pytest.mark.parametrize(
+    "size", [3, 4, np.int64(3), (np.int64(3), np.int64(5))], ids=str
+)
+def test_median_matches_ndimage(size):
     """
-    A numpy integer window size is accepted, scalar or in a tuple.
+    The rank filter at 50 is `scipy.ndimage.median_filter`, at an odd and
+    an even size, and a numpy integer window size is accepted, scalar or
+    in a tuple.
 
-    `scipy.ndimage` takes one, so ``ccdmask(ratio, ncmed=np.int64(7))``
-    works on numpy; rejecting it here made the same call fail on every
-    other array library. ``3.0`` stays rejected -- ndimage rejects it too
-    -- which ``test_bad_size_raises`` pins.
+    `scipy.ndimage` takes a numpy integer size, so
+    ``ccdmask(ratio, ncmed=np.int64(7))`` works on numpy; rejecting it here
+    made the same call fail on every other array library. ``3.0`` stays
+    rejected, as ndimage rejects it too.
     """
-    result = _window_median(_as_test_array(_IMAGE), size)
+    result = _median(_as_test_array(_IMAGE), size)
 
     _assert_matches(result, ndimage.median_filter(_IMAGE, size=size))
 
@@ -380,7 +393,7 @@ def test_zero_dimensional_input_matches_ndimage():
     array of any rank; before the guard in ``_windowed`` the band
     arithmetic asked for ``x.shape[0]`` and died on the empty shape.
     """
-    result = _window_median(_as_test_array(np.asarray(1.0)), 1)
+    result = _median(_as_test_array(np.asarray(1.0)), 1)
 
     assert result.shape == ()
     assert float(result) == float(ndimage.median_filter(np.asarray(1.0), size=1))
@@ -408,69 +421,7 @@ def test_unknown_shape_is_rejected_with_a_clear_message():
     assert any(not isinstance(length, int) for length in unknown.shape)
 
     with pytest.raises(ValueError, match="fully known shape"):
-        _window_median(unknown, 3)
-
-
-def test_unimplemented_mode_raises():
-    """
-    A boundary mode this module does not implement is rejected.
-
-    ndimage has five; only ``'reflect'`` and ``'nearest'`` are implemented,
-    and silently treating ``'wrap'`` as ``'reflect'`` would be a wrong
-    answer rather than a missing feature.
-    """
-    with pytest.raises(ValueError, match="mode must be one of"):
-        _window_median(_as_test_array(_IMAGE), 3, mode="wrap")
-
-
-def test_window_wider_than_twice_the_axis_raises():
-    """
-    A window needing more padding than the axis holds is rejected.
-
-    ndimage re-reflects to fill such a window; this does not, so it has to
-    say so rather than produce a differently-defined answer from the numpy
-    path.
-    """
-    with pytest.raises(ValueError, match="window is too large for axis"):
-        _window_median(_as_test_array(np.ones((4, 4))), 11)
-
-
-@pytest.mark.parametrize("percentile", [-1.0, 101.0])
-def test_percentile_outside_the_range_raises(percentile):
-    """
-    A percentile outside ``[0, 100]`` is rejected rather than clamped.
-
-    `scipy.ndimage.percentile_filter` accepts a negative percentile as an
-    offset from 100; not reproducing that quietly would make the two paths
-    disagree, so it is refused outright.
-    """
-    with pytest.raises(ValueError, match=r"percentile must be in \[0, 100\]"):
-        _window_rank(_as_test_array(_IMAGE), 3, percentile)
-
-
-@pytest.mark.parametrize(
-    ("size", "match"),
-    [
-        ((3, 3, 3), "one entry per axis"),
-        ((3,), "one entry per axis"),
-        (0, "positive integers"),
-        ((3, -1), "positive integers"),
-        ((3, 2.5), "positive integers"),
-    ],
-    ids=str,
-)
-def test_bad_size_raises(size, match):
-    """
-    A window shape that does not fit the array, or is not a positive
-    integer, is rejected with a message naming the problem.
-
-    Left to itself a short sequence would silently be zipped against the
-    axes it does have and a zero-length window would build an empty stack
-    whose median is NaN everywhere -- both wrong answers rather than
-    errors.
-    """
-    with pytest.raises(ValueError, match=match):
-        _window_median(_as_test_array(_IMAGE), size)
+        _median(unknown, 3)
 
 
 def test_band_rows_default_fits_the_budget():
@@ -608,57 +559,33 @@ def test_public_median_filter_matches_ndimage(call, wrap):
 
 
 @pytest.mark.parametrize(
-    "data",
+    "as_array_like",
     [
-        pytest.param(_IMAGE.tolist(), id="list"),
-        pytest.param(tuple(row.tolist() for row in _IMAGE), id="tuple-of-lists"),
+        pytest.param(lambda image: image.tolist(), id="list"),
+        pytest.param(lambda image: tuple(row.tolist() for row in image), id="tuple"),
     ],
 )
-def test_public_median_filter_still_takes_a_plain_array_like(data):
-    """
-    `ccdproc.median_filter` keeps accepting a nested list or tuple, filtering
-    it with ndimage exactly as it did before the native filters existed.
-
-    ``median_filter`` documents itself as a passthrough for
-    `scipy.ndimage.median_filter`, which takes any array-like. Resolving the
-    namespace with a bare ``array_api_compat.array_namespace`` would raise
-    ``TypeError: list is not a supported array type`` for these, so
-    ``_median_filter_array`` falls back to numpy for an input no array
-    library claims -- the same guard `~ccdproc.core._block_dispatch` uses.
-    This runs on every backend: the input is numpy-ish whatever
-    ``CCDPROC_ARRAY_LIBRARY`` says, so it must always take the ndimage path.
-    """
-    result = core.median_filter(data, size=3)
-
-    assert array_api_compat.is_numpy_namespace(array_api_compat.array_namespace(result))
-    np.testing.assert_allclose(result, ndimage.median_filter(_IMAGE, size=3))
-
-
 @pytest.mark.parametrize(
     ("function", "argument"),
     [
-        pytest.param(core.background_deviation_filter, 3, id="filter"),
-        pytest.param(core.background_deviation_box, 5, id="box"),
+        pytest.param(core.median_filter, 3, id="median_filter"),
+        pytest.param(core.background_deviation_filter, 3, id="deviation_filter"),
+        pytest.param(core.background_deviation_box, 5, id="deviation_box"),
     ],
 )
-def test_background_deviation_still_takes_a_plain_array_like(function, argument):
+def test_public_functions_still_take_a_plain_array_like(
+    function, argument, as_array_like
+):
     """
-    Both ``background_deviation`` functions keep accepting a nested list,
-    as their docstrings promise.
+    `ccdproc.median_filter` and both ``background_deviation`` functions
+    keep accepting a nested list or tuple, filtering it with numpy.
 
-    Notes
-    -----
-    Each resolves the namespace of its input, and a bare
-    ``array_api_compat.array_namespace`` raises ``TypeError: list is not a
-    supported array type`` for a list. ``background_deviation_filter`` used
-    to hand the list straight to `scipy.ndimage.generic_filter`, which
-    takes one; ``background_deviation_box`` never did, which is a bug of
-    the same shape. Both now fall back to numpy for input no array library
-    claims, the guard `ccdproc.median_filter` already used. This runs on
-    every backend: the input is numpy-ish whatever
-    ``CCDPROC_ARRAY_LIBRARY`` says, so it must always take the numpy path.
+    A bare ``array_api_compat.array_namespace`` raises ``TypeError: list is
+    not a supported array type`` for these, so each falls back to numpy for
+    input no array library claims. This runs on every backend: the input is
+    numpy-ish whatever ``CCDPROC_ARRAY_LIBRARY`` says.
     """
-    result = function(_IMAGE.tolist(), argument)
+    result = function(as_array_like(_IMAGE), argument)
 
     assert array_api_compat.is_numpy_namespace(array_api_compat.array_namespace(result))
     np.testing.assert_allclose(result, function(_IMAGE, argument))
@@ -712,19 +639,6 @@ def test_public_median_filter_rejects_ndimage_only_arguments_off_numpy(kwargs, m
         pytest.skip("numpy input is passed through to ndimage unchanged")
     with pytest.raises(TypeError, match=match):
         core.median_filter(_as_test_array(_IMAGE), **kwargs)
-
-
-def test_nearest_padding_of_an_empty_axis_raises():
-    """
-    ``'nearest'`` padding of an empty axis is refused: there is no edge
-    sample to repeat.
-
-    ``'reflect'`` on the same input is already refused by the
-    too-large-window check; this pins that ``'nearest'`` does not slip
-    through to a confusing error from ``concat`` instead.
-    """
-    with pytest.raises(ValueError, match="cannot pad axis 0, which is empty"):
-        _window_median(_as_test_array(np.ones((0, 5))), 3, mode="nearest")
 
 
 def test_zero_width_image_is_one_band():
