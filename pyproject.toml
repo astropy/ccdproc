@@ -56,9 +56,10 @@ include = [
 ]
 
 [tool.hatch.build.targets.wheel]
-# The array-API escape baseline is read at test time by ccdproc/tests, so it
-# must ship in the wheel (not just the sdist) for the CCDPROC_ENFORCE_ESCAPE_
-# BASELINE ratchet to find it when tox installs the built package.
+# The array-API escape baseline is test data read at test time, so ship it in
+# the wheel (not just the sdist) alongside the tests that use it. The ratchet
+# itself resolves the file from the pytest rootdir, not from the installed
+# package, so an installed copy is never the one it enforces.
 artifacts = [
     "ccdproc/tests/array_escape_baseline.txt",
 ]
@@ -165,6 +166,19 @@ markers = [
     "data_size(N): set dimension of square data array for ccd_data fixture",
     "data_scale(s): set the scale of the normal distribution used to generate data",
     "data_mean(m): set the center of the normal distribution used to generate data",
-    "backend_xfail(*backends, reason=...): mark test as an expected (non-strict) failure when the active CCDPROC_ARRAY_LIBRARY matches one of the named backends",
-    "backend_skip(*backends, reason=...): skip test when the active CCDPROC_ARRAY_LIBRARY matches one of the named backends",
+    # backend_xfail / backend_skip are registered by the array-API escape
+    # plugin (ccdproc/tests/_array_api_plugin), which builds their
+    # descriptions from the configured environment-variable prefix.
 ]
+# Configuration of the array-API escape plugin, loaded from
+# ccdproc/conftest.py. See docs/array_api.rst. Only these five values are
+# ccdproc-specific; the environment variables the plugin reads are named by
+# array_api_escapes_env_prefix, so CCDPROC_ARRAY_LIBRARY,
+# CCDPROC_ARRAY_DEVICE, CCDPROC_LOG_ARRAY_ESCAPES, CCDPROC_TRIAGE_ESCAPES,
+# CCDPROC_ENFORCE_ESCAPE_BASELINE and CCDPROC_WRITE_ESCAPE_BASELINE keep
+# their names.
+array_api_escapes_package = "ccdproc"
+array_api_escapes_test_paths = ["ccdproc.tests"]
+array_api_escapes_baseline = "ccdproc/tests/array_escape_baseline.txt"
+array_api_escapes_env_prefix = "CCDPROC"
+array_api_escapes_logger = "ccdproc.array_escape"
