@@ -414,11 +414,12 @@ def _sorted_with_nan_last(x, axis, xp, device):
         Number of non-NaN entries along ``axis``, as ``int32`` and with
         ``axis`` kept at size one so it broadcasts against ``s``.
     """
+    nan_mask = xp.isnan(x)
     s = xp.sort(
-        xp.where(xp.isnan(x), xp.asarray(xp.inf, dtype=x.dtype, device=device), x),
+        xp.where(nan_mask, xp.asarray(xp.inf, dtype=x.dtype, device=device), x),
         axis=axis,
     )
-    n = xp.sum(xp.astype(~xp.isnan(x), xp.int32), axis=axis, keepdims=True)
+    n = xp.sum(xp.astype(~nan_mask, xp.int32), axis=axis, keepdims=True)
     return s, n
 
 
@@ -531,15 +532,15 @@ def nanmedian(x, /, *, axis=0, xp=None):
     return xp.where(xp.squeeze(n, axis=axis) == 0, nan, result)
 
 
-def _nanrank(x, fraction, axis, xp):
+def _nanrank(x, percentile, axis, xp):
     """
     Order statistic along ``axis``, ignoring NaNs, via array-API functions.
 
     The value returned for each slice is the one at rank
-    ``min(floor(n * fraction), n - 1)`` among that slice's ``n`` non-NaN
-    values, counting from the smallest. This is the rank
+    ``min(floor(n * percentile / 100), n - 1)`` among that slice's ``n``
+    non-NaN values, counting from the smallest. This is the rank
     `scipy.ndimage.percentile_filter` uses -- it takes the element at
-    ``int(size * percentile / 100)`` -- so with ``fraction = 0.5`` it is
+    ``int(size * percentile / 100)`` -- so with ``percentile = 50`` it is
     also `scipy.ndimage.median_filter`'s ``size // 2``: the upper-middle
     element of an even-length slice, *not* the average of the middle two
     that `nanmedian` returns.
@@ -549,9 +550,9 @@ def _nanrank(x, fraction, axis, xp):
     x : array
         Input array. Integer and boolean inputs are promoted to the
         namespace's default real floating dtype.
-    fraction : float
-        Position in ``[0, 1]`` of the wanted order statistic; 0 selects the
-        minimum of the non-NaN values and 1 their maximum.
+    percentile : float
+        Position in ``[0, 100]`` of the wanted order statistic; 0 selects
+        the minimum of the non-NaN values and 100 their maximum.
     axis : int, tuple of int, list of int or None
         Axis or axes along which to select. ``None`` reduces over every
         axis; a tuple or list over all the listed axes at once.
@@ -577,12 +578,15 @@ def _nanrank(x, fraction, axis, xp):
     x, axis, xp, device, _ = _setup(x, axis, xp)
 
     s, n = _sorted_with_nan_last(x, axis, xp, device)
-    # ``fraction`` is applied in the dtype of ``x`` rather than to the
-    # integer count so that the truncation matches ndimage's, which also
-    # multiplies in floating point. Clamping to ``n - 1`` is what keeps
-    # ``fraction = 1`` selecting the maximum instead of running off the end
-    # of the non-NaN values; ndimage raises there instead.
-    index = xp.astype(xp.astype(n, s.dtype) * fraction, n.dtype)
+    # ndimage computes the rank as ``int(float(size) * percentile / 100.0)``
+    # in C double: multiply before dividing, and never in the dtype of ``x``.
+    # Dividing first regroups the arithmetic and loses a rank -- 29% of 100
+    # is 29 this way and 28 the other -- and ``x``'s dtype would make the
+    # count itself wrong for float16, where 2115 rounds to 2116. Clamping to
+    # ``n - 1`` is what keeps ``percentile = 100`` selecting the maximum
+    # instead of running off the end of the non-NaN values; ndimage raises
+    # there instead.
+    index = xp.astype(xp.astype(n, xp.float64) * percentile / 100, n.dtype)
     index = xp.minimum(index, n - 1)
     result = _gather_at_index(s, index, axis, xp, device)
 

@@ -636,12 +636,12 @@ def window_rank(x, size, percentile, *, mode="reflect", band_rows=None, xp=None)
     size = _normalize_size(size, x.ndim)
 
     # ndimage's rank is int(size * percentile / 100); _nanrank takes the
-    # same product against the count of non-NaN values in each window.
-    fraction = percentile / 100
+    # same product, in the same order, against the count of non-NaN values
+    # in each window.
     return _windowed(
         x,
         size,
-        lambda stack: _nanrank(stack, fraction, -1, xp),
+        lambda stack: _nanrank(stack, percentile, -1, xp),
         mode=mode,
         band_rows=band_rows,
         xp=xp,

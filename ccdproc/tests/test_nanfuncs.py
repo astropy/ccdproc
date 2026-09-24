@@ -194,42 +194,75 @@ def test_bad_axis(func, axis, error, match):
         func(xp.asarray(np.ones((2, 2)), device=xp_device), axis=axis)
 
 
-def _rank_reference(data, fraction, axis):
+def _rank_reference(data, percentile, axis):
     """
     Reference order statistic: the element at rank
-    ``min(floor(n * fraction), n - 1)`` among the non-NaN values of each
-    slice, computed with plain numpy sorting and indexing.
+    ``min(floor(n * percentile / 100), n - 1)`` among the non-NaN values of
+    each slice, computed with plain numpy sorting and indexing.
+
+    Notes
+    -----
+    This mirrors `_nanrank`'s documented contract rather than deriving it
+    independently: ndimage has no NaN-aware reduction along an axis, so
+    there is no external oracle for a NaN-carrying slice. The one thing
+    written out deliberately here is the *grouping* of the arithmetic --
+    ``n * percentile / 100``, multiply first, as scipy's
+    ``int(float(filter_size) * percentile / 100.0)`` does. Dividing first
+    loses a rank for whole classes of ``(n, percentile)`` pairs, which is
+    the bug this grouping exists to pin.
     """
     sorted_data = np.sort(np.where(np.isnan(data), np.inf, data), axis=axis)
     n = np.count_nonzero(~np.isnan(data), axis=axis, keepdims=True)
-    index = np.minimum(np.trunc(n * fraction).astype(int), n - 1)
+    index = np.minimum(np.trunc(n * percentile / 100).astype(int), n - 1)
     picked = np.take_along_axis(sorted_data, np.maximum(index, 0), axis=axis)
     return np.where(n == 0, np.nan, picked).squeeze(axis=axis)
 
 
-@pytest.mark.parametrize("fraction", [0.0, 0.309, 0.5, 0.691, 1.0])
+@pytest.mark.parametrize("percentile", [0.0, 29.0, 30.9, 50.0, 69.1, 100.0])
 @pytest.mark.parametrize(("data", "axis"), [(_some_nan, 0), (_some_nan, 1)])
-def test_nanrank_matches_rank_reference(fraction, axis, data):
+def test_nanrank_matches_rank_reference(percentile, axis, data):
     """
-    ``_nanrank`` picks the element at ``min(floor(n * fraction), n - 1)``
-    among a slice's non-NaN values.
+    ``_nanrank`` picks the element at
+    ``min(floor(n * percentile / 100), n - 1)`` among a slice's non-NaN
+    values.
 
     That rank is exactly the one `scipy.ndimage.percentile_filter` uses, so
     this is what makes ``ccdproc._windowfilters.window_rank`` reproduce
-    ndimage; pinned against an independent numpy sort-and-index reference
-    rather than against ndimage itself, because ndimage has no NaN-aware
-    mode to compare with on the NaN-carrying rows here.
+    ndimage; pinned against a numpy sort-and-index reference rather than
+    against ndimage itself, because ndimage has no NaN-aware mode to
+    compare with on the NaN-carrying rows here.
     """
-    result = _nanrank(xp.asarray(data, device=xp_device), fraction, axis, xp)
-    expected = xp.asarray(_rank_reference(data, fraction, axis), device=xp_device)
+    result = _nanrank(xp.asarray(data, device=xp_device), percentile, axis, xp)
+    expected = xp.asarray(_rank_reference(data, percentile, axis), device=xp_device)
 
     assert result.shape == expected.shape
     assert bool(xp.all(xpx.isclose(result, expected, equal_nan=True)))
 
 
+def test_nanrank_multiplies_the_count_by_the_percentile_before_dividing():
+    """
+    The rank is ``int(n * percentile / 100)``, not ``int(n * (percentile /
+    100))``.
+
+    Notes
+    -----
+    The two groupings differ whenever ``percentile / 100`` rounds down in
+    binary: at ``n = 100`` and ``percentile = 29`` the first gives 29 and
+    the second 28, so `scipy.ndimage.percentile_filter` and
+    ``ccdproc._windowfilters.window_rank`` would return neighbouring order
+    statistics on the same window. A slice of 100 distinct values makes
+    that off-by-one visible as a value, not just as an index.
+    """
+    values = np.arange(100.0)[:, None]
+
+    result = _nanrank(xp.asarray(values, device=xp_device), 29.0, 0, xp)
+
+    assert float(result[0]) == 29.0
+
+
 def test_nanrank_half_is_upper_middle_not_the_average():
     """
-    At ``fraction=0.5`` an even-length slice yields its upper-middle value,
+    At ``percentile=50`` an even-length slice yields its upper-middle value,
     not the average of the middle two that `nanmedian` yields.
 
     This is the ndimage convention, and it is the whole reason
@@ -239,7 +272,7 @@ def test_nanrank_half_is_upper_middle_not_the_average():
     """
     data = xp.asarray(np.array([[0.0], [1.0], [4.0], [5.0]]), device=xp_device)
 
-    assert float(_nanrank(data, 0.5, 0, xp)[0]) == 4.0
+    assert float(_nanrank(data, 50.0, 0, xp)[0]) == 4.0
     assert float(nanmedian(data, axis=0)[0]) == 2.5
 
 
@@ -258,7 +291,7 @@ def test_nanrank_all_nan_slice_is_nan_and_silent():
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        result = _nanrank(data, 0.5, 0, xp)
+        result = _nanrank(data, 50.0, 0, xp)
 
     assert bool(result[0] == 2.0)
     assert bool(xp.isnan(result[1]))
