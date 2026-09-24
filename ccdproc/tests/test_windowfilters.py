@@ -20,11 +20,11 @@ from scipy import ndimage
 
 from ccdproc import core
 from ccdproc._windowfilters import (
-    _ITEMSIZES,
     _default_band_rows,
     _itemsize,
     _normalize_size,
-    _window_stack,
+    _pad_windows,
+    _stack_from_padded,
     window_any,
     window_median,
     window_rank,
@@ -306,34 +306,27 @@ def test_integer_input_is_promoted_to_a_real_floating_dtype(call):
 
 def test_window_stack_holds_each_pixels_window():
     """
-    ``_window_stack`` puts exactly one window per pixel on a trailing axis.
+    The window stack holds exactly one window per pixel on a trailing axis.
 
-    Every other function here is a reduction over that axis, so if the
-    stack were wrong -- a slice off by one, an offset omitted -- the
-    parity tests would fail without saying why. This checks the stack
-    itself, against the window read directly out of a padded copy.
+    Every filter here is a reduction over that axis, so if the stack were
+    wrong -- a slice off by one, an offset omitted -- the parity tests
+    would fail without saying why. The reference is `sliding_window_view`
+    on a numpy copy of the same padded array, which shares no machinery
+    with the shifted slices under test; the windows are sorted before
+    comparison because the order along the stacked axis is deliberately
+    unspecified.
     """
+    size = (3, 3)
     data = np.arange(20.0).reshape(4, 5)
     padded = np.pad(data, [(1, 1), (1, 1)], mode="symmetric")
 
-    stack = _window_stack(_as_test_array(data), 3)
+    stack = _stack_from_padded(
+        _pad_windows(_as_test_array(data), size, "reflect", xp), size, data.shape, xp
+    )
 
     assert stack.shape == (4, 5, 9)
-    for row in range(4):
-        for col in range(5):
-            expected = np.sort(padded[row : row + 3, col : col + 3].reshape(-1))
-            got = np.sort(np.asarray(_to_host(stack[row, col, :])))
-            assert np.array_equal(got, expected)
-
-
-def _to_host(array):
-    """
-    A small array as numpy, for tests that compare element by element.
-
-    Goes through `float` per element rather than ``np.asarray`` because
-    array-api-strict refuses to export an array on a non-default device.
-    """
-    return np.array([float(array[i]) for i in range(array.shape[0])])
+    expected = np.sort(sliding_window_view(padded, size).reshape(4, 5, 9), axis=-1)
+    _assert_matches(xp.sort(stack, axis=-1), expected)
 
 
 def test_unimplemented_mode_raises():
@@ -413,6 +406,12 @@ def test_band_rows_default_fits_the_budget():
     row_bytes = 512 * 8 * 11 * 11
     assert band_rows == (256 * 1024**2) // row_bytes
     assert band_rows >= 1
+
+    # The widths the estimate above is built on, read out of the
+    # namespace's own ``finfo``/``iinfo`` rather than a table here.
+    assert _itemsize(xp.bool, xp) == 1
+    assert _itemsize(xp.float32, xp) == 4
+    assert _itemsize(xp.float64, xp) == 8
 
 
 def test_warns_when_a_single_row_exceeds_the_budget():
@@ -614,20 +613,6 @@ def test_nearest_padding_of_an_empty_axis_raises():
     """
     with pytest.raises(ValueError, match="cannot pad axis 0, which is empty"):
         window_median(_as_test_array(np.ones((0, 5))), 3, mode="nearest")
-
-
-def test_itemsize_falls_back_to_the_widest_known_dtype():
-    """
-    A dtype the band-size estimate does not know is costed as the widest
-    one it does, so the estimate errs towards smaller bands, never a
-    wrong result.
-
-    ``_windowed`` only ever sees the promoted real dtypes and bool, but
-    ``_default_band_rows`` is reachable with any dtype and must not fail
-    on one it has no entry for.
-    """
-    assert _itemsize(xp.float32, xp) == 4
-    assert _itemsize(xp.int32, xp) == max(_ITEMSIZES.values())
 
 
 def test_zero_width_image_is_one_band():

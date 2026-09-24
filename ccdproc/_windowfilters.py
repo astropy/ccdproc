@@ -19,18 +19,14 @@ at all -- there is no ``as_strided``, no ``sliding_window_view``, not even a
 ``pad`` -- and it is also what makes it expensive: the stack holds
 ``prod(size)`` copies of the input, and the rank filters sort it, costing
 O(k**2 log k**2) per pixel for a k-by-k window where ndimage's selection
-costs O(k**2). `_windowed` bounds the peak memory that would otherwise
-follow by processing the output in bands of rows.
+costs O(k**2).
 
 Two divergences from ndimage are deliberate, and documented on the
 functions themselves: integer input is promoted to a floating dtype, and
 only the ``'reflect'`` and ``'nearest'`` boundary modes are implemented.
 
-One warning is deliberately swallowed, in `_stack_from_padded`: dask's
-``PerformanceWarning`` about the stack multiplying the chunk count by
-``prod(size)``. That multiplication is how this module works, it happens
-once per window offset, and no caller can act on it except by choosing a
-smaller window.
+One dask ``PerformanceWarning`` is deliberately swallowed, in
+`_stack_from_padded`; see there.
 """
 
 import itertools
@@ -57,12 +53,6 @@ _MODES = ("reflect", "nearest")
 # holds the peak near this figure instead, at no cost in accuracy -- see
 # ``_windowed``.
 _BAND_BUDGET_BYTES = 256 * 1024 * 1024
-
-# Bytes per element of the dtypes these filters produce. The array API
-# exposes no itemsize, so a dtype is compared against the namespace's own
-# dtype objects; anything unrecognized falls back to the widest entry, which
-# can only make the bands smaller than they need to be.
-_ITEMSIZES = {"bool": 1, "float16": 2, "float32": 4, "float64": 8}
 
 # The ``x``/``size``/``mode``/``band_rows``/``xp`` parameters mean the same
 # thing for every function here, so their docstring entries are written once
@@ -116,30 +106,7 @@ func : callable
 
 
 def _window_doc(dtype=_PROMOTED_DTYPE, extra=""):
-    """
-    Build the decorator that fills one function's ``{params}`` placeholder.
-
-    Parameters
-    ----------
-    dtype : str, optional
-        Sentence describing what happens to ``x``'s dtype.
-    extra : str, optional
-        Docstring entry for the function's own extra parameter, placed
-        between ``size`` and ``mode`` so the rendered Parameters section
-        keeps signature order.
-
-    Returns
-    -------
-    callable
-        Decorator that fills the function's ``{params}`` placeholder.
-
-    Notes
-    -----
-    `ccdproc._nanfuncs` fills its own docstrings the same way, but its
-    ``_fill_doc`` is hardwired to its own parameter text; the few lines
-    below are cheaper than generalizing a helper shared with an unrelated
-    module.
-    """
+    """Fill one function's ``{params}`` placeholder from `_COMMON_PARAMS`."""
     params = _COMMON_PARAMS.format(
         dtype=dtype,
         extra=extra,
@@ -215,12 +182,13 @@ def _slice_along(x, axis, start, stop):
     return x[tuple(index)]
 
 
-def _pad_reflect(x, before, after, axis, xp):
+def _pad_axis(x, before, after, axis, mode, xp):
     """
-    Extend ``x`` along ``axis`` by mirroring about the edge samples.
+    Extend ``x`` along ``axis`` past its edges, in `scipy.ndimage`'s naming.
 
-    This is `scipy.ndimage`'s ``'reflect'`` (numpy's ``'symmetric'``): the
-    edge sample itself is repeated, ``d c b a | a b c d | d c b a``.
+    ``'reflect'`` mirrors about the edge sample, ``d c b a | a b c d | d c
+    b a`` (numpy calls that ``'symmetric'``); ``'nearest'`` repeats it,
+    ``a a a a | a b c d | d d d d``.
 
     Parameters
     ----------
@@ -230,6 +198,9 @@ def _pad_reflect(x, before, after, axis, xp):
         Number of elements to add before the start and after the end.
     axis : int
         Non-negative axis to pad.
+    mode : str
+        One of `_MODES`. Anything that is not ``'reflect'`` is treated as
+        ``'nearest'``; `_pad_windows` is what rejects an unknown mode.
     xp : array namespace
         Namespace to use.
 
@@ -241,66 +212,37 @@ def _pad_reflect(x, before, after, axis, xp):
     Raises
     ------
     ValueError
-        If more elements are asked for than the axis holds. ndimage keeps
-        reflecting back and forth in that case; matching that is not worth
-        the code, since a window more than twice as wide as the image is
-        not a filter anyone means to apply.
+        For ``'reflect'``, if more elements are asked for than the axis
+        holds. ndimage keeps reflecting back and forth in that case;
+        matching that is not worth the code, since a window more than
+        twice as wide as the image is not a filter anyone means to apply.
+        For ``'nearest'``, if ``axis`` is empty and any padding was asked
+        for: there is no edge sample to repeat.
     """
     length = x.shape[axis]
-    if before > length or after > length:
-        raise ValueError(
-            f"window is too large for axis {axis}, whose length is {length}: "
-            f"reflecting needs {max(before, after)} elements of padding, which "
-            f"would have to re-reflect"
+    if mode == "reflect":
+        if before > length or after > length:
+            raise ValueError(
+                f"window is too large for axis {axis}, whose length is {length}: "
+                f"reflecting needs {max(before, after)} elements of padding, which "
+                f"would have to re-reflect"
+            )
+        head = [xp.flip(_slice_along(x, axis, 0, before), axis=axis)] if before else []
+        tail = (
+            [xp.flip(_slice_along(x, axis, length - after, None), axis=axis)]
+            if after
+            else []
         )
+    else:
+        if length == 0 and (before or after):
+            raise ValueError(f"cannot pad axis {axis}, which is empty")
+        # ``concat`` of repeated edge slices rather than ``repeat``, which
+        # only entered the standard in 2023.12 and which array-api-compat's
+        # dask wrapper does not provide.
+        head = [_slice_along(x, axis, 0, 1)] * before
+        tail = [_slice_along(x, axis, length - 1, None)] * after
 
-    pieces = []
-    if before:
-        pieces.append(xp.flip(_slice_along(x, axis, 0, before), axis=axis))
-    pieces.append(x)
-    if after:
-        pieces.append(xp.flip(_slice_along(x, axis, length - after, None), axis=axis))
-    return xp.concat(pieces, axis=axis) if len(pieces) > 1 else x
-
-
-def _pad_nearest(x, before, after, axis, xp):
-    """
-    Extend ``x`` along ``axis`` by repeating the edge samples.
-
-    This is `scipy.ndimage`'s ``'nearest'``: ``a a a a | a b c d | d d d d``.
-
-    Parameters
-    ----------
-    x : array
-        Array to pad.
-    before, after : int
-        Number of elements to add before the start and after the end.
-    axis : int
-        Non-negative axis to pad.
-    xp : array namespace
-        Namespace to use.
-
-    Returns
-    -------
-    array
-        ``x`` with ``before + after`` extra elements along ``axis``.
-
-    Raises
-    ------
-    ValueError
-        If ``axis`` is empty and any padding was asked for: there is no
-        edge sample to repeat.
-    """
-    length = x.shape[axis]
-    if length == 0 and (before or after):
-        raise ValueError(f"cannot pad axis {axis}, which is empty")
-
-    # ``concat`` of repeated edge slices rather than ``repeat``, which only
-    # entered the standard in 2023.12 and which array-api-compat's dask
-    # wrapper does not provide.
-    pieces = [_slice_along(x, axis, 0, 1)] * before
-    pieces.append(x)
-    pieces.extend([_slice_along(x, axis, length - 1, None)] * after)
+    pieces = [*head, x, *tail]
     return xp.concat(pieces, axis=axis) if len(pieces) > 1 else x
 
 
@@ -330,14 +272,16 @@ def _pad_windows(x, size, mode, xp):
     ValueError
         If ``mode`` is not one of `_MODES`.
     """
+    # This check is the only thing standing between a typo and silently
+    # wrong padding, now that `_pad_axis` treats anything that is not
+    # ``'reflect'`` as ``'nearest'``.
     if mode not in _MODES:
         raise ValueError(f"mode must be one of {_MODES}, got {mode!r}")
-    pad = _pad_reflect if mode == "reflect" else _pad_nearest
 
     for axis, k in enumerate(size):
         # ndimage places an even window one element above the index, so the
         # overhangs are k // 2 before and k - 1 - k // 2 after.
-        x = pad(x, k // 2, k - 1 - k // 2, axis, xp)
+        x = _pad_axis(x, k // 2, k - 1 - k // 2, axis, mode, xp)
     return x
 
 
@@ -382,60 +326,20 @@ def _stack_from_padded(padded, size, shape, xp):
         return xp.stack(windows, axis=-1)
 
 
-def _window_stack(x, size, *, mode="reflect", xp=None):
-    """
-    Every window of ``x``, stacked into a new trailing axis.
-
-    This is `_pad_windows` followed by `_stack_from_padded`, without the
-    banding `_windowed` adds. It exists so the padding and stacking can be
-    exercised on their own, and so a test can build a reference stack.
-
-    Parameters
-    ----------
-    x : array
-        Input array, used as given -- no dtype promotion.
-    size : int or sequence of int
-        Window shape, as for `window_rank`.
-    mode : str, optional
-        Boundary mode, as for `window_rank`.
-    xp : array namespace, optional
-        Namespace to use. Defaults to
-        ``array_api_compat.array_namespace(x)``.
-
-    Returns
-    -------
-    array
-        Shape ``x.shape + (prod(size),)``.
-    """
-    if xp is None:
-        xp = array_api_compat.array_namespace(x)
-    size = _normalize_size(size, x.ndim)
-    return _stack_from_padded(_pad_windows(x, size, mode, xp), size, x.shape, xp)
-
-
 def _itemsize(dtype, xp):
     """
     Bytes per element of ``dtype``, for the band-size estimate.
 
-    Parameters
-    ----------
-    dtype : dtype
-        Dtype whose width is wanted.
-    xp : array namespace
-        Namespace the dtype belongs to.
-
-    Returns
-    -------
-    int
-        The width in bytes, or the widest entry of `_ITEMSIZES` if the
-        dtype is not one of them. Over-estimating only makes the bands
-        smaller, never the result wrong.
+    Notes
+    -----
+    The array API exposes no itemsize, but ``finfo``/``iinfo`` report the
+    width in bits, which is the same thing for every dtype these filters
+    can be handed. ``bool`` is the one dtype neither of them covers.
     """
-    for name, nbytes in _ITEMSIZES.items():
-        candidate = getattr(xp, name, None)
-        if candidate is not None and dtype == candidate:
-            return nbytes
-    return max(_ITEMSIZES.values())
+    if dtype == xp.bool:
+        return 1
+    info = xp.finfo if xp.isdtype(dtype, "real floating") else xp.iinfo
+    return info(dtype).bits // 8
 
 
 def _default_band_rows(x, size, xp):
@@ -483,32 +387,6 @@ def _default_band_rows(x, size, xp):
         )
         return 1
     return band_rows
-
-
-def _collapse(band, dask):
-    """
-    Put a dask band into a single chunk; leave any other array alone.
-
-    Parameters
-    ----------
-    band : array
-        The padded band about to be sliced into window offsets.
-    dask : bool
-        Whether ``band`` is a dask array. Only dask has chunks, and only
-        dask has the ``rechunk`` method used here, which is why the caller
-        resolves this once rather than sniffing the array.
-
-    Returns
-    -------
-    array
-        ``band``, as one chunk on dask and unchanged everywhere else.
-
-    Notes
-    -----
-    See `_windowed` for why: slicing a chunked band into ``prod(size)``
-    differently-offset windows is what makes dask's graph explode.
-    """
-    return band.rechunk(-1) if dask else band
 
 
 def _windowed(x, size, reduction, *, mode, band_rows, xp):
@@ -566,13 +444,19 @@ def _windowed(x, size, reduction, *, mode, band_rows, xp):
         band_rows = _default_band_rows(x, size, xp)
 
     if band_rows >= shape[0]:
-        return reduction(_stack_from_padded(_collapse(padded, dask), size, shape, xp))
+        if dask:
+            padded = padded.rechunk(-1)
+        return reduction(_stack_from_padded(padded, size, shape, xp))
 
     overhang = size[0] - 1
     reduced = []
     for start in range(0, shape[0], band_rows):
         rows = min(band_rows, shape[0] - start)
-        band = _collapse(_slice_along(padded, 0, start, start + rows + overhang), dask)
+        band = _slice_along(padded, 0, start, start + rows + overhang)
+        if dask:
+            # One chunk per band before it is sliced into window offsets;
+            # see Notes.
+            band = band.rechunk(-1)
         # Reduce inside the loop: holding the band stacks and reducing
         # afterwards would rebuild the whole-image stack the banding exists
         # to avoid.
