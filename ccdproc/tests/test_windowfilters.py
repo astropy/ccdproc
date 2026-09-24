@@ -22,7 +22,6 @@ from ccdproc import core
 from ccdproc._windowfilters import (
     _default_band_rows,
     _itemsize,
-    _normalize_size,
     _pad_windows,
     _stack_from_padded,
     window_any,
@@ -30,8 +29,10 @@ from ccdproc._windowfilters import (
     window_rank,
     window_reduce,
 )
+from ccdproc.conftest import assert_same_namespace_and_device
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
+from ccdproc.conftest import to_xp as _as_test_array
 from ccdproc.core import _dispatch_median_filter, _dispatch_percentile_filter
 
 _rng = np.random.default_rng(20260907)
@@ -45,24 +46,27 @@ _IMAGE = _rng.normal(size=(23, 17))
 # grows a cosmic-ray flag.
 _FLAGS = _rng.random((23, 17)) > 0.9
 
-# Odd, even, rectangular, degenerate (1x1, which must be the identity) and
-# one window wider than it is tall.
-_SIZES = [3, 4, 5, 1, (3, 7), (4, 2), (1, 5)]
+# Odd, even, rectangular, degenerate (1x1, which must be the identity),
+# one window wider than it is tall, and 10, which with percentile 29 is a
+# window whose rank depends on the order the arithmetic is grouped in.
+_SIZES = [3, 4, 5, 1, 10, (3, 7), (4, 2), (1, 5)]
 
 _MODES = ["reflect", "nearest"]
 
-# The two percentiles ccdmask asks for, plus the ends and the middle.
-_PERCENTILES = [0.0, 30.9, 50.0, 69.1, 100.0]
-
-# numpy's names for the two boundary modes ndimage calls "reflect" and
-# "nearest"; numpy's own "reflect" is ndimage's "mirror", which is a
-# different thing and is not implemented.
-_NUMPY_PAD_MODES = {"reflect": "symmetric", "nearest": "edge"}
+# The two percentiles ccdmask asks for, the ends and the middle, and 29,
+# which at n = 100 is int(n * p / 100) == 29 but int(n * (p / 100)) == 28.
+_PERCENTILES = [0.0, 29.0, 30.9, 50.0, 69.1, 100.0]
 
 
-def _as_test_array(data):
-    """The input converted into the namespace and device under test."""
-    return xp.asarray(data, device=xp_device)
+# One call per public filter, with the dtype kind its result must have.
+_CALLS = [
+    pytest.param(lambda data: window_median(data, 3), "real floating", id="median"),
+    pytest.param(lambda data: window_rank(data, 3, 69.1), "real floating", id="rank"),
+    pytest.param(lambda data: window_any(data, 3), "bool", id="any"),
+    pytest.param(
+        lambda data: window_reduce(data, 3, xp.std), "real floating", id="reduce"
+    ),
+]
 
 
 def _assert_matches(result, expected):
@@ -74,43 +78,49 @@ def _assert_matches(result, expected):
 
 def _rank_reference(data, size, percentile, mode="reflect"):
     """
-    NaN-aware window rank computed with `sliding_window_view`, as an
-    independent reference for `window_rank`.
+    NaN-aware window rank, as a reference for `window_rank`.
 
-    Each window's non-NaN values are sorted and the element at
-    ``min(floor(n * percentile / 100), n - 1)`` taken; a window with no
-    non-NaN value gives NaN.
+    Notes
+    -----
+    The windows and the boundary handling come from
+    `scipy.ndimage.generic_filter` itself, so the only thing written out
+    here is the NaN-aware rank ndimage has no mode for: each window's
+    non-NaN values are sorted and the element at
+    ``min(int(n * percentile / 100), n - 1)`` taken, with a window holding
+    no non-NaN value giving NaN. Re-deriving the padding and the window
+    extraction instead would mirror the implementation under test, which
+    is how the ``percentile / 100`` regrouping bug survived a 70-case
+    parity grid.
     """
-    size = _normalize_size(size, data.ndim)
-    padded = np.pad(
-        data,
-        [(k // 2, k - 1 - k // 2) for k in size],
-        mode=_NUMPY_PAD_MODES[mode],
-    )
-    windows = sliding_window_view(padded, size).reshape(data.shape + (-1,))
-    ordered = np.sort(np.where(np.isnan(windows), np.inf, windows), axis=-1)
-    n = np.count_nonzero(~np.isnan(windows), axis=-1)
-    index = np.minimum(np.trunc(n * (percentile / 100)).astype(int), n - 1)
-    picked = np.take_along_axis(ordered, np.maximum(index, 0)[..., None], axis=-1)
-    return np.where(n == 0, np.nan, picked[..., 0])
+
+    def pick(window):
+        values = np.sort(window[~np.isnan(window)])
+        if values.size == 0:
+            return np.nan
+        return values[min(int(values.size * percentile / 100), values.size - 1)]
+
+    return ndimage.generic_filter(data, pick, size=size, mode=mode)
 
 
-@pytest.mark.parametrize("mode", _MODES)
-@pytest.mark.parametrize("size", _SIZES, ids=str)
-def test_window_median_matches_ndimage(size, mode):
+@pytest.mark.parametrize("size", [3, 4], ids=str)
+def test_window_median_matches_ndimage(size):
     """
-    ``window_median`` reproduces `scipy.ndimage.median_filter` exactly.
+    ``window_median`` reproduces `scipy.ndimage.median_filter`.
 
-    This is the whole contract of the module: `ccdproc.core` sends numpy
-    input to ndimage and everything else here, so any disagreement would
-    make a reduction's result depend on which array library the user
-    happens to run. Even window lengths are in the grid because ndimage
-    places them asymmetrically and takes the upper-middle element rather
-    than averaging, which is easy to get wrong in both places at once.
+    Notes
+    -----
+    ``window_median`` is a one-line delegate to ``window_rank`` at 50.0,
+    which ``test_window_rank_matches_ndimage`` already covers over the
+    whole size and mode grid, so these two cases are here for what that
+    grid cannot see: that the public name really does ask for 50.0 and
+    not 0.5, and that ``median_filter`` and ``percentile_filter(50.0)``
+    agree -- the scipy invariant the delegation rests on. An even size is
+    kept alongside an odd one because that is where the two conventions
+    could differ.
     """
-    result = window_median(_as_test_array(_IMAGE), size, mode=mode)
+    result = window_median(_as_test_array(_IMAGE), size)
 
-    _assert_matches(result, ndimage.median_filter(_IMAGE, size=size, mode=mode))
+    _assert_matches(result, ndimage.median_filter(_IMAGE, size=size))
 
 
 @pytest.mark.parametrize("percentile", _PERCENTILES)
@@ -251,57 +261,30 @@ def test_banded_matches_unbanded_for_window_any():
     assert bool(xp.all(banded == unbanded))
 
 
-@pytest.mark.parametrize(
-    "call",
-    [
-        pytest.param(lambda data: window_median(data, 3), id="window_median"),
-        pytest.param(lambda data: window_rank(data, 3, 69.1), id="window_rank"),
-        pytest.param(lambda data: window_any(data, 3), id="window_any"),
-        pytest.param(lambda data: window_reduce(data, 3, xp.std), id="window_reduce"),
-    ],
-)
-def test_result_stays_in_the_input_namespace_and_device(call):
+@pytest.mark.parametrize(("call", "dtype_kind"), _CALLS)
+def test_result_keeps_the_namespace_device_and_promotes_the_dtype(call, dtype_kind):
     """
-    The result comes back in the caller's namespace, on the caller's device.
+    Integer input comes back in the caller's namespace, on the caller's
+    device, and in the dtype each filter documents.
 
-    This is the point of the module -- the ndimage calls it replaces
-    returned numpy arrays on the host -- and the device half of it is what
-    the array-api-strict run, which puts its arrays on a non-default
-    device, exists to catch.
-    """
-    data = _as_test_array(_IMAGE)
-
-    result = call(data)
-
-    assert array_api_compat.array_namespace(result) is (
-        array_api_compat.array_namespace(data)
-    )
-    assert array_api_compat.device(result) == array_api_compat.device(data)
-
-
-@pytest.mark.parametrize(
-    "call",
-    [
-        pytest.param(lambda data: window_median(data, 3), id="window_median"),
-        pytest.param(lambda data: window_rank(data, 3, 69.1), id="window_rank"),
-        pytest.param(lambda data: window_reduce(data, 3, xp.std), id="window_reduce"),
-    ],
-)
-def test_integer_input_is_promoted_to_a_real_floating_dtype(call):
-    """
-    Integer input comes back as floats, a documented divergence.
-
-    `scipy.ndimage.median_filter` keeps an integer dtype; these filters
-    promote, because the sort machinery they share with
-    `ccdproc._nanfuncs` needs a NaN to represent "no value" and because
-    every ccdproc caller filters image data it goes on to do float
-    arithmetic with. Pinned so the divergence cannot drift back silently.
+    Notes
+    -----
+    Namespace and device are the point of the module -- the ndimage calls
+    it replaces returned numpy arrays on the host -- and the device half
+    is what the array-api-strict run, whose arrays live on a non-default
+    device, exists to catch. The dtype is a deliberate divergence:
+    `scipy.ndimage.median_filter` keeps an integer dtype where these
+    promote, because the sort machinery shared with `ccdproc._nanfuncs`
+    needs a NaN for "no value". ``window_any`` is in the same list with
+    ``bool`` as its kind rather than left out of the dtype half, because
+    ``cosmicray_median`` combines its result with ``&``.
     """
     data = xp.asarray(np.arange(35).reshape(5, 7), device=xp_device)
 
     result = call(data)
 
-    assert xp.isdtype(result.dtype, "real floating")
+    assert_same_namespace_and_device(result, data)
+    assert xp.isdtype(result.dtype, dtype_kind)
 
 
 def test_window_stack_holds_each_pixels_window():

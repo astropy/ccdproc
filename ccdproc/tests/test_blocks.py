@@ -12,7 +12,6 @@ implementation the numpy code path still uses.
 import importlib
 from functools import partial
 
-import array_api_compat
 import array_api_extra as xpx
 import numpy as np
 import pytest
@@ -22,6 +21,7 @@ from astropy.nddata import CCDData, NDData, StdDevUncertainty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from ccdproc import _blocks, core
+from ccdproc.conftest import assert_same_namespace_and_device, to_xp
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 
@@ -158,35 +158,19 @@ _CORE_WRAPPERS_ON_NUMPY_INPUT = [
 ]
 
 
-def _to_xp(data):
-    """Convert a numpy reference array to the backend under test."""
-    return xp.asarray(data, device=xp_device)
-
-
 def _assert_matches(result, expected_np):
     """
     Assert that ``result`` equals the numpy reference ``expected_np`` in
     shape, dtype and value, comparing entirely inside the backend's
     namespace so that nothing has to leave a non-default device.
     """
-    expected = _to_xp(expected_np)
+    expected = to_xp(expected_np)
     assert result.shape == expected.shape
     assert result.dtype == expected.dtype
     if xp.isdtype(result.dtype, ("real floating", "complex floating")):
         assert bool(xp.all(xpx.isclose(result, expected)))
     else:
         assert bool(xp.all(result == expected))
-
-
-def _assert_same_namespace_and_device(result, data):
-    """
-    Assert that ``result`` is in the same array-API namespace and on the
-    same device as ``data``.
-    """
-    assert array_api_compat.array_namespace(result) is array_api_compat.array_namespace(
-        data
-    )
-    assert array_api_compat.device(result) == array_api_compat.device(data)
 
 
 @pytest.mark.parametrize(("function", "reference_function"), _NATIVE_AND_REFERENCES)
@@ -207,7 +191,7 @@ def test_native_block_functions_match_astropy(
     pinned by the integer, boolean, complex and float32 tests below.
     """
     reference = reference_function(data, block_size)
-    result = function(_to_xp(data), block_size)
+    result = function(to_xp(data), block_size)
     _assert_matches(result, reference)
 
 
@@ -219,7 +203,7 @@ def test_block_reduce_integer_input_matches_astropy():
     of the parity claim.
     """
     reference = nddata.block_reduce(_INT, 2)
-    result = _blocks.block_reduce(_to_xp(_INT), 2)
+    result = _blocks.block_reduce(to_xp(_INT), 2)
     _assert_matches(result, reference)
 
 
@@ -237,7 +221,7 @@ def test_block_reduce_bool_input_matches_astropy():
     """
     mask = _rng.integers(0, 2, size=(4, 4)).astype(bool)
     reference = nddata.block_reduce(mask, 2)
-    result = _blocks.block_reduce(_to_xp(mask), 2)
+    result = _blocks.block_reduce(to_xp(mask), 2)
     _assert_matches(result, reference)
 
 
@@ -251,7 +235,7 @@ def test_block_reduce_explicit_sum_matches_the_default_on_a_boolean_mask():
     into a variable, got a ``TypeError`` from array-api-strict where the
     plain call worked. The gate now also accepts ``xp.sum`` itself.
     """
-    mask = _to_xp(_rng.integers(0, 2, size=(4, 4)).astype(bool))
+    mask = to_xp(_rng.integers(0, 2, size=(4, 4)).astype(bool))
     default = core.block_reduce(mask, 2)
     explicit = core.block_reduce(mask, 2, func=xp.sum)
     assert explicit.dtype == default.dtype
@@ -284,7 +268,7 @@ def test_block_reduce_explicit_mean_on_non_float_input_matches_astropy(function,
     themselves.
     """
     reference = _astropy_block_average(data, 2)
-    result = function(_to_xp(data), 2)
+    result = function(to_xp(data), 2)
     _assert_matches(result, reference)
 
 
@@ -308,7 +292,7 @@ def test_block_average_integer_input_matches_astropy(function):
     already did.
     """
     reference = _astropy_block_average(_INT, 2)
-    result = function(_to_xp(_INT), 2)
+    result = function(to_xp(_INT), 2)
     _assert_matches(result, reference)
 
 
@@ -326,7 +310,7 @@ def test_block_replicate_integer_input_matches_astropy(conserve_sum):
     a backend that has no float64 (jax without ``JAX_ENABLE_X64``) working,
     and matches astropy's float64 result everywhere else.
     """
-    data = _to_xp(_INT)
+    data = to_xp(_INT)
     reference = nddata.block_replicate(_INT, 2, conserve_sum)
     result = _blocks.block_replicate(data, 2, conserve_sum)
     _assert_matches(result, reference)
@@ -363,7 +347,7 @@ def test_complex_input_matches_astropy(function, reference_function):
     imaginary part. Complex is already floating and must pass through.
     """
     reference = reference_function(_COMPLEX, 2)
-    result = function(_to_xp(_COMPLEX), 2)
+    result = function(to_xp(_COMPLEX), 2)
     _assert_matches(result, reference)
 
 
@@ -388,9 +372,9 @@ def test_block_replicate_float32_input_keeps_float32():
     """
     data32 = _2D.astype(np.float32)
     reference = nddata.block_replicate(data32, 3, True)
-    result = _blocks.block_replicate(_to_xp(data32), 3, True)
+    result = _blocks.block_replicate(to_xp(data32), 3, True)
     assert result.dtype == xp.float32
-    expected = _to_xp(reference.astype(np.float32))
+    expected = to_xp(reference.astype(np.float32))
     assert bool(xp.all(xpx.isclose(result, expected, rtol=1e-6)))
 
 
@@ -411,7 +395,7 @@ def test_block_replicate_degenerate_block_size_matches_astropy(
     the suite exercises a block size of one.
     """
     reference = nddata.block_replicate(data, block_size, conserve_sum)
-    result = _blocks.block_replicate(_to_xp(data), block_size, conserve_sum)
+    result = _blocks.block_replicate(to_xp(data), block_size, conserve_sum)
     _assert_matches(result, reference)
 
 
@@ -443,7 +427,7 @@ def test_block_replicate_degenerate_block_size_returns_a_fresh_writable_array(
     """
     # A private copy: on the numpy backend ``_to_xp`` hands back the module
     # level array itself, and this test writes into its input.
-    source = _to_xp(data.copy())
+    source = to_xp(data.copy())
     result = _blocks.block_replicate(source, block_size, conserve_sum)
 
     if result.size == 0:
@@ -485,7 +469,7 @@ def test_invalid_block_size_is_rejected(function, block_size, match):
     that wording.
     """
     with pytest.raises(ValueError, match=match):
-        function(_to_xp(_2D), block_size)
+        function(to_xp(_2D), block_size)
 
 
 @pytest.mark.backend_skip(
@@ -514,7 +498,7 @@ def test_unknown_shape_is_rejected_with_a_clear_message(function):
     without this check the call died with ``cannot convert float NaN to
     integer``, which names neither dask nor chunks.
     """
-    unknown = _to_xp(_2D)
+    unknown = to_xp(_2D)
     unknown = unknown[unknown[:, 0] > -1]
     assert any(not isinstance(length, int) for length in unknown.shape)
     with pytest.raises(ValueError, match="fully known shape"):
@@ -544,9 +528,9 @@ def test_functions_preserve_namespace_and_device(function):
     this also pins that the ``core`` wrappers' astropy path still returns
     numpy.
     """
-    data = _to_xp(_2D)
+    data = to_xp(_2D)
     result = function(data, 2)
-    _assert_same_namespace_and_device(result, data)
+    assert_same_namespace_and_device(result, data)
 
 
 def test_ccddata_input_preserves_device():
@@ -564,14 +548,14 @@ def test_ccddata_input_preserves_device():
     without unwrapping it first, but the device it carries is real.
     """
     ccd = CCDData(
-        _to_xp(_2D),
+        to_xp(_2D),
         unit=u.adu,
         meta={"testkw": 1},
-        uncertainty=StdDevUncertainty(_to_xp(_2D)),
+        uncertainty=StdDevUncertainty(to_xp(_2D)),
     )
     with pytest.warns(AstropyUserWarning, match="following attributes were set"):
         result = _blocks.block_reduce(ccd, 2)
-    _assert_same_namespace_and_device(result, ccd.data)
+    assert_same_namespace_and_device(result, ccd.data)
 
 
 @pytest.mark.parametrize(
@@ -594,10 +578,10 @@ def test_core_wrappers_honour_an_explicit_xp(namespace, function, reference_func
     ``isdtype``, ``permute_dims`` and ``__array_namespace_info__`` that such
     a module may not have, so all three wrappers raised `AttributeError`.
     """
-    data = _to_xp(_2D)
+    data = to_xp(_2D)
     result = function(data, 2, xp=namespace)
     _assert_matches(result, reference_function(_2D, 2))
-    _assert_same_namespace_and_device(result, data)
+    assert_same_namespace_and_device(result, data)
 
 
 @pytest.mark.parametrize(
