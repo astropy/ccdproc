@@ -336,80 +336,45 @@ def _median_fallback(array, axis, xp=None):
 # ---------------------------------------------------------------------------
 
 
+def _namespace_or_numpy(data):
+    """
+    The array namespace of ``data``, or `numpy` for a plain array-like.
+
+    Notes
+    -----
+    A bare ``array_namespace`` raises ``TypeError: list is not a supported
+    array type`` for the nested lists and tuples that `scipy.ndimage`
+    accepts and that every earlier ccdproc therefore accepted too, so those
+    fall back to numpy. The ``__array_namespace__`` gate re-raises for a
+    real array whose own namespace lookup failed, rather than hiding it
+    behind numpy coercion; it cannot come *first*, because
+    array_api_compat recognises dask arrays by module and they have no
+    such attribute. `_block_dispatch` uses the same shape.
+    """
+    try:
+        return array_api_compat.array_namespace(data)
+    except TypeError:
+        if hasattr(data, "__array_namespace__"):
+            raise
+        return np
+
+
 def _dispatch_median_filter(data, size, *, xp, mode="reflect"):
-    """
-    Median over a moving window, from ndimage or from `_windowfilters`.
-
-    Parameters
-    ----------
-    data : array
-        Array to filter.
-    size : int or tuple of int
-        Window shape.
-    xp : array namespace
-        Namespace of ``data``, which selects the implementation.
-    mode : str, optional
-        Boundary mode. Default is ``"reflect"``, which is ndimage's.
-
-    Returns
-    -------
-    array
-        Same shape as ``data``.
-    """
+    """Median over a moving window, from ndimage or from `_windowfilters`."""
     if array_api_compat.is_numpy_namespace(xp):
         return ndimage.median_filter(data, size=size, mode=mode)
     return window_median(data, size, mode=mode, xp=xp)
 
 
 def _dispatch_percentile_filter(data, percentile, size, *, xp, mode="reflect"):
-    """
-    Order statistic over a moving window, from ndimage or `_windowfilters`.
-
-    Parameters
-    ----------
-    data : array
-        Array to filter.
-    percentile : float
-        Percentile to take, in ``[0, 100]``.
-    size : int or tuple of int
-        Window shape.
-    xp : array namespace
-        Namespace of ``data``, which selects the implementation.
-    mode : str, optional
-        Boundary mode. Default is ``"reflect"``, which is ndimage's.
-
-    Returns
-    -------
-    array
-        Same shape as ``data``.
-    """
+    """Order statistic over a moving window, from ndimage or `_windowfilters`."""
     if array_api_compat.is_numpy_namespace(xp):
         return ndimage.percentile_filter(data, percentile, size=size, mode=mode)
     return window_rank(data, size, percentile, mode=mode, xp=xp)
 
 
 def _dispatch_maximum_filter(data, size, *, xp, mode="reflect"):
-    """
-    Maximum over a moving window, from ndimage or from `_windowfilters`.
-
-    Parameters
-    ----------
-    data : array
-        Array to filter. The only caller passes a boolean mask, for which
-        the maximum is "is any pixel in the window set", which is what the
-        native implementation computes.
-    size : int or tuple of int
-        Window shape.
-    xp : array namespace
-        Namespace of ``data``, which selects the implementation.
-    mode : str, optional
-        Boundary mode. Default is ``"reflect"``, which is ndimage's.
-
-    Returns
-    -------
-    array
-        Same shape as ``data``.
-    """
+    """Maximum over a moving window, from ndimage or from `_windowfilters`."""
     if array_api_compat.is_numpy_namespace(xp):
         return ndimage.maximum_filter(data, size=size, mode=mode)
     return window_any(data, size, mode=mode, xp=xp)
@@ -420,28 +385,12 @@ def _dispatch_generic_filter(data, func, size, *, xp, mode="reflect"):
     Arbitrary reduction over a moving window, from ndimage or
     `_windowfilters`.
 
-    Parameters
-    ----------
-    data : array
-        Array to filter.
-    func : callable
-        The window reduction. ndimage calls it once per window with that
-        window's values flattened; `ccdproc._windowfilters.window_reduce`
-        calls it as ``func(stack, axis=-1)`` on a whole band at a time. A
-        reduction that accepts an ``axis`` keyword and defaults to reducing
-        everything -- `sigma_func` is the only one ccdproc passes -- suits
-        both.
-    size : int or tuple of int
-        Window shape.
-    xp : array namespace
-        Namespace of ``data``, which selects the implementation.
-    mode : str, optional
-        Boundary mode. Default is ``"reflect"``, which is ndimage's.
-
-    Returns
-    -------
-    array
-        Same shape as ``data``.
+    Notes
+    -----
+    ndimage calls ``func`` once per window with that window's values
+    flattened, where `ccdproc._windowfilters.window_reduce` calls it as
+    ``func(stack, axis=-1)`` on a whole band at a time; a reduction taking
+    an ``axis`` keyword, as `sigma_func` does, suits both.
     """
     if array_api_compat.is_numpy_namespace(xp):
         return ndimage.generic_filter(data, func, size=size, mode=mode)
@@ -1759,8 +1708,11 @@ def background_deviation_box(data, bbox, xp=None):
         raise ValueError("bbox must be greater than 1.")
 
     if xp is None:
-        # Get the array namespace
-        xp = array_api_compat.array_namespace(data)
+        xp = _namespace_or_numpy(data)
+        if array_api_compat.is_numpy_namespace(xp):
+            # A nested list or tuple, which the arithmetic below cannot use
+            # as it stands; the docstring promises to take one.
+            data = np.asarray(data)
     # make the background image
     barr = data * 0.0 + xp.std(data)
     ylen, xlen = data.shape
@@ -1813,8 +1765,7 @@ def background_deviation_filter(data, bbox, xp=None):
         raise ValueError("bbox must be greater than 1.")
 
     if xp is None:
-        # Get the array namespace
-        xp = array_api_compat.array_namespace(data)
+        xp = _namespace_or_numpy(data)
 
     return _dispatch_generic_filter(data, sigma_func, (bbox, bbox), xp=xp)
 
@@ -2146,19 +2097,7 @@ def _median_filter_array(data, args, kwargs):
         argument other than ``size`` and ``mode`` was. The message names
         the argument.
     """
-    try:
-        xp = array_api_compat.array_namespace(data)
-    except TypeError:
-        if hasattr(data, "__array_namespace__"):
-            # A real array whose own namespace lookup failed; don't hide that
-            # behind ndimage's numpy coercion. Note the gate cannot come
-            # *first*: array_api_compat recognises dask arrays by module, and
-            # they have no dunder. This is the shape `_block_dispatch` uses.
-            raise
-        # Lists, tuples and other array-likes that no array library claims.
-        # ndimage takes them, and did on every earlier ccdproc, so they keep
-        # going there.
-        xp = np
+    xp = _namespace_or_numpy(data)
     if array_api_compat.is_numpy_namespace(xp):
         # Unchanged passthrough: every ndimage argument, and ndimage's own
         # errors for the ones it does not like.
@@ -2167,9 +2106,8 @@ def _median_filter_array(data, args, kwargs):
     # Let ndimage's own signature sort positional arguments from keyword
     # ones, and raise for a repeated or unknown one, rather than
     # duplicating its parameter list here.
-    given = set(
-        inspect.signature(ndimage.median_filter).bind(data, *args, **kwargs).arguments
-    ) - {"input"}
+    bound = inspect.signature(ndimage.median_filter).bind(data, *args, **kwargs)
+    given = set(bound.arguments) - {"input"}
 
     unsupported = sorted(given - {"size", "mode"})
     if unsupported:
@@ -2185,7 +2123,13 @@ def _median_filter_array(data, args, kwargs):
             f"footprint is not supported"
         )
 
-    arguments = {**dict(zip(("size", "mode"), args, strict=False)), **kwargs}
+    # From ``bound``, not from ``args``: zipping positional arguments
+    # against ("size", "mode") is not ndimage's order -- footprint and
+    # output come between them -- so it would misassign one the moment the
+    # supported set grows.
+    arguments = {
+        name: value for name, value in bound.arguments.items() if name != "input"
+    }
     return window_median(
         data, arguments["size"], mode=arguments.get("mode", "reflect"), xp=xp
     )
@@ -2796,6 +2740,13 @@ def _cosmicray_median_array(data, in_mask, error_image, thresh, mbox, gbox, rbox
     optional boolean mask. See `cosmicray_median` for the meaning of the
     arguments; ``in_mask`` may be `None`.
     """
+    # Integer frames are the normal case out of a FITS file, and the median
+    # filter below promotes them off numpy where ndimage does not, which
+    # left ``data - marr`` mixing kinds: numpy answered int16, dask float64
+    # and array-api-strict raised. ``rarr`` is a true division anyway, so
+    # promote once here and let every backend agree.
+    data = _blocks._promote_for_division(data, xp)
+
     if in_mask is not None:
         in_mask = xp.asarray(
             in_mask, dtype=xp.bool, device=array_api_compat.device(data)
@@ -2845,7 +2796,6 @@ def _cosmicray_median_array(data, in_mask, error_image, thresh, mbox, gbox, rbox
     # replace bad pixels in the image
     ndata = xp.asarray(data, copy=True)
     if rbox > 0:
-        # make sure that mdata is the same type as data
         mdata = _dispatch_median_filter(data, rbox, xp=xp)
         ndata = xp.where(crarr, mdata, data)
 

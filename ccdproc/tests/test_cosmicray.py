@@ -599,6 +599,37 @@ def test_cosmicray_median_rbox():
     assert count_true(crarr) > NCRAYS
 
 
+def test_cosmicray_median_integer_input_gives_a_floating_result():
+    """
+    An integer frame is cleaned, and comes back in a floating dtype on
+    every array library.
+
+    Notes
+    -----
+    Raw CCD frames out of a FITS file are commonly int16 or uint16, so this
+    is the ordinary case rather than an edge one. The median filter
+    promotes integer input off numpy where ``scipy.ndimage`` preserves it,
+    which used to leave ``data - marr`` mixing an integer with a float:
+    numpy returned int16, dask float64 and array-api-strict raised
+    ``int16 and float64 cannot be type promoted together``. ``rbox`` is
+    non-zero here because the replacement step is the second place the two
+    kinds met.
+    """
+    rng = default_rng(seed=4242)
+    frame = rng.normal(loc=1000.0, scale=DATA_SCALE, size=(40, 40))
+    frame[10, 10] = frame[25, 31] = 3000.0
+    data = xp.asarray(np.asarray(frame, dtype=np.int16), device=xp_device)
+
+    cleaned, crarr = cosmicray_median(data, thresh=5, mbox=5, rbox=5, gbox=0)
+
+    assert xp.isdtype(cleaned.dtype, "real floating")
+    assert xp.isdtype(crarr.dtype, "bool")
+    assert count_true(crarr) >= 2
+    # The replacement really happened: the flagged pixels are no longer the
+    # spikes they were.
+    assert float(xp.max(cleaned)) < 3000.0
+
+
 def test_cosmicray_median_background_deviation():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     with pytest.raises(TypeError):

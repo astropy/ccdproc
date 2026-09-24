@@ -651,6 +651,36 @@ def test_public_median_filter_still_takes_a_plain_array_like(data):
     np.testing.assert_allclose(result, ndimage.median_filter(_IMAGE, size=3))
 
 
+@pytest.mark.parametrize(
+    ("function", "argument"),
+    [
+        pytest.param(core.background_deviation_filter, 3, id="filter"),
+        pytest.param(core.background_deviation_box, 5, id="box"),
+    ],
+)
+def test_background_deviation_still_takes_a_plain_array_like(function, argument):
+    """
+    Both ``background_deviation`` functions keep accepting a nested list,
+    as their docstrings promise.
+
+    Notes
+    -----
+    Each resolves the namespace of its input, and a bare
+    ``array_api_compat.array_namespace`` raises ``TypeError: list is not a
+    supported array type`` for a list. ``background_deviation_filter`` used
+    to hand the list straight to `scipy.ndimage.generic_filter`, which
+    takes one; ``background_deviation_box`` never did, which is a bug of
+    the same shape. Both now fall back to numpy for input no array library
+    claims, the guard `ccdproc.median_filter` already used. This runs on
+    every backend: the input is numpy-ish whatever
+    ``CCDPROC_ARRAY_LIBRARY`` says, so it must always take the numpy path.
+    """
+    result = function(_IMAGE.tolist(), argument)
+
+    assert array_api_compat.is_numpy_namespace(array_api_compat.array_namespace(result))
+    np.testing.assert_allclose(result, function(_IMAGE, argument))
+
+
 def test_public_median_filter_reraises_for_a_broken_array():
     """
     An object that advertises ``__array_namespace__`` but whose namespace
