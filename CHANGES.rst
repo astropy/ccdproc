@@ -34,6 +34,16 @@ Other Changes and Additions
   ``backend_skip`` markers, an escape-site report
   (``CCDPROC_TRIAGE_ESCAPES=1``), and an escape logger
   (``CCDPROC_LOG_ARRAY_ESCAPES=1``). [#942]
+- The array-API test tooling (backend selection, the ``backend_skip`` /
+  ``backend_xfail`` markers, the escape logger, the failure triage and the
+  escape-baseline ratchet) moved out of ``ccdproc/conftest.py`` and
+  ``ccdproc/tests/_escape_triage.py`` into a self-contained, configurable
+  pytest plugin at ``ccdproc/tests/_array_api_plugin``, configured through
+  ``array_api_escapes_*`` ini options in ``pyproject.toml``. New ``xp`` and
+  ``xp_device`` fixtures provide the array namespace and device. The
+  ``CCDPROC_*`` environment variables, the baseline file and its format, the
+  tox factors and the CI jobs are unchanged, as is
+  ``from ccdproc.conftest import testing_array_library``. [#XXXX]
 - Add a ``strict`` tox environment for running the ``array-api-strict`` test
   suite locally: ``tox -e strict`` reproduces the CI ``py313-strict`` job
   without having to name the interpreter. [#986]
