@@ -79,6 +79,55 @@ A few more developer tools help triage failures on non-numpy backends:
   and setting ``CCDPROC_WRITE_ESCAPE_BASELINE=1`` regenerates that baseline.
   Both are described in "The escape-baseline ratchet" below.
 
+Where the tooling lives
+~~~~~~~~~~~~~~~~~~~~~~~
+
+All of it -- backend selection, the ``xp``/``xp_device`` fixtures, the two
+markers, the escape logger, the failure triage and the baseline ratchet --
+is a self-contained pytest plugin in ``ccdproc/tests/_array_api_plugin``,
+loaded from ``ccdproc/conftest.py`` through ``pytest_plugins``. Nothing in
+it is specific to `ccdproc`_; the intent is to publish it eventually as a
+stand-alone plugin that any package adopting the `array API`_ can install,
+so please keep the package name out of it and add anything ccdproc-specific
+to the configuration instead.
+
+The configuration lives in ``[tool.pytest.ini_options]`` in
+``pyproject.toml``:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - ini option
+     - what it sets
+   * - ``array_api_escapes_package``
+     - Dotted name of the package whose stack frames count as *library*
+       frames (``ccdproc``). The directory is found by importing the
+       package, so frames are classified correctly whether the tests run
+       from the source tree or against an installed copy.
+   * - ``array_api_escapes_test_paths``
+     - Modules or directories whose frames count as *test* frames and are
+       never blamed for an escape (``ccdproc.tests``). ``ccdproc/conftest.py``
+       always counts as a test frame as well.
+   * - ``array_api_escapes_baseline``
+     - Path of the baseline file, relative to the directory holding the ini
+       file (``ccdproc/tests/array_escape_baseline.txt``).
+   * - ``array_api_escapes_env_prefix``
+     - Prefix of the environment variables above (``CCDPROC``), so
+       ``CCDPROC_ARRAY_LIBRARY`` and the rest keep their names.
+   * - ``array_api_escapes_logger``
+     - Logger the escape logger writes to (``ccdproc.array_escape``).
+
+Each environment variable documented above is that prefix followed by
+``_ARRAY_LIBRARY``, ``_ARRAY_DEVICE``, ``_LOG_ARRAY_ESCAPES``,
+``_TRIAGE_ESCAPES``, ``_ENFORCE_ESCAPE_BASELINE`` or
+``_WRITE_ESCAPE_BASELINE``.
+
+New tests should reach the array library through the session-scoped ``xp``
+and ``xp_device`` fixtures rather than importing ``testing_array_library``
+from ``ccdproc.conftest``; the module attributes still work, and the
+existing test modules still use them.
+
 The escape-baseline ratchet
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
