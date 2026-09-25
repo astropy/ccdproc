@@ -411,15 +411,25 @@ def _sorted_with_nan_last(x, axis, xp, device):
         ``+inf`` entries compare equal to the sentinels, so the positions
         below ``n`` are unaffected either way.
     n : array
-        Number of non-NaN entries along ``axis``, as ``int32`` and with
-        ``axis`` kept at size one so it broadcasts against ``s``.
+        Number of non-NaN entries along ``axis``, in the namespace's
+        default integer dtype and with ``axis`` kept at size one so it
+        broadcasts against ``s``.
     """
     nan_mask = xp.isnan(x)
     s = xp.sort(
         xp.where(nan_mask, xp.asarray(xp.inf, dtype=x.dtype, device=device), x),
         axis=axis,
     )
-    n = xp.sum(xp.astype(~nan_mask, xp.int32), axis=axis, keepdims=True)
+    # ``sum`` refuses booleans, so count through the namespace's default
+    # integer dtype rather than a hardcoded one: jax without JAX_ENABLE_X64
+    # has no int64 and warns when one is requested, which pytest's
+    # filterwarnings turns into an error.
+    info = xp.__array_namespace_info__()
+    n = xp.sum(
+        xp.astype(~nan_mask, info.default_dtypes(device=device)["integral"]),
+        axis=axis,
+        keepdims=True,
+    )
     return s, n
 
 

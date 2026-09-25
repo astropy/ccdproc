@@ -16,7 +16,6 @@ import array_api_extra as xpx
 import numpy as np
 import pytest
 from astropy.nddata import CCDData
-from astropy.utils.exceptions import AstropyUserWarning
 from numpy.lib.stride_tricks import sliding_window_view
 from scipy import ndimage
 
@@ -440,26 +439,16 @@ def test_band_rows_default_fits_the_budget():
     assert band_rows == (256 * 1024**2) // row_bytes
     assert band_rows >= 1
 
+    # One row too big for the budget is the case banding cannot fix: it
+    # gets a band of its own, silently, rather than a warning or a refusal.
+    too_wide = xp.asarray(np.zeros((2, 100_000)), device=xp_device)
+    assert _default_band_rows(too_wide, (25, 25), xp) == 1
+
     # The widths the estimate above is built on, read out of the
     # namespace's own ``finfo``/``iinfo`` rather than a table here.
     assert _itemsize(xp.bool, xp) == 1
     assert _itemsize(xp.float32, xp) == 4
     assert _itemsize(xp.float64, xp) == 8
-
-
-def test_warns_when_a_single_row_exceeds_the_budget():
-    """
-    One row too big for the band budget warns, and still computes.
-
-    This is the one case banding cannot fix, and the deliberate choice is
-    to tell the caller rather than to refuse the filter or silently use
-    much more memory than the budget names.
-    """
-    # Shaped, not filled: only its shape and dtype reach the estimate.
-    data = xp.asarray(np.zeros((2, 100_000)), device=xp_device)
-
-    with pytest.warns(AstropyUserWarning, match="more than the 256 MiB"):
-        assert _default_band_rows(data, (25, 25), xp) == 1
 
 
 # ccdmask's default window shapes: (nlmed, ncmed) for the median it

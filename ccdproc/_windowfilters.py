@@ -43,7 +43,6 @@ import warnings
 from functools import partial
 
 import array_api_compat
-from astropy.utils.exceptions import AstropyUserWarning
 
 from ._blocks import _UNKNOWN_SHAPE_MESSAGE
 from ._nanfuncs import _nanrank, _promote_to_real
@@ -404,13 +403,50 @@ def _stack_from_padded(padded, size, shape, xp):
 
 
 def _band_reduce(padded, size, shape, xp, *, func):
-    """``func`` applied to the window stack of one padded band."""
+    """
+    Reduce every window of one padded band with ``func``.
+
+    Parameters
+    ----------
+    padded : array
+        One band of the input, already padded by `_pad_windows`.
+    size : tuple of int
+        Window length along each axis.
+    shape : tuple of int
+        Shape of the output this band produces.
+    xp : array namespace
+        Namespace to use.
+    func : callable
+        Called as ``func(stack, axis=-1)`` on the ``shape + (prod(size),)``
+        window stack, and must reduce that trailing axis away.
+
+    Returns
+    -------
+    array
+        Shape ``shape``: ``func`` over each pixel's window.
+    """
     return func(_stack_from_padded(padded, size, shape, xp), axis=-1)
 
 
 def _band_any(padded, size, shape, xp):
     """
     Whether any value in each window of one padded band is true.
+
+    Parameters
+    ----------
+    padded : array
+        One band of the input, already padded by `_pad_windows`.
+    size : tuple of int
+        Window length along each axis.
+    shape : tuple of int
+        Shape of the output this band produces.
+    xp : array namespace
+        Namespace to use.
+
+    Returns
+    -------
+    bool array
+        Shape ``shape``: whether any value in each pixel's window is true.
 
     Notes
     -----
@@ -465,15 +501,8 @@ def _default_band_rows(x, size, xp):
     Returns
     -------
     int
-        At least 1.
-
-    Warns
-    -----
-    AstropyUserWarning
-        If even a single row's stack exceeds the budget, the one case
-        banding cannot fix. There is no size cap: the filter is still
-        computed, the caller is only told that it will need more memory
-        than the budget allows for.
+        At least 1: a row whose stack alone exceeds the budget still gets
+        its own band, since the filter cannot be split any finer.
     """
     if x.ndim == 0:
         # There are no rows to band, and no ``x.shape[0]`` to report.
@@ -485,19 +514,7 @@ def _default_band_rows(x, size, xp):
         return max(x.shape[0], 1)
 
     band_rows = _BAND_BUDGET_BYTES // row_bytes
-    if band_rows < 1:
-        warnings.warn(
-            f"one row of the window stack for a "
-            f"{'x'.join(str(k) for k in size)} window needs "
-            f"{row_bytes / 1024**2:.0f} MiB, more than the "
-            f"{_BAND_BUDGET_BYTES // 1024**2} MiB this filter budgets for one "
-            f"band; the filter is still computed, but it cannot be split any "
-            f"finer",
-            AstropyUserWarning,
-            stacklevel=2,
-        )
-        return 1
-    return band_rows
+    return max(band_rows, 1)
 
 
 def _windowed(x, size, reduce_band, *, cast, mode, band_rows, xp):

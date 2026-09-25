@@ -338,18 +338,35 @@ def _median_fallback(array, axis, xp=None):
 
 def _namespace_or_numpy(data):
     """
-    The array namespace of ``data``, or `numpy` for a plain array-like.
+    Resolve the array namespace of ``data``, treating array-likes as numpy.
+
+    Parameters
+    ----------
+    data : array or array-like
+        An array from any array API namespace, or a plain array-like such
+        as a nested list or tuple that `numpy.asarray` accepts.
+
+    Returns
+    -------
+    array namespace
+        ``array_api_compat.array_namespace(data)`` for an array, `numpy`
+        for anything ``array_namespace`` rejects.
+
+    Raises
+    ------
+    TypeError
+        If ``data`` defines ``__array_namespace__`` but its namespace
+        lookup fails anyway, so that a broken array is reported rather
+        than coerced through numpy.
 
     Notes
     -----
     A bare ``array_namespace`` raises ``TypeError: list is not a supported
     array type`` for the nested lists and tuples that `scipy.ndimage`
     accepts and that every earlier ccdproc therefore accepted too, so those
-    fall back to numpy. The ``__array_namespace__`` gate re-raises for a
-    real array whose own namespace lookup failed, rather than hiding it
-    behind numpy coercion; it cannot come *first*, because
-    array_api_compat recognises dask arrays by module and they have no
-    such attribute.
+    fall back to numpy. The ``__array_namespace__`` gate cannot come
+    *first*, because array_api_compat recognises dask arrays by module and
+    they have no such attribute.
     """
     try:
         return array_api_compat.array_namespace(data)
@@ -361,14 +378,38 @@ def _namespace_or_numpy(data):
 
 def _dispatch(ndimage_func, native_func, data, *args, xp, mode="reflect"):
     """
-    Call ``ndimage_func(data, *extra, size=size)`` on numpy input and
-    ``native_func(data, size, *extra)`` otherwise, where ``args`` is
-    ``(*extra, size)``: ndimage's argument order for each filter.
+    Run one window filter: `scipy.ndimage` on numpy input, native otherwise.
 
+    Parameters
+    ----------
+    ndimage_func : callable
+        The `scipy.ndimage` filter, called as
+        ``ndimage_func(data, *extra, size=size, mode=mode)``.
+    native_func : callable
+        Its `ccdproc._windowfilters` counterpart, called as
+        ``native_func(data, size, *extra, mode=mode, xp=xp)``.
+    data : array
+        Array to filter, belonging to ``xp``.
+    *args
+        ``(*extra, size)``: the filter's own positional arguments, if any
+        (a percentile, a reduction callable), followed by the window size,
+        in ndimage's argument order.
+    xp : array namespace
+        Namespace of ``data``; a numpy namespace selects ``ndimage_func``.
+    mode : str, optional
+        Boundary mode, ``'reflect'`` by default as in ndimage.
+
+    Returns
+    -------
+    array
+        The filtered array, in ``data``'s namespace.
+
+    Notes
+    -----
     ndimage calls a ``generic_filter`` callable once per window with the
-    values flattened, where `ccdproc._windowfilters._window_reduce` calls it
-    as ``func(stack, axis=-1)`` on a band at a time; a reduction taking an
-    ``axis`` keyword, as `sigma_func` does, suits both.
+    values flattened, where `ccdproc._windowfilters._window_reduce` calls
+    it as ``func(stack, axis=-1)`` on a band at a time; a reduction taking
+    an ``axis`` keyword, as `sigma_func` does, suits both.
     """
     *extra, size = args
     if array_api_compat.is_numpy_namespace(xp):
