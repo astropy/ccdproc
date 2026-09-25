@@ -2441,7 +2441,7 @@ def cosmicray_lacosmic(
 
     Parameters
     ----------
-    ccd : `~astropy.nddata.CCDData` or `numpy.ndarray`
+    ccd : `~astropy.nddata.CCDData` or array-like
         Data to have cosmic ray cleaned.
 
     gain_apply : bool, optional
@@ -2576,16 +2576,18 @@ def cosmicray_lacosmic(
 
     Returns
     -------
-    nccd : `~astropy.nddata.CCDData` or `numpy.ndarray`
-        An object of the same type as ccd is returned. If it is a
+    nccd : `~astropy.nddata.CCDData` or array
+        An object of the same type as ccd is returned, in the array
+        namespace and on the device of the input. If it is a
         `~astropy.nddata.CCDData`, the mask attribute will also be updated with
         areas identified with cosmic rays masked. **By default, the image is
         multiplied by the gain.** You can control this behavior with the
         ``gain_apply`` argument.
 
-    crmask : `numpy.ndarray`
-        If an `numpy.ndarray` is provided as ccd, a boolean ndarray with the
-        cosmic rays identified will also be returned.
+    crmask : array
+        If an array is provided as ccd, a boolean array, in the same array
+        namespace and on the same device as the input, with the cosmic
+        rays identified will also be returned.
 
     References
     ----------
@@ -2885,7 +2887,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0, x
 
     Parameters
     ----------
-    ccd : `~astropy.nddata.CCDData`, `numpy.ndarray` or other array_like
+    ccd : `~astropy.nddata.CCDData` or array-like
         Data to have cosmic ray cleaned. If the input has a mask (the ``mask``
         of a `~astropy.nddata.CCDData`, or a `numpy.ma.MaskedArray`), masked
         pixels are never flagged as cosmic rays; see Notes.
@@ -2932,14 +2934,16 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0, x
 
     Returns
     -------
-    nccd : `~astropy.nddata.CCDData` or `numpy.ndarray`
-        An object of the same type as ccd is returned. If it is a
+    nccd : `~astropy.nddata.CCDData` or array
+        An object of the same type as ccd is returned, in the array
+        namespace and on the device of the input. If it is a
         `~astropy.nddata.CCDData`, the mask attribute will also be updated with
         areas identified with cosmic rays masked.
 
-    nccd : `numpy.ndarray`
-        If an `numpy.ndarray` is provided as ccd, a boolean ndarray with the
-        cosmic rays identified will also be returned.
+    nccd : array
+        If an array is provided as ccd, a boolean array, in the same array
+        namespace and on the same device as the input, with the cosmic
+        rays identified will also be returned.
 
     Examples
     --------
