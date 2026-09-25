@@ -1770,8 +1770,11 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
         )
         # Make the mask 1 if the reprojected mask pixel value is non-zero.
         # A small threshold is included to allow for some rounding in
-        # reproject_interp.
-        reprojected_mask = _from_numpy(reprojected_mask, like=ccd.data, xp=xp) > 1e-8
+        # reproject_interp. Threshold on the host, before the round trip:
+        # reproject_interp always returns a float64 mask, so thresholding
+        # first and converting the resulting bool array moves an eighth as
+        # much data as converting the float64 mask and thresholding after.
+        reprojected_mask = _from_numpy(reprojected_mask > 1e-8, like=ccd.data, xp=xp)
 
     # The reprojection will contain nan for any pixels for which the source
     # was outside the original image. Those should be masked also.

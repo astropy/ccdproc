@@ -1333,7 +1333,22 @@ def test_wcs_project_onto_same_wcs_remove_headers():
         assert k not in new_ccd.header
 
 
-def test_wcs_project_onto_shifted_wcs():
+@pytest.mark.parametrize("mask_dtype", ["bool", "int", "float"])
+def test_wcs_project_onto_shifted_wcs(mask_dtype):
+    """
+    Pin that a non-bool mask goes through ``wcs_project``'s host round trip
+    the same way a bool one does.
+
+    Notes
+    -----
+    Commit c2b119a, part of the array-api-strict test cleanup, replaced
+    this test's original int 0/1 mask with a bool one, and no other
+    ``wcs_project`` test sends a non-bool mask, so that coverage was lost.
+    int and float masks work the same as bool through the round trip on
+    array-api-strict (verified), so this test is parametrized over mask
+    dtype, rather than adding a separate test, to restore that coverage
+    without duplicating the rest of the assertions below.
+    """
     ccd_data = ccd_data_func()
     # Just make the target WCS the same as the initial with the center
     # pixel shifted by 1 in x and y.
@@ -1342,10 +1357,11 @@ def test_wcs_project_onto_shifted_wcs():
     target_wcs = wcs_for_testing(ccd_data.shape)
     target_wcs.wcs.crpix += [1, 1]
 
+    mask = RNG().choice([False, True], size=ccd_data.shape)
+    if mask_dtype != "bool":
+        mask = mask.astype(mask_dtype)
     # TODO: change back to .mask when CCDData is array-api compliant
-    ccd_data._mask = xp.asarray(
-        RNG().choice([False, True], size=ccd_data.shape), device=xp_device
-    )
+    ccd_data._mask = xp.asarray(mask, device=xp_device)
 
     new_ccd = wcs_project(ccd_data, target_wcs)
 
