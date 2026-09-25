@@ -6,6 +6,7 @@ import inspect
 import logging
 import math
 import numbers
+import sys
 import warnings
 from functools import partial
 
@@ -220,7 +221,61 @@ def _from_numpy(arr, like, *, xp=None):
     return xp.asarray(arr, device=array_api_compat.device(like))
 
 
-def _warn_host_copy(function_name, xp, stacklevel=3):
+def _is_internal_frame(frame):
+    """
+    Return `True` if ``frame`` belongs to ccdproc's own internal machinery.
+
+    A frame counts as internal when it is not in ``ccdproc.tests`` and its
+    module either is, or is inside, plain ``ccdproc``, or is astropy's
+    ``deprecated_renamed_argument``/``deprecated`` decorator wrapper module
+    (``cosmicray_lacosmic`` is wrapped by it).
+    """
+    module = frame.f_globals.get("__name__", "")
+    if module.startswith("ccdproc.tests"):
+        return False
+    return (
+        module == "ccdproc" or module.startswith("ccdproc.")
+    ) or module == "astropy.utils.decorators"
+
+
+def _caller_stacklevel():
+    """
+    Compute a `warnings.warn` ``stacklevel`` that reaches the user's code.
+
+    Walk the call stack, starting one frame above the caller of this
+    function, until the first frame outside ccdproc's internal machinery
+    (see `_is_internal_frame`) is found. The returned level is counted
+    relative to the `warnings.warn` call itself, so it can be passed to it
+    directly as ``stacklevel``.
+
+    Notes
+    -----
+    A fixed ``stacklevel`` breaks as soon as a public function is called
+    through another layer of ccdproc, such as ``ccd_process`` calling
+    ``subtract_overscan``, or wrapped by a decorator, such as
+    ``cosmicray_lacosmic``'s ``@deprecated_renamed_argument``: the constant
+    that is right for a direct call points at the wrong line, or even the
+    wrong file, once there is an extra frame in between. Walking the stack
+    instead finds the real caller regardless of how many such frames sit
+    between it and `_warn_host_copy`. ``ccdproc.tests`` is deliberately
+    *not* treated as internal, since the test suite calls these functions
+    directly and expects the warning attributed to the test's own call
+    site, not to pytest or unittest machinery further up the stack.
+    """
+    # Frame 0 is this function; frame 1 is its caller (``_warn_host_copy``).
+    # ``stacklevel=1`` in `warnings.warn` means "the call to `warn` itself",
+    # so start counting from there.
+    frame = sys._getframe(1)
+    level = 1
+    while frame is not None:
+        if not _is_internal_frame(frame):
+            return level
+        frame = frame.f_back
+        level += 1
+    return level
+
+
+def _warn_host_copy(function_name, xp):
     """
     Warn that ``function_name`` is about to copy its input to the host.
 
@@ -232,12 +287,6 @@ def _warn_host_copy(function_name, xp, stacklevel=3):
     xp : array namespace
         The namespace of the caller's data. Nothing is warned about when
         this is NumPy, since no copy happens then.
-    stacklevel : int, optional
-        Stack level of the warning, counted from this function. The default
-        of ``3`` (this helper, the public function, the caller) is right for
-        an undecorated public function; add one for every decorator wrapping
-        it, so that the warning is attributed to the user's call rather than
-        to a decorator inside ``ccdproc``.
 
     Notes
     -----
@@ -245,6 +294,15 @@ def _warn_host_copy(function_name, xp, stacklevel=3):
     any conversion happens, however many arrays end up crossing to the
     host. Python's own once-per-location default filter then collapses
     repeated calls from the same place in the user's code.
+
+    The ``stacklevel`` is computed by `_caller_stacklevel` rather than
+    passed in as a constant, because the right value depends on how the
+    public function was reached: directly, through another ccdproc
+    function such as ``ccd_process``, or through astropy's
+    ``deprecated_renamed_argument`` decorator on ``cosmicray_lacosmic``.
+    Walking the stack finds the actual caller in every case, including
+    calls made from ``ccdproc.tests``, which are treated as external so
+    that the test suite's own call sites get the warning, not pytest.
     """
     if array_api_compat.is_numpy_namespace(xp):
         return
@@ -252,7 +310,7 @@ def _warn_host_copy(function_name, xp, stacklevel=3):
         f"{function_name} runs on the host CPU: its input was copied from "
         f"{xp.__name__} to numpy and the result copied back.",
         HostCopyWarning,
-        stacklevel=stacklevel,
+        stacklevel=_caller_stacklevel(),
     )
 
 
@@ -1070,7 +1128,7 @@ def subtract_overscan(
     if model is not None:
         # astropy.modeling is numpy-only, so the copy to the host is made
         # explicitly here and the fitted overscan converted back below.
-        _warn_host_copy("subtract_overscan", xp, stacklevel=4)
+        _warn_host_copy("subtract_overscan", xp)
         oscan_np = _to_numpy(oscan)
         of = fitting.LinearLSQFitter()
         yarr = np.arange(oscan_np.shape[0])
@@ -1657,7 +1715,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
 
     # reproject is numpy-only, so the copy to the host is made explicitly
     # here and every result is converted back below.
-    _warn_host_copy("wcs_project", xp, stacklevel=4)
+    _warn_host_copy("wcs_project", xp)
 
     projected_image_raw, _ = reproject_interp(
         (_to_numpy(ccd.data), ccd.wcs),
@@ -2626,7 +2684,7 @@ def cosmicray_lacosmic(
         xp = array_api_compat.array_namespace(ccd.data)
         # astroscrappy is numpy-only, so the copy to the host is made
         # explicitly here and every result is converted back below.
-        _warn_host_copy("cosmicray_lacosmic", xp, stacklevel=4)
+        _warn_host_copy("cosmicray_lacosmic", xp)
 
         crmask, cleanarr = detect_cosmics(
             _to_numpy(ccd.data + data_offset),
@@ -2695,7 +2753,7 @@ def cosmicray_lacosmic(
         xp = array_api_compat.array_namespace(data)
         # astroscrappy is numpy-only, so the copy to the host is made
         # explicitly here and every result is converted back below.
-        _warn_host_copy("cosmicray_lacosmic", xp, stacklevel=4)
+        _warn_host_copy("cosmicray_lacosmic", xp)
 
         crmask, cleanarr = detect_cosmics(
             _to_numpy(data + data_offset),
