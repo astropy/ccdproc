@@ -2780,7 +2780,7 @@ def cosmicray_lacosmic(
         nccd.data = cleanarr
         # TODO: the private _mask attribute is set here to avoid the mask
         # setters, which do not preserve the device of the data.
-        if nccd.mask is None or nccd.mask is np_ma_nomask:
+        if nccd.mask is None:
             nccd._mask = crmask
         else:
             existing_mask = xp.asarray(
