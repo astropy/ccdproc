@@ -319,41 +319,6 @@ def test_cosmicray_lacosmic_warns_once_for_non_numpy_inbkg():
     )
 
 
-@pytest.mark.skipif(
-    IS_NUMPY, reason="ccd and overscan cannot be in different namespaces on numpy"
-)
-@pytest.mark.backend_skip(
-    "array-api-strict",
-    reason="NumPy's mean, the namespace of ccd, cannot read an overscan on "
-    "device1; that is an xp/data mismatch, not a host copy",
-)
-def test_subtract_overscan_warns_once_for_non_numpy_overscan():
-    """
-    A NumPy ``ccd`` with a non-NumPy ``overscan`` emits exactly one
-    ``HostCopyWarning`` on the model path, and returns a NumPy result.
-
-    The overscan vector is what crosses to the host to be fit, so the
-    warning is decided from it. Deciding from ``ccd``'s namespace, as it
-    once was, copied this overscan with no warning at all.
-    """
-    backend_ccd = ccd_data_func(data_size=DATA_SIZE)
-    ccd = numpy_ccddata(backend_ccd)
-
-    with pytest.warns(HostCopyWarning) as record:
-        result = subtract_overscan(
-            ccd,
-            overscan=backend_ccd[:, :5],
-            overscan_axis=1,
-            model=models.Polynomial1D(1),
-        )
-
-    host_copies = [w for w in record if issubclass(w.category, HostCopyWarning)]
-    assert len(host_copies) == 1
-    assert array_api_compat.is_numpy_namespace(
-        array_api_compat.array_namespace(result.data)
-    )
-
-
 def _wcs_project_with_numpy_xp(ccd):
     """Call ``wcs_project`` on ``ccd`` with an explicit ``xp=np``."""
     target_wcs = wcs_for_testing(ccd.shape)

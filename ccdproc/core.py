@@ -304,8 +304,8 @@ def _warn_host_copy(function_name, *arrays):
 
     The decision is made from the arrays that actually cross, not from the
     namespace of the main input or from an ``xp`` argument, because those
-    can differ: a NumPy ``ccd`` can come with a non-NumPy ``overscan``,
-    ``inbkg`` or ``invar``, and ``xp=np`` can be passed with non-NumPy data.
+    can differ: a NumPy ``ccd`` can come with a non-NumPy ``inbkg`` or
+    ``invar``, and ``xp=np`` can be passed with non-NumPy data.
 
     The ``stacklevel`` is computed by `_caller_stacklevel` rather than
     passed in as a constant, because the right value depends on how the
@@ -1086,9 +1086,9 @@ def subtract_overscan(
     array directly with the ``overscan`` argument.
 
     Fitting a ``model`` goes through ``astropy.modeling``, which is
-    NumPy-only, so that path runs on the host CPU. If the overscan is not
-    backed by NumPy it is copied to the host to be fit and the fitted
-    overscan is copied back to the array namespace and device of ``ccd``;
+    NumPy-only, so that path runs on the host CPU. If ``ccd`` is not backed
+    by NumPy the overscan is copied to the host to be fit and the fitted
+    overscan is copied back to the array namespace and device of the input;
     the copy is announced with a `HostCopyWarning`. The median and mean
     paths stay in the input's array namespace.
 
@@ -1145,8 +1145,7 @@ def subtract_overscan(
     if model is not None:
         # astropy.modeling is numpy-only, so the copy to the host is made
         # explicitly here and the fitted overscan converted back below. The
-        # warning is decided from oscan, the array that crosses, since it
-        # need not be in the namespace of ccd or xp.
+        # warning is decided from oscan, the array that crosses, not from xp.
         _warn_host_copy("subtract_overscan", oscan)
         oscan_np = _to_numpy(oscan)
         of = fitting.LinearLSQFitter()
