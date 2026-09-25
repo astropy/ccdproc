@@ -22,6 +22,11 @@ from ccdproc.conftest import testing_array_library as xp
 _rng = np.random.default_rng(986)
 _some_nan = _rng.normal(size=(4, 3))
 _some_nan[[0, 1, 2, 3], [1, 2, 0, 2]] = np.nan
+# One slice of exactly 100 non-NaN values, one shorter: the grouping of
+# ``n * percentile / 100`` first differs from ``n * (percentile / 100)`` at
+# n = 100 for 29.0 and 57.0, so a slice this long is what pins it.
+_hundred_and_fewer = _rng.normal(size=(100, 2))
+_hundred_and_fewer[[3, 40, 99], 1] = np.nan
 
 # Values large compared with their spread: the single-pass
 # ``sum(x**2) - sum(x)**2 / n`` form of the variance loses every significant
@@ -219,8 +224,10 @@ def _rank_reference(data, percentile, axis):
     return np.where(n == 0, np.nan, picked).squeeze(axis=axis)
 
 
-@pytest.mark.parametrize("percentile", [0.0, 29.0, 30.9, 50.0, 69.1, 100.0])
-@pytest.mark.parametrize(("data", "axis"), [(_some_nan, 0), (_some_nan, 1)])
+@pytest.mark.parametrize("percentile", [0.0, 29.0, 30.9, 50.0, 57.0, 69.1, 100.0])
+@pytest.mark.parametrize(
+    ("data", "axis"), [(_some_nan, 0), (_some_nan, 1), (_hundred_and_fewer, 0)]
+)
 def test_nanrank_matches_rank_reference(percentile, axis, data):
     """
     ``_nanrank`` picks the element at
@@ -231,7 +238,9 @@ def test_nanrank_matches_rank_reference(percentile, axis, data):
     this is what makes ``ccdproc._windowfilters._window_rank`` reproduce
     ndimage; pinned against a numpy sort-and-index reference rather than
     against ndimage itself, because ndimage has no NaN-aware mode to
-    compare with on the NaN-carrying rows here.
+    compare with on the NaN-carrying rows here. The 100-row case is the
+    one where the grouping of the rank arithmetic shows: dividing the
+    percentile by 100 first drops a rank at 29.0 and 57.0 there.
     """
     result = _nanrank(xp.asarray(data, device=xp_device), percentile, axis, xp)
     expected = xp.asarray(_rank_reference(data, percentile, axis), device=xp_device)
