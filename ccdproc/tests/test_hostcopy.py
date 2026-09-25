@@ -292,10 +292,10 @@ def test_cosmicray_lacosmic_warns_once_for_non_numpy_inbkg():
     A NumPy ``ccd`` with a non-NumPy, array-valued ``inbkg`` still emits
     exactly one ``HostCopyWarning``, and still returns a NumPy result.
 
-    Pins the fix for the bug in the thread on the ``asy_background_kwargs``
-    conversion: before it, the warning decision looked only at ``ccd``'s
-    namespace, so a NumPy ``ccd`` with a non-NumPy ``inbkg``/``invar`` went
-    through the host round trip with no warning at all.
+    ``inbkg`` and ``invar`` are copied to the host along with ``ccd``, so
+    they count towards the warning too. If the decision looked only at
+    ``ccd``'s namespace, a NumPy ``ccd`` with a non-NumPy ``inbkg`` or
+    ``invar`` would be copied to the host with no warning at all.
     """
     ccd = numpy_ccddata(ccd_data_func(data_size=DATA_SIZE))
     inbkg = xp.asarray(np.zeros(ccd.shape), device=xp_device)
@@ -314,14 +314,12 @@ def test_cosmicray_lacosmic_unit_mismatch_does_not_convert_inbkg(monkeypatch):
     """
     A unit-mismatch ``ValueError`` is raised before ``inbkg`` is converted.
 
-    ``_warn_host_copy``'s own docstring promises the warning, and by
-    extension the conversion that follows it, come before any conversion
-    happens; this pins that the reordering in this PR (validate, warn,
-    then convert inbkg/invar, all inside the branch for ccd's type) keeps
-    that promise for cosmicray_lacosmic's background arguments too, rather
-    than converting inbkg speculatively before the unit check can reject
-    the call. Monkeypatching ``ccdproc.core._to_numpy`` to record its
-    arguments is what makes that ordering observable from the test.
+    ``cosmicray_lacosmic`` validates its input, then warns, then copies
+    ``inbkg`` and ``invar`` to the host. Copying them first would waste a
+    possibly large device-to-host transfer on a call that is about to be
+    rejected, and would break ``_warn_host_copy``'s promise that the warning
+    comes before any conversion. Monkeypatching ``ccdproc.core._to_numpy``
+    to record its arguments makes the order observable.
     """
     ccd = ccd_data_func(data_size=DATA_SIZE)
     seen = []

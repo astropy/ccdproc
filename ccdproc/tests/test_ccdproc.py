@@ -1304,10 +1304,10 @@ def test_wcs_project_accepts_zero_d_integer_array_target_shape_elements():
     1-d array of the whole shape (already covered by
     ``test_wcs_project_accepts_an_array_target_shape``).
 
-    ``operator.index`` works on a 0-d integer array because such arrays
-    implement ``__index__``; this is the case that motivated switching
-    from ``int(size)``, since a bare ``int()`` on an array-api-strict
-    array raises instead of extracting the scalar.
+    ``target_shape`` is converted with ``operator.index`` so that a float
+    raises instead of being truncated. That must not cost the array case:
+    a 0-d integer array implements ``__index__``, so it is still accepted
+    and converted to a Python int.
     """
     ccd_data = ccd_data_func()
     target_wcs = wcs_for_testing(ccd_data.shape)
@@ -1341,13 +1341,12 @@ def test_wcs_project_onto_shifted_wcs(mask_dtype):
 
     Notes
     -----
-    Commit c2b119a, part of the array-api-strict test cleanup, replaced
-    this test's original int 0/1 mask with a bool one, and no other
-    ``wcs_project`` test sends a non-bool mask, so that coverage was lost.
-    int and float masks work the same as bool through the round trip on
-    array-api-strict (verified), so this test is parametrized over mask
-    dtype, rather than adding a separate test, to restore that coverage
-    without duplicating the rest of the assertions below.
+    ``wcs_project`` copies the mask to the host, reprojects it as floats
+    and thresholds it back to bool. Masks in user data are not always
+    bool: int 0/1 masks are common, and this test used one until the
+    array-api-strict cleanup switched it to bool. No other ``wcs_project``
+    test sends a non-bool mask, so the test is parametrized over the mask
+    dtype to keep int and float masks covered.
     """
     ccd_data = ccd_data_func()
     # Just make the target WCS the same as the initial with the center

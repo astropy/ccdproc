@@ -2447,7 +2447,7 @@ def cosmicray_lacosmic(
 
     Parameters
     ----------
-    ccd : `~astropy.nddata.CCDData` or array-like
+    ccd : `~astropy.nddata.CCDData` or array
         Data to have cosmic ray cleaned.
 
     gain_apply : bool, optional
