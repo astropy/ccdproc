@@ -39,7 +39,7 @@ from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import _from_numpy, _to_numpy
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
-from ccdproc.tests.pytest_fixtures import wcs_for_testing
+from ccdproc.tests.pytest_fixtures import numpy_ccddata, wcs_for_testing
 
 IS_NUMPY = array_api_compat.is_numpy_namespace(xp)
 
@@ -282,6 +282,65 @@ def test_cosmicray_lacosmic_merges_existing_mask():
     assert bool(xp.all(result.mask == xp.logical_or(ccd.mask, crmask)))
     assert array_api_compat.array_namespace(result.mask) is xp
     assert array_api_compat.device(result.mask) == device
+
+
+@pytest.mark.skipif(
+    IS_NUMPY, reason="ccd and inbkg cannot be in different namespaces on numpy"
+)
+def test_cosmicray_lacosmic_warns_once_for_non_numpy_inbkg():
+    """
+    A NumPy ``ccd`` with a non-NumPy, array-valued ``inbkg`` still emits
+    exactly one ``HostCopyWarning``, and still returns a NumPy result.
+
+    Pins the fix for the bug in the thread on the ``asy_background_kwargs``
+    conversion: before it, the warning decision looked only at ``ccd``'s
+    namespace, so a NumPy ``ccd`` with a non-NumPy ``inbkg``/``invar`` went
+    through the host round trip with no warning at all.
+    """
+    ccd = numpy_ccddata(ccd_data_func(data_size=DATA_SIZE))
+    inbkg = xp.asarray(np.zeros(ccd.shape), device=xp_device)
+
+    with pytest.warns(HostCopyWarning) as record:
+        result = cosmicray_lacosmic(ccd, inbkg=inbkg)
+
+    host_copies = [w for w in record if issubclass(w.category, HostCopyWarning)]
+    assert len(host_copies) == 1
+    assert array_api_compat.is_numpy_namespace(
+        array_api_compat.array_namespace(result.data)
+    )
+
+
+def test_cosmicray_lacosmic_unit_mismatch_does_not_convert_inbkg(monkeypatch):
+    """
+    A unit-mismatch ``ValueError`` is raised before ``inbkg`` is converted.
+
+    ``_warn_host_copy``'s own docstring promises the warning, and by
+    extension the conversion that follows it, come before any conversion
+    happens; this pins that the reordering in this PR (validate, warn,
+    then convert inbkg/invar, all inside the branch for ccd's type) keeps
+    that promise for cosmicray_lacosmic's background arguments too, rather
+    than converting inbkg speculatively before the unit check can reject
+    the call. Monkeypatching ``ccdproc.core._to_numpy`` to record its
+    arguments is what makes that ordering observable from the test.
+    """
+    ccd = ccd_data_func(data_size=DATA_SIZE)
+    seen = []
+    original = ccdproc.core._to_numpy
+
+    def spy(arr):
+        seen.append(arr)
+        return original(arr)
+
+    monkeypatch.setattr(ccdproc.core, "_to_numpy", spy)
+
+    inbkg = np.zeros(ccd.shape)
+
+    with pytest.raises(ValueError, match="Inconsistent units"):
+        cosmicray_lacosmic(
+            ccd, gain=2.0 * u.electron / u.adu, readnoise=6.5 * u.adu, inbkg=inbkg
+        )
+
+    assert not any(arr is inbkg for arr in seen)
 
 
 @pytest.mark.skipif(IS_NUMPY, reason="NumPy input is never copied to the host")

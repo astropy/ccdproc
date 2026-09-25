@@ -314,6 +314,38 @@ def _warn_host_copy(function_name, xp):
     )
 
 
+def _warn_host_copy_if_needed(function_name, *arrays):
+    """
+    Warn once if any of ``arrays`` is not NumPy.
+
+    Parameters
+    ----------
+    function_name : str
+        Name of the public function doing the copy, as it appears in the
+        warning message.
+    *arrays : array or None
+        Candidate arrays to check, in priority order for the warning
+        message. Entries that are `None`, or that are not arrays at all
+        (a bare Python or NumPy scalar), are skipped.
+
+    Notes
+    -----
+    ``cosmicray_lacosmic`` can copy more than just ``ccd`` to the host:
+    ``inbkg`` and ``invar`` may themselves be arrays, possibly in a
+    different namespace than ``ccd``. Exactly one warning should fire when
+    any of the arguments that will cross to the host is not NumPy, naming
+    the namespace of the first one found; the rest, `_warn_host_copy`'s
+    own single-array case included, are unaffected.
+    """
+    for arr in arrays:
+        if not _is_array(arr):
+            continue
+        xp = array_api_compat.array_namespace(arr)
+        if not array_api_compat.is_numpy_namespace(xp):
+            _warn_host_copy(function_name, xp)
+            return
+
+
 def _namespace_dtype(dtype, xp):
     """
     Return the dtype object of an array namespace that corresponds to ``dtype``.
@@ -2641,15 +2673,6 @@ def cosmicray_lacosmic(
             # here that we later add in then take out.
             data_offset = pssl
 
-        # astroscrappy is numpy-only, so array-valued backgrounds and
-        # variances are copied to the host here. Anything that is not an
-        # array (None, or a bad value the caller wants an error for) is
-        # passed straight through.
-        asy_background_kwargs = dict(
-            inbkg=_to_numpy(inbkg) if _is_array(inbkg) else inbkg,
-            invar=_to_numpy(invar) if _is_array(invar) else invar,
-        )
-
     if isinstance(ccd, CCDData):
         # Start with a check for a special case: ccd is in electron, and
         # gain and readnoise have no units. In that case we issue a warning
@@ -2683,8 +2706,20 @@ def cosmicray_lacosmic(
 
         xp = array_api_compat.array_namespace(ccd.data)
         # astroscrappy is numpy-only, so the copy to the host is made
-        # explicitly here and every result is converted back below.
-        _warn_host_copy("cosmicray_lacosmic", xp)
+        # explicitly here and every result is converted back below. inbkg
+        # and invar may themselves be arrays, possibly in a different
+        # namespace than ccd, so they count towards the single warning too.
+        _warn_host_copy_if_needed("cosmicray_lacosmic", ccd.data, inbkg, invar)
+
+        if not old_astroscrappy_interface:
+            # astroscrappy is numpy-only, so array-valued backgrounds and
+            # variances are copied to the host here, after the warning
+            # above. Anything that is not an array (None, or a bad value
+            # the caller wants an error for) is passed straight through.
+            asy_background_kwargs = dict(
+                inbkg=_to_numpy(inbkg) if _is_array(inbkg) else inbkg,
+                invar=_to_numpy(invar) if _is_array(invar) else invar,
+            )
 
         crmask, cleanarr = detect_cosmics(
             _to_numpy(ccd.data + data_offset),
@@ -2752,8 +2787,20 @@ def cosmicray_lacosmic(
         data = ccd
         xp = array_api_compat.array_namespace(data)
         # astroscrappy is numpy-only, so the copy to the host is made
-        # explicitly here and every result is converted back below.
-        _warn_host_copy("cosmicray_lacosmic", xp)
+        # explicitly here and every result is converted back below. inbkg
+        # and invar may themselves be arrays, possibly in a different
+        # namespace than data, so they count towards the single warning too.
+        _warn_host_copy_if_needed("cosmicray_lacosmic", data, inbkg, invar)
+
+        if not old_astroscrappy_interface:
+            # astroscrappy is numpy-only, so array-valued backgrounds and
+            # variances are copied to the host here, after the warning
+            # above. Anything that is not an array (None, or a bad value
+            # the caller wants an error for) is passed straight through.
+            asy_background_kwargs = dict(
+                inbkg=_to_numpy(inbkg) if _is_array(inbkg) else inbkg,
+                invar=_to_numpy(invar) if _is_array(invar) else invar,
+            )
 
         crmask, cleanarr = detect_cosmics(
             _to_numpy(data + data_offset),
