@@ -177,7 +177,8 @@ def _to_numpy(arr):
 class HostCopyWarning(AstropyUserWarning):
     """
     A non-NumPy array was copied to the host CPU to run a NumPy-only
-    operation, and the result was copied back.
+    operation. Results are returned in the namespace and on the device of
+    the primary input.
 
     Silence it with::
 
@@ -276,25 +277,33 @@ def _caller_stacklevel():
     return level
 
 
-def _warn_host_copy(function_name, xp):
+def _warn_host_copy(function_name, *arrays):
     """
-    Warn that ``function_name`` is about to copy its input to the host.
+    Warn once if any of ``arrays`` is not NumPy.
 
     Parameters
     ----------
     function_name : str
         Name of the public function doing the copy, as it appears in the
         warning message.
-    xp : array namespace
-        The namespace of the caller's data. Nothing is warned about when
-        this is NumPy, since no copy happens then.
+    *arrays : array or None
+        Every array the caller is about to copy to the host. Entries that
+        are `None`, or that are not arrays at all (a bare Python or NumPy
+        scalar), are skipped. Nothing is warned about when all of them are
+        NumPy, since no copy happens then.
 
     Notes
     -----
-    Exactly one warning is issued per call of the public function, before
-    any conversion happens, however many arrays end up crossing to the
-    host. Python's own once-per-location default filter then collapses
-    repeated calls from the same place in the user's code.
+    Call this before converting any of ``arrays``. Exactly one warning is
+    issued per call of the public function, naming the namespace of the
+    first non-NumPy array, however many arrays end up crossing to the host.
+    Python's own once-per-location default filter then collapses repeated
+    calls from the same place in the user's code.
+
+    The decision is made from the arrays that actually cross, not from the
+    namespace of the main input or from an ``xp`` argument, because those
+    can differ: a NumPy ``ccd`` can come with a non-NumPy ``overscan``,
+    ``inbkg`` or ``invar``, and ``xp=np`` can be passed with non-NumPy data.
 
     The ``stacklevel`` is computed by `_caller_stacklevel` rather than
     passed in as a constant, because the right value depends on how the
@@ -305,46 +314,19 @@ def _warn_host_copy(function_name, xp):
     calls made from ``ccdproc.tests``, which are treated as external so
     that the test suite's own call sites get the warning, not pytest.
     """
-    if array_api_compat.is_numpy_namespace(xp):
-        return
-    warnings.warn(
-        f"{function_name} runs on the host CPU: its input was copied from "
-        f"{xp.__name__} to numpy and the result copied back.",
-        HostCopyWarning,
-        stacklevel=_caller_stacklevel(),
-    )
-
-
-def _warn_host_copy_if_needed(function_name, *arrays):
-    """
-    Warn once if any of ``arrays`` is not NumPy.
-
-    Parameters
-    ----------
-    function_name : str
-        Name of the public function doing the copy, as it appears in the
-        warning message.
-    *arrays : array or None
-        Candidate arrays to check, in priority order for the warning
-        message. Entries that are `None`, or that are not arrays at all
-        (a bare Python or NumPy scalar), are skipped.
-
-    Notes
-    -----
-    ``cosmicray_lacosmic`` can copy more than just ``ccd`` to the host:
-    ``inbkg`` and ``invar`` may themselves be arrays, possibly in a
-    different namespace than ``ccd``. Exactly one warning should fire when
-    any of the arguments that will cross to the host is not NumPy, naming
-    the namespace of the first one found; the rest, `_warn_host_copy`'s
-    own single-array case included, are unaffected.
-    """
     for arr in arrays:
         if not _is_array(arr):
             continue
         xp = array_api_compat.array_namespace(arr)
-        if not array_api_compat.is_numpy_namespace(xp):
-            _warn_host_copy(function_name, xp)
-            return
+        if array_api_compat.is_numpy_namespace(xp):
+            continue
+        warnings.warn(
+            f"{function_name} runs on the host CPU, so {xp.__name__} array "
+            "data was copied to numpy.",
+            HostCopyWarning,
+            stacklevel=_caller_stacklevel(),
+        )
+        return
 
 
 def _namespace_dtype(dtype, xp):
@@ -1102,9 +1084,9 @@ def subtract_overscan(
     array directly with the ``overscan`` argument.
 
     Fitting a ``model`` goes through ``astropy.modeling``, which is
-    NumPy-only, so that path runs on the host CPU. If ``ccd`` is not backed
-    by NumPy the overscan is copied to the host to be fit and the fitted
-    overscan is copied back to the array namespace and device of the input;
+    NumPy-only, so that path runs on the host CPU. If the overscan is not
+    backed by NumPy it is copied to the host to be fit and the fitted
+    overscan is copied back to the array namespace and device of ``ccd``;
     the copy is announced with a `HostCopyWarning`. The median and mean
     paths stay in the input's array namespace.
 
@@ -1160,8 +1142,10 @@ def subtract_overscan(
 
     if model is not None:
         # astropy.modeling is numpy-only, so the copy to the host is made
-        # explicitly here and the fitted overscan converted back below.
-        _warn_host_copy("subtract_overscan", xp)
+        # explicitly here and the fitted overscan converted back below. The
+        # warning is decided from oscan, the array that crosses, since it
+        # need not be in the namespace of ccd or xp.
+        _warn_host_copy("subtract_overscan", oscan)
         oscan_np = _to_numpy(oscan)
         of = fitting.LinearLSQFitter()
         yarr = np.arange(oscan_np.shape[0])
@@ -1750,7 +1734,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
 
     # reproject is numpy-only, so the copy to the host is made explicitly
     # here and every result is converted back below.
-    _warn_host_copy("wcs_project", xp)
+    _warn_host_copy("wcs_project", ccd.data, ccd.mask)
 
     projected_image_raw, _ = reproject_interp(
         (_to_numpy(ccd.data), ccd.wcs),
@@ -2714,10 +2698,10 @@ def cosmicray_lacosmic(
 
         xp = array_api_compat.array_namespace(ccd.data)
         # astroscrappy is numpy-only, so the copy to the host is made
-        # explicitly here and every result is converted back below. inbkg
-        # and invar may themselves be arrays, possibly in a different
-        # namespace than ccd, so they count towards the single warning too.
-        _warn_host_copy_if_needed("cosmicray_lacosmic", ccd.data, inbkg, invar)
+        # explicitly here and every result is converted back below. The
+        # mask, inbkg and invar cross too, possibly from a different
+        # namespace than ccd.data, so they count towards the single warning.
+        _warn_host_copy("cosmicray_lacosmic", ccd.data, ccd.mask, inbkg, invar)
 
         if not old_astroscrappy_interface:
             # astroscrappy is numpy-only, so array-valued backgrounds and
@@ -2803,7 +2787,7 @@ def cosmicray_lacosmic(
         # explicitly here and every result is converted back below. inbkg
         # and invar may themselves be arrays, possibly in a different
         # namespace than data, so they count towards the single warning too.
-        _warn_host_copy_if_needed("cosmicray_lacosmic", data, inbkg, invar)
+        _warn_host_copy("cosmicray_lacosmic", data, inbkg, invar)
 
         if not old_astroscrappy_interface:
             # astroscrappy is numpy-only, so array-valued backgrounds and

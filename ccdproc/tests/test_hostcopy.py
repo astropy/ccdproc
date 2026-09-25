@@ -179,6 +179,11 @@ def test_cpu_only_function_warns_once(call, function_name):
 
     Notes
     -----
+    The whole message is pinned: it only states what always happens, that
+    the data was copied to NumPy. An earlier wording also claimed that the
+    result was copied back, which is false when a NumPy ``ccd`` comes with
+    a non-NumPy ``inbkg``.
+
     ``filename == __file__`` alone would not catch a one-frame drift in the
     ``stacklevel`` computation: a drift of exactly one frame still lands
     inside this file, on ``test_cpu_only_function_warns_once`` itself
@@ -188,11 +193,15 @@ def test_cpu_only_function_warns_once(call, function_name):
     ccdproc frame) used to trigger with a fixed ``stacklevel``.
     """
     with pytest.warns(HostCopyWarning) as record:
-        _, _, call_line = call()
+        ccd, _, call_line = call()
 
     host_copies = [w for w in record if issubclass(w.category, HostCopyWarning)]
     assert len(host_copies) == 1
-    assert function_name in str(host_copies[0].message)
+    namespace = array_api_compat.array_namespace(ccd.data)
+    assert str(host_copies[0].message) == (
+        f"{function_name} runs on the host CPU, so {namespace.__name__} array "
+        "data was copied to numpy."
+    )
     assert host_copies[0].filename == __file__
     assert host_copies[0].lineno == call_line
 
@@ -308,6 +317,94 @@ def test_cosmicray_lacosmic_warns_once_for_non_numpy_inbkg():
     assert array_api_compat.is_numpy_namespace(
         array_api_compat.array_namespace(result.data)
     )
+
+
+@pytest.mark.skipif(
+    IS_NUMPY, reason="ccd and overscan cannot be in different namespaces on numpy"
+)
+@pytest.mark.backend_skip(
+    "array-api-strict",
+    reason="NumPy's mean, the namespace of ccd, cannot read an overscan on "
+    "device1; that is an xp/data mismatch, not a host copy",
+)
+def test_subtract_overscan_warns_once_for_non_numpy_overscan():
+    """
+    A NumPy ``ccd`` with a non-NumPy ``overscan`` emits exactly one
+    ``HostCopyWarning`` on the model path, and returns a NumPy result.
+
+    The overscan vector is what crosses to the host to be fit, so the
+    warning is decided from it. Deciding from ``ccd``'s namespace, as it
+    once was, copied this overscan with no warning at all.
+    """
+    backend_ccd = ccd_data_func(data_size=DATA_SIZE)
+    ccd = numpy_ccddata(backend_ccd)
+
+    with pytest.warns(HostCopyWarning) as record:
+        result = subtract_overscan(
+            ccd,
+            overscan=backend_ccd[:, :5],
+            overscan_axis=1,
+            model=models.Polynomial1D(1),
+        )
+
+    host_copies = [w for w in record if issubclass(w.category, HostCopyWarning)]
+    assert len(host_copies) == 1
+    assert array_api_compat.is_numpy_namespace(
+        array_api_compat.array_namespace(result.data)
+    )
+
+
+def _wcs_project_with_numpy_xp(ccd):
+    """Call ``wcs_project`` on ``ccd`` with an explicit ``xp=np``."""
+    target_wcs = wcs_for_testing(ccd.shape)
+    target_wcs.wcs.crpix += [1, 1]
+    return wcs_project(ccd, target_wcs, xp=np)
+
+
+def _subtract_overscan_with_numpy_xp(ccd):
+    """Call ``subtract_overscan``'s model path with an explicit ``xp=np``."""
+    return subtract_overscan(
+        ccd,
+        overscan=ccd[:, :5],
+        overscan_axis=1,
+        model=models.Polynomial1D(1),
+        xp=np,
+    )
+
+
+@pytest.mark.skipif(
+    not array_api_compat.is_dask_namespace(xp),
+    reason="only dask data is handled by numpy functions without an error",
+)
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param(_wcs_project_with_numpy_xp, id="wcs_project"),
+        pytest.param(_subtract_overscan_with_numpy_xp, id="subtract_overscan"),
+    ],
+)
+def test_numpy_xp_with_dask_data_warns_once(call):
+    """
+    Dask data with an explicit ``xp=np`` still emits exactly one
+    ``HostCopyWarning``.
+
+    Notes
+    -----
+    The dask array is computed and copied to the host whatever ``xp`` says,
+    so the warning is decided from the data rather than from ``xp``, which
+    used to silence it. Whether an ``xp`` that disagrees with the data
+    should be accepted at all is a separate question, for every public
+    function; only dask is tested because the other backends fail in
+    their own ways when handed to NumPy functions.
+    """
+    ccd = ccd_data_func(data_size=DATA_SIZE)
+    ccd.wcs = wcs_for_testing(ccd.shape)
+
+    with pytest.warns(HostCopyWarning) as record:
+        call(ccd)
+
+    host_copies = [w for w in record if issubclass(w.category, HostCopyWarning)]
+    assert len(host_copies) == 1
 
 
 def test_cosmicray_lacosmic_unit_mismatch_does_not_convert_inbkg(monkeypatch):
