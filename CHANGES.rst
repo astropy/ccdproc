@@ -73,9 +73,10 @@ New Features
   back to the array namespace and device of the input, so a non-NumPy
   caller never receives a NumPy array in its place. Each warns once per
   call site with the new ``ccdproc.HostCopyWarning`` (a subclass of
-  ``AstropyUserWarning``); NumPy input is neither copied nor warned about,
-  and ``combine(output_file=...)`` still copies silently because nothing
-  from that copy returns to the caller. [#930, #933, #935, #1011]
+  ``AstropyUserWarning``); NumPy input is neither copied nor warned about.
+  ``combine(output_file=...)`` does not warn either: it copies the
+  combined image to NumPy only to write the FITS file, and the image it
+  returns stays in the input's array namespace. [#930, #933, #935, #1011]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
