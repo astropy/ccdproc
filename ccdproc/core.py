@@ -207,8 +207,10 @@ def _from_numpy(arr, like, *, xp=None):
     Returns
     -------
     array or None
-        ``arr`` as an array of ``xp`` on the device of ``like``, with its
-        dtype preserved, or `None` if ``arr`` is `None`.
+        ``arr`` as an array of ``xp`` on the device of ``like``, or `None`
+        if ``arr`` is `None`. The result has the dtype of ``arr``, not of
+        ``like``, unless ``xp`` cannot represent it: JAX without 64-bit
+        mode silently converts float64 to float32.
 
     Notes
     -----

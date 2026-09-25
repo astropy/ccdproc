@@ -242,6 +242,11 @@ array they return -- the data and the mask -- back to the array namespace
 and the device of the array you passed in. You never get a `numpy`_ array
 back in place of what you handed over, whatever array library you use.
 
+This copy does not work for `CuPy`_ arrays yet: `CuPy`_ refuses the implicit
+conversion to `numpy`_ that it relies on, so these three functions, and
+``combine`` with an ``output_file``, fail on `CuPy`_ input. This is tracked
+in `issue #1021 <https://github.com/astropy/ccdproc/issues/1021>`_.
+
 Because that round trip can be expensive -- it computes a lazy `dask`_
 array, or moves data off a GPU and back -- each of these functions warns
 once per call site with a ``HostCopyWarning``, naming the function that
