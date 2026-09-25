@@ -21,7 +21,6 @@ from astropy import units as u
 from astropy.modeling import models
 from astropy.nddata import CCDData
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.wcs import WCS
 
 import ccdproc
 from ccdproc import (
@@ -38,33 +37,22 @@ from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import _from_numpy, _to_numpy
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
+from ccdproc.tests.pytest_fixtures import wcs_for_testing
 
 IS_NUMPY = array_api_compat.is_numpy_namespace(xp)
 
 DATA_SIZE = 20
 
 
-def _wcs_for_testing(shape):
-    """A celestial WCS centred on the middle of an image of ``shape``."""
-    w = WCS(naxis=2)
-    w.wcs.crpix = [shape[0] // 2, shape[1] // 2]
-    # These are plain WCS metadata, not image data, so they stay NumPy.
-    w.wcs.cdelt = np.array([-0.066667, 0.066667])
-    w.wcs.crval = [0, -90]
-    w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
-    w.wcs.set_pv([(2, 1, 45.0)])
-    return w
-
-
 def _run_wcs_project():
     """Call ``wcs_project`` on a masked image; return the input and result."""
     ccd = ccd_data_func(data_size=DATA_SIZE)
-    ccd.wcs = _wcs_for_testing(ccd.shape)
+    ccd.wcs = wcs_for_testing(ccd.shape)
     mask = np.zeros(ccd.shape, dtype=bool)
     mask[2, 3] = True
     # TODO: change back to .mask when CCDData is array-api compliant
     ccd._mask = xp.asarray(mask, device=xp_device)
-    target_wcs = _wcs_for_testing(ccd.shape)
+    target_wcs = wcs_for_testing(ccd.shape)
     target_wcs.wcs.crpix += [1, 1]
     return ccd, wcs_project(ccd, target_wcs)
 

@@ -53,6 +53,7 @@ from ccdproc.core import (
     wcs_project,
 )
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
+from ccdproc.tests.pytest_fixtures import wcs_for_testing
 
 RNG = np_random.default_rng
 
@@ -1237,25 +1238,6 @@ def test_transform_image_does_not_change_input():
     _ = transform_image(ccd_data, xp.positive)
     assert xp.all(xpx.isclose(original.data, ccd_data.data))
     assert original.unit == ccd_data.unit
-
-
-def wcs_for_testing(shape):
-    # Set up a simple WCS, details are cut/pasted from astropy WCS docs,
-    # mostly. CRPIX is set to the center of shape, rounded down.
-
-    # Create a new WCS object. The number of axes must be set
-    # from the start
-    w = WCS(naxis=2)
-
-    # Set up an "Airy's zenithal" projection
-    # Vector properties may be set with Python lists, or Numpy arrays
-    w.wcs.crpix = [shape[0] // 2, shape[1] // 2]
-    w.wcs.cdelt = xp.asarray([-0.066667, 0.066667])
-    w.wcs.crval = [0, -90]
-    w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
-    w.wcs.set_pv([(2, 1, 45.0)])
-
-    return w
 
 
 def test_wcs_project_onto_same_wcs():
