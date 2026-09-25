@@ -683,6 +683,41 @@ def test_cosmicray_lacosmic_pssl_does_not_fail():
     assert count_true(nccd_data.mask) == NCRAYS
 
 
+@pytest.mark.parametrize("array_input", [True, False])
+def test_cosmicray_lacosmic_float_pssl_on_integer_data(monkeypatch, array_input):
+    """
+    A fractional ``pssl`` on integer data works on every array library, for
+    both a ``CCDData`` and a bare array, and is added before astroscrappy
+    runs and taken back out after.
+
+    Notes
+    -----
+    Raw frames are integer, so this is the ordinary way to use ``pssl``.
+    The offset used to be added in the caller's namespace, which
+    array-api-strict refuses for an integer array and a Python float. The
+    stand-in for astroscrappy records what it was handed, so that the test
+    can check the offset really reached it.
+    """
+    handed_to_astroscrappy = []
+
+    def no_cosmics(data, **_kwargs):
+        handed_to_astroscrappy.append(data)
+        return np.zeros_like(data, dtype=bool), data
+
+    monkeypatch.setattr("astroscrappy.detect_cosmics", no_cosmics)
+
+    frame = default_rng(seed=1).integers(90, 110, size=(20, 20), dtype=np.int64)
+    data = xp.asarray(frame, device=xp_device)
+    ccd = data if array_input else CCDData(data, unit=u.adu)
+
+    with pytest.warns(AstropyDeprecationWarning):
+        result = cosmicray_lacosmic(ccd, pssl=0.5)
+
+    cleaned = result[0] if array_input else result.data
+    assert_allclose(handed_to_astroscrappy[0], frame + 0.5)
+    assert_allclose(_to_numpy(cleaned), frame)
+
+
 def test_cosmicray_median_mask_shape_mismatch():
     # CCDData and MaskedArray validate the mask shape themselves, so exercise
     # the shared helper directly.

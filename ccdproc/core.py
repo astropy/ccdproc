@@ -2729,8 +2729,13 @@ def cosmicray_lacosmic(
                 invar=_to_numpy(invar) if _is_array(invar) else invar,
             )
 
+        # pssl is added on the host: an integer array plus a float pssl is
+        # refused by some namespaces (array-api-strict), and adding it on the
+        # device would make a throwaway full-size copy there. Keep the
+        # addition even when the offset is 0: _to_numpy returns NumPy input
+        # as is, so this is also the copy that protects the caller's data.
         crmask, cleanarr = detect_cosmics(
-            _to_numpy(ccd.data + data_offset),
+            _to_numpy(ccd.data) + data_offset,
             inmask=None if ccd.mask is None else _to_numpy(ccd.mask),
             sigclip=sigclip,
             sigfrac=sigfrac,
@@ -2810,8 +2815,13 @@ def cosmicray_lacosmic(
                 invar=_to_numpy(invar) if _is_array(invar) else invar,
             )
 
+        # pssl is added on the host: an integer array plus a float pssl is
+        # refused by some namespaces (array-api-strict), and adding it on the
+        # device would make a throwaway full-size copy there. Keep the
+        # addition even when the offset is 0: _to_numpy returns NumPy input
+        # as is, so this is also the copy that protects the caller's data.
         crmask, cleanarr = detect_cosmics(
-            _to_numpy(data + data_offset),
+            _to_numpy(data) + data_offset,
             inmask=None,
             sigclip=sigclip,
             sigfrac=sigfrac,
