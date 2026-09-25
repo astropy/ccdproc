@@ -25,8 +25,11 @@ from ._nanfuncs import _promote_to_real
 
 __all__ = ["block_average", "block_reduce", "block_replicate"]
 
+# Shared with ccdproc._windowfilters, which needs a known shape for the
+# same reason: it slices and concatenates along axes whose lengths it has
+# to know up front.
 _UNKNOWN_SHAPE_MESSAGE = (
-    "block functions need a fully known shape; on dask call "
+    "block and window functions need a fully known shape; on dask call "
     "compute_chunk_sizes() first"
 )
 

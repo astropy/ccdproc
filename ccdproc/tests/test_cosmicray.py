@@ -25,6 +25,7 @@ from numpy.testing import assert_allclose
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import (
+    _to_numpy,
     background_deviation_box,
     background_deviation_filter,
     cosmicray_lacosmic,
@@ -38,9 +39,18 @@ DATA_SCALE = 5.3
 NCRAYS = 30
 
 
-def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
-    from numpy import array as np_array
+def count_true(mask):
+    """
+    Number of set entries of a boolean array, as a Python int.
 
+    ``mask.sum()`` is not available: the array API has no methods on arrays
+    beyond the operators, and ``xp.sum`` of a boolean array is not allowed
+    either, hence the cast.
+    """
+    return int(xp.sum(xp.astype(mask, xp.int32)))
+
+
+def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
     size = data.shape[0]
     rng = default_rng(99)
     crrays = rng.integers(0, size, size=(ncrays, 2))
@@ -51,13 +61,25 @@ def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
     # this is not working right now
     crflux = np_array(10 * scale * rng.random(ncrays) + (threshold + 15) * scale)
 
-    # Some array libraries (Jax) do not support setting individual elements,
-    # so use NumPy.
-    data_as_np = np_array(data.data)
+    # Build the rays as a host-side overlay and blend it in with a single
+    # ``where``. Element assignment is not in the array API (jax rejects it
+    # outright), and copying ``data.data`` to numpy to do it there -- which
+    # is what this used to do -- fails for a backend whose arrays are not on
+    # the host, which is exactly the case the array-api-strict test run
+    # stands in for.
+    is_ray = np_zeros(data.data.shape, dtype=bool)
+    ray_values = np_zeros(data.data.shape)
     for i in range(ncrays):
         y, x = crrays[i]
-        data_as_np[y, x] = crflux[i]
-    data.data = xp.asarray(data_as_np)
+        is_ray[y, x] = True
+        ray_values[y, x] = crflux[i]
+
+    device = array_api_compat.device(data.data)
+    data.data = xp.where(
+        xp.asarray(is_ray, device=device),
+        xp.asarray(ray_values, dtype=data.data.dtype, device=device),
+        data.data,
+    )
     return crrays
 
 
@@ -335,11 +357,6 @@ def test_cosmicray_lacosmic_accepts_quantity_readnoise():
     _ = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True, readnoise=readnoise)
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
-    "and fails on a non-default device",
-)
 def test_cosmicray_lacosmic_detects_inconsistent_units():
     # This is intended to detect cases like a ccd with units
     # of adu, a readnoise in electrons and a gain in adu / electron.
@@ -416,11 +433,6 @@ def test_cosmicray_median_check_data():
         ndata, crarr = cosmicray_median(10, thresh=5, mbox=11, error_image=DATA_SCALE)
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
-    "requires numpy and fails on a non-default device",
-)
 def test_cosmicray_median():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -430,14 +442,9 @@ def test_cosmicray_median():
     )
 
     # check the number of cosmic rays detected
-    assert crarr.sum() == NCRAYS
+    assert count_true(crarr) == NCRAYS
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
-    "requires numpy and fails on a non-default device",
-)
 def test_cosmicray_median_ccddata():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -447,14 +454,9 @@ def test_cosmicray_median_ccddata():
     nccd = cosmicray_median(ccd_data, thresh=5, mbox=11, error_image=None)
 
     # check the number of cosmic rays detected
-    assert nccd.mask.sum() == NCRAYS
+    assert count_true(nccd.mask) == NCRAYS
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
-    "requires numpy and fails on a non-default device",
-)
 @pytest.mark.parametrize("masked", ["none", "some", "all"])
 def test_cosmicray_median_masked(masked):
     # Regression test for #932: an input mask used to be silently ignored.
@@ -464,7 +466,10 @@ def test_cosmicray_median_masked(masked):
     # "all":  nothing is flagged, and no warning (e.g. 0/0) is emitted.
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     crrays = add_cosmicrays(ccd_data, DATA_SCALE, 5, ncrays=NCRAYS)
-    np_data = np_array(ccd_data.data)
+    # A numpy.ma.MaskedArray is what is under test, so the image has to
+    # reach the host; _to_numpy is the sanctioned way to get it there, and
+    # unlike np.array it also works for a backend on a non-default device.
+    np_data = _to_numpy(ccd_data.data)
     np_mask = np_zeros(np_data.shape, dtype=bool)
     if masked == "some":
         for y, x in crrays[: NCRAYS // 3]:
@@ -477,14 +482,14 @@ def test_cosmicray_median_masked(masked):
         warnings.simplefilter("error")
         ndata, crarr = cosmicray_median(data, thresh=5, mbox=11, error_image=DATA_SCALE)
 
-    crarr = np_array(crarr)
+    crarr = _to_numpy(crarr)
     # no masked pixel is flagged, every unmasked cosmic ray is, nothing else is
     assert not crarr[np_mask].any()
     for y, x in crrays:
         assert crarr[y, x] == (not np_mask[y, x])
     assert crarr.sum() == sum(not np_mask[y, x] for y, x in crrays)
     # masked pixels are returned unchanged
-    assert_allclose(np_array(ndata)[np_mask], np_data[np_mask])
+    assert_allclose(_to_numpy(ndata)[np_mask], np_data[np_mask])
 
 
 def _masked_column_image(seed=1, sigma=1.0):
@@ -509,15 +514,7 @@ def _masked_column_image(seed=1, sigma=1.0):
     [
         ("masked_array", 1.0),
         ("masked_array", None),
-        pytest.param(
-            "ccddata",
-            None,
-            marks=pytest.mark.backend_xfail(
-                "array-api-strict",
-                reason="cosmicray_median uses scipy.ndimage.median_filter, which "
-                "requires numpy and fails on a non-default device",
-            ),
-        ),
+        ("ccddata", None),
     ],
 )
 def test_cosmicray_median_masked_column(kind, error_image):
@@ -538,7 +535,9 @@ def test_cosmicray_median_masked_column(kind, error_image):
             xp.asarray(np_data, device=xp_device),
             unit="adu",
             mask=np_mask,
-            uncertainty=StdDevUncertainty(xp.ones_like(xp.asarray(np_data))),
+            uncertainty=StdDevUncertainty(
+                xp.ones_like(xp.asarray(np_data, device=xp_device))
+            ),
         )
     result = cosmicray_median(
         ccd, thresh=5, mbox=11, gbox=3, rbox=5, error_image=error_image
@@ -546,11 +545,11 @@ def test_cosmicray_median_masked_column(kind, error_image):
     if kind == "masked_array":
         ndata, crarr = result
     else:
-        out_mask = np_array(result.mask)
+        out_mask = _to_numpy(result.mask)
         assert out_mask[np_mask].all()
         ndata, crarr = result.data, out_mask & ~np_mask
-    crarr = np_array(crarr)
-    ndata = np_array(ndata)
+    crarr = _to_numpy(crarr)
+    ndata = _to_numpy(ndata)
 
     assert not crarr[np_mask].any()
     for y, x in crays:
@@ -562,11 +561,6 @@ def test_cosmicray_median_masked_column(kind, error_image):
         assert abs(ndata[y, x] - 100.0) < 5
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
-    "requires numpy and fails on a non-default device",
-)
 def test_cosmicray_median_background_None():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -574,14 +568,9 @@ def test_cosmicray_median_background_None():
     data, crarr = cosmicray_median(ccd_data.data, thresh=5, mbox=11, error_image=None)
 
     # check the number of cosmic rays detected
-    assert crarr.sum() == NCRAYS
+    assert count_true(crarr) == NCRAYS
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
-    "requires numpy and fails on a non-default device",
-)
 def test_cosmicray_median_gbox():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
@@ -591,16 +580,12 @@ def test_cosmicray_median_gbox():
     data, crarr = cosmicray_median(
         ccd_data.data, error_image=error, thresh=5, mbox=11, rbox=0, gbox=5
     )
-    data = np_ma_array(data, mask=crarr)
-    assert crarr.sum() > NCRAYS
-    assert abs(data.std() - scale) < 0.1
+    assert count_true(crarr) > NCRAYS
+    # The deviation of the pixels the growth step did *not* flag: a masked
+    # array is not part of the array API, so select with the mask instead.
+    assert abs(float(xp.std(data[~crarr])) - scale) < 0.1
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_median uses scipy.ndimage.median_filter, which "
-    "requires numpy and fails on a non-default device",
-)
 def test_cosmicray_median_rbox():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     scale = DATA_SCALE  # yuck. Maybe use pytest.parametrize?
@@ -610,8 +595,39 @@ def test_cosmicray_median_rbox():
     data, crarr = cosmicray_median(
         ccd_data.data, error_image=error, thresh=5, mbox=11, rbox=21, gbox=5
     )
-    assert data[crarr].mean() < ccd_data.data[crarr].mean()
-    assert crarr.sum() > NCRAYS
+    assert float(xp.mean(data[crarr])) < float(xp.mean(ccd_data.data[crarr]))
+    assert count_true(crarr) > NCRAYS
+
+
+def test_cosmicray_median_integer_input_gives_a_floating_result():
+    """
+    An integer frame is cleaned, and comes back in a floating dtype on
+    every array library.
+
+    Notes
+    -----
+    Raw CCD frames out of a FITS file are commonly int16 or uint16, so this
+    is the ordinary case rather than an edge one. The median filter
+    promotes integer input off numpy where ``scipy.ndimage`` preserves it,
+    which used to leave ``data - marr`` mixing an integer with a float:
+    numpy returned int16, dask float64 and array-api-strict raised
+    ``int16 and float64 cannot be type promoted together``. ``rbox`` is
+    non-zero here because the replacement step is the second place the two
+    kinds met.
+    """
+    rng = default_rng(seed=4242)
+    frame = rng.normal(loc=1000.0, scale=DATA_SCALE, size=(40, 40))
+    frame[10, 10] = frame[25, 31] = 3000.0
+    data = xp.asarray(np.asarray(frame, dtype=np.int16), device=xp_device)
+
+    cleaned, crarr = cosmicray_median(data, thresh=5, mbox=5, rbox=5, gbox=0)
+
+    assert xp.isdtype(cleaned.dtype, "real floating")
+    assert xp.isdtype(crarr.dtype, "bool")
+    assert count_true(crarr) >= 2
+    # The replacement really happened: the flagged pixels are no longer the
+    # spikes they were.
+    assert float(xp.max(cleaned)) < 3000.0
 
 
 def test_cosmicray_median_background_deviation():
@@ -667,7 +683,10 @@ def test_background_deviation_filter():
     scale = 5.3
     cd = xp.asarray(default_rng(seed=123).normal(loc=0, size=(100, 100), scale=scale))
     bd = background_deviation_filter(cd, 25)
-    assert abs(bd.mean() - scale) < 0.10
+    # xp.mean rather than bd.mean(): the array API has no mean method, and
+    # the deviation now comes back in the caller's namespace rather than as
+    # the numpy array scipy.ndimage used to hand back.
+    assert abs(float(xp.mean(bd)) - scale) < 0.10
 
 
 def test_background_deviation_filter_fail():

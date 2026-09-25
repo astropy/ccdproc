@@ -197,6 +197,34 @@ What limitations should I be aware of?
   unless 64-bit mode is enabled, so large blocks can overflow there. All
   three functions need a fully known shape, so a `dask`_ array with unknown
   chunk sizes must have ``compute_chunk_sizes()`` called on it first.
++ The local window filters -- ``median_filter``, and the ones inside
+  ``cosmicray_median``, ``background_deviation_filter`` and ``ccdmask`` --
+  come from `scipy.ndimage`_ for `numpy`_ arrays, which is numpy-only. For
+  every other array library they are computed by an implementation written
+  purely in terms of the array API standard, which stacks each pixel's
+  window along a new axis and reduces over it. It agrees with
+  `scipy.ndimage`_ exactly on finite input, but it is markedly more
+  expensive: a k-by-k window costs O(k**2 log k**2) per pixel, from a sort,
+  against ndimage's O(k**2) selection, and the stack itself holds k**2 copies
+  of the image (processed in bands of rows to bound the peak memory).
++ Those filters promote integer input to the library's default real
+  floating dtype; `scipy.ndimage`_ keeps an integer dtype. Only
+  ndimage's ``'reflect'`` and ``'nearest'`` boundary modes are
+  implemented, and on a non-`numpy`_ array ``median_filter`` accepts only
+  ``size`` and ``mode`` -- ``footprint``, ``origin``, ``output``, ``cval``
+  and ``axes`` raise ``TypeError`` naming the argument. Convert the data
+  to `numpy`_ to use `scipy.ndimage`_'s full interface.
++ The window filters that take an order statistic -- the median and the
+  percentile -- **exclude NaNs from a window** and rank among the values
+  that remain, where `scipy.ndimage`_ **sorts NaNs in with them**, above
+  every real number. Results on data containing NaN therefore differ
+  between `numpy`_ and every other array library: ``median_filter`` and
+  ``cosmicray_median`` accept such data, and ``ccdmask``'s flat ratio
+  routinely contains it, so a ratio with NaN in it can give a slightly
+  different mask off `numpy`_. Infinities are ordinary values to both.
+  These filters also need a fully known shape, so a `dask`_ array with
+  unknown chunk sizes must have ``compute_chunk_sizes()`` called on it
+  first.
 
 Which array library should I use?
 ---------------------------------
@@ -270,4 +298,5 @@ There are two ways to use the array API in `ccdproc`_:
 .. _dask: https://docs.dask.org/en/stable/
 .. _jax: https://docs.jax.dev/en/latest/index.html
 .. _numpy: https://numpy.org/doc/stable/reference/array_api.html
+.. _scipy.ndimage: https://docs.scipy.org/doc/scipy/reference/ndimage.html
 .. _sparse: https://sparse.pydata.org/en/stable/
