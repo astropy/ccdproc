@@ -1372,8 +1372,14 @@ def test_wcs_project_onto_shifted_wcs(mask_dtype):
     # that the pixels should all be shifted.
     assert xp.all(xpx.isclose(ccd_data.data[:-1, :-1], new_ccd.data[1:, 1:], rtol=1e-5))
 
-    # The masks should all be shifted too.
-    assert xp.all(xpx.isclose(ccd_data.mask[:-1, :-1], new_ccd.mask[1:, 1:]))
+    # The masks should all be shifted too. new_ccd.mask is always bool
+    # (wcs_project's output mask), so cast ccd_data.mask to bool before
+    # comparing: array-api-strict refuses to promote int64 or float64
+    # against bool, whether through isclose's own equality branch (int) or
+    # through the isinf it needs for the inexact-dtype branch (float).
+    assert xp.all(
+        xpx.isclose(xp.astype(ccd_data.mask[:-1, :-1], xp.bool), new_ccd.mask[1:, 1:])
+    )
 
     # We should have more values that are masked in the output array
     # than on input because some on output were not in the footprint
