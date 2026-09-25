@@ -6,6 +6,7 @@ import inspect
 import logging
 import math
 import numbers
+import operator
 import sys
 import warnings
 from functools import partial
@@ -1742,8 +1743,10 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
     # A shape is metadata, not data: make it a tuple of Python ints so that
     # reproject, which needs ``len`` and elementwise comparison, accepts it
     # whatever it was given as, including an array-API array that supports
-    # neither (array-api-strict has no ``len``).
-    target_shape = tuple(int(size) for size in target_shape)
+    # neither (array-api-strict has no ``len``). ``operator.index`` is used
+    # rather than ``int`` so that a non-integer element, such as a float,
+    # still raises ``TypeError`` instead of being silently truncated.
+    target_shape = tuple(operator.index(size) for size in target_shape)
 
     # reproject is numpy-only, so the copy to the host is made explicitly
     # here and every result is converted back below.

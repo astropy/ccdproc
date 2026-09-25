@@ -1279,6 +1279,47 @@ def test_wcs_project_accepts_an_array_target_shape():
     assert bool(xp.all(xpx.isclose(from_array.data, from_tuple.data, equal_nan=True)))
 
 
+def test_wcs_project_rejects_a_float_target_shape():
+    """
+    A ``target_shape`` with a non-integer element, such as ``(20.7, 20)``,
+    raises ``TypeError`` instead of being silently truncated.
+
+    Pins the fix from ``int(size)`` to ``operator.index(size)``: ``int()``
+    happily truncates a float, so a caller's typo (or an off-by-something
+    computed shape) would have produced a wrong-shaped image instead of an
+    error.
+    """
+    ccd_data = ccd_data_func()
+    target_wcs = wcs_for_testing(ccd_data.shape)
+    ccd_data.wcs = wcs_for_testing(ccd_data.shape)
+
+    with pytest.raises(TypeError):
+        wcs_project(ccd_data, target_wcs, target_shape=(20.7, 20))
+
+
+def test_wcs_project_accepts_zero_d_integer_array_target_shape_elements():
+    """
+    ``target_shape`` may be a tuple whose elements are 0-d integer arrays
+    of the test namespace and device, not just a tuple of Python ints or a
+    1-d array of the whole shape (already covered by
+    ``test_wcs_project_accepts_an_array_target_shape``).
+
+    ``operator.index`` works on a 0-d integer array because such arrays
+    implement ``__index__``; this is the case that motivated switching
+    from ``int(size)``, since a bare ``int()`` on an array-api-strict
+    array raises instead of extracting the scalar.
+    """
+    ccd_data = ccd_data_func()
+    target_wcs = wcs_for_testing(ccd_data.shape)
+    ccd_data.wcs = wcs_for_testing(ccd_data.shape)
+    shape_tuple = tuple(size + 2 for size in ccd_data.shape)
+    shape_elements = tuple(xp.asarray(size, device=xp_device) for size in shape_tuple)
+
+    result = wcs_project(ccd_data, target_wcs, target_shape=shape_elements)
+
+    assert result.shape == shape_tuple
+
+
 def test_wcs_project_onto_same_wcs_remove_headers():
     ccd_data = ccd_data_func()
     # Remove an example WCS keyword from the header
