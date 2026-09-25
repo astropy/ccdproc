@@ -2611,7 +2611,6 @@ def cosmicray_lacosmic(
        updated with the detected cosmic rays.
     """
     from astroscrappy import __version__ as asy_version
-    from astroscrappy import detect_cosmics
 
     # If we didn't get a quantity, put them in, with unit specified by the
     # documentation above.
@@ -2665,6 +2664,25 @@ def cosmicray_lacosmic(
             # here that we later add in then take out.
             data_offset = pssl
 
+    # The astroscrappy arguments that are the same for both kinds of input.
+    detect_kwargs = dict(
+        sigclip=sigclip,
+        sigfrac=sigfrac,
+        objlim=objlim,
+        readnoise=readnoise.value,
+        satlevel=satlevel,
+        niter=niter,
+        sepmed=sepmed,
+        cleantype=cleantype,
+        fsmode=fsmode,
+        psfmodel=psfmodel,
+        psffwhm=psffwhm,
+        psfsize=psfsize,
+        psfk=psfk,
+        psfbeta=psfbeta,
+        verbose=verbose,
+    )
+
     if isinstance(ccd, CCDData):
         # Start with a check for a special case: ccd is in electron, and
         # gain and readnoise have no units. In that case we issue a warning
@@ -2697,63 +2715,23 @@ def cosmicray_lacosmic(
                 )
 
         xp = array_api_compat.array_namespace(ccd.data)
-        # astroscrappy is numpy-only, so the copy to the host is made
-        # explicitly here and every result is converted back below. The
-        # mask, inbkg and invar cross too, possibly from a different
-        # namespace than ccd.data, so they count towards the single warning.
-        _warn_host_copy("cosmicray_lacosmic", ccd.data, ccd.mask, inbkg, invar)
-
-        if not old_astroscrappy_interface:
-            # astroscrappy is numpy-only, so array-valued backgrounds and
-            # variances are copied to the host here, after the warning
-            # above. Anything that is not an array (None, or a bad value
-            # the caller wants an error for) is passed straight through.
-            asy_background_kwargs = dict(
-                inbkg=_to_numpy(inbkg) if _is_array(inbkg) else inbkg,
-                invar=_to_numpy(invar) if _is_array(invar) else invar,
-            )
-
-        # pssl is added on the host: an integer array plus a float pssl is
-        # refused by some namespaces (array-api-strict), and adding it on the
-        # device would make a throwaway full-size copy there. Keep the
-        # addition even when the offset is 0: _to_numpy returns NumPy input
-        # as is, so this is also the copy that protects the caller's data.
-        crmask, cleanarr = detect_cosmics(
-            _to_numpy(ccd.data) + data_offset,
-            inmask=None if ccd.mask is None else _to_numpy(ccd.mask),
-            sigclip=sigclip,
-            sigfrac=sigfrac,
-            objlim=objlim,
-            gain=gain.value,
-            readnoise=readnoise.value,
-            satlevel=satlevel,
-            niter=niter,
-            sepmed=sepmed,
-            cleantype=cleantype,
-            fsmode=fsmode,
-            psfmodel=psfmodel,
-            psffwhm=psffwhm,
-            psfsize=psfsize,
-            psfk=psfk,
-            psfbeta=psfbeta,
-            verbose=verbose,
-            **asy_background_kwargs,
+        cleanarr, crmask = _lacosmic_on_host(
+            ccd.data,
+            ccd.mask,
+            data_offset=data_offset,
+            gain=float(gain.value),
+            gain_apply=gain_apply,
+            old_interface=old_astroscrappy_interface,
+            inbkg=inbkg,
+            invar=invar,
+            background_kwargs=asy_background_kwargs,
+            detect_kwargs=detect_kwargs,
         )
 
         # create the new ccd data object
         # Wrap the CCDData object to ensure it is compatible with array API
         _ccd = _wrap_ccddata_for_array_api(ccd)
         nccd = _ccd.copy()
-
-        # Back to the caller's namespace and device before any arithmetic,
-        # so that everything below runs natively.
-        cleanarr = _from_numpy(cleanarr, like=_ccd.data, xp=xp)
-        crmask = _from_numpy(crmask, like=_ccd.data, xp=xp)
-
-        cleanarr = cleanarr - data_offset
-        cleanarr = _astroscrappy_gain_apply_helper(
-            cleanarr, float(gain.value), gain_apply, old_astroscrappy_interface
-        )
 
         if gain_apply:
             if nccd.uncertainty is not None:
@@ -2781,65 +2759,117 @@ def cosmicray_lacosmic(
         nccd = _unwrap_ccddata_for_array_api(nccd)
         return nccd
     elif _is_array(ccd):
-        data = ccd
-        xp = array_api_compat.array_namespace(data)
-        # astroscrappy is numpy-only, so the copy to the host is made
-        # explicitly here and every result is converted back below. inbkg
-        # and invar may themselves be arrays, possibly in a different
-        # namespace than data, so they count towards the single warning too.
-        _warn_host_copy("cosmicray_lacosmic", data, inbkg, invar)
-
-        if not old_astroscrappy_interface:
-            # astroscrappy is numpy-only, so array-valued backgrounds and
-            # variances are copied to the host here, after the warning
-            # above. Anything that is not an array (None, or a bad value
-            # the caller wants an error for) is passed straight through.
-            asy_background_kwargs = dict(
-                inbkg=_to_numpy(inbkg) if _is_array(inbkg) else inbkg,
-                invar=_to_numpy(invar) if _is_array(invar) else invar,
-            )
-
-        # pssl is added on the host: an integer array plus a float pssl is
-        # refused by some namespaces (array-api-strict), and adding it on the
-        # device would make a throwaway full-size copy there. Keep the
-        # addition even when the offset is 0: _to_numpy returns NumPy input
-        # as is, so this is also the copy that protects the caller's data.
-        crmask, cleanarr = detect_cosmics(
-            _to_numpy(data) + data_offset,
-            inmask=None,
-            sigclip=sigclip,
-            sigfrac=sigfrac,
-            objlim=objlim,
-            gain=gain.value,
-            readnoise=readnoise.value,
-            satlevel=satlevel,
-            niter=niter,
-            sepmed=sepmed,
-            cleantype=cleantype,
-            fsmode=fsmode,
-            psfmodel=psfmodel,
-            psffwhm=psffwhm,
-            psfsize=psfsize,
-            psfk=psfk,
-            psfbeta=psfbeta,
-            verbose=verbose,
-            **asy_background_kwargs,
+        return _lacosmic_on_host(
+            ccd,
+            None,
+            data_offset=data_offset,
+            gain=float(gain.value),
+            gain_apply=gain_apply,
+            old_interface=old_astroscrappy_interface,
+            inbkg=inbkg,
+            invar=invar,
+            background_kwargs=asy_background_kwargs,
+            detect_kwargs=detect_kwargs,
         )
-
-        # Back to the caller's namespace and device before any arithmetic,
-        # so that everything below runs natively.
-        cleanarr = _from_numpy(cleanarr, like=data, xp=xp)
-        crmask = _from_numpy(crmask, like=data, xp=xp)
-
-        cleanarr = cleanarr - data_offset
-        cleanarr = _astroscrappy_gain_apply_helper(
-            cleanarr, float(gain.value), gain_apply, old_astroscrappy_interface
-        )
-
-        return cleanarr, crmask
 
     else:
         raise TypeError("ccd is not a CCDData or ndarray object.")
+
+
+def _lacosmic_on_host(
+    data,
+    mask,
+    *,
+    data_offset,
+    gain,
+    gain_apply,
+    old_interface,
+    inbkg,
+    invar,
+    background_kwargs,
+    detect_kwargs,
+):
+    """
+    Run astroscrappy on the host and return its results in the caller's
+    namespace.
+
+    Parameters
+    ----------
+    data : array
+        Image to clean, in any array namespace and on any device.
+    mask : array or None
+        Mask of ``data``, passed to astroscrappy as ``inmask``.
+    data_offset : float
+        Offset added to the data before detection and removed after it.
+    gain : float
+        Gain of the image, in electrons per ADU.
+    gain_apply : bool
+        Whether the cleaned data should come back gain-corrected.
+    old_interface : bool
+        Whether the installed astroscrappy predates 1.1.0.
+    inbkg, invar : array, None or other
+        Background and variance for astroscrappy. Arrays are copied to the
+        host; anything else is passed through unchanged.
+    background_kwargs : dict
+        Background arguments for the old astroscrappy interface. Ignored,
+        and rebuilt from ``inbkg`` and ``invar``, for the new one.
+    detect_kwargs : dict
+        The remaining keyword arguments for ``detect_cosmics``.
+
+    Returns
+    -------
+    cleanarr, crmask : array
+        The cleaned data and the boolean cosmic-ray mask, in the namespace
+        of ``data`` and on its device.
+
+    Notes
+    -----
+    This is the part of `cosmicray_lacosmic` shared by its ``CCDData`` and
+    bare-array input: the `HostCopyWarning`, the copy of every input array
+    to the host, the astroscrappy call, and the copy of the results back.
+    Validation that should fail before any copy stays in the caller.
+    """
+    from astroscrappy import detect_cosmics
+
+    xp = array_api_compat.array_namespace(data)
+    # astroscrappy is numpy-only, so the copy to the host is made explicitly
+    # here and every result is converted back below. The mask, inbkg and
+    # invar cross too, possibly from a different namespace than data, so
+    # they count towards the single warning.
+    _warn_host_copy("cosmicray_lacosmic", data, mask, inbkg, invar)
+
+    if not old_interface:
+        # Array-valued backgrounds and variances are copied to the host
+        # here, after the warning above. Anything that is not an array
+        # (None, or a bad value the caller wants an error for) is passed
+        # straight through.
+        background_kwargs = dict(
+            inbkg=_to_numpy(inbkg) if _is_array(inbkg) else inbkg,
+            invar=_to_numpy(invar) if _is_array(invar) else invar,
+        )
+
+    # pssl is added on the host: an integer array plus a float pssl is
+    # refused by some namespaces (array-api-strict), and adding it on the
+    # device would make a throwaway full-size copy there. Keep the addition
+    # even when the offset is 0: _to_numpy returns NumPy input as is, so
+    # this is also the copy that protects the caller's data.
+    crmask, cleanarr = detect_cosmics(
+        _to_numpy(data) + data_offset,
+        inmask=None if mask is None else _to_numpy(mask),
+        gain=gain,
+        **detect_kwargs,
+        **background_kwargs,
+    )
+
+    # Back to the caller's namespace and device before any arithmetic, so
+    # that everything below runs natively.
+    cleanarr = _from_numpy(cleanarr, like=data, xp=xp) - data_offset
+    crmask = _from_numpy(crmask, like=data, xp=xp)
+
+    cleanarr = _astroscrappy_gain_apply_helper(
+        cleanarr, gain, gain_apply, old_interface
+    )
+    return cleanarr, crmask
 
 
 def _astroscrappy_gain_apply_helper(cleaned_data, gain, gain_apply, old_interface):
