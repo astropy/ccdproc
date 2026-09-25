@@ -12,6 +12,7 @@ list in ``pyproject.toml``, so the warning contract is pinned here, once,
 instead of at every call site.
 """
 
+import inspect
 import warnings
 
 import array_api_compat
@@ -25,6 +26,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 import ccdproc
 from ccdproc import (
     HostCopyWarning,
+    ccd_process,
     combine,
     cosmicray_lacosmic,
     gain_correct,
@@ -45,7 +47,13 @@ DATA_SIZE = 20
 
 
 def _run_wcs_project():
-    """Call ``wcs_project`` on a masked image; return the input and result."""
+    """
+    Call ``wcs_project`` on a masked image.
+
+    Returns the input, the result, and the line number of the call to
+    ``wcs_project`` below, so that callers can check exactly where a
+    ``HostCopyWarning`` was attributed.
+    """
     ccd = ccd_data_func(data_size=DATA_SIZE)
     ccd.wcs = wcs_for_testing(ccd.shape)
     mask = np.zeros(ccd.shape, dtype=bool)
@@ -54,21 +62,58 @@ def _run_wcs_project():
     ccd._mask = xp.asarray(mask, device=xp_device)
     target_wcs = wcs_for_testing(ccd.shape)
     target_wcs.wcs.crpix += [1, 1]
-    return ccd, wcs_project(ccd, target_wcs)
+    call_line = inspect.currentframe().f_lineno + 1
+    result = wcs_project(ccd, target_wcs)
+    return ccd, result, call_line
 
 
 def _run_subtract_overscan():
-    """Call the model path of ``subtract_overscan``; return input and result."""
+    """
+    Call the model path of ``subtract_overscan``.
+
+    Returns the input, the result, and the line number of the call to
+    ``subtract_overscan`` below.
+    """
     ccd = ccd_data_func(data_size=DATA_SIZE)
-    return ccd, subtract_overscan(
+    call_line = inspect.currentframe().f_lineno + 1
+    result = subtract_overscan(
         ccd, overscan=ccd[:, :5], overscan_axis=1, model=models.Polynomial1D(1)
     )
+    return ccd, result, call_line
 
 
 def _run_cosmicray_lacosmic():
-    """Call ``cosmicray_lacosmic`` on a CCDData; return the input and result."""
+    """
+    Call ``cosmicray_lacosmic`` on a CCDData.
+
+    Returns the input, the result, and the line number of the call to
+    ``cosmicray_lacosmic`` below.
+    """
     ccd = ccd_data_func(data_size=DATA_SIZE)
-    return ccd, cosmicray_lacosmic(ccd)
+    call_line = inspect.currentframe().f_lineno + 1
+    result = cosmicray_lacosmic(ccd)
+    return ccd, result, call_line
+
+
+def _run_ccd_process():
+    """
+    Call ``ccd_process``'s overscan-model path.
+
+    Returns the input, the result, and the line number of the call to
+    ``ccd_process`` below.
+
+    Notes
+    -----
+    ``ccd_process`` calls ``subtract_overscan`` itself, through its own
+    ``@log_to_metadata`` wrapper, so this is the case that exposed the bug
+    in the old, fixed ``stacklevel=4``: the warning used to be attributed
+    to ``ccd_process``'s own call to ``subtract_overscan`` inside
+    ``ccdproc/core.py`` rather than to the line below.
+    """
+    ccd = ccd_data_func(data_size=DATA_SIZE)
+    call_line = inspect.currentframe().f_lineno + 1
+    result = ccd_process(ccd, oscan=ccd[:, :5], oscan_model=models.Polynomial1D(1))
+    return ccd, result, call_line
 
 
 CPU_ONLY_CALLS = [
@@ -77,6 +122,9 @@ CPU_ONLY_CALLS = [
     pytest.param(
         _run_cosmicray_lacosmic, "cosmicray_lacosmic", id="cosmicray_lacosmic"
     ),
+    # subtract_overscan's own function_name: ccd_process calls it, so that
+    # is the name the HostCopyWarning message carries, not "ccd_process".
+    pytest.param(_run_ccd_process, "subtract_overscan", id="ccd_process"),
 ]
 
 
@@ -126,14 +174,27 @@ def test_cpu_only_function_warns_once(call, function_name):
     """
     Each CPU-only operation emits exactly one ``HostCopyWarning``, naming
     itself, on a non-NumPy backend -- one per call, not one per array that
-    crosses to the host.
+    crosses to the host -- and attributes it to this file's own call to the
+    public function.
+
+    Notes
+    -----
+    ``filename == __file__`` alone would not catch a one-frame drift in the
+    ``stacklevel`` computation: a drift of exactly one frame still lands
+    inside this file, on ``test_cpu_only_function_warns_once`` itself
+    rather than on the ``_run_*`` helper's call site. Pinning ``lineno``
+    too is what makes this test catch that case; it is exactly the bug the
+    ``ccd_process`` case (which calls ``subtract_overscan`` through another
+    ccdproc frame) used to trigger with a fixed ``stacklevel``.
     """
     with pytest.warns(HostCopyWarning) as record:
-        call()
+        _, _, call_line = call()
 
     host_copies = [w for w in record if issubclass(w.category, HostCopyWarning)]
     assert len(host_copies) == 1
     assert function_name in str(host_copies[0].message)
+    assert host_copies[0].filename == __file__
+    assert host_copies[0].lineno == call_line
 
 
 @pytest.mark.skipif(not IS_NUMPY, reason="only the NumPy path must stay silent")
@@ -159,7 +220,7 @@ def test_cpu_only_function_returns_caller_namespace(call, _function_name):
     the data, and the mask when there is one, come back in the namespace and
     on the device of the input. This is the #930/#933 regression check.
     """
-    ccd, result = call()
+    ccd, result, _ = call()
 
     input_namespace = array_api_compat.array_namespace(ccd.data)
     input_device = array_api_compat.device(ccd.data)
