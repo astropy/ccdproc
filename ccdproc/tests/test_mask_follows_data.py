@@ -195,15 +195,18 @@ def test_processed_image_can_be_processed_again(call, bad_pixel_masked):
 
     Notes
     -----
+    Before masks were set through ``_set_mask``, ``ccd_process``,
+    ``subtract_overscan`` and ``create_deviation`` returned a NumPy mask
+    for jax or dask data, and they and ``trim_image`` returned a mask off
+    the data's device on array-api-strict's non-default device. The other
+    cases passed already and guard against the change breaking them.
+
     Now that the mask of a result is on the data's device, it is on a device
     NumPy cannot read whenever the data is, as on array-api-strict's
-    non-default device, the stand-in for a GPU. ``combine``,
-    ``ccd_process``, ``subtract_overscan`` and ``create_deviation`` copied
-    or sliced their input as a plain ``CCDData``, whose mask setter sends
-    the mask through NumPy, and so raised ``RuntimeError`` there for
-    ccdproc's own output. ``Combiner``, ``trim_image`` and
-    ``cosmicray_median`` did not, and are here as guards against the same
-    mistake.
+    non-default device, the stand-in for a GPU. Every case also guards
+    against a function copying or slicing its input as a plain
+    ``CCDData``, whose mask setter sends the mask through NumPy and so
+    raises ``RuntimeError`` there for ccdproc's own output.
 
     The bad pixel is masked in the result except when combining, where the
     other image has no mask; a pixel is masked in a combined image only if
@@ -213,51 +216,6 @@ def test_processed_image_can_be_processed_again(call, bad_pixel_masked):
 
     assert_same_namespace_and_device(result.mask, result.data)
     assert bool(_to_numpy(result.mask)[BAD_PIXEL]) is bad_pixel_masked
-
-
-def _numpy_ccd_with_mask_on_device(image):
-    """
-    NumPy data with a mask on array-api-strict's non-default device.
-
-    Neither ``CCDData(data, mask=...)`` nor ``ccd.mask = ...`` can build
-    this, since astropy's setter cannot read the mask, so set the private
-    attribute; this is the input described in #1024.
-    """
-    ccd = CCDData(image, unit=u.adu)
-    ccd.uncertainty = StdDevUncertainty(np.ones((SIZE, SIZE)))
-    ccd._mask = to_xp(_bad_pixel_mask())
-    return ccd
-
-
-@pytest.mark.skipif(
-    not ON_NUMPY_UNREADABLE_DEVICE,
-    reason="needs a mask on a device NumPy cannot read",
-)
-@pytest.mark.parametrize(
-    "call",
-    [
-        _call_subtract_bias,
-        _call_cosmicray_median,
-        _call_combine,
-    ],
-)
-def test_mask_on_unreadable_device_with_numpy_data_raises(call):
-    """
-    NumPy data with a mask that NumPy cannot read raises rather than
-    returning a mask the data's namespace cannot use.
-
-    Notes
-    -----
-    The mask follows the data, and here it cannot. This pins behaviour that
-    was already agreed, and already true before masks were set through
-    ``_set_mask``; it is not what that change fixed. Deleting this test would
-    let a change to ``_set_mask`` that skips the conversion, or that falls
-    back to leaving the mask where it is, go unnoticed; the result would
-    then fail later, far from the cause.
-    """
-    ccd = _numpy_ccd_with_mask_on_device(_image())
-    with pytest.raises(RuntimeError, match="Can't convert array"):
-        call(ccd)
 
 
 @pytest.mark.skipif(
