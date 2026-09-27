@@ -2726,6 +2726,13 @@ def cosmicray_lacosmic(
     `HostCopyWarning`. The cleaned data and cosmic-ray mask are returned in
     the array namespace and on the device of the input.
 
+    astroscrappy works in float32 and rounds every pixel to float32, so
+    only the pixels it flags as cosmic rays are taken from its output; the
+    rest keep their input values exactly, apart from the multiplication by
+    the gain when ``gain_apply`` is set. Floating data keeps its dtype,
+    with float32 precision in the replaced pixels only. Integer data gives
+    a float32 result, the dtype astroscrappy provides, whatever the gain.
+
     Returns
     -------
     nccd : `~astropy.nddata.CCDData` or array
@@ -2970,12 +2977,16 @@ def _lacosmic_on_host(
     cleanarr, crmask : array
         The cleaned data, not yet gain-corrected, and the boolean
         cosmic-ray mask, in the namespace of ``data`` and on its device.
+        ``cleanarr`` has the dtype of ``data`` if that is floating, and is
+        float32 otherwise; only the pixels in ``crmask`` differ from
+        ``data`` converted to that dtype.
 
     Notes
     -----
     This is the part of `cosmicray_lacosmic` shared by its ``CCDData`` and
     bare-array input: the `HostCopyWarning`, the copy of every input array
-    to the host, the astroscrappy call, and the copy of the results back.
+    to the host, the astroscrappy call, the merge of its cleaned pixels with
+    the input, and the copy of the results back.
     Validation that should fail before any copy stays in the caller, and
     so does everything that depends on the astroscrappy version: the old
     interface's ``pssl`` goes in ``detect_kwargs``, and its ``inbkg`` and
@@ -3005,21 +3016,35 @@ def _lacosmic_on_host(
     # to add a zero offset just to copy the data: astroscrappy only reads
     # its input and works on a copy of its own.
     host_data = _to_numpy(data)
-    if data_offset != 0:
-        host_data = host_data + data_offset
     crmask, cleanarr = detect_cosmics(
-        host_data,
+        host_data + data_offset if data_offset != 0 else host_data,
         inmask=None if mask is None else _to_numpy(mask),
         gain=gain,
         **detect_kwargs,
         **background_kwargs,
     )
 
-    # Back to the caller's namespace and device before any arithmetic, so
-    # that everything below runs natively.
-    cleanarr = _from_numpy(cleanarr, like=data, xp=xp)
+    # astroscrappy rounds every pixel to float32, and scales by the gain and
+    # back, so take only the pixels it replaced from its output and keep the
+    # rest of the input exactly. The dtype is named rather than left to type
+    # promotion, which for integer input depends on the integer type (NumPy
+    # gives float32 for uint16 but float64 for int32): floating input keeps
+    # its own dtype, and integer input gets astroscrappy's float32. This is
+    # done on the host copy of the input, which already exists: using
+    # ``data`` itself would put its graph into the result a second time for
+    # a lazy namespace such as dask, so computing the result would compute
+    # everything upstream of this call again.
+    if np.isdtype(host_data.dtype, "real floating"):
+        dtype = host_data.dtype
+    else:
+        dtype = np.float32
+    cleanarr = cleanarr.astype(dtype, copy=False)
     if data_offset != 0:
         cleanarr = cleanarr - data_offset
+    cleanarr = np.where(crmask, cleanarr, host_data.astype(dtype, copy=False))
+
+    # Back to the caller's namespace and device, once, at the end.
+    cleanarr = _from_numpy(cleanarr, like=data, xp=xp)
     crmask = _from_numpy(crmask, like=data, xp=xp)
     return cleanarr, crmask
 

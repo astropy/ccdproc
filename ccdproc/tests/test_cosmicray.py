@@ -929,6 +929,147 @@ def test_cosmicray_lacosmic_numpy_scalar_pssl(monkeypatch, array_input):
     assert_allclose(_to_numpy(cleaned), frame, rtol=1e-6)
 
 
+def _lacosmic_frame(dtype):
+    """
+    A raw-looking frame around 1000 ADU in ``dtype``, with cosmic rays.
+
+    Returns the frame as a ``CCDData`` on the test backend.
+    """
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE, data_mean=1000.0)
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold=10, ncrays=NCRAYS)
+    ccd_data.data = xp.astype(ccd_data.data, getattr(xp, dtype))
+    return ccd_data
+
+
+@pytest.mark.parametrize("array_input", [True, False])
+@pytest.mark.parametrize("dtype", ["float32", "float64"])
+def test_cosmicray_lacosmic_keeps_floating_dtype(dtype, array_input):
+    """
+    Floating data comes back from ``cosmicray_lacosmic`` in its own dtype,
+    for both a ``CCDData`` and a bare array (#1023).
+
+    Notes
+    -----
+    astroscrappy always returns float32, and its result used to be returned
+    as it was, so float64 data came back as float32.
+    """
+    ccd_data = _lacosmic_frame(dtype)
+    ccd = ccd_data.data if array_input else ccd_data
+
+    result = cosmicray_lacosmic(ccd, sigclip=5.9, gain=2.0)
+
+    cleaned = result[0] if array_input else result.data
+    assert cleaned.dtype == getattr(xp, dtype)
+
+
+@pytest.mark.parametrize("gain", [1.0, 2.0])
+@pytest.mark.parametrize("dtype", ["uint16", "int32"])
+def test_cosmicray_lacosmic_integer_input_gives_float32(dtype, gain):
+    """
+    Integer data comes back from ``cosmicray_lacosmic`` as float32, whatever
+    the integer type and whatever the gain.
+
+    Notes
+    -----
+    float32 is the only dtype astroscrappy provides. This was settled in
+    #1023: floating input keeps its dtype, but integer input is not
+    promoted to float64 just to match other ccdproc functions. The integer
+    types are the ones NumPy promotes differently with float32 (uint16
+    gives float32, int32 gives float64), so a result left to type promotion
+    would differ between them. In 2.5.1 a gain other than 1 promoted the
+    result to float64 by accident, through a NumPy float64 scalar; the
+    ``gain`` parametrization pins that it no longer does.
+    """
+    ccd_data = _lacosmic_frame(dtype)
+
+    result = cosmicray_lacosmic(ccd_data, sigclip=5.9, gain=gain)
+
+    assert result.data.dtype == xp.float32
+
+
+@pytest.mark.parametrize("pssl", [0.0, 100.0])
+@pytest.mark.parametrize("dtype", ["float32", "float64"])
+def test_cosmicray_lacosmic_keeps_unflagged_pixels_exactly(dtype, pssl):
+    """
+    Only the pixels flagged as cosmic rays differ from the input; every
+    other pixel comes back bit for bit (#1023).
+
+    Notes
+    -----
+    astroscrappy multiplies the data by the gain, rounds every pixel to
+    float32, and divides by the gain again at the end, so taking its whole
+    output changed every pixel of float64 data, by up to 6e-5 at 1000 ADU,
+    and even pixels of float32 data when the gain is not a power of two, as
+    here. ``gain_apply=False`` keeps ccdproc's own gain multiplication out
+    of the comparison.
+
+    A ``pssl`` (a sky level of 100 ADU here) is added to the data before
+    astroscrappy runs and removed from its output afterwards. The unflagged
+    pixels must come straight from the input, not from the offset data with
+    the offset taken off again, which is not exact in floating point; the
+    ``pssl`` case pins that. ``pssl`` is deprecated, so passing it warns
+    even when it is zero, which is the case without an offset.
+    """
+    ccd_data = _lacosmic_frame(dtype)
+
+    with pytest.warns(AstropyDeprecationWarning):
+        cleaned, crmask = cosmicray_lacosmic(
+            ccd_data.data, sigclip=5.9, gain=1.7, gain_apply=False, pssl=pssl
+        )
+
+    np_cleaned = _to_numpy(cleaned)
+    np_data = _to_numpy(ccd_data.data)
+    np_crmask = _to_numpy(crmask)
+    # Every planted cosmic ray is found (with some of its neighbours at
+    # this gain), and the flagged pixels really were replaced.
+    assert np_crmask.sum() >= NCRAYS
+    assert not np.array_equal(np_cleaned[np_crmask], np_data[np_crmask])
+    np.testing.assert_array_equal(np_cleaned[~np_crmask], np_data[~np_crmask])
+
+
+@pytest.mark.backend_skip(
+    "numpy",
+    "jax",
+    "array-api-strict",
+    "cupy",
+    reason="only dask builds its arrays lazily",
+)
+def test_cosmicray_lacosmic_computes_lazy_input_once():
+    """
+    A lazy (dask) input is computed once, for the host copy astroscrappy
+    needs, and computing the result does not compute it again.
+
+    Notes
+    -----
+    Keeping the unflagged pixels exactly (#1023) needs the input as well as
+    astroscrappy's output. Taking them from the caller's array rather than
+    from the host copy put the whole graph upstream of the call into the
+    result a second time, so computing the cleaned image re-ran every
+    earlier step of the pipeline, such as reading the files or subtracting
+    the bias, which ``earlier_step`` stands in for here.
+    """
+    evaluated = []
+
+    def earlier_step(block):
+        evaluated.append(block.shape)
+        return block
+
+    ccd_data = _lacosmic_frame("float64")
+    # Several chunks, as a real pipeline would have. Giving the meta stops
+    # dask from calling earlier_step on small dummy arrays to work out what
+    # it returns, which would count as evaluations.
+    data = ccd_data.data.rechunk(50).map_blocks(
+        earlier_step, meta=np.empty((0, 0), dtype=ccd_data.data.dtype)
+    )
+
+    cleaned, crmask = cosmicray_lacosmic(data, sigclip=5.9, gain=2.0)
+    assert len(evaluated) == data.npartitions
+
+    _to_numpy(cleaned)
+    _to_numpy(crmask)
+    assert len(evaluated) == data.npartitions
+
+
 def test_cosmicray_median_mask_shape_mismatch():
     # CCDData and MaskedArray validate the mask shape themselves, so exercise
     # the shared helper directly.
