@@ -1210,6 +1210,59 @@ def _calculate_size_of_image(ccd):
     return size_of_an_img
 
 
+def _combine_namespace(img_list, array_package):
+    """
+    Return the array namespace ``combine`` works in and an array on its device.
+
+    Parameters
+    ----------
+    img_list : list
+        The file names and `~astropy.nddata.CCDData` objects to combine.
+    array_package : array namespace, module or None
+        The ``array_package`` argument of `combine`.
+
+    Returns
+    -------
+    xp : array namespace
+        The array namespace of the `~astropy.nddata.CCDData` objects in
+        ``img_list``, or ``array_package`` if there are none, or NumPy if
+        neither is given.
+    reference : array or None
+        The data of the first `~astropy.nddata.CCDData` in ``img_list``,
+        whose device the files are read onto, or `None` if there is no
+        `~astropy.nddata.CCDData`, in which case they are read onto the
+        default device of ``xp``.
+
+    Raises
+    ------
+    TypeError
+        If the `~astropy.nddata.CCDData` objects come from different array
+        libraries, or from a different one than ``array_package``.
+    ValueError
+        If the `~astropy.nddata.CCDData` objects are on different devices.
+    """
+    in_memory = {
+        f"img_list[{i}]": image.data
+        for i, image in enumerate(img_list)
+        if isinstance(image, CCDData)
+    }
+    if not in_memory:
+        # Only file names, which CCDData reads as NumPy.
+        module = np if array_package is None else array_package
+        return _namespace_from_module(module), None
+
+    xp = _namespace_of(**in_memory)
+    if array_package is not None:
+        requested_xp = _namespace_from_module(array_package)
+        if xp is not requested_xp:
+            raise TypeError(
+                f"{next(iter(in_memory))} comes from {_library_name(xp)} but "
+                f"array_package is {_library_name(requested_xp)}; images "
+                "passed as CCDData must come from array_package."
+            )
+    return xp, next(iter(in_memory.values()))
+
+
 def combine(
     img_list,
     output_file=None,
@@ -1406,30 +1459,8 @@ def combine(
         raise ValueError(f"unrecognised combine method : {method}.")
 
     # Settle the array namespace and device before reading any file; see
-    # Notes in the docstring. Files are read onto the device of
-    # ``reference``, or onto the default device if it is None.
-    in_memory = {
-        f"img_list[{i}]": image.data
-        for i, image in enumerate(img_list)
-        if isinstance(image, CCDData)
-    }
-    if in_memory:
-        xp = _namespace_of(**in_memory)
-        reference = next(iter(in_memory.values()))
-    else:
-        xp = reference = None
-    if array_package is not None:
-        requested_xp = _namespace_from_module(array_package)
-        if xp is not None and xp is not requested_xp:
-            raise TypeError(
-                f"{next(iter(in_memory))} comes from {_library_name(xp)} but "
-                f"array_package is {_library_name(requested_xp)}; images "
-                "passed as CCDData must come from array_package."
-            )
-        xp = requested_xp
-    elif xp is None:
-        # Only file names, which CCDData reads as NumPy.
-        xp = _namespace_from_module(np)
+    # Notes in the docstring.
+    xp, reference = _combine_namespace(img_list, array_package)
 
     if dtype is None:
         dtype = xp.float64
