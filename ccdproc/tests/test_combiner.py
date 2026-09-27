@@ -337,41 +337,6 @@ def test_combine_scale_callable_returning_backend_scalar():
     assert_allclose(np.asarray(result.data), 1.0)
 
 
-def test_combiner_explicit_namespace_differs_from_data():
-    # Regression test for the review of #976: when the caller passes an ``xp``
-    # that is not the namespace of the input data, the device of the inputs
-    # must not be forced onto ``xp`` (numpy's 'cpu' means nothing to jax or
-    # array-api-strict). The data is converted into ``xp`` on its default
-    # device instead.
-    #
-    # Only array-api-strict actually rejects a foreign device: on numpy the
-    # data namespace *is* ``xp`` so the device is legitimately reused, and
-    # dask accepts ``device='cpu'`` regardless, so this test can fail only in
-    # the array-api-strict job.
-    np_ccds = [CCDData(np.ones((3, 3)) * i, unit=u.adu) for i in range(1, 3)]
-    np_ccds[0].mask = np.zeros((3, 3), dtype=bool)
-    c = Combiner(np_ccds, xp=xp)
-    assert array_api_compat.array_namespace(c.data) is array_api_compat.array_namespace(
-        xp.zeros(1)
-    )
-    assert c.data.shape == (2, 3, 3)
-    assert c.data.dtype == xp.float64
-    assert c.mask.dtype == xp.bool
-    assert float(xp.sum(c.data)) == 27.0
-
-
-def test_combiner_accepts_raw_module_as_namespace():
-    # A plain module (numpy here) passed as ``xp`` is normalised to its
-    # array-api-compat namespace, so array-API-only features such as
-    # ``xp.bool`` and ``device=`` are available to the Combiner.
-    np_ccds = [CCDData(np.ones((2, 2)) * i, unit=u.adu) for i in range(1, 3)]
-    c = Combiner(np_ccds, xp=np)
-    assert c._xp is array_api_compat.array_namespace(np.zeros(1))
-    assert c.data.shape == (2, 2, 2)
-    c.scaling = [1, 2]
-    assert float(np.sum(c.average_combine().data)) == 10.0
-
-
 def test_weights():
     ccd_data = ccd_data_func()
     ccd_list = [ccd_data, ccd_data, ccd_data]
@@ -808,8 +773,11 @@ def test_combine_bad_input():
 def test_combine_average_fitsimages():
     fitsfile = get_pkg_data_filename("data/a8280271.fits", package="ccdproc.tests")
     ccd = CCDData.read(fitsfile, unit=u.adu)
+    # ``combine(array_package=xp)`` below reads the files into ``xp`` this
+    # way, so do the same for the ``Combiner`` it is compared against.
+    ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 3
-    c = Combiner(ccd_list, xp=xp)
+    c = Combiner(ccd_list)
     ccd_by_combiner = c.average_combine()
 
     fitsfilename_list = [fitsfile] * 3
@@ -832,8 +800,11 @@ def test_combine_numpyndarray():
     """
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
+    # ``combine(array_package=xp)`` below reads the files into ``xp`` this
+    # way, so do the same for the ``Combiner`` it is compared against.
+    ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 3
-    c = Combiner(ccd_list, xp=xp)
+    c = Combiner(ccd_list)
     ccd_by_combiner = c.average_combine()
 
     fitsfilename_list = [fitsfile] * 3
@@ -974,8 +945,11 @@ def test_calculate_size_of_image(dtype, element_size):
 def test_combine_limitedmem_fitsimages():
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
+    # ``combine(array_package=xp)`` below reads the files into ``xp`` this
+    # way, so do the same for the ``Combiner`` it is compared against.
+    ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 5
-    c = Combiner(ccd_list, xp=xp)
+    c = Combiner(ccd_list)
     ccd_by_combiner = c.average_combine()
 
     fitsfilename_list = [fitsfile] * 5
@@ -996,10 +970,13 @@ def test_combine_limitedmem_fitsimages():
 def test_combine_limitedmem_scale_fitsimages():
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
-    ccd_list = [ccd] * 5
-    c = Combiner(ccd_list, xp=xp)
     # scale each array to the mean of the first image
     scale_by_mean = _make_mean_scaler(ccd)
+    # ``combine(array_package=xp)`` below reads the files into ``xp`` this
+    # way, so do the same for the ``Combiner`` it is compared against.
+    ccd.data = xp.asarray(_native_numpy(ccd.data))
+    ccd_list = [ccd] * 5
+    c = Combiner(ccd_list)
     c.scaling = scale_by_mean
     ccd_by_combiner = c.average_combine()
 

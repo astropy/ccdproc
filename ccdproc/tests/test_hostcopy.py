@@ -319,59 +319,6 @@ def test_cosmicray_lacosmic_warns_once_for_non_numpy_inbkg():
     )
 
 
-def _wcs_project_with_numpy_xp(ccd):
-    """Call ``wcs_project`` on ``ccd`` with an explicit ``xp=np``."""
-    target_wcs = wcs_for_testing(ccd.shape)
-    target_wcs.wcs.crpix += [1, 1]
-    return wcs_project(ccd, target_wcs, xp=np)
-
-
-def _subtract_overscan_with_numpy_xp(ccd):
-    """Call ``subtract_overscan``'s model path with an explicit ``xp=np``."""
-    return subtract_overscan(
-        ccd,
-        overscan=ccd[:, :5],
-        overscan_axis=1,
-        model=models.Polynomial1D(1),
-        xp=np,
-    )
-
-
-@pytest.mark.skipif(
-    not array_api_compat.is_dask_namespace(xp),
-    reason="only dask data is handled by numpy functions without an error",
-)
-@pytest.mark.parametrize(
-    "call",
-    [
-        pytest.param(_wcs_project_with_numpy_xp, id="wcs_project"),
-        pytest.param(_subtract_overscan_with_numpy_xp, id="subtract_overscan"),
-    ],
-)
-def test_numpy_xp_with_dask_data_warns_once(call):
-    """
-    Dask data with an explicit ``xp=np`` still emits exactly one
-    ``HostCopyWarning``.
-
-    Notes
-    -----
-    The dask array is computed and copied to the host whatever ``xp`` says,
-    so the warning is decided from the data rather than from ``xp``, which
-    used to silence it. Whether an ``xp`` that disagrees with the data
-    should be accepted at all is a separate question, for every public
-    function; only dask is tested because the other backends fail in
-    their own ways when handed to NumPy functions.
-    """
-    ccd = ccd_data_func(data_size=DATA_SIZE)
-    ccd.wcs = wcs_for_testing(ccd.shape)
-
-    with pytest.warns(HostCopyWarning) as record:
-        call(ccd)
-
-    host_copies = [w for w in record if issubclass(w.category, HostCopyWarning)]
-    assert len(host_copies) == 1
-
-
 def test_cosmicray_lacosmic_unit_mismatch_does_not_convert_inbkg(monkeypatch):
     """
     A unit-mismatch ``ValueError`` is raised before ``inbkg`` is converted.

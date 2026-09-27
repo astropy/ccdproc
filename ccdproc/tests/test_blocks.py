@@ -9,7 +9,6 @@ The reference values always come from ``astropy.nddata`` applied to the
 implementation the numpy code path still uses.
 """
 
-import importlib
 from functools import partial
 
 import array_api_extra as xpx
@@ -24,11 +23,6 @@ from ccdproc import _blocks, core
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.tests.pytest_fixtures import assert_same_namespace_and_device, to_xp
-
-# The array library itself rather than the array-api-compat wrapper the rest
-# of the suite uses. For numpy and dask the two differ; for jax and
-# array-api-strict, which are their own compat namespace, they coincide.
-_RAW_MODULE = importlib.import_module(xp.__name__.removeprefix("array_api_compat."))
 
 _rng = np.random.default_rng(3141)
 
@@ -556,32 +550,6 @@ def test_ccddata_input_preserves_device():
     with pytest.warns(AstropyUserWarning, match="following attributes were set"):
         result = _blocks.block_reduce(ccd, 2)
     assert_same_namespace_and_device(result, ccd.data)
-
-
-@pytest.mark.parametrize(
-    ("function", "reference_function"), _CORE_WRAPPERS_AND_REFERENCES
-)
-@pytest.mark.parametrize(
-    "namespace",
-    [pytest.param(xp, id="compat"), pytest.param(_RAW_MODULE, id="raw-module")],
-)
-def test_core_wrappers_honour_an_explicit_xp(namespace, function, reference_function):
-    """
-    An explicit ``xp`` is used as given instead of being inferred from the
-    data, and the result is unchanged by passing it, whether the caller
-    names the array-api-compat namespace or the plain array library module.
-
-    The ``xp`` keyword is part of the wrappers' public signature so a caller
-    can name the namespace up front. Regression test for the raw-module
-    half: a plain module such as ``dask.array`` used to be forwarded
-    verbatim to ``_blocks``, which needs the array-API spellings
-    ``isdtype``, ``permute_dims`` and ``__array_namespace_info__`` that such
-    a module may not have, so all three wrappers raised `AttributeError`.
-    """
-    data = to_xp(_2D)
-    result = function(data, 2, xp=namespace)
-    _assert_matches(result, reference_function(_2D, 2))
-    assert_same_namespace_and_device(result, data)
 
 
 @pytest.mark.parametrize(

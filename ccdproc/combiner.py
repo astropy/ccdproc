@@ -368,13 +368,6 @@ class Combiner:
         (e.g. ``int``, ``"float32"``) are mapped to the namespace's dtype
         of the same name. Default is ``None``, i.e. ``float64``.
 
-    xp : array namespace, optional
-        The array namespace to use for the data. If `None` or not provided, it will
-        be inferred from the first `~astropy.nddata.CCDData` object in
-        ``ccd_iter``. A plain module (e.g. ``numpy``) is accepted and is
-        converted to its array-API-compatible namespace.
-        Default is `None`.
-
     Raises
     ------
     TypeError
@@ -402,7 +395,7 @@ class Combiner:
                  [ 0.66666667,  0.66666667,  0.66666667,  0.66666667]]...)
     """
 
-    def __init__(self, ccd_iter, dtype=None, xp=None):
+    def __init__(self, ccd_iter, dtype=None):
         if ccd_iter is None:
             raise TypeError(
                 "ccd_iter should be a list or a generator of CCDData objects."
@@ -432,12 +425,8 @@ class Combiner:
                 if not (default_unit == ccd.unit):
                     raise TypeError("CCDData objects don't have the same unit.")
 
-        # Set array namespace, normalising whatever the caller passed (see
-        # ``_namespace_from_module``).
-        if xp is None:
-            xp = array_api_compat.array_namespace(ccd_list[0].data)
-        else:
-            xp = _namespace_from_module(xp)
+        # Set array namespace
+        xp = array_api_compat.array_namespace(ccd_list[0].data)
         self._xp = xp
         if dtype is None:
             dtype = xp.float64
@@ -1347,8 +1336,7 @@ def combine(
         ``ccd_list`` is already a list of `~astropy.nddata.CCDData` objects.
         Either an array namespace or a plain module that follows the array
         API standard (e.g. ``numpy`` or ``dask.array``); it is normalised to
-        its array-api-compat namespace the same way `~ccdproc.Combiner`
-        handles ``xp``. Default is NumPy.
+        its array-api-compat namespace. Default is NumPy.
 
     ccdkwargs : Other keyword arguments for `astropy.nddata.fits_ccddata_reader`.
 
