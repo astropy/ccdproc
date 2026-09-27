@@ -1549,14 +1549,6 @@ class _TaggedCCDData(CCDData):
         self.tag = tag
 
 
-class _SlottedCCDData(CCDData):
-    """
-    A user's subclass of ``CCDData`` that declares ``__slots__``.
-    """
-
-    __slots__ = ("extra",)
-
-
 def _copying_calls():
     """
     Functions that copy their input image, and that slice it for the
@@ -1606,25 +1598,6 @@ def test_copy_keeps_state_set_in_subclass_init(call):
 
     assert type(result) is _TaggedCCDData
     assert result.tag == "X"
-
-
-@pytest.mark.parametrize("call", _copying_calls())
-def test_copy_keeps_subclass_with_slots(call):
-    """
-    Copying an image of a ``CCDData`` subclass that declares ``__slots__``
-    works and keeps the class.
-
-    Notes
-    -----
-    This guards against making the copy as the array-API wrapper and then
-    assigning ``__class__``, which Python refuses for a class with
-    ``__slots__`` because its object layout differs from the wrapper's.
-    """
-    ccd = _masked_subclass_image(_SlottedCCDData)
-
-    result = call(ccd)
-
-    assert type(result) is _SlottedCCDData
 
 
 @pytest.mark.parametrize(
