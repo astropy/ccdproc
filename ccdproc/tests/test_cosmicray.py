@@ -1,5 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import inspect
 import warnings
 
 import array_api_compat
@@ -83,11 +84,6 @@ def add_cosmicrays(data, scale, threshold, ncrays=NCRAYS):
     return crrays
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
-    "and fails on a non-default device",
-)
 def test_cosmicray_lacosmic():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 10
@@ -97,14 +93,9 @@ def test_cosmicray_lacosmic():
     # check the number of cosmic rays detected
     # Note that to get this to succeed reliably meant tuning
     # both sigclip and the threshold
-    assert crarr.sum() == NCRAYS
+    assert count_true(crarr) == NCRAYS
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
-    "and fails on a non-default device",
-)
 def test_cosmicray_lacosmic_ccddata():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -117,7 +108,7 @@ def test_cosmicray_lacosmic_ccddata():
     # check the number of cosmic rays detected
     # Note that to get this to succeed reliably meant tuning
     # both sigclip and the threshold
-    assert nccd_data.mask.sum() == NCRAYS
+    assert count_true(nccd_data.mask) == NCRAYS
 
 
 def test_cosmicray_lacosmic_check_data():
@@ -127,11 +118,6 @@ def test_cosmicray_lacosmic_check_data():
         cosmicray_lacosmic(10, noise)
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
-    "and fails on a non-default device",
-)
 @pytest.mark.parametrize("array_input", [True, False])
 @pytest.mark.parametrize("gain_correct_data", [True, False])
 def test_cosmicray_gain_correct(array_input, gain_correct_data):
@@ -170,14 +156,9 @@ def test_cosmicray_gain_correct(array_input, gain_correct_data):
     else:
         gain_for_test = 1.0
 
-    assert_allclose(gain_for_test * orig_data, new_data)
+    assert_allclose(_to_numpy(gain_for_test * orig_data), _to_numpy(new_data))
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic's gain and mask paths do not support "
-    "array-api-strict's strict scalar and dtype rules",
-)
 @pytest.mark.parametrize(
     ("uncertainty_type", "gain_power", "gain_apply", "expected_uncertainty_unit"),
     [
@@ -241,10 +222,18 @@ def test_cosmicray_gain_correct_uncertainty(
     assert type(result.uncertainty) is uncertainty_type
     assert result.unit == expected_unit
     assert result.uncertainty.unit == expected_uncertainty_unit
-    assert_allclose(result.data, (gain if gain_apply else 1.0) * original_data)
-    assert_allclose(result.uncertainty.array, gain_factor * original_uncertainty)
-    assert_allclose(ccd_data.data, original_data)
-    assert_allclose(ccd_data.uncertainty.array, original_uncertainty)
+    assert_allclose(
+        _to_numpy(result.data),
+        _to_numpy((gain if gain_apply else 1.0) * original_data),
+    )
+    assert_allclose(
+        _to_numpy(result.uncertainty.array),
+        _to_numpy(gain_factor * original_uncertainty),
+    )
+    assert_allclose(_to_numpy(ccd_data.data), _to_numpy(original_data))
+    assert_allclose(
+        _to_numpy(ccd_data.uncertainty.array), _to_numpy(original_uncertainty)
+    )
     assert ccd_data.unit == u.adu
     assert ccd_data.uncertainty.unit == original_uncertainty_unit
 
@@ -253,7 +242,10 @@ def _run_cosmicray_gain_correct_uncertainty(
     monkeypatch, uncertainty_type, gain_power, gain_apply
 ):
     def no_cosmics(data, **_kwargs):
-        return xp.zeros_like(data, dtype=xp.bool), data
+        # astroscrappy is handed, and returns, numpy arrays; the stand-in
+        # must do the same or it would not exercise the conversion back to
+        # the caller's namespace.
+        return np.zeros_like(data, dtype=bool), data
 
     monkeypatch.setattr("astroscrappy.detect_cosmics", no_cosmics)
 
@@ -276,36 +268,12 @@ def _run_cosmicray_gain_correct_uncertainty(
     )
 
 
-# Only the gain_apply=True cases still fail on array-api-strict; the
-# gain_apply=False cases pass on every backend.
-_GAIN_APPLY_STRICT_XFAIL = pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic's gain and mask paths do not support "
-    "array-api-strict's strict scalar and dtype rules",
-)
-
-
 @pytest.mark.parametrize(
     ("uncertainty_type", "gain_power", "gain_apply"),
     [
-        pytest.param(
-            StdDevUncertainty,
-            1,
-            True,
-            marks=_GAIN_APPLY_STRICT_XFAIL,
-        ),
-        pytest.param(
-            VarianceUncertainty,
-            2,
-            True,
-            marks=_GAIN_APPLY_STRICT_XFAIL,
-        ),
-        pytest.param(
-            InverseVariance,
-            -2,
-            True,
-            marks=_GAIN_APPLY_STRICT_XFAIL,
-        ),
+        (StdDevUncertainty, 1, True),
+        (VarianceUncertainty, 2, True),
+        (InverseVariance, -2, True),
         (StdDevUncertainty, 1, False),
         (VarianceUncertainty, 2, False),
         (InverseVariance, -2, False),
@@ -321,11 +289,6 @@ def test_cosmicray_gain_correct_uncertainty_namespace(
     assert array_api_compat.array_namespace(result.uncertainty.array) is xp
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
-    "and fails on a non-default device",
-)
 def test_cosmicray_lacosmic_accepts_quantity_gain():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -339,11 +302,6 @@ def test_cosmicray_lacosmic_accepts_quantity_gain():
     _ = cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True)
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
-    "and fails on a non-default device",
-)
 def test_cosmicray_lacosmic_accepts_quantity_readnoise():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     threshold = 5
@@ -377,11 +335,6 @@ def test_cosmicray_lacosmic_detects_inconsistent_units():
     assert "Inconsistent units" in str(e.value)
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
-    "and fails on a non-default device",
-)
 def test_cosmicray_lacosmic_warns_on_ccd_in_electrons():
     # Check that an input ccd in electrons raises a warning.
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
@@ -402,14 +355,36 @@ def test_cosmicray_lacosmic_warns_on_ccd_in_electrons():
         cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True, readnoise=readnoise)
 
 
+def test_cosmicray_lacosmic_electron_warning_points_at_caller():
+    """
+    The warning about an image in electrons with a gain other than 1 is
+    attributed to the line that called ``cosmicray_lacosmic``.
+
+    Notes
+    -----
+    ``cosmicray_lacosmic`` is wrapped by astropy's
+    ``deprecated_renamed_argument``, so the fixed ``stacklevel=2`` this
+    warning used to have pointed at astropy's decorator module instead of
+    at the user's code. Pinning ``lineno`` as well as ``filename`` catches
+    a drift of one frame that still lands in this file.
+    """
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    ccd_data.unit = u.electron
+    with pytest.warns(UserWarning) as record:
+        call_line = inspect.currentframe().f_lineno + 1
+        cosmicray_lacosmic(ccd_data, gain=2.0, gain_apply=True)
+
+    electron_warnings = [
+        w for w in record if "Image unit is electron" in str(w.message)
+    ]
+    assert len(electron_warnings) == 1
+    assert electron_warnings[0].filename == __file__
+    assert electron_warnings[0].lineno == call_line
+
+
 # The values for inbkg and invar are DELIBERATELY BAD. They are supposed to be
 # arrays, so if detect_cosmics is called with these bad values a ValueError
 # will be raised, which we can check for.
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
-    "and fails on a non-default device",
-)
 @pytest.mark.parametrize(
     "new_args", [dict(inbkg=5), dict(invar=5), dict(inbkg=5, invar=5)]
 )
@@ -698,11 +673,6 @@ def test_background_deviation_filter_fail():
 
 # This test can be removed in ccdproc 3.0 when support for old
 # astroscrappy is removed.
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
-    "and fails on a non-default device",
-)
 def test_cosmicray_lacosmic_pssl_deprecation_warning():
     ccd_data = ccd_data_func(data_scale=DATA_SCALE)
     with pytest.warns(AstropyDeprecationWarning):
@@ -720,11 +690,6 @@ def test_cosmicray_lacosmic_pssl_and_inbkg_fails():
     assert "pssl and inbkg" in str(err)
 
 
-@pytest.mark.backend_xfail(
-    "array-api-strict",
-    reason="cosmicray_lacosmic uses astroscrappy, which requires numpy "
-    "and fails on a non-default device",
-)
 def test_cosmicray_lacosmic_pssl_does_not_fail():
     # This test is a copy/paste of test_cosmicray_lacosmic_ccddata
     # except with pssl=0.0001 as an argument. Subtracting nearly zero from
@@ -743,7 +708,142 @@ def test_cosmicray_lacosmic_pssl_does_not_fail():
     # check the number of cosmic rays detected
     # Note that to get this to succeed reliably meant tuning
     # both sigclip and the threshold
-    assert nccd_data.mask.sum() == NCRAYS
+    assert count_true(nccd_data.mask) == NCRAYS
+
+
+@pytest.mark.parametrize("array_input", [True, False])
+def test_cosmicray_lacosmic_float_pssl_on_integer_data(monkeypatch, array_input):
+    """
+    A fractional ``pssl`` on integer data works on every array library, for
+    both a ``CCDData`` and a bare array, and is added before astroscrappy
+    runs and taken back out after.
+
+    Notes
+    -----
+    Raw frames are integer, so this is the ordinary way to use ``pssl``.
+    The offset used to be added in the caller's namespace, which
+    array-api-strict refuses for an integer array and a Python float. The
+    stand-in for astroscrappy records what it was handed, so that the test
+    can check the offset really reached it.
+    """
+    handed_to_astroscrappy = []
+
+    def no_cosmics(data, **_kwargs):
+        handed_to_astroscrappy.append(data)
+        return np.zeros_like(data, dtype=bool), data
+
+    monkeypatch.setattr("astroscrappy.detect_cosmics", no_cosmics)
+
+    frame = default_rng(seed=1).integers(90, 110, size=(20, 20), dtype=np.int64)
+    data = xp.asarray(frame, device=xp_device)
+    ccd = data if array_input else CCDData(data, unit=u.adu)
+
+    with pytest.warns(AstropyDeprecationWarning):
+        result = cosmicray_lacosmic(ccd, pssl=0.5)
+
+    cleaned = result[0] if array_input else result.data
+    assert_allclose(handed_to_astroscrappy[0], frame + 0.5)
+    assert_allclose(_to_numpy(cleaned), frame)
+
+
+@pytest.mark.parametrize("array_input", [True, False])
+def test_cosmicray_lacosmic_integer_pssl_on_uint16_data(monkeypatch, array_input):
+    """
+    An integer ``pssl`` added to unsigned 16-bit data near the top of its
+    range gives the right sum instead of wrapping around.
+
+    Notes
+    -----
+    Raw frames are often ``uint16``, and a sky level is naturally given as
+    an integer number of ADU. Under NumPy's promotion rules a ``uint16``
+    array plus a Python int stays ``uint16``, so a pixel at 65530 plus a
+    ``pssl`` of 100 used to reach astroscrappy as 94. The offset is now
+    converted to a Python float first, which promotes the data to floating
+    point.
+    """
+    handed_to_astroscrappy = []
+
+    def no_cosmics(data, **_kwargs):
+        handed_to_astroscrappy.append(data)
+        return np.zeros_like(data, dtype=bool), data
+
+    monkeypatch.setattr("astroscrappy.detect_cosmics", no_cosmics)
+
+    frame = default_rng(seed=1).integers(
+        65400, 65535, size=(20, 20), dtype=np.uint16, endpoint=True
+    )
+    data = xp.asarray(frame, device=xp_device)
+    ccd = data if array_input else CCDData(data, unit=u.adu)
+
+    with pytest.warns(AstropyDeprecationWarning):
+        result = cosmicray_lacosmic(ccd, pssl=100)
+
+    cleaned = result[0] if array_input else result.data
+    assert_allclose(handed_to_astroscrappy[0], frame.astype(np.float64) + 100)
+    assert_allclose(_to_numpy(cleaned), frame)
+
+
+@pytest.mark.parametrize("array_input", [True, False])
+def test_cosmicray_lacosmic_integer_pssl_on_uint16_data_real_astroscrappy(
+    array_input,
+):
+    """
+    An integer ``pssl`` on ``uint16`` data near the top of its range flags
+    nothing in a smooth frame with no cosmic rays, and leaves the data
+    unchanged.
+
+    Notes
+    -----
+    This is the end-to-end companion of
+    ``test_cosmicray_lacosmic_integer_pssl_on_uint16_data``, which checks
+    exactly what reaches ``detect_cosmics`` through a stand-in. Here the
+    real astroscrappy runs, to show what the wrap-around did to a user:
+    pixels that wrapped from near 65535 to near 0 looked like sharp
+    features, so a frame with no cosmic rays came back with pixels flagged
+    and "cleaned" to values tens of thousands of ADU away from the input.
+    """
+    y, x = np.mgrid[0:50, 0:50]
+    frame = np.round(65400 + 135 * (x + y) / 98).astype(np.uint16)
+    data = xp.asarray(frame, device=xp_device)
+    ccd = data if array_input else CCDData(data, unit=u.adu)
+
+    with pytest.warns(AstropyDeprecationWarning):
+        result = cosmicray_lacosmic(ccd, pssl=100)
+
+    cleaned, crmask = result if array_input else (result.data, result.mask)
+    assert count_true(crmask) == 0
+    assert_allclose(_to_numpy(cleaned), frame)
+
+
+@pytest.mark.parametrize("array_input", [True, False])
+def test_cosmicray_lacosmic_numpy_scalar_pssl(monkeypatch, array_input):
+    """
+    A NumPy scalar ``pssl`` works on every array library, for both a
+    ``CCDData`` and a bare array.
+
+    Notes
+    -----
+    A sky level computed from a ``float32`` frame, for instance with
+    ``np.median``, is a ``np.float32`` scalar. array-api-strict refuses a
+    NumPy scalar as an operand, so taking the offset back out of the
+    cleaned data used to raise a ``TypeError``, after astroscrappy had
+    already run.
+    """
+
+    def no_cosmics(data, **_kwargs):
+        return np.zeros_like(data, dtype=bool), data
+
+    monkeypatch.setattr("astroscrappy.detect_cosmics", no_cosmics)
+
+    frame = default_rng(seed=1).normal(100, 5, size=(20, 20)).astype(np.float32)
+    data = xp.asarray(frame, device=xp_device)
+    ccd = data if array_input else CCDData(data, unit=u.adu)
+
+    with pytest.warns(AstropyDeprecationWarning):
+        result = cosmicray_lacosmic(ccd, pssl=np.float32(12.5))
+
+    cleaned = result[0] if array_input else result.data
+    assert_allclose(_to_numpy(cleaned), frame, rtol=1e-6)
 
 
 def test_cosmicray_median_mask_shape_mismatch():

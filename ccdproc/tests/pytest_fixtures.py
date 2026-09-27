@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 from astropy import units as u
 from astropy.nddata import CCDData
+from astropy.wcs import WCS
 
 from ..core import _to_numpy
 from ..utils.sample_directory import directory_for_testing
@@ -68,6 +69,40 @@ def ccd_data(
     ccd = CCDData(xp.asarray(data, device=xp_device), unit=u.adu)
     ccd.header = fake_meta
     return ccd
+
+
+def wcs_for_testing(shape):
+    """
+    A simple celestial WCS centred on the middle of an image of ``shape``.
+
+    Parameters
+    ----------
+    shape : tuple of int
+        Shape of the image the WCS describes.
+
+    Returns
+    -------
+    `~astropy.wcs.WCS`
+        An "Airy's zenithal" projection with ``crpix`` at the center of
+        ``shape`` (rounded down) and NumPy ``cdelt``.
+
+    Notes
+    -----
+    ``test_ccdproc.py`` and ``test_hostcopy.py`` each used to define their
+    own, otherwise-identical copy of this WCS; the only difference was
+    ``cdelt``, which one copy built with ``xp.asarray`` and the other with
+    ``np.array``. WCS keywords are metadata that ``astropy.wcs`` always
+    stores as NumPy regardless of the array namespace of the image data
+    itself, so there is no namespace/device variant to make here, and both
+    modules share this one.
+    """
+    w = WCS(naxis=2)
+    w.wcs.crpix = [shape[0] // 2, shape[1] // 2]
+    w.wcs.cdelt = np.array([-0.066667, 0.066667])
+    w.wcs.crval = [0, -90]
+    w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
+    w.wcs.set_pv([(2, 1, 45.0)])
+    return w
 
 
 def numpy_ccddata(ccd):

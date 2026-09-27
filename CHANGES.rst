@@ -65,6 +65,27 @@ New Features
   ``background_deviation_box``, and ``background_deviation_box`` now
   accepts a plain array-like such as a nested list, as its docstring has
   always promised. [#1010]
+- The three operations that depend on a NumPy-only library --
+  ``wcs_project`` (reproject), ``subtract_overscan`` with a ``model``
+  (``astropy.modeling``) and ``cosmicray_lacosmic`` (astroscrappy) -- now
+  make that host round trip explicitly: they copy their input to NumPy on
+  the host, run, and copy every array they return, data and mask alike,
+  back to the array namespace and device of the input, so a non-NumPy
+  caller never receives a NumPy array in its place. Each warns once per
+  call site with the new ``ccdproc.HostCopyWarning`` (a subclass of
+  ``AstropyUserWarning``) when an array that is not already NumPy has to
+  be copied to the host, including a non-NumPy ``inbkg`` or ``invar``
+  passed to ``cosmicray_lacosmic`` with a NumPy image; when every array is
+  NumPy, nothing is copied or warned about.
+  ``combine(output_file=...)`` does not warn either: it copies the
+  combined image to NumPy only to write the FITS file, and the image it
+  returns stays in the input's array namespace. On NumPy, ``float32`` data
+  cleaned by ``cosmicray_lacosmic`` with a NumPy ``float64`` ``pssl`` (such
+  as ``np.median`` of ``float64`` data) now stays ``float32``, as it already
+  did for every other type of ``pssl``. Likewise, ``cosmicray_lacosmic`` with
+  ``gain_apply=True`` now returns astroscrappy's ``float32`` data for any
+  gain, as it already did for a gain of 1; previously any other gain
+  promoted the data to ``float64``. [#930, #933, #935, #1011]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -89,6 +110,9 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- ``wcs_project`` no longer returns a NumPy-backed ``CCDData`` for non-NumPy
+  input: the reprojected data and mask are converted back to the array
+  namespace and device of the input image. [#930, #1011]
 - ``flat_correct`` now checks the flat's mask with ``xp.any`` instead of the
   ``mask.any()`` method, which arrays of spec-only array-API namespaces do
   not have. [#1005]
