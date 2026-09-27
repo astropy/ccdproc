@@ -308,15 +308,22 @@ There are two ways to use the array API in `ccdproc`_:
    ``cosmicray_median`` (with an array ``error_image``), `ccdproc.Combiner`
    or `ccdproc.combine` must all come from the same array library and be on
    the same device; these functions raise ``TypeError`` or ``ValueError``
-   otherwise. Masks and uncertainties are not checked. Astropy's
-   `~astropy.nddata.CCDData` converts any mask it is given to `numpy`_
-   whatever the library of its data, so checking masks would reject
-   ordinary input. Instead, a mask is moved to the array library and device
-   of the data, and one that cannot be moved there, such as a CuPy mask
-   with `numpy`_ data, raises an error. Uncertainties keep their library
-   but are not checked either. If, for example, a master bias was read as
-   `numpy`_ arrays, read it again with the same ``array_package`` as the
-   other images.
+   otherwise. If, for example, a master bias was read as `numpy`_ arrays,
+   read it again with the same ``array_package`` as the other images. Masks
+   and uncertainties are not checked. Astropy's `~astropy.nddata.CCDData`
+   converts any mask it is given to `numpy`_ whatever the library of its
+   data, so checking masks would reject ordinary input. Instead, a mask is
+   moved to the array library and device of the data, and one that cannot
+   be moved there, such as a CuPy mask with `numpy`_ data, raises an error.
+   Uncertainties keep their library but are not checked either.
+
+   As a result, when the data are on a device that `numpy`_ cannot read,
+   such as a GPU with `cupy`_, so is the mask of an image that `ccdproc`_
+   returns, and astropy's own ``ccd[...]`` and ``ccd.copy()`` fail for that
+   image because they convert the mask to `numpy`_. Slice such an image
+   with `ccdproc.trim_image` and its ``fits_section`` argument, pass
+   ``fits_section`` rather than ``overscan=ccd[...]`` to
+   `ccdproc.subtract_overscan`, and copy it with `copy.deepcopy`.
 
 2. Use `ccdproc`_ functions to read/write data in addition to
    using `ccdproc`_ functions to process the data. For example, if you want to
