@@ -277,3 +277,19 @@ def test_subtract_bias_bare_array_master_reports_missing_unit():
     ccd = CCDData(to_xp(_IMAGE), unit=u.adu)
     with pytest.raises(ValueError, match="a unit for CCDData must be specified"):
         subtract_bias(ccd, to_xp(_IMAGE))
+
+
+def test_ccd_process_rejects_a_bare_array():
+    """
+    ``ccd_process`` raises ``TypeError`` saying ``ccd`` is not a CCDData
+    when given a bare array.
+
+    Notes
+    -----
+    Without the check the mixed-input check reports that none of ``ccd``,
+    ``oscan`` and the masters is an array, which misleads when ``ccd`` is
+    one. Before #1025 a bare array failed too, with an unrelated
+    ``TypeError`` from deeper in the reduction.
+    """
+    with pytest.raises(TypeError, match="ccd is not a CCDData object"):
+        ccd_process(to_xp(_IMAGE))

@@ -871,9 +871,9 @@ def ccd_process(
     Raises
     ------
     TypeError
-        If the data of the images given as ``ccd``, ``oscan``,
-        ``master_bias``, ``dark_frame`` and ``master_flat`` come from
-        different array libraries.
+        If ``ccd`` is not a `~astropy.nddata.CCDData`, or if the data of the
+        images given as ``ccd``, ``oscan``, ``master_bias``, ``dark_frame``
+        and ``master_flat`` come from different array libraries.
 
     ValueError
         If the data of those images are on different devices.
@@ -896,6 +896,9 @@ def ccd_process(
         ...                    trim='[10:100, 1:100]', error=False,
         ...                    gain=2.0*u.electron/u.adu)
     """
+    if not isinstance(ccd, CCDData):
+        raise TypeError("ccd is not a CCDData object.")
+
     # make a copy of the object
     nccd = ccd.copy()
 
