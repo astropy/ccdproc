@@ -215,9 +215,11 @@ def _from_numpy(arr, like=None, *, xp=None):
     array or None
         ``arr`` as an array of ``xp`` on the device of ``like`` (on the
         default device of ``xp`` if ``like`` is `None`), or `None` if
-        ``arr`` is `None`. The result has the dtype of ``arr``, not of
-        ``like``, unless ``xp`` cannot represent it: JAX without 64-bit
-        mode silently converts float64 to float32.
+        ``arr`` is `None`. If ``arr`` and ``like`` both have a real
+        floating dtype, the result has the dtype of ``like``; otherwise,
+        including when there is no ``like``, it has the dtype of ``arr``,
+        unless ``xp`` cannot represent it: JAX without 64-bit mode
+        silently converts float64 to float32.
 
     Notes
     -----
@@ -225,12 +227,28 @@ def _from_numpy(arr, like=None, *, xp=None):
     NumPy-only operation to the caller's array namespace and device, so
     that the caller never receives a NumPy array in place of what it
     passed in.
+
+    The NumPy-only libraries decide the dtype of their own output:
+    ``reproject`` and ``astropy.modeling`` always return float64 and
+    astroscrappy always returns float32. Floating input keeps its dtype
+    instead (#1023), so a floating result is cast to the floating dtype of
+    ``like``. A boolean result, such as a mask, and the result for integer
+    input keep their own dtype: casting a floating result back to an
+    integer dtype would wrap negative values and could not hold the NaN
+    that ``wcs_project`` needs.
     """
     if arr is None:
         return None
     xp = xp or array_api_compat.array_namespace(like)
-    device = None if like is None else array_api_compat.device(like)
-    return xp.asarray(arr, device=device)
+    device = None
+    dtype = None
+    if like is not None:
+        device = array_api_compat.device(like)
+        if np.isdtype(arr.dtype, "real floating") and xp.isdtype(
+            like.dtype, "real floating"
+        ):
+            dtype = like.dtype
+    return xp.asarray(arr, dtype=dtype, device=device)
 
 
 def _ccddata_from_numpy(ccd, like=None, *, xp=None):
@@ -1873,6 +1891,11 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear"):
     data and mask are copied to the host, and the reprojected data and mask
     are copied back to the array namespace and device of the input; the
     copy is announced with a `HostCopyWarning`.
+
+    Floating data keeps its dtype, even though ``reproject`` works in
+    float64. Integer data gives reproject's float64 result, which is not
+    cast back to an integer dtype because pixels that fall outside the
+    input image are NaN.
     """
     from astropy.nddata.ccddata import _generate_wcs_and_update_header
     from reproject import reproject_interp
