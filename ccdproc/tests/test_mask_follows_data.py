@@ -120,12 +120,16 @@ def test_numpy_mask_follows_the_data(call, flags_cosmic_ray):
     A NumPy mask on non-NumPy data comes back in the data's namespace and on
     its device, with the caller's bad pixel still masked.
 
+    Notes
+    -----
     Each call reaches a different place that sets the result's mask: the
     arithmetic wrapper, ``ccd_process``'s bad-pixel mask, the cosmic-ray
     mask merges, and the template and outputs in ``combine`` and
-    ``Combiner``. Any of them that set ``_mask`` directly, or whose setter
-    left out the data's device, would hand back a mask on the default
-    device, or in NumPy, next to data that is not.
+    ``Combiner``. Only the ``subtract_bias`` and ``ccd_process`` cases
+    failed before masks were set through ``_set_mask``: their masks landed
+    on the default device rather than the data's. The other places already
+    passed the data's device explicitly, so those cases guard against the
+    sweep that replaced them losing it.
     """
     result = call(_ccd_with_numpy_mask())
 
@@ -242,7 +246,11 @@ def test_mask_on_unreadable_device_with_numpy_data_raises(call):
     NumPy data with a mask that NumPy cannot read raises rather than
     returning a mask the data's namespace cannot use.
 
-    The mask follows the data, and here it cannot. Deleting this test would
+    Notes
+    -----
+    The mask follows the data, and here it cannot. This pins behaviour that
+    was already agreed, and already true before masks were set through
+    ``_set_mask``; it is not what that change fixed. Deleting this test would
     let a change to ``_set_mask`` that skips the conversion, or that falls
     back to leaving the mask where it is, go unnoticed; the result would
     then fail later, far from the cause.
@@ -261,9 +269,13 @@ def test_ccd_process_bad_pixel_mask_on_unreadable_device_raises():
     ``ccd_process`` with NumPy data and a bad-pixel mask NumPy cannot read
     raises.
 
+    Notes
+    -----
     This is the one way to give NumPy data such a mask through the public
-    API. Without the conversion the mask would be stored as it is, in a
-    namespace the data's cannot combine with.
+    API. This pins behaviour that was already agreed, and already true
+    before masks were set through ``_set_mask``. Without the conversion the
+    mask would be stored as it is, in a namespace the data's cannot combine
+    with.
     """
     ccd = CCDData(_image(), unit=u.adu)
     with pytest.raises(RuntimeError, match="Can't convert array"):
@@ -279,9 +291,13 @@ def test_ccd_process_converts_bad_pixel_mask_to_data_namespace():
     A bad-pixel mask from another namespace that can be converted is
     converted, silently, to the namespace of the data.
 
+    Notes
+    -----
     With NumPy data and, say, a jax mask, the result's mask is NumPy, as
-    ``CCDData(numpy_data, mask=jax_mask)`` gives. Without the conversion
-    the result would carry a jax mask next to NumPy data.
+    ``CCDData(numpy_data, mask=jax_mask)`` gives. This pins behaviour that
+    was already agreed, and already true before masks were set through
+    ``_set_mask``. Without the conversion the result would carry a jax mask
+    next to NumPy data.
     """
     ccd = CCDData(_image(), unit=u.adu)
 

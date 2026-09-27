@@ -124,9 +124,10 @@ Bug Fixes
   ``flat_correct``, ``gain_correct``, ``trim_image``, ``transform_image`` and
   the ``bad_pixel_mask`` of ``ccd_process`` is now on the device of the data;
   it was on the array library's default device. Every ``ccdproc`` function
-  that sets a mask now moves it to the array namespace and device of the data
-  and checks its shape, and raises when the mask cannot be moved there, such
-  as a CuPy mask with NumPy data. [#1024]
+  that sets a mask, except the deprecated ``rebin``, now moves it to the
+  array namespace and device of the data and checks its shape, and raises
+  when the mask cannot be moved there, such as a CuPy mask with NumPy
+  data. [#1024]
 - ``ccd_process`` again raises ``ValueError`` for a ``bad_pixel_mask`` whose
   shape differs from the data's, as it did in 2.5.1. [#1027]
 - ``wcs_project`` no longer returns a NumPy-backed ``CCDData`` for non-NumPy
