@@ -168,7 +168,7 @@ def test_from_numpy_passes_none_through():
     assert _from_numpy(None, like=like) is None
 
 
-@pytest.mark.skipif(IS_NUMPY, reason="NumPy input is never copied to the host")
+@pytest.mark.skipif(IS_NUMPY, reason="All-NumPy input is never copied to the host")
 @pytest.mark.parametrize(("call", "function_name"), CPU_ONLY_CALLS)
 def test_cpu_only_function_warns_once(call, function_name):
     """
@@ -403,7 +403,7 @@ def test_cosmicray_lacosmic_unit_mismatch_does_not_convert_inbkg(monkeypatch):
     assert not any(arr is inbkg for arr in seen)
 
 
-@pytest.mark.skipif(IS_NUMPY, reason="NumPy input is never copied to the host")
+@pytest.mark.skipif(IS_NUMPY, reason="All-NumPy input is never copied to the host")
 def test_combine_output_file_does_not_warn(tmp_path):
     """
     Writing a FITS file through ``combine(output_file=...)`` copies to the

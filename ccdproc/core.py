@@ -290,9 +290,10 @@ def _warn_host_copy(function_name, *arrays):
         warning message.
     *arrays : array or None
         Every array the caller is about to copy to the host. Entries that
-        are `None`, or that are not arrays at all (a bare Python or NumPy
-        scalar), are skipped. Nothing is warned about when all of them are
-        NumPy, since no copy happens then.
+        are `None`, or that are not arrays at all (such as a bare Python
+        scalar), are skipped. A NumPy scalar counts as a NumPy array.
+        Nothing is warned about when all of them are NumPy, since no copy
+        happens then.
 
     Notes
     -----
@@ -1086,11 +1087,13 @@ def subtract_overscan(
     array directly with the ``overscan`` argument.
 
     Fitting a ``model`` goes through ``astropy.modeling``, which is
-    NumPy-only, so that path runs on the host CPU. If ``ccd`` is not backed
-    by NumPy the overscan is copied to the host to be fit and the fitted
-    overscan is copied back to the array namespace and device of the input;
-    the copy is announced with a `HostCopyWarning`. The median and mean
-    paths stay in the input's array namespace.
+    NumPy-only, so that path runs on the host CPU. The overscan is first
+    reduced along ``overscan_axis`` by the mean or median; if that reduced
+    overscan is not a NumPy array it is copied to the host to be fit, and
+    the copy is announced with a `HostCopyWarning`. The fitted overscan is
+    then converted to the array namespace and device of ``ccd.data`` before
+    it is subtracted. The median and mean paths stay in the input's array
+    namespace.
 
     Examples
     --------
@@ -2559,11 +2562,11 @@ def cosmicray_lacosmic(
     http://www.astro.yale.edu/dokkum/lacosmic/
 
     The detection is done by ``astroscrappy``, which is NumPy-only, so this
-    function runs on the host CPU. If ``ccd`` is not backed by NumPy its
-    data and mask, and any array-valued ``inbkg`` or ``invar``, are copied
-    to the host, and the cleaned data and cosmic-ray mask are copied back to
-    the array namespace and device of the input; the copy is announced with
-    a `HostCopyWarning`.
+    function runs on the host CPU. Any of the data, mask, ``inbkg`` or
+    ``invar`` that is not a NumPy array is copied to the host, even when
+    ``ccd`` itself is NumPy, and the copy is announced with a
+    `HostCopyWarning`. The cleaned data and cosmic-ray mask are returned in
+    the array namespace and on the device of the input.
 
     Returns
     -------

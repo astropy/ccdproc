@@ -260,7 +260,11 @@ silenced like any other warning:
 
     warnings.filterwarnings("ignore", category=ccdproc.HostCopyWarning)
 
-`numpy`_ input is never copied and never warns.
+The warning is issued only when an array that is not already a `numpy`_
+array has to be copied to the host. When every array in a call is a
+`numpy`_ array, nothing is copied and nothing warns; a `numpy`_ image passed
+to ``cosmicray_lacosmic`` with a non-`numpy`_ ``inbkg`` or ``invar`` does
+warn.
 
 There is one deliberate exception to the warning. ``combine`` with an
 ``output_file`` writes the combined image through `astropy.io.fits`, which

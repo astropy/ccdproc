@@ -73,7 +73,10 @@ New Features
   back to the array namespace and device of the input, so a non-NumPy
   caller never receives a NumPy array in its place. Each warns once per
   call site with the new ``ccdproc.HostCopyWarning`` (a subclass of
-  ``AstropyUserWarning``); NumPy input is neither copied nor warned about.
+  ``AstropyUserWarning``) when an array that is not already NumPy has to
+  be copied to the host, including a non-NumPy ``inbkg`` or ``invar``
+  passed to ``cosmicray_lacosmic`` with a NumPy image; when every array is
+  NumPy, nothing is copied or warned about.
   ``combine(output_file=...)`` does not warn either: it copies the
   combined image to NumPy only to write the FITS file, and the image it
   returns stays in the input's array namespace. On NumPy, ``float32`` data
