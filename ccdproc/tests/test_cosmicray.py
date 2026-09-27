@@ -1,5 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
+import inspect
 import warnings
 
 import array_api_compat
@@ -352,6 +353,33 @@ def test_cosmicray_lacosmic_warns_on_ccd_in_electrons():
     readnoise = 6.5
     with pytest.warns(UserWarning, match="Image unit is electron"):
         cosmicray_lacosmic(ccd_data, gain=gain, gain_apply=True, readnoise=readnoise)
+
+
+def test_cosmicray_lacosmic_electron_warning_points_at_caller():
+    """
+    The warning about an image in electrons with a gain other than 1 is
+    attributed to the line that called ``cosmicray_lacosmic``.
+
+    Notes
+    -----
+    ``cosmicray_lacosmic`` is wrapped by astropy's
+    ``deprecated_renamed_argument``, so the fixed ``stacklevel=2`` this
+    warning used to have pointed at astropy's decorator module instead of
+    at the user's code. Pinning ``lineno`` as well as ``filename`` catches
+    a drift of one frame that still lands in this file.
+    """
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    ccd_data.unit = u.electron
+    with pytest.warns(UserWarning) as record:
+        call_line = inspect.currentframe().f_lineno + 1
+        cosmicray_lacosmic(ccd_data, gain=2.0, gain_apply=True)
+
+    electron_warnings = [
+        w for w in record if "Image unit is electron" in str(w.message)
+    ]
+    assert len(electron_warnings) == 1
+    assert electron_warnings[0].filename == __file__
+    assert electron_warnings[0].lineno == call_line
 
 
 # The values for inbkg and invar are DELIBERATELY BAD. They are supposed to be

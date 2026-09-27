@@ -261,14 +261,14 @@ def _caller_stacklevel():
     that is right for a direct call points at the wrong line, or even the
     wrong file, once there is an extra frame in between. Walking the stack
     instead finds the real caller regardless of how many such frames sit
-    between it and `_warn_host_copy`. ``ccdproc.tests`` is deliberately
-    *not* treated as internal, since the test suite calls these functions
-    directly and expects the warning attributed to the test's own call
-    site, not to pytest or unittest machinery further up the stack.
+    between it and the ``warnings.warn`` call. ``ccdproc.tests`` is
+    deliberately *not* treated as internal, since the test suite calls these
+    functions directly and expects the warning attributed to the test's own
+    call site, not to pytest or unittest machinery further up the stack.
     """
-    # Frame 0 is this function; frame 1 is its caller (``_warn_host_copy``).
-    # ``stacklevel=1`` in `warnings.warn` means "the call to `warn` itself",
-    # so start counting from there.
+    # Frame 0 is this function; frame 1 is its caller, the function that
+    # calls `warnings.warn`. ``stacklevel=1`` in `warnings.warn` means "the
+    # call to `warn` itself", so start counting from there.
     frame = sys._getframe(1)
     level = 1
     while frame is not None:
@@ -2692,7 +2692,7 @@ def cosmicray_lacosmic(
                 "Image unit is electron but gain value "
                 "is not 1.0. Data maybe end up being gain "
                 "corrected twice.",
-                stacklevel=2,
+                stacklevel=_caller_stacklevel(),
             )
 
         else:
