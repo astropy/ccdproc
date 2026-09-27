@@ -100,18 +100,11 @@ Other Changes and Additions
 - ``combine`` no longer accepts an array as its ``array_package`` argument;
   pass the array namespace or module instead. [#997]
 - ``subtract_overscan``, ``subtract_bias``, ``subtract_dark``,
-  ``flat_correct``, ``ccd_process``, ``cosmicray_median`` with an array
-  ``error_image``, ``Combiner`` and ``combine`` now raise ``TypeError`` when
-  their image arrays come from different array libraries and ``ValueError``
-  when they are on different devices, naming the arguments that disagree.
-  Previously some of these combinations silently converted one image to the
-  other's library, possibly through a copy to the host, and others failed
-  with an unrelated error; images on different devices were moved silently
-  onto the first image's device by ``Combiner`` and made the other functions
-  fail with the array library's own device error. Masks and uncertainties
-  are not checked. ``combine`` reads the files in its list into the array
-  library and onto the device of the ``CCDData`` images in it, and raises if
-  ``array_package`` names a different library. [#1025]
+  ``flat_correct``, ``ccd_process``, ``cosmicray_median``, ``Combiner`` and
+  ``combine`` now raise ``TypeError`` when their images come from different
+  array libraries and ``ValueError`` when they are on different devices.
+  Previously some of these calls silently converted one of the images.
+  [#1025, #1028]
 - The minimum supported numpy is now 2.0 (``normalize_axis_tuple`` is
   imported from its numpy 2 location with no 1.26 fallback), which raises
   the minimum astropy to 6.1, reproject to 0.14 and astroscrappy to 1.2,
@@ -234,11 +227,8 @@ Bug Fixes
 - Correct the ``Combiner.sigma_clipping`` docstring, which said the
   default ``func`` was ``'median'``; the runtime default has always been
   ``'mean'``. [#1001]
-- ``combine`` in array-api-strict no longer raises ``TypeError: mismatched
-  dtypes`` when the dtype of the first image's uncertainty differs from
-  ``dtype`` (float64 by default); the result's uncertainty keeps the first
-  image's uncertainty dtype, as it does on the other array libraries.
-  [#1025]
+- ``combine`` on array-api-strict no longer raises ``mismatched dtypes``
+  when the first image's uncertainty dtype differs from ``dtype``. [#1028]
 
 2.5.1 (2025-07-05)
 ------------------
