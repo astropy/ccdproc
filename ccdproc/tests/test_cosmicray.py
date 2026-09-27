@@ -451,9 +451,11 @@ def test_cosmicray_median_keeps_unknown_uncertainty():
     Notes
     -----
     Only the uncertainty's array is used, as the error image, so its type
-    does not matter. Copying the image through the array-API wrapper, which
-    only knows the three variance-like uncertainty types, raised
-    ``TypeError: Unsupported uncertainty type`` here.
+    does not matter. This guards against copying the image through
+    ``_wrap_ccddata_for_array_api``, which wraps the uncertainty for
+    array-API arithmetic, knows only the three variance-like uncertainty
+    types, and raises ``TypeError: Unsupported uncertainty type`` for any
+    other.
     """
     data = _data_with_cosmic_rays()
     noise = DATA_SCALE * xp.ones_like(data)
@@ -472,10 +474,11 @@ def test_cosmicray_median_keeps_uncertainty_unit():
 
     Notes
     -----
-    Rebuilding the uncertainty from its array, as unwrapping the array-API
-    wrapper does, gives it the unit of the data, so mJy data with an
-    uncertainty of 1 Jy came back with an uncertainty of 1 mJy, a thousand
-    times too small.
+    This guards against copying the image through the array-API wrapper
+    and back. ``_unwrap_ccddata_for_array_api`` rebuilds the uncertainty
+    from its array, which gives it the unit of the data, so mJy data with an
+    uncertainty of 1 Jy would come back with an uncertainty of 1 mJy, a
+    thousand times too small.
     """
     data = _data_with_cosmic_rays()
     noise = DATA_SCALE * xp.ones_like(data)
@@ -499,8 +502,9 @@ def test_cosmicray_median_keeps_ccddata_subclass():
 
     Notes
     -----
-    ``ccd.copy()``, which this used to use, keeps the class; unwrapping the
-    array-API wrapper returns a plain ``CCDData`` instead.
+    ``ccd.copy()`` keeps the class. This guards against copying the image
+    through the array-API wrapper instead, since
+    ``_unwrap_ccddata_for_array_api`` returns a plain ``CCDData``.
     """
     data = _data_with_cosmic_rays()
     noise = DATA_SCALE * xp.ones_like(data)
