@@ -104,6 +104,8 @@ Other Changes and Additions
   ``combine`` now raise ``TypeError`` when their images come from different
   array libraries and ``ValueError`` when they are on different devices.
   Previously some of these calls silently converted one of the images.
+  ``combine`` given a mix of file names and ``CCDData`` images in memory
+  reads the files into the array library of the images in memory.
   [#1025, #1028]
 - The minimum supported numpy is now 2.0 (``normalize_axis_tuple`` is
   imported from its numpy 2 location with no 1.26 fallback), which raises
