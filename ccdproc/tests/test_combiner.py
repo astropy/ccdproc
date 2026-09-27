@@ -1652,6 +1652,51 @@ def test_combine_array_package_dask_module(tmp_path):
     assert array_api_compat.is_dask_array(result.data)
 
 
+def test_combine_tiled_converts_only_tiles_of_files(tmp_path, monkeypatch):
+    """
+    When ``mem_limit`` splits the images into tiles, ``combine`` converts
+    only each tile of a file into the array namespace, never the whole file
+    again for every tile.
+
+    Notes
+    -----
+    Files are read whole for every tile. Converting the whole file before
+    slicing out the tile made a full copy of every file for every tile,
+    because FITS data are big-endian and each conversion copies: for three
+    200 x 200 images and ``mem_limit=2e5``, 3.5 million converted values
+    where the tiles need 160 thousand.
+    The result is the same either way, so only the shapes of the converted
+    images show the difference. The template, the first file, is the one
+    whole image converted.
+    """
+    rng = np.random.default_rng(1028)
+    files = []
+    for i in range(3):
+        path = tmp_path / f"flat-{i}.fits"
+        CCDData(rng.normal(1000, 10, (100, 100)).astype(np.float32), unit=u.adu).write(
+            path
+        )
+        files.append(str(path))
+
+    converted_shapes = []
+    convert = combiner_module._ccddata_from_numpy
+
+    def recording_convert(ccd, *args, **kwargs):
+        converted_shapes.append(ccd.shape)
+        return convert(ccd, *args, **kwargs)
+
+    monkeypatch.setattr(combiner_module, "_ccddata_from_numpy", recording_convert)
+
+    combine(files, array_package=xp, mem_limit=2e5)
+
+    template_shape, *tile_shapes = converted_shapes
+    assert template_shape == (100, 100)
+    # Tiling happened, so there are more conversions than files ...
+    assert len(tile_shapes) > len(files)
+    # ... and each of them is a tile, not a whole image.
+    assert all(shape != (100, 100) for shape in tile_shapes)
+
+
 @pytest.mark.parametrize("file_first", [True, False], ids=["file-first", "ccd-first"])
 def test_combine_callable_scale_sees_dtype_data(tmp_path, file_first):
     """
