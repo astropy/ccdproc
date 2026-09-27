@@ -1434,11 +1434,17 @@ def combine(
     else:
         dtype = _namespace_dtype(dtype, xp)
 
+    # CCDData always reads files as NumPy. Convert them into ``xp`` unless
+    # NumPy is only the default (no array_package, and no images in memory
+    # from another library): combine has always used those files as read.
+    convert_files = (
+        array_package is not None or not array_api_compat.is_numpy_namespace(xp)
+    )
+
     def read_image(file_name):
-        """Read ``file_name`` into a CCDData whose arrays are in ``xp``."""
+        """Read ``file_name`` into a CCDData whose data is in ``xp``."""
         imgccd = CCDData.read(file_name, **ccdkwargs)
-        # CCDData always reads as NumPy, which Combiner handles itself.
-        if array_api_compat.is_numpy_namespace(xp):
+        if not convert_files:
             return imgccd
         # The arrays were just read from a FITS file, so they may be in
         # big-endian byte order. Convert to native byte order before handing
@@ -1447,14 +1453,16 @@ def combine(
         # error under this project's warning filters) when a NumPy dtype
         # object is compared against one of its own.
         imgccd.data = xp.asarray(_native_numpy(imgccd.data), dtype=dtype, device=device)
+        # The uncertainty keeps its dtype: Combiner does not use the
+        # uncertainties of its inputs, and the template's uncertainty
+        # dtype is the dtype of the result's uncertainty.
         if imgccd.uncertainty is not None:
             imgccd.uncertainty.array = xp.asarray(
-                _native_numpy(imgccd.uncertainty.array), dtype=dtype, device=device
+                _native_numpy(imgccd.uncertainty.array), device=device
             )
-        if imgccd.mask is not None:
-            # TODO: the private _mask attribute is set to avoid the
-            # CCDData.mask setter, which converts to NumPy.
-            imgccd._mask = xp.asarray(imgccd.mask, dtype=xp.bool, device=device)
+        # The mask stays NumPy: slicing a CCDData runs the mask setter, which
+        # converts to NumPy and fails for arrays on a non-CPU device. Combiner,
+        # and the template coercion below, move masks onto the data's device.
         return imgccd
 
     # First we create a CCDObject from first image for storing output
@@ -1615,10 +1623,13 @@ def combine(
                 )
 
             if ccd.uncertainty is not None:
-                # Handle immutable arrays with array_api_extra
+                # Handle immutable arrays with array_api_extra. Cast to the
+                # template's uncertainty dtype, which may differ from the
+                # data's: array_api_strict does not cast on assignment.
+                uncertainty_dtype = _namespace_dtype(ccd.uncertainty.array.dtype, xp)
                 ccd.uncertainty.array = xpx.at(ccd.uncertainty.array)[
                     x:xend, y:yend
-                ].set(xp.astype(comb_tile.uncertainty.array, ccd.dtype))
+                ].set(xp.astype(comb_tile.uncertainty.array, uncertainty_dtype))
             # Free up memory to try to stay under user's limit
             del comb_tile
             del tile_combiner

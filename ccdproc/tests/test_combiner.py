@@ -10,7 +10,7 @@ import astropy
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.nddata import CCDData
+from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import median_absolute_deviation as mad
 from astropy.stats import sigma_clip
 from astropy.utils import minversion
@@ -1690,6 +1690,67 @@ def test_combine_mixed_file_and_ccddata_follows_the_ccddata(tmp_path, file_first
 
     assert_same_namespace_and_device(result.data, in_memory.data)
     assert_allclose(_to_numpy(result.data), 2 * image)
+
+
+@pytest.mark.parametrize("file_first", [True, False], ids=["file-first", "ccd-first"])
+def test_combine_mixed_list_with_masked_file(tmp_path, file_first):
+    """
+    A masked file combined with an image in memory uses the file's mask,
+    on the device of the image in memory, whichever comes first.
+
+    Notes
+    -----
+    Regression test from the review of #1025: ``combine`` moved the file's
+    mask onto the device of the image in memory, and slicing the file's
+    CCDData into tiles runs the ``CCDData.mask`` setter, which converts to
+    NumPy and so fails for a mask on a non-CPU device. Only the
+    array-api-strict run, whose arrays are on a non-default device, could
+    catch it.
+    """
+    image = np.arange(1.0, 10.0).reshape(3, 3)
+    mask = np.zeros((3, 3), dtype=bool)
+    mask[1, 1] = True
+    path = tmp_path / "masked.fits"
+    CCDData(image, unit=u.adu, mask=mask).write(path)
+    in_memory = CCDData(to_xp(3 * image), unit=u.adu)
+    img_list = [str(path), in_memory] if file_first else [in_memory, str(path)]
+
+    result = combine(img_list)
+
+    assert_same_namespace_and_device(result.data, in_memory.data)
+    # The masked pixel is the in-memory value alone; the rest average.
+    expected = 2 * image
+    expected[1, 1] = 3 * image[1, 1]
+    assert_allclose(_to_numpy(result.data), expected)
+    assert not np.any(_to_numpy(result.mask))
+
+
+def test_combine_files_keeps_uncertainty_dtype(tmp_path):
+    """
+    ``combine`` of files with a float32 uncertainty into ``array_package``
+    returns a float32 uncertainty, as it does for NumPy.
+
+    Notes
+    -----
+    The result's uncertainty is the first file's, with each combined tile
+    written into it. array-api-strict does not cast on assignment, so
+    writing the float64 tiles into it raised ``TypeError: mismatched
+    dtypes`` before #1025; the other libraries cast to float32.
+    """
+    ccd = CCDData(
+        np.ones((3, 3)),
+        unit=u.adu,
+        uncertainty=StdDevUncertainty(np.ones((3, 3), dtype=np.float32)),
+    )
+    files = []
+    for i in range(2):
+        path = tmp_path / f"uncertainty-{i}.fits"
+        ccd.write(path)
+        files.append(str(path))
+
+    result = combine(files, array_package=xp)
+
+    assert result.uncertainty.array.dtype == xp.float32
 
 
 def test_combine_array_package_disagreeing_with_ccddata_raises(tmp_path):

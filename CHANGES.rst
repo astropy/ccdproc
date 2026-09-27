@@ -234,6 +234,11 @@ Bug Fixes
 - Correct the ``Combiner.sigma_clipping`` docstring, which said the
   default ``func`` was ``'median'``; the runtime default has always been
   ``'mean'``. [#1001]
+- ``combine`` in array-api-strict no longer raises ``TypeError: mismatched
+  dtypes`` when the dtype of the first image's uncertainty differs from
+  ``dtype`` (float64 by default); the result's uncertainty keeps the first
+  image's uncertainty dtype, as it does on the other array libraries.
+  [#1025]
 
 2.5.1 (2025-07-05)
 ------------------
