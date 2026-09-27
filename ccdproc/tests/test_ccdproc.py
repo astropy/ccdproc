@@ -1515,6 +1515,22 @@ def test_ccd_process_parameters_are_appropriate():
         ccd_process(ccd_data, master_flat=3)
 
 
+def test_ccd_process_rejects_bad_pixel_mask_of_wrong_shape():
+    """
+    A bad-pixel mask whose shape differs from the data's raises (#1027).
+
+    ``ccd_process`` used to set the private ``_mask`` attribute, which
+    skips the mask setter's shape check, so a mask for the wrong detector,
+    or for the untrimmed image, was silently accepted and returned as the
+    result's mask.
+    """
+    ccd_data = ccd_data_func(data_size=32)
+    wrong_shape = xp.zeros((3, 3), dtype=xp.bool, device=xp_device)
+
+    with pytest.raises(ValueError, match="dimensions of mask"):
+        ccd_process(ccd_data, bad_pixel_mask=wrong_shape)
+
+
 @pytest.mark.parametrize(
     "uncertainty_type",
     [StdDevUncertainty, VarianceUncertainty, InverseVariance],
