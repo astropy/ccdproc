@@ -778,16 +778,11 @@ def test_combine_average_fitsimages():
     """
     Averaging a list of FITS file names with ``combine`` gives the same
     result as ``Combiner`` on the images read from those files.
-
-    ``combine`` reads each file into ``array_package`` itself, so the
-    ``Combiner`` reference gets the same conversion by hand: comparing
-    against NumPy data would be a mixed-namespace input, which
-    ``Combiner`` rejects.
     """
     fitsfile = get_pkg_data_filename("data/a8280271.fits", package="ccdproc.tests")
     ccd = CCDData.read(fitsfile, unit=u.adu)
-    # ``combine(array_package=xp)`` below reads the files into ``xp`` this
-    # way, so do the same for the ``Combiner`` it is compared against.
+    # Combiner takes its namespace from its data, so read the reference
+    # into ``xp`` like ``combine`` does to compare like with like.
     ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 3
     c = Combiner(ccd_list)
@@ -813,8 +808,8 @@ def test_combine_numpyndarray():
     """
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
-    # ``combine(array_package=xp)`` below reads the files into ``xp`` this
-    # way, so do the same for the ``Combiner`` it is compared against.
+    # Combiner takes its namespace from its data, so read the reference
+    # into ``xp`` like ``combine`` does to compare like with like.
     ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 3
     c = Combiner(ccd_list)
@@ -962,16 +957,11 @@ def test_combine_limitedmem_fitsimages():
 
     The tiles are read and combined separately, so this pins that they are
     stitched back together correctly.
-
-    ``combine`` reads each file into ``array_package`` itself, so the
-    ``Combiner`` reference gets the same conversion by hand: comparing
-    against NumPy data would be a mixed-namespace input, which
-    ``Combiner`` rejects.
     """
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
-    # ``combine(array_package=xp)`` below reads the files into ``xp`` this
-    # way, so do the same for the ``Combiner`` it is compared against.
+    # Combiner takes its namespace from its data, so read the reference
+    # into ``xp`` like ``combine`` does to compare like with like.
     ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 5
     c = Combiner(ccd_list)
@@ -999,18 +989,13 @@ def test_combine_limitedmem_scale_fitsimages():
 
     The scale factors must come from the whole images, not from each tile,
     or tiles would be scaled differently.
-
-    ``combine`` reads each file into ``array_package`` itself, so the
-    ``Combiner`` reference gets the same conversion by hand: comparing
-    against NumPy data would be a mixed-namespace input, which
-    ``Combiner`` rejects.
     """
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
     # scale each array to the mean of the first image
     scale_by_mean = _make_mean_scaler(ccd)
-    # ``combine(array_package=xp)`` below reads the files into ``xp`` this
-    # way, so do the same for the ``Combiner`` it is compared against.
+    # Combiner takes its namespace from its data, so read the reference
+    # into ``xp`` like ``combine`` does to compare like with like.
     ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 5
     c = Combiner(ccd_list)
@@ -1674,11 +1659,14 @@ def test_combine_mixed_file_and_ccddata_follows_the_ccddata(tmp_path, file_first
     ``array_package``, combines in the array library and on the device of
     the image in memory, whichever comes first.
 
+    Notes
+    -----
     Files always read as NumPy; unless ``combine`` reads them into the
     namespace of the images in memory, each tile's ``Combiner`` sees two
-    array libraries and raises. Before the mixed-input check (#1025)
-    ``Combiner`` converted everything to the first image's library, so this
-    call worked and must keep working.
+    array libraries and raises (#1025). Before #1025 the result depended on
+    the order and the library: with the file first it was NumPy, or an
+    error on array-api-strict, and with the image first jax failed under
+    this suite's warning filters.
     """
     image = np.arange(1.0, 10.0).reshape(3, 3)
     path = tmp_path / "on-disk.fits"
