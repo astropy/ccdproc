@@ -1064,20 +1064,23 @@ def test_sum_combine_uncertainty():
 @pytest.mark.parametrize("scale", ["function", "mean"])
 def test_combine_ccd_with_uncertainty_and_mask_from_fits(scale, tmp_path):
     """
-    ``combine`` reads files that have an uncertainty and a mask into the
-    requested array package, and averages identical images to the image.
+    ``combine`` works on FITS files that have an uncertainty and a mask.
 
     Notes
     -----
-    The combined template is built from the first file, so this checks that
-    its uncertainty and mask are read and converted to the array package
-    along with the data.
+    This is a smoke test: combining three copies of one file must run with
+    ``array_package`` set and give back the file's data. It checks neither
+    the combined uncertainty nor the combined mask. It exists because the
+    combined template is built from the first file, so reading its
+    uncertainty and mask into the array package is on the path of every
+    such call.
     """
     fitsfile = get_pkg_data_filename("data/a8280271.fits", package="ccdproc.tests")
     ccd_data = CCDData.read(fitsfile, unit=u.adu)
     ccd_data.data = xp.asarray(ccd_data.data, dtype=xp.float64)
-    # Set ._mask instead of .mask to avoid conversion to numpy array
-    ccd_data._mask = xp.zeros_like(ccd_data.data, dtype=xp.bool)
+    # A NumPy mask, as read from a file; create_deviation moves it to the
+    # data's namespace and device.
+    ccd_data.mask = np.zeros(ccd_data.data.shape, dtype=bool)
     if scale == "function":
         scale_by_mean = _make_mean_scaler(ccd_data)
     else:
