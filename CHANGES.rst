@@ -120,14 +120,12 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
-- The mask of an image returned by ``subtract_bias``, ``subtract_dark``,
-  ``flat_correct``, ``gain_correct``, ``trim_image``, ``transform_image`` and
-  the ``bad_pixel_mask`` of ``ccd_process`` is now on the device of the data;
-  it was on the array library's default device. Every ``ccdproc`` function
-  that sets a mask, except the deprecated ``rebin``, now moves it to the
-  array namespace and device of the data and checks its shape, and raises
-  when the mask cannot be moved there, such as a CuPy mask with NumPy
-  data. [#1024]
+- Masks set by ``ccdproc`` functions, except the deprecated ``rebin``, now
+  follow the array library and device of the data, with their shape checked;
+  a mask that cannot, such as a CuPy mask with NumPy data, raises. For masked
+  jax or dask images, ``create_deviation``, ``subtract_overscan`` and
+  ``ccd_process`` returned a NumPy mask, and several others used the default
+  device. [#1024]
 - ``ccd_process`` again raises ``ValueError`` for a ``bad_pixel_mask`` whose
   shape differs from the data's, as it did in 2.5.1. [#1027]
 - ``wcs_project`` no longer returns a NumPy-backed ``CCDData`` for non-NumPy
