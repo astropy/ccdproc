@@ -100,13 +100,13 @@ Other Changes and Additions
 - ``combine`` no longer accepts an array as its ``array_package`` argument;
   pass the array namespace or module instead. [#997]
 - ``subtract_overscan``, ``subtract_bias``, ``subtract_dark``,
-  ``flat_correct``, ``cosmicray_median`` with an array ``error_image`` and
-  ``Combiner`` now raise ``TypeError`` when their image arrays come from
-  different array libraries and ``ValueError`` when they are on different
-  devices, naming the arguments that disagree. Previously some of these
-  combinations silently converted one image to the other's library, possibly
-  through a copy to the host, and others failed with an unrelated error.
-  Masks and uncertainties are not checked. [#1025]
+  ``flat_correct``, ``ccd_process``, ``cosmicray_median`` with an array
+  ``error_image`` and ``Combiner`` now raise ``TypeError`` when their image
+  arrays come from different array libraries and ``ValueError`` when they
+  are on different devices, naming the arguments that disagree. Previously
+  some of these combinations silently converted one image to the other's
+  library, possibly through a copy to the host, and others failed with an
+  unrelated error. Masks and uncertainties are not checked. [#1025]
 - The minimum supported numpy is now 2.0 (``normalize_axis_tuple`` is
   imported from its numpy 2 location with no 1.26 fallback), which raises
   the minimum astropy to 6.1, reproject to 0.14 and astroscrappy to 1.2,

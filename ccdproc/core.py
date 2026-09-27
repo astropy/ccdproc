@@ -391,6 +391,11 @@ def _namespace_from_module(module):
     return array_api_compat.array_namespace(module.asarray(0))
 
 
+def _library_name(xp):
+    """Return the name of the array library behind the array namespace ``xp``."""
+    return xp.__name__.removeprefix("array_api_compat.")
+
+
 def _namespace_of(**arrays):
     """
     Return the array namespace shared by ``arrays``, checking that they agree.
@@ -399,8 +404,8 @@ def _namespace_of(**arrays):
     ----------
     **arrays : array, scalar or None
         The array inputs of one call, keyed by the argument names to use in
-        an error message. `None` and scalars, whether Python or NumPy
-        scalars, are skipped. At least one must be an array.
+        an error message. `None` and scalars are skipped; see Notes. At
+        least one must be an array.
 
     Returns
     -------
@@ -410,7 +415,8 @@ def _namespace_of(**arrays):
     Raises
     ------
     TypeError
-        If the arrays belong to different array namespaces.
+        If the arrays belong to different array namespaces, or if none of
+        ``arrays`` is an array.
     ValueError
         If the arrays are on different devices.
 
@@ -421,20 +427,28 @@ def _namespace_of(**arrays):
     library, possibly through NumPy on the host, keeps whichever library
     happens to be on the left, or fails with an error that names neither
     argument. Checking up front replaces all of those with one error that
-    names the arguments. A scalar broadcasts against an array of any
-    namespace, so it is not checked. Only the data arrays are meant to be
-    passed in: masks and uncertainties of a `~astropy.nddata.CCDData` are
-    often NumPy whatever its data, and ccdproc converts them itself.
+    names the arguments.
+
+    A scalar broadcasts against an array of any namespace, so it is not
+    checked. Scalars are Python numbers, NumPy scalars and 0-d NumPy arrays,
+    including a scalar `~astropy.units.Quantity`: all of them are what
+    NumPy gives back for a single value, e.g. from ``np.std`` of a NumPy
+    array.
+
+    Only the data arrays are meant to be passed in: masks and uncertainties
+    of a `~astropy.nddata.CCDData` are often NumPy whatever its data, and
+    ccdproc converts them itself.
     """
-
-    def library(xp):
-        return xp.__name__.removeprefix("array_api_compat.")
-
     present = {
         name: arr
         for name, arr in arrays.items()
-        if _is_array(arr) and not isinstance(arr, np.generic)
+        if _is_array(arr)
+        and not (isinstance(arr, np.generic | np.ndarray) and np.ndim(arr) == 0)
     }
+    if not present:
+        raise TypeError(
+            f"none of {', '.join(arrays)} is an array; at least one must be."
+        )
     names = list(present)
     first = names[0]
     xp = array_api_compat.array_namespace(present[first])
@@ -443,8 +457,8 @@ def _namespace_of(**arrays):
         other_xp = array_api_compat.array_namespace(present[name])
         if other_xp is not xp:
             raise TypeError(
-                f"{name} is a {library(other_xp)} array but {first} is a "
-                f"{library(xp)} array; all array inputs must come from the "
+                f"{name} comes from {_library_name(other_xp)} but {first} comes "
+                f"from {_library_name(xp)}; all array inputs must come from the "
                 "same array library."
             )
         other_device = array_api_compat.device(present[name])
@@ -855,6 +869,16 @@ def ccd_process(
         If True, the ``master_bias``, ``master_flat``, and ``dark_frame``
         have already been gain corrected.  Default is ``True``.
 
+    Raises
+    ------
+    TypeError
+        If the data of the images given as ``ccd``, ``oscan``,
+        ``master_bias``, ``dark_frame`` and ``master_flat`` come from
+        different array libraries.
+
+    ValueError
+        If the data of those images are on different devices.
+
     Returns
     -------
     occd : `~astropy.nddata.CCDData`
@@ -876,8 +900,20 @@ def ccd_process(
     # make a copy of the object
     nccd = ccd.copy()
 
-    # Set array namespace
-    xp = array_api_compat.array_namespace(nccd.data)
+    # Check the images here, rather than leaving it to the step functions,
+    # so that an error names the arguments of ccd_process.
+    xp = _namespace_of(
+        **{
+            name: image.data if isinstance(image, CCDData) else None
+            for name, image in [
+                ("ccd", nccd),
+                ("oscan", oscan),
+                ("master_bias", master_bias),
+                ("dark_frame", dark_frame),
+                ("master_flat", master_flat),
+            ]
+        }
+    )
 
     # apply the overscan correction
     if isinstance(oscan, CCDData):
@@ -1315,9 +1351,11 @@ def subtract_bias(ccd, master):
     result : `~astropy.nddata.CCDData`
         CCDData object with bias subtracted.
     """
-    xp = _namespace_of(ccd=ccd.data, master=master.data)
     _ccd = _wrap_ccddata_for_array_api(ccd)
     _master = _wrap_ccddata_for_array_api(master)
+    # Check after wrapping so that a bare array gets the wrapper's error
+    # about its missing unit rather than an AttributeError here.
+    xp = _namespace_of(ccd=_ccd.data, master=_master.data)
     try:
         _result = _ccd.subtract(_master, handle_mask=xp.logical_or)
     except ValueError as err:

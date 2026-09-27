@@ -4,10 +4,11 @@
 Tests for the check that the array inputs of one call agree (#1025).
 
 The functions that take more than one image -- ``subtract_overscan``,
-``subtract_bias``, ``subtract_dark``, ``flat_correct``, ``cosmicray_median``
-with an array ``error_image`` and ``Combiner`` -- take their array namespace
-from the data, so data from two array libraries, or on two devices, cannot
-both be honoured. They raise instead, naming the arguments that disagree.
+``subtract_bias``, ``subtract_dark``, ``flat_correct``, ``ccd_process``,
+``cosmicray_median`` with an array ``error_image`` and ``Combiner`` -- take
+their array namespace from the data, so data from two array libraries, or on
+two devices, cannot both be honoured. They raise instead, naming the
+arguments that disagree.
 """
 
 import re
@@ -20,6 +21,7 @@ from astropy.nddata import CCDData
 
 from ccdproc import (
     Combiner,
+    ccd_process,
     cosmicray_median,
     flat_correct,
     subtract_bias,
@@ -72,6 +74,14 @@ def _call_combiner(ccd, other):
     return Combiner([ccd, other])
 
 
+def _call_ccd_process_oscan(ccd, other):
+    return ccd_process(ccd, oscan=other[:, 8:])
+
+
+def _call_ccd_process_master_bias(ccd, other):
+    return ccd_process(ccd, master_bias=other)
+
+
 # Each call site, with the names its error message gives the second input
 # and the first.
 _CALL_SITES = [
@@ -89,25 +99,52 @@ _CALL_SITES = [
         _call_cosmicray_median_array, "error_image", "ccd", id="cosmicray_median-array"
     ),
     pytest.param(_call_combiner, "ccd_iter[1]", "ccd_iter[0]", id="Combiner"),
+    pytest.param(_call_ccd_process_oscan, "oscan", "ccd", id="ccd_process-oscan"),
+    pytest.param(
+        _call_ccd_process_master_bias,
+        "master_bias",
+        "ccd",
+        id="ccd_process-master_bias",
+    ),
 ]
 
 
 def test_namespace_of_returns_the_shared_namespace_skipping_none_and_scalars():
     """
-    Agreeing arrays give their namespace; `None`, a Python float and a NumPy
-    scalar are skipped rather than compared.
+    Agreeing arrays give their namespace; `None` and the scalars -- a Python
+    float, a NumPy scalar, a 0-d NumPy array and a scalar Quantity -- are
+    skipped rather than compared.
 
-    The scalars matter: an ``error_image`` of ``np.std(data)`` is a NumPy
-    scalar even for non-NumPy data, and it broadcasts against any array.
-    If scalars were compared, every non-NumPy call passing one would raise
+    The scalars matter: a single value computed with NumPy, such as the
+    standard deviation of a NumPy copy of the data, comes back as one of the
+    NumPy kinds, and it broadcasts against an array of any library. If
+    scalars were compared, every non-NumPy call passing one would raise
     ``TypeError``; if `None` were, every call leaving an optional array
     argument out would.
     """
     data = to_xp(_IMAGE)
     result = _namespace_of(
-        a=data, b=None, c=1.5, d=np.float64(2.0), e=to_xp(_IMAGE + 1)
+        a=data,
+        b=None,
+        c=1.5,
+        d=np.float64(2.0),
+        e=np.asarray(3.0),
+        f=4.0 * u.adu,
+        g=to_xp(_IMAGE + 1),
     )
     assert result is array_api_compat.array_namespace(data)
+
+
+def test_namespace_of_raises_when_no_argument_is_an_array():
+    """
+    With no array among the arguments ``_namespace_of`` raises
+    ``TypeError`` naming them.
+
+    There is then no namespace to return; the error says so instead of
+    failing with an ``IndexError`` from inside the helper.
+    """
+    with pytest.raises(TypeError, match="none of first, second is an array"):
+        _namespace_of(first=1.0, second=None)
 
 
 def test_namespace_of_names_both_arguments_when_namespaces_differ():
@@ -123,7 +160,7 @@ def test_namespace_of_names_both_arguments_when_namespaces_differ():
     foreign = _foreign_namespace()
     library = foreign.__name__.removeprefix("array_api_compat.")
     with pytest.raises(
-        TypeError, match=rf"second is a {re.escape(library)} array but first is a"
+        TypeError, match=rf"second comes from {re.escape(library)} but first comes"
     ):
         _namespace_of(first=to_xp(_IMAGE), second=foreign.asarray(_IMAGE))
 
@@ -161,8 +198,8 @@ def test_mixed_namespaces_raise(call, other_name, first_name):
     other = CCDData(_foreign_namespace().asarray(_IMAGE), unit=u.adu)
     with pytest.raises(
         TypeError,
-        match=rf"{re.escape(other_name)} is a .* array but {re.escape(first_name)} "
-        "is a",
+        match=rf"{re.escape(other_name)} comes from .* but "
+        rf"{re.escape(first_name)} comes from",
     ):
         call(ccd, other)
 
@@ -195,19 +232,38 @@ def test_mixed_devices_raise(call, other_name, first_name):
     "array-api-strict",
     reason="array-api-strict rejects NumPy scalars in arithmetic whatever the check",
 )
-def test_cosmicray_median_accepts_a_numpy_scalar_error_image():
+@pytest.mark.parametrize(
+    "error_image", [np.float64(1.0), np.asarray(1.0)], ids=["scalar", "0-d-array"]
+)
+def test_cosmicray_median_accepts_a_numpy_scalar_error_image(error_image):
     """
-    A NumPy scalar ``error_image`` is not rejected as a mixed input.
+    A single NumPy value as ``error_image``, whether a NumPy scalar or a 0-d
+    array, is not rejected as a mixed input.
 
     ``np.std`` of a NumPy copy of the data is a natural way to make one,
     and it broadcasts against a jax, dask or CuPy array; the mixed-input
     check must treat it as a scalar, not as a NumPy array, or this call
-    would raise ``TypeError`` on every backend but NumPy. array-api-strict
-    is skipped because its own arithmetic accepts only Python scalars.
+    would raise ``TypeError`` on every backend but NumPy, although it worked
+    before the check was added. array-api-strict is skipped because its own
+    arithmetic accepts only Python scalars.
     """
     data = to_xp(_IMAGE)
-    cleaned, crmask = cosmicray_median(data, error_image=np.float64(1.0), mbox=3)
+    cleaned, crmask = cosmicray_median(data, error_image=error_image, mbox=3)
     assert array_api_compat.array_namespace(
         cleaned
     ) is array_api_compat.array_namespace(data)
     assert crmask.shape == data.shape
+
+
+def test_subtract_bias_bare_array_master_reports_missing_unit():
+    """
+    A bare array passed as ``master`` to ``subtract_bias`` raises the
+    ``ValueError`` about its missing unit.
+
+    That is the error it gave before the mixed-input check; the check must
+    run on the wrapped inputs, or it would fail first with an
+    ``AttributeError`` for the array's missing ``data``.
+    """
+    ccd = CCDData(to_xp(_IMAGE), unit=u.adu)
+    with pytest.raises(ValueError, match="a unit for CCDData must be specified"):
+        subtract_bias(ccd, to_xp(_IMAGE))
