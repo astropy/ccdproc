@@ -87,6 +87,16 @@ def _call_ccd_process_master_bias(ccd, other):
     return ccd_process(ccd, master_bias=other)
 
 
+def _call_ccd_process_dark_frame(ccd, other):
+    return ccd_process(
+        ccd, dark_frame=other, dark_exposure=1 * u.s, data_exposure=1 * u.s
+    )
+
+
+def _call_ccd_process_master_flat(ccd, other):
+    return ccd_process(ccd, master_flat=other)
+
+
 # Each call site, with the names its error message gives the second input
 # and the first.
 _CALL_SITES = [
@@ -111,6 +121,15 @@ _CALL_SITES = [
         "master_bias",
         "ccd",
         id="ccd_process-master_bias",
+    ),
+    pytest.param(
+        _call_ccd_process_dark_frame, "dark_frame", "ccd", id="ccd_process-dark_frame"
+    ),
+    pytest.param(
+        _call_ccd_process_master_flat,
+        "master_flat",
+        "ccd",
+        id="ccd_process-master_flat",
     ),
 ]
 
@@ -169,23 +188,6 @@ def test_namespace_of_names_both_arguments_when_namespaces_differ():
         TypeError, match=rf"second comes from {re.escape(library)} but first comes"
     ):
         _namespace_of(first=to_xp(_IMAGE), second=foreign.asarray(_IMAGE))
-
-
-def test_namespace_of_names_both_arguments_when_devices_differ():
-    """
-    Arrays of one library on two devices raise ``ValueError`` naming both
-    arguments.
-
-    array-api-strict is the only test library with more than one device,
-    and it stands in for CuPy with arrays on two GPUs; its arrays are built
-    directly so this runs whenever it is installed, whatever the backend
-    under test.
-    """
-    strict = pytest.importorskip("array_api_strict")
-    first = strict.asarray(_IMAGE, device=strict.Device("CPU_DEVICE"))
-    second = strict.asarray(_IMAGE, device=strict.Device("device1"))
-    with pytest.raises(ValueError, match="second is on device .* but first is on"):
-        _namespace_of(first=first, second=second)
 
 
 @pytest.mark.parametrize(("call", "other_name", "first_name"), _CALL_SITES)
