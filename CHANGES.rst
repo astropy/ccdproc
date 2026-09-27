@@ -82,7 +82,10 @@ New Features
   returns stays in the input's array namespace. On NumPy, ``float32`` data
   cleaned by ``cosmicray_lacosmic`` with a NumPy ``float64`` ``pssl`` (such
   as ``np.median`` of ``float64`` data) now stays ``float32``, as it already
-  did for every other type of ``pssl``. [#930, #933, #935, #1011]
+  did for every other type of ``pssl``. Likewise, ``cosmicray_lacosmic`` with
+  ``gain_apply=True`` now returns astroscrappy's ``float32`` data for any
+  gain, as it already did for a gain of 1; previously any other gain
+  promoted the data to ``float64``. [#930, #933, #935, #1011]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
