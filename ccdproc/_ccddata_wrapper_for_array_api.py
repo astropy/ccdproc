@@ -2,8 +2,7 @@
 # in astropy.nddata to adopt the array API. This does not cover all
 # of the changes that will be needed, but it is a start.
 
-from contextlib import contextmanager
-from copy import deepcopy
+from copy import copy, deepcopy
 
 import array_api_compat
 import numpy as np
@@ -216,15 +215,14 @@ def _copy_ccddata(ccd):
     Use this instead of ``ccd.copy()``. That runs astropy's mask setter,
     which converts the mask to NumPy, and fails for a mask on a device NumPy
     cannot read, such as the mask of an image ccdproc returned for data on
-    such a device. The mask is hidden from ``ccd`` while ``ccd.copy()`` runs
-    and a deep copy of it is then set with `_set_mask`. Everything else is
-    exactly what ``ccd.copy()`` makes, including the state a subclass of
+    such a device. Instead, ``copy()`` is called on a shallow copy of
+    ``ccd`` without a mask, made by `_without_mask`, and a deep copy of the
+    mask is then set with `_set_mask`. Everything else is exactly what
+    ``ccd.copy()`` makes, including the state a subclass of
     `~astropy.nddata.CCDData` sets in its ``__init__``.
     """
-    mask = ccd.mask
-    with _mask_hidden(ccd):
-        nccd = ccd.copy()
-    _set_mask(nccd, deepcopy(mask))
+    nccd = _without_mask(ccd).copy()
+    _set_mask(nccd, deepcopy(ccd.mask))
     return nccd
 
 
@@ -251,24 +249,37 @@ def _slice_ccddata(ccd, item):
     ``ccd[item]``, the result shares memory with ``ccd`` where the array
     library slices by view.
     """
-    mask = ccd.mask
-    with _mask_hidden(ccd):
-        sliced = ccd[item]
-    _set_mask(sliced, None if mask is None else mask[item])
+    sliced = _without_mask(ccd)[item]
+    _set_mask(sliced, None if ccd.mask is None else ccd.mask[item])
     return sliced
 
 
-@contextmanager
-def _mask_hidden(ccd):
+def _without_mask(ccd):
     """
-    Remove the mask of ``ccd`` for the duration of the ``with`` block.
+    Return a shallow copy of ``ccd`` that has no mask.
+
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`
+        The image to copy.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData`
+        An image of the same class as ``ccd`` that shares its data,
+        uncertainty, metadata and every other attribute, but has no mask.
+
+    Notes
+    -----
+    ``ccd`` itself is not changed, not even briefly. Removing its mask while
+    ``ccd.copy()`` or ``ccd[item]`` runs and restoring it afterwards would
+    show an unmasked image to anything reading ``ccd`` in the meantime, and
+    two such copies overlapping in different threads could leave ``ccd``
+    without its mask for good.
     """
-    mask = ccd._mask
-    ccd._mask = np.ma.nomask
-    try:
-        yield
-    finally:
-        ccd._mask = mask
+    unmasked = copy(ccd)
+    unmasked._mask = np.ma.nomask
+    return unmasked
 
 
 class _CupyOperationNamesMixin:
