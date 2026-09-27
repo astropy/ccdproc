@@ -303,6 +303,13 @@ There are two ways to use the array API in `ccdproc`_:
        ccd = CCDData(data, unit='adu')
        ccd = ccdproc.trim_image(ccd[:900, :900])
 
+   The images passed to one call -- for example the image and the master
+   bias given to ``subtract_bias`` -- must all come from the same array
+   library and be on the same device; `ccdproc`_ raises ``TypeError`` or
+   ``ValueError`` otherwise. Masks and uncertainties are not checked,
+   because `~astropy.nddata.CCDData` often stores them as `numpy`_ arrays
+   whatever its data.
+
 2. Use `ccdproc`_ functions to read/write data in addition to
    using `ccdproc`_ functions to process the data. For example, if you want to
    use `dask`_ arrays to process a set of images, you can do this:

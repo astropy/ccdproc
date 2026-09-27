@@ -391,6 +391,71 @@ def _namespace_from_module(module):
     return array_api_compat.array_namespace(module.asarray(0))
 
 
+def _namespace_of(**arrays):
+    """
+    Return the array namespace shared by ``arrays``, checking that they agree.
+
+    Parameters
+    ----------
+    **arrays : array, scalar or None
+        The array inputs of one call, keyed by the argument names to use in
+        an error message. `None` and scalars, whether Python or NumPy
+        scalars, are skipped. At least one must be an array.
+
+    Returns
+    -------
+    array namespace
+        The array namespace of the arrays.
+
+    Raises
+    ------
+    TypeError
+        If the arrays belong to different array namespaces.
+    ValueError
+        If the arrays are on different devices.
+
+    Notes
+    -----
+    Depending on the pair of libraries, an array operation mixing two
+    namespaces or devices silently converts one array to the other's
+    library, possibly through NumPy on the host, keeps whichever library
+    happens to be on the left, or fails with an error that names neither
+    argument. Checking up front replaces all of those with one error that
+    names the arguments. A scalar broadcasts against an array of any
+    namespace, so it is not checked. Only the data arrays are meant to be
+    passed in: masks and uncertainties of a `~astropy.nddata.CCDData` are
+    often NumPy whatever its data, and ccdproc converts them itself.
+    """
+
+    def library(xp):
+        return xp.__name__.removeprefix("array_api_compat.")
+
+    present = {
+        name: arr
+        for name, arr in arrays.items()
+        if _is_array(arr) and not isinstance(arr, np.generic)
+    }
+    names = list(present)
+    first = names[0]
+    xp = array_api_compat.array_namespace(present[first])
+    device = array_api_compat.device(present[first])
+    for name in names[1:]:
+        other_xp = array_api_compat.array_namespace(present[name])
+        if other_xp is not xp:
+            raise TypeError(
+                f"{name} is a {library(other_xp)} array but {first} is a "
+                f"{library(xp)} array; all array inputs must come from the "
+                "same array library."
+            )
+        other_device = array_api_compat.device(present[name])
+        if other_device != device:
+            raise ValueError(
+                f"{name} is on device {other_device} but {first} is on device "
+                f"{device}; all array inputs must be on the same device."
+            )
+    return xp
+
+
 def _percentile_fallback(array, percentiles, xp=None):
     """
     Try calculating percentile using namespace, otherwise fall back to
@@ -1050,7 +1115,11 @@ def subtract_overscan(
     ------
     TypeError
         A TypeError is raised if either ``ccd`` or ``overscan`` are not the
-        correct objects.
+        correct objects, or if their data are arrays from different array
+        libraries.
+
+    ValueError
+        If the data of ``ccd`` and ``overscan`` are on different devices.
 
     Returns
     -------
@@ -1105,9 +1174,6 @@ def subtract_overscan(
     if not isinstance(ccd, CCDData):
         raise TypeError("ccddata is not a CCDData object.")
 
-    # Set array namespace
-    xp = array_api_compat.array_namespace(ccd.data)
-
     if (overscan is not None and fits_section is not None) or (
         overscan is None and fits_section is None
     ):
@@ -1121,6 +1187,8 @@ def subtract_overscan(
 
     if fits_section is not None:
         overscan = ccd[slice_from_string(fits_section, fits_convention=True)]
+
+    xp = _namespace_of(ccd=ccd.data, overscan=overscan.data)
 
     if overscan_axis is None:
         overscan_axis = 0 if overscan.shape[1] > overscan.shape[0] else 1
@@ -1233,12 +1301,21 @@ def subtract_bias(ccd, master):
 
     {log}
 
+    Raises
+    ------
+    TypeError
+        If the data of ``ccd`` and ``master`` are arrays from different
+        array libraries.
+
+    ValueError
+        If the data of ``ccd`` and ``master`` are on different devices.
+
     Returns
     -------
     result : `~astropy.nddata.CCDData`
         CCDData object with bias subtracted.
     """
-    xp = array_api_compat.array_namespace(ccd.data)
+    xp = _namespace_of(ccd=ccd.data, master=master.data)
     _ccd = _wrap_ccddata_for_array_api(ccd)
     _master = _wrap_ccddata_for_array_api(master)
     try:
@@ -1303,6 +1380,15 @@ def subtract_dark(
 
     {log}
 
+    Raises
+    ------
+    TypeError
+        If the data of ``ccd`` and ``master`` are arrays from different
+        array libraries.
+
+    ValueError
+        If the data of ``ccd`` and ``master`` are on different devices.
+
     Returns
     -------
     result : `~astropy.nddata.CCDData`
@@ -1319,7 +1405,7 @@ def subtract_dark(
         raise TypeError("ccd and master must both be CCDData objects.")
 
     # Do this after the type check above
-    xp = array_api_compat.array_namespace(ccd.data)
+    xp = _namespace_of(ccd=ccd.data, master=master.data)
 
     _ccd = _wrap_ccddata_for_array_api(ccd)
     _master = _wrap_ccddata_for_array_api(master)
@@ -1483,6 +1569,15 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None):
 
     {log}
 
+    Raises
+    ------
+    TypeError
+        If the data of ``ccd`` and ``flat`` are arrays from different
+        array libraries.
+
+    ValueError
+        If the data of ``ccd`` and ``flat`` are on different devices.
+
     Returns
     -------
     ccd : `~astropy.nddata.CCDData`
@@ -1492,7 +1587,7 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None):
     _ccd = _wrap_ccddata_for_array_api(ccd)
     _flat = _wrap_ccddata_for_array_api(flat)
     # Get the array namespace
-    xp = array_api_compat.array_namespace(_ccd.data)
+    xp = _namespace_of(ccd=_ccd.data, flat=_flat.data)
 
     # Use the min_value to replace any values in the flat
     _use_flat = _flat
@@ -2890,6 +2985,16 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
         be replaced.
         Default is ``0``.
 
+    Raises
+    ------
+    TypeError
+        If ``error_image`` is an array from a different array library than
+        the data of ``ccd``.
+
+    ValueError
+        If ``error_image`` is an array on a different device than the data
+        of ``ccd``.
+
     Notes
     -----
     Similar implementation to crmedian in iraf.imred.crutil.crmedian.
@@ -2941,7 +3046,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
        updated with the detected cosmic rays.
     """
     if _is_array(ccd):
-        xp = array_api_compat.array_namespace(ccd)
+        xp = _namespace_of(ccd=ccd, error_image=error_image)
 
         # Masked arrays are not part of the array API, so split the input
         # into a plain data array and a boolean mask (if any). Note that
@@ -2958,7 +3063,9 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
             data, in_mask, error_image, thresh, mbox, gbox, rbox, xp
         )
     elif isinstance(ccd, CCDData):
-        xp = array_api_compat.array_namespace(ccd.data)
+        # Checked before error_image falls back to the uncertainty, which
+        # like the mask may legitimately be NumPy whatever the data are.
+        xp = _namespace_of(ccd=ccd.data, error_image=error_image)
 
         # set up the error image
         if error_image is None and ccd.uncertainty is not None:

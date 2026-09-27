@@ -911,7 +911,9 @@ def test_flat_correct_norm_value_bad_value():
 
     # Create the flat, with some scatter
     data = RNG().normal(loc=1.0, scale=0.05, size=ccd_data.shape)
-    flat = CCDData(data, meta=fits.Header(), unit=ccd_data.unit)
+    flat = CCDData(
+        xp.asarray(data, device=xp_device), meta=fits.Header(), unit=ccd_data.unit
+    )
     with pytest.raises(ValueError) as e:
         flat_correct(ccd_data, flat, add_keyword=None, norm_value=-7)
     assert "norm_value must be" in str(e.value)

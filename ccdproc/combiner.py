@@ -26,6 +26,7 @@ from ._nanfuncs import _setup, nanmad, nanmean, nanmedian, nanstd, nansum
 from .core import (
     _namespace_dtype,
     _namespace_from_module,
+    _namespace_of,
     _native_numpy,
     _to_numpy,
     sigma_func,
@@ -372,7 +373,10 @@ class Combiner:
     ------
     TypeError
         If the ``ccd_iter`` are not `~astropy.nddata.CCDData` objects, have different
-        units, or are different shapes.
+        units, are different shapes, or have data from different array libraries.
+
+    ValueError
+        If the data of the ``ccd_iter`` are on different devices.
 
     Examples
     --------
@@ -426,7 +430,9 @@ class Combiner:
                     raise TypeError("CCDData objects don't have the same unit.")
 
         # Set array namespace
-        xp = array_api_compat.array_namespace(ccd_list[0].data)
+        xp = _namespace_of(
+            **{f"ccd_iter[{i}]": ccd.data for i, ccd in enumerate(ccd_list)}
+        )
         self._xp = xp
         if dtype is None:
             dtype = xp.float64
