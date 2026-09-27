@@ -34,6 +34,7 @@ from . import _blocks
 from ._ccddata_wrapper_for_array_api import (
     _copy_ccddata,
     _set_mask,
+    _slice_ccddata,
     _unwrap_ccddata_for_array_api,
     _wrap_ccddata_for_array_api,
 )
@@ -947,7 +948,7 @@ def ccd_process(
         raise TypeError("ccd is not a CCDData object.")
 
     # make a copy of the object
-    nccd = ccd.copy()
+    nccd = _copy_ccddata(ccd)
 
     # Check the images here, rather than leaving it to the step functions,
     # so that an error names the arguments of ccd_process.
@@ -1136,7 +1137,7 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
         var = xp.sqrt(xp.sqrt(data) ** 2 + readnoise_value**2)
 
     # ensure uncertainty and image data have same unit
-    ccd = ccd_data.copy()
+    ccd = _copy_ccddata(ccd_data)
     var /= gain_value
 
     ccd.uncertainty = StdDevUncertainty(var)
@@ -1268,7 +1269,9 @@ def subtract_overscan(
         raise TypeError("overscan is not a string.")
 
     if fits_section is not None:
-        overscan = ccd[slice_from_string(fits_section, fits_convention=True)]
+        overscan = _slice_ccddata(
+            ccd, slice_from_string(fits_section, fits_convention=True)
+        )
 
     xp = _namespace_of(ccd=ccd.data, overscan=overscan.data)
 
@@ -1299,7 +1302,7 @@ def subtract_overscan(
         else:
             oscan = xp.reshape(oscan, (1,) + oscan.shape)
 
-    subtracted = ccd.copy()
+    subtracted = _copy_ccddata(ccd)
 
     # subtract the overscan
     subtracted.data = ccd.data - oscan

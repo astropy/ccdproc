@@ -22,7 +22,10 @@ from ccdproc import (
     combine,
     cosmicray_lacosmic,
     cosmicray_median,
+    create_deviation,
     subtract_bias,
+    subtract_overscan,
+    trim_image,
 )
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
@@ -131,6 +134,81 @@ def test_numpy_mask_follows_the_data(call, flags_cosmic_ray):
     if flags_cosmic_ray:
         expected[COSMIC_RAY] = True
     np.testing.assert_array_equal(_to_numpy(result.mask), expected)
+
+
+def _processed_image():
+    """
+    An image as ``ccd_process`` returns it, with a bad-pixel mask and an
+    uncertainty; the mask is on the data's device.
+    """
+    ccd = CCDData(to_xp(_image()), unit=u.adu)
+    return ccd_process(
+        ccd,
+        bad_pixel_mask=_bad_pixel_mask(),
+        error=True,
+        gain=1.0 * u.electron / u.adu,
+        readnoise=5.0 * u.electron,
+    )
+
+
+def _unmasked_image():
+    """
+    An image in the units of ``_processed_image``, without a mask.
+    """
+    return CCDData(to_xp(_image()), unit=u.electron)
+
+
+@pytest.mark.parametrize(
+    ("call", "bad_pixel_masked"),
+    [
+        (lambda ccd: combine([ccd, _unmasked_image()]), False),
+        (lambda ccd: Combiner([ccd, _unmasked_image()]).average_combine(), False),
+        (lambda ccd: ccd_process(ccd), True),
+        (
+            lambda ccd: subtract_overscan(
+                ccd, fits_section="[1:3, :]", overscan_axis=1
+            ),
+            True,
+        ),
+        (lambda ccd: trim_image(ccd, fits_section="[1:10, :]"), True),
+        (lambda ccd: create_deviation(ccd, readnoise=5.0 * u.electron), True),
+        (lambda ccd: cosmicray_median(ccd, mbox=5), True),
+    ],
+    ids=[
+        "combine",
+        "Combiner",
+        "ccd_process",
+        "subtract_overscan",
+        "trim_image",
+        "create_deviation",
+        "cosmicray_median",
+    ],
+)
+def test_processed_image_can_be_processed_again(call, bad_pixel_masked):
+    """
+    An image returned by ``ccd_process`` can be passed to ccdproc again,
+    and the result's mask is on the data's device.
+
+    Notes
+    -----
+    Now that the mask of a result is on the data's device, it is on a device
+    NumPy cannot read whenever the data is, as on array-api-strict's
+    non-default device, the stand-in for a GPU. ``combine``,
+    ``ccd_process``, ``subtract_overscan`` and ``create_deviation`` copied
+    or sliced their input as a plain ``CCDData``, whose mask setter sends
+    the mask through NumPy, and so raised ``RuntimeError`` there for
+    ccdproc's own output. ``Combiner``, ``trim_image`` and
+    ``cosmicray_median`` did not, and are here as guards against the same
+    mistake.
+
+    The bad pixel is masked in the result except when combining, where the
+    other image has no mask; a pixel is masked in a combined image only if
+    it is masked in every input.
+    """
+    result = call(_processed_image())
+
+    assert_same_namespace_and_device(result.mask, result.data)
+    assert bool(_to_numpy(result.mask)[BAD_PIXEL]) is bad_pixel_masked
 
 
 def _numpy_ccd_with_mask_on_device(image):

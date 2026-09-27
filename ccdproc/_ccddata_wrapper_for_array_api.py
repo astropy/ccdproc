@@ -223,6 +223,34 @@ def _copy_ccddata(ccd):
     return nccd
 
 
+def _slice_ccddata(ccd, item):
+    """
+    Slice ``ccd``, keeping its mask in the namespace and on the device of its
+    data.
+
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`
+        The image to slice.
+    item : slice or tuple of slices
+        The slice, as for ``ccd[item]``.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData`
+        ``ccd[item]``, of the same class as ``ccd``.
+
+    Notes
+    -----
+    Use this instead of ``ccd[item]``, for the reason given in
+    `_copy_ccddata`. Like ``ccd[item]``, the result shares memory with
+    ``ccd`` where the array library slices by view.
+    """
+    sliced = _CCDDataWrapperForArrayAPI(ccd)[item]
+    sliced.__class__ = type(ccd)
+    return sliced
+
+
 class _CupyOperationNamesMixin:
     # Override the method below solely to allow CuPy operation names
     def propagate(self, operation, other_nddata, result_data, correlation, axis=None):

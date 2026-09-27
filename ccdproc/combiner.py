@@ -23,7 +23,11 @@ from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
 
-from ._ccddata_wrapper_for_array_api import _set_mask
+from ._ccddata_wrapper_for_array_api import (
+    _copy_ccddata,
+    _set_mask,
+    _slice_ccddata,
+)
 from ._nanfuncs import _setup, nanmad, nanmean, nanmedian, nanstd, nansum
 from .core import (
     _ccddata_from_numpy,
@@ -1460,7 +1464,7 @@ def combine(
 
     # First we create a CCDObject from first image for storing output
     if isinstance(img_list[0], CCDData):
-        ccd = img_list[0].copy()
+        ccd = _copy_ccddata(img_list[0])
     else:
         # User has provided fits filenames to read from. Here and below, the
         # uncertainty of a file keeps its dtype, since the template's
@@ -1591,7 +1595,9 @@ def combine(
                 # of unused file references around if the files
                 # are memory-mapped. See this PR for details
                 # https://github.com/astropy/ccdproc/pull/630
-                tile = deepcopy(imgccd[x:xend, y:yend])
+                tile = deepcopy(
+                    _slice_ccddata(imgccd, (slice(x, xend), slice(y, yend)))
+                )
                 if not isinstance(image, CCDData):
                     # Convert only the tile, not the whole file once per tile.
                     tile = _ccddata_from_numpy(tile, like=reference, xp=xp)
