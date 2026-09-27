@@ -23,6 +23,11 @@ from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import sigma_clip
 from astropy.utils import deprecated_renamed_argument
 
+from ._ccddata_wrapper_for_array_api import (
+    _copy_ccddata,
+    _set_mask,
+    _slice_ccddata,
+)
 from ._nanfuncs import _setup, nanmad, nanmean, nanmedian, nanstd, nansum
 from .core import (
     _ccddata_from_numpy,
@@ -932,10 +937,7 @@ class Combiner:
             unit=self.unit,
             uncertainty=StdDevUncertainty(uncertainty),
         )
-        # TODO: the private _mask attribute is set here to avoid the
-        # CCDData.mask setter, which converts the mask to a numpy array.
-        # This can be removed when CCDData supports array namespaces.
-        combined_image._mask = mask
+        _set_mask(combined_image, mask)
 
         # update the meta data
         combined_image.meta["NCOMBINE"] = self._data_arr.shape[0]
@@ -1045,10 +1047,7 @@ class Combiner:
             unit=self.unit,
             uncertainty=StdDevUncertainty(uncertainty),
         )
-        # TODO: the private _mask attribute is set here to avoid the
-        # CCDData.mask setter, which converts the mask to a numpy array.
-        # This can be removed when CCDData supports array namespaces.
-        combined_image._mask = mask
+        _set_mask(combined_image, mask)
 
         # update the meta data
         combined_image.meta["NCOMBINE"] = data.shape[0]
@@ -1126,10 +1125,7 @@ class Combiner:
             unit=self.unit,
             uncertainty=StdDevUncertainty(uncertainty),
         )
-        # TODO: the private _mask attribute is set here to avoid the
-        # CCDData.mask setter, which converts the mask to a numpy array.
-        # This can be removed when CCDData supports array namespaces.
-        combined_image._mask = mask
+        _set_mask(combined_image, mask)
 
         # update the meta data
         combined_image.meta["NCOMBINE"] = self._data_arr.shape[0]
@@ -1468,7 +1464,7 @@ def combine(
 
     # First we create a CCDObject from first image for storing output
     if isinstance(img_list[0], CCDData):
-        ccd = img_list[0].copy()
+        ccd = _copy_ccddata(img_list[0])
     else:
         # User has provided fits filenames to read from. Here and below, the
         # uncertainty of a file keeps its dtype, since the template's
@@ -1497,17 +1493,13 @@ def combine(
 
     # If the template doesn't have a mask, add one, because the result may have
     # a mask. If it does have one, it may be a numpy array even when the data
-    # is not (the CCDData.mask setter converts to numpy), so coerce it into the
+    # is not (the CCDData.mask setter converts to numpy), so move it into the
     # data's namespace and onto the data's device: the combined tiles are
     # written into it below.
-    # TODO: the private _mask attribute is set here to avoid the CCDData.mask
-    # setter. This can be removed when CCDData supports array namespaces.
     if ccd.mask is None:
-        ccd._mask = xp.zeros_like(ccd.data, dtype=xp.bool)
+        _set_mask(ccd, xp.zeros_like(ccd.data, dtype=xp.bool))
     else:
-        ccd._mask = xp.asarray(
-            ccd.mask, dtype=xp.bool, device=array_api_compat.device(ccd.data)
-        )
+        _set_mask(ccd, ccd.mask)
 
     size_of_an_img = _calculate_size_of_image(ccd)
 
@@ -1603,7 +1595,9 @@ def combine(
                 # of unused file references around if the files
                 # are memory-mapped. See this PR for details
                 # https://github.com/astropy/ccdproc/pull/630
-                tile = deepcopy(imgccd[x:xend, y:yend])
+                tile = deepcopy(
+                    _slice_ccddata(imgccd, (slice(x, xend), slice(y, yend)))
+                )
                 if not isinstance(image, CCDData):
                     # Convert only the tile, not the whole file once per tile.
                     tile = _ccddata_from_numpy(tile, like=reference, xp=xp)
@@ -1631,10 +1625,10 @@ def combine(
 
             if ccd.mask is not None:
                 # Handle immutable arrays with array_api_extra; copy=True
-                # also covers a read-only mask. The private attribute is set
-                # to avoid the CCDData.mask setter (see above).
-                ccd._mask = xpx.at(ccd.mask)[x:xend, y:yend].set(
-                    comb_tile.mask, copy=True
+                # also covers a read-only mask.
+                _set_mask(
+                    ccd,
+                    xpx.at(ccd.mask)[x:xend, y:yend].set(comb_tile.mask, copy=True),
                 )
 
             if ccd.uncertainty is not None:

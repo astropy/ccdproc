@@ -28,6 +28,7 @@ from numpy import nan as np_nan
 from numpy import nan_to_num as np_nan_to_num
 from numpy import ones as np_ones
 from numpy import random as np_random
+from numpy import zeros as np_zeros
 
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
@@ -1513,6 +1514,90 @@ def test_ccd_process_parameters_are_appropriate():
     # Master flat check
     with pytest.raises(TypeError):
         ccd_process(ccd_data, master_flat=3)
+
+
+def test_ccd_process_rejects_bad_pixel_mask_of_wrong_shape():
+    """
+    A bad-pixel mask whose shape differs from the data's raises (#1027).
+
+    ``ccd_process`` used to set the private ``_mask`` attribute, which
+    skips the mask setter's shape check, so a mask for the wrong detector,
+    or for the untrimmed image, was silently accepted and returned as the
+    result's mask.
+    """
+    ccd_data = ccd_data_func(data_size=32)
+    wrong_shape = xp.zeros((3, 3), dtype=xp.bool, device=xp_device)
+
+    with pytest.raises(ValueError, match="dimensions of mask"):
+        ccd_process(ccd_data, bad_pixel_mask=wrong_shape)
+
+
+class _TaggedCCDData(CCDData):
+    """
+    A user's subclass of ``CCDData`` that sets an attribute in ``__init__``.
+
+    Notes
+    -----
+    Taking ``tag`` from the image being copied is how such a subclass makes
+    ``copy()``, which calls ``self.__class__(self, copy=True)``, keep it.
+    """
+
+    def __init__(self, *args, tag=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if tag is None and args:
+            tag = getattr(args[0], "tag", None)
+        self.tag = tag
+
+
+def _copying_calls():
+    """
+    Functions that copy their input image, and that slice it for the
+    overscan, to build their result.
+    """
+    return [
+        pytest.param(
+            lambda ccd: create_deviation(ccd, readnoise=5 * u.electron),
+            id="create_deviation",
+        ),
+        pytest.param(lambda ccd: ccd_process(ccd), id="ccd_process"),
+        pytest.param(
+            lambda ccd: subtract_overscan(
+                ccd, fits_section="[1:3, :]", overscan_axis=1
+            ),
+            id="subtract_overscan",
+        ),
+    ]
+
+
+def _masked_subclass_image(cls, **kwargs):
+    """
+    An image of class ``cls`` with a NumPy mask, which the copy moves to the
+    data's namespace and device.
+    """
+    data = xp.ones((10, 10), device=xp_device) * 100
+    mask = np_zeros((10, 10), dtype=bool)
+    return cls(data, unit=u.electron, mask=mask, **kwargs)
+
+
+@pytest.mark.parametrize("call", _copying_calls())
+def test_copy_keeps_state_set_in_subclass_init(call):
+    """
+    Copying an image of a ``CCDData`` subclass keeps the attributes the
+    subclass sets in ``__init__``.
+
+    Notes
+    -----
+    This guards against making the copy some other way than ``ccd.copy()``,
+    such as building it as the array-API wrapper and then assigning
+    ``__class__``. That skips the subclass's ``__init__``, so the result
+    has no ``tag`` attribute at all.
+    """
+    ccd = _masked_subclass_image(_TaggedCCDData, tag="X")
+
+    result = call(ccd)
+
+    assert type(result) is _TaggedCCDData
+    assert result.tag == "X"
 
 
 @pytest.mark.parametrize(

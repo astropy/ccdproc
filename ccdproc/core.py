@@ -32,6 +32,9 @@ from scipy import ndimage
 
 from . import _blocks
 from ._ccddata_wrapper_for_array_api import (
+    _copy_ccddata,
+    _set_mask,
+    _slice_ccddata,
     _unwrap_ccddata_for_array_api,
     _wrap_ccddata_for_array_api,
 )
@@ -945,11 +948,11 @@ def ccd_process(
         raise TypeError("ccd is not a CCDData object.")
 
     # make a copy of the object
-    nccd = ccd.copy()
+    nccd = _copy_ccddata(ccd)
 
     # Check the images here, rather than leaving it to the step functions,
     # so that an error names the arguments of ccd_process.
-    xp = _namespace_of(
+    _namespace_of(
         **{
             name: image.data if isinstance(image, CCDData) else None
             for name, image in [
@@ -995,10 +998,7 @@ def ccd_process(
         # Handle this simple case first....
         pass
     elif _is_array(bad_pixel_mask):
-        # TODO: the private _mask attribute is set here to avoid the
-        # mask.setter than sets the mask to a numpy array. This can be
-        # removed when CCDData supports array namespaces.
-        nccd._mask = xp.asarray(bad_pixel_mask, dtype=xp.bool)
+        _set_mask(nccd, bad_pixel_mask)
     else:
         raise TypeError("bad_pixel_mask is not None or an array.")
 
@@ -1137,7 +1137,7 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
         var = xp.sqrt(xp.sqrt(data) ** 2 + readnoise_value**2)
 
     # ensure uncertainty and image data have same unit
-    ccd = ccd_data.copy()
+    ccd = _copy_ccddata(ccd_data)
     var /= gain_value
 
     ccd.uncertainty = StdDevUncertainty(var)
@@ -1269,7 +1269,9 @@ def subtract_overscan(
         raise TypeError("overscan is not a string.")
 
     if fits_section is not None:
-        overscan = ccd[slice_from_string(fits_section, fits_convention=True)]
+        overscan = _slice_ccddata(
+            ccd, slice_from_string(fits_section, fits_convention=True)
+        )
 
     xp = _namespace_of(ccd=ccd.data, overscan=overscan.data)
 
@@ -1300,7 +1302,7 @@ def subtract_overscan(
         else:
             oscan = xp.reshape(oscan, (1,) + oscan.shape)
 
-    subtracted = ccd.copy()
+    subtracted = _copy_ccddata(ccd)
 
     # subtract the overscan
     subtracted.data = ccd.data - oscan
@@ -1947,11 +1949,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear"):
         header=hdr,
         unit=ccd.unit,
     )
-    # TODO: the private _mask attribute is set here to avoid the
-    # astropy CCDData mask setter, which coerces the mask with
-    # np.asarray and so would pull it out of its array namespace.
-    if output_mask is not None:
-        nccd._mask = output_mask
+    _set_mask(nccd, output_mask)
 
     return nccd
 
@@ -2875,15 +2873,11 @@ def cosmicray_lacosmic(
             nccd.unit = _ccd.unit * gain.unit
 
         nccd.data = cleanarr
-        # TODO: the private _mask attribute is set here to avoid the mask
-        # setters, which do not preserve the device of the data.
+        # Wrapping moved any existing mask to the data's namespace and device.
         if nccd.mask is None:
-            nccd._mask = crmask
+            nccd.mask = crmask
         else:
-            existing_mask = xp.asarray(
-                nccd.mask, dtype=xp.bool, device=array_api_compat.device(_ccd.data)
-            )
-            nccd._mask = xp.logical_or(existing_mask, crmask)
+            nccd.mask = xp.logical_or(nccd.mask, crmask)
 
         # Unwrap the CCDData object to ensure it is compatible with array API
         nccd = _unwrap_ccddata_for_array_api(nccd)
@@ -3164,28 +3158,12 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
             ccd.data, ccd.mask, error_image, thresh, mbox, gbox, rbox, xp
         )
 
-        # create the new ccd data object
-        nccd = ccd.copy()
+        # create the new ccd data object. The copy moves any existing mask,
+        # typically NumPy, to the data's namespace and device, so that it
+        # can be combined with ``crarr``.
+        nccd = _copy_ccddata(ccd)
         nccd.data = data
-        # TODO: the private _mask attribute is set here to avoid the
-        # mask.setter, which runs the mask through np.asarray and so would
-        # copy a non-numpy mask to the host (and fail outright for one on a
-        # non-default device). This can be removed when CCDData supports
-        # array namespaces. ccd_process does the same thing for the same
-        # reason.
-        if nccd.mask is None:
-            nccd._mask = crarr
-        else:
-            # The incoming mask is whatever the caller put on the CCDData,
-            # typically numpy, while ``crarr`` is in the namespace of the
-            # data; ``numpy_mask | foreign_array`` would send the latter
-            # through np.asarray, so bring the mask across first.
-            nccd._mask = (
-                xp.asarray(
-                    nccd.mask, dtype=xp.bool, device=array_api_compat.device(crarr)
-                )
-                | crarr
-            )
+        _set_mask(nccd, crarr if nccd.mask is None else nccd.mask | crarr)
         return nccd
 
     else:

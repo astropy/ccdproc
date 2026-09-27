@@ -1063,13 +1063,24 @@ def test_sum_combine_uncertainty():
 
 @pytest.mark.parametrize("scale", ["function", "mean"])
 def test_combine_ccd_with_uncertainty_and_mask_from_fits(scale, tmp_path):
-    # Test initializing a CCDData object with uncertainty and mask in the
-    # combine function.
+    """
+    ``combine`` works on FITS files that have an uncertainty and a mask.
+
+    Notes
+    -----
+    This is a smoke test: combining three copies of one file must run with
+    ``array_package`` set and give back the file's data. It checks neither
+    the combined uncertainty nor the combined mask. It exists because the
+    combined template is built from the first file, so reading its
+    uncertainty and mask into the array package is on the path of every
+    such call.
+    """
     fitsfile = get_pkg_data_filename("data/a8280271.fits", package="ccdproc.tests")
     ccd_data = CCDData.read(fitsfile, unit=u.adu)
     ccd_data.data = xp.asarray(ccd_data.data, dtype=xp.float64)
-    # Set ._mask instead of .mask to avoid conversion to numpy array
-    ccd_data._mask = xp.zeros_like(ccd_data.data, dtype=xp.bool)
+    # A NumPy mask, as read from a file; create_deviation moves it to the
+    # data's namespace and device.
+    ccd_data.mask = np.zeros(ccd_data.data.shape, dtype=bool)
     if scale == "function":
         scale_by_mean = _make_mean_scaler(ccd_data)
     else:
@@ -1078,6 +1089,9 @@ def test_combine_ccd_with_uncertainty_and_mask_from_fits(scale, tmp_path):
     ccd_data = create_deviation(
         ccd_data, gain=1.0 * u.electron / u.adu, readnoise=5 * u.electron
     )
+    # create_deviation keeps the mask in the data's namespace, and astropy's
+    # FITS writer can only save a NumPy mask.
+    ccd_data.mask = _to_numpy(ccd_data.mask)
     fits_with_uncertainty = tmp_path / "test.fits"
     ccd_data.write(fits_with_uncertainty)
 

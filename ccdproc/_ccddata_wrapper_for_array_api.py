@@ -2,6 +2,8 @@
 # in astropy.nddata to adopt the array API. This does not cover all
 # of the changes that will be needed, but it is a start.
 
+from copy import copy, deepcopy
+
 import array_api_compat
 import numpy as np
 from astropy import units as u
@@ -15,23 +17,58 @@ from astropy.nddata.compat import NDDataArray
 from astropy.units import UnitsError
 
 
+def _set_mask(nddata, value):
+    """
+    Set the mask of ``nddata`` in the namespace and on the device of its data.
+
+    Parameters
+    ----------
+    nddata : `~astropy.nddata.NDDataArray`
+        The object whose mask is set, typically a
+        `~astropy.nddata.CCDData`.
+    value : array-like or None
+        The new mask. ``None`` or ``numpy.ma.nomask`` removes the mask.
+
+    Raises
+    ------
+    ValueError
+        If the shape of ``value`` does not match the shape of the data.
+
+    Notes
+    -----
+    This is the mask setter of `~astropy.nddata.NDDataArray` with
+    ``np.asarray`` replaced by ``xp.asarray`` on the data's device. Astropy's
+    setter always makes a NumPy mask, which on a non-NumPy backend leaves the
+    mask in a different namespace from the data, and fails outright for a
+    mask on a device NumPy cannot read. Call this, or assign ``mask`` on a
+    ``_CCDDataWrapperForArrayAPI``, instead of setting the private ``_mask``
+    attribute so that the shape check is not skipped.
+
+    A mask that cannot be moved to the data's namespace and device, such as
+    an array-api-strict mask on a non-default device with NumPy data, raises
+    whatever error the conversion raises.
+    """
+    # Check that value is not either type of null mask.
+    if (value is not None) and (value is not np.ma.nomask):
+        xp = array_api_compat.array_namespace(nddata.data)
+        mask = xp.asarray(
+            value, dtype=xp.bool, device=array_api_compat.device(nddata.data)
+        )
+        if mask.shape != nddata.data.shape:
+            raise ValueError(
+                f"dimensions of mask {mask.shape} and data "
+                f"{nddata.data.shape} do not match"
+            )
+        nddata._mask = mask
+    else:
+        # internal representation should be one numpy understands
+        nddata._mask = np.ma.nomask
+
+
 class _NDDataArray(NDDataArray):
     @NDDataArray.mask.setter
     def mask(self, value):
-        xp = array_api_compat.array_namespace(self.data)
-        # Check that value is not either type of null mask.
-        if (value is not None) and (value is not np.ma.nomask):
-            mask = xp.asarray(value, dtype=xp.bool)
-            if mask.shape != self.data.shape:
-                raise ValueError(
-                    f"dimensions of mask {mask.shape} and data "
-                    f"{self.data.shape} do not match"
-                )
-            else:
-                self._mask = mask
-        else:
-            # internal representation should be one numpy understands
-            self._mask = np.ma.nomask
+        _set_mask(self, value)
 
 
 class _CCDDataWrapperForArrayAPI(CCDData):
@@ -85,15 +122,11 @@ class _CCDDataWrapperForArrayAPI(CCDData):
         if hasattr(operand, "uncertainty") and operand.uncertainty is not None:
             operand.uncertainty._unit = operand_unit
 
-        # We need to handle the mask separately if we want to return a
-        # genuine CCDDatta object and CCDData does not understand the
-        # array API.
-        result_mask = None
-        if _result.mask is not None:
-            result_mask = _result._mask
-            _result._mask = None
-        result = CCDData(_result, unit=result_unit)
-        result._mask = result_mask
+        # Build the result through the wrapper so that its mask setter keeps
+        # the mask in the data's namespace and on its device; CCDData's own
+        # setter would convert it to NumPy. Then return a genuine CCDData.
+        result = _CCDDataWrapperForArrayAPI(_result, unit=result_unit)
+        result.__class__ = CCDData
         return result
 
     def subtract(self, operand, xp=None, **kwargs):
@@ -160,20 +193,93 @@ class _CCDDataWrapperForArrayAPI(CCDData):
 
     @NDDataArray.mask.setter
     def mask(self, value):
-        xp = array_api_compat.array_namespace(self.data)
-        # Check that value is not either type of null mask.
-        if (value is not None) and (value is not np.ma.nomask):
-            mask = xp.asarray(value, dtype=xp.bool)
-            if mask.shape != self.data.shape:
-                raise ValueError(
-                    f"dimensions of mask {mask.shape} and data "
-                    f"{self.data.shape} do not match"
-                )
-            else:
-                self._mask = mask
-        else:
-            # internal representation should be one numpy understands
-            self._mask = np.ma.nomask
+        _set_mask(self, value)
+
+
+def _copy_ccddata(ccd):
+    """
+    Copy ``ccd``, keeping its mask in its data's namespace and on its device.
+
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`
+        The image to copy.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData`
+        A deep copy of ``ccd``, of the same class as ``ccd``.
+
+    Notes
+    -----
+    Use this instead of ``ccd.copy()``. That runs astropy's mask setter,
+    which converts the mask to NumPy, and fails for a mask on a device NumPy
+    cannot read, such as the mask of an image ccdproc returned for data on
+    such a device. Instead, ``copy()`` is called on a shallow copy of
+    ``ccd`` without a mask, made by `_without_mask`, and a deep copy of the
+    mask is then set with `_set_mask`. Everything else is exactly what
+    ``ccd.copy()`` makes, including the state a subclass of
+    `~astropy.nddata.CCDData` sets in its ``__init__``.
+    """
+    nccd = _without_mask(ccd).copy()
+    _set_mask(nccd, deepcopy(ccd.mask))
+    return nccd
+
+
+def _slice_ccddata(ccd, item):
+    """
+    Slice ``ccd``, keeping its mask in its data's namespace and on its device.
+
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`
+        The image to slice.
+    item : slice or tuple of slices
+        The slice, as for ``ccd[item]``.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData`
+        ``ccd[item]``, of the same class as ``ccd``.
+
+    Notes
+    -----
+    Use this instead of ``ccd[item]``, for the reason given in
+    `_copy_ccddata`, which also describes how the mask is handled. Like
+    ``ccd[item]``, the result shares memory with ``ccd`` where the array
+    library slices by view.
+    """
+    sliced = _without_mask(ccd)[item]
+    _set_mask(sliced, None if ccd.mask is None else ccd.mask[item])
+    return sliced
+
+
+def _without_mask(ccd):
+    """
+    Return a shallow copy of ``ccd`` that has no mask.
+
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`
+        The image to copy.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData`
+        An image of the same class as ``ccd`` that shares its data,
+        uncertainty, metadata and every other attribute, but has no mask.
+
+    Notes
+    -----
+    ``ccd`` itself is not changed, not even briefly. Removing its mask while
+    ``ccd.copy()`` or ``ccd[item]`` runs and restoring it afterwards would
+    show an unmasked image to anything reading ``ccd`` in the meantime, and
+    two such copies overlapping in different threads could leave ``ccd``
+    without its mask for good.
+    """
+    unmasked = copy(ccd)
+    unmasked._mask = np.ma.nomask
+    return unmasked
 
 
 class _CupyOperationNamesMixin:
