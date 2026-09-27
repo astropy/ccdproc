@@ -191,7 +191,8 @@ class HostCopyWarning(AstropyUserWarning):
 
 def _from_numpy(arr, like=None, *, xp=None):
     """
-    Return ``arr`` in the array namespace and on the device of ``like``.
+    Return ``arr`` in the array namespace and on the device of ``like``, or
+    on the default device of ``xp`` if there is no ``like``.
 
     Parameters
     ----------
@@ -209,8 +210,9 @@ def _from_numpy(arr, like=None, *, xp=None):
     Returns
     -------
     array or None
-        ``arr`` as an array of ``xp`` on the device of ``like``, or `None`
-        if ``arr`` is `None`. The result has the dtype of ``arr``, not of
+        ``arr`` as an array of ``xp`` on the device of ``like`` (on the
+        default device of ``xp`` if ``like`` is `None`), or `None` if
+        ``arr`` is `None`. The result has the dtype of ``arr``, not of
         ``like``, unless ``xp`` cannot represent it: JAX without 64-bit
         mode silently converts float64 to float32.
 
@@ -246,7 +248,8 @@ def _ccddata_from_numpy(ccd, like=None, *, xp=None):
     -------
     `~astropy.nddata.CCDData`
         ``ccd``, its data and uncertainty now arrays of ``xp`` on the device
-        of ``like``, each with the dtype it had.
+        of ``like`` (on the default device of ``xp`` if ``like`` is `None`),
+        each with the dtype it had.
 
     Notes
     -----
