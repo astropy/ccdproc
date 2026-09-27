@@ -1411,7 +1411,11 @@ def combine(
         for i, image in enumerate(img_list)
         if isinstance(image, CCDData)
     }
-    xp = _namespace_of(**in_memory) if in_memory else None
+    if in_memory:
+        xp = _namespace_of(**in_memory)
+        device = array_api_compat.device(next(iter(in_memory.values())))
+    else:
+        xp = device = None
     if array_package is not None:
         requested_xp = _namespace_from_module(array_package)
         if xp is not None and xp is not requested_xp:
@@ -1424,9 +1428,6 @@ def combine(
     elif xp is None:
         # Only file names, which CCDData reads as NumPy.
         xp = _namespace_from_module(np)
-    device = (
-        array_api_compat.device(next(iter(in_memory.values()))) if in_memory else None
-    )
 
     if dtype is None:
         dtype = xp.float64
@@ -1542,9 +1543,9 @@ def combine(
 
             # See Combiner.scaling: stack per-element conversions so that a
             # callable returning 0-d backend arrays works on array-api-strict.
-            device = array_api_compat.device(ccd.data)
+            scale_device = array_api_compat.device(ccd.data)
             to_set_in_combiner["scaling"] = xp.stack(
-                [xp.asarray(value, device=device) for value in scalevalues]
+                [xp.asarray(value, device=scale_device) for value in scalevalues]
             )
         else:
             to_set_in_combiner["scaling"] = scale
