@@ -311,9 +311,12 @@ There are two ways to use the array API in `ccdproc`_:
    otherwise. Masks and uncertainties are not checked. Astropy's
    `~astropy.nddata.CCDData` converts any mask it is given to `numpy`_
    whatever the library of its data, so checking masks would reject
-   ordinary input; uncertainties keep their library but are not checked
-   either. If, for example, a master bias was read as `numpy`_ arrays,
-   read it again with the same ``array_package`` as the other images.
+   ordinary input. Instead, a mask is moved to the array library and device
+   of the data, and one that cannot be moved there, such as a CuPy mask
+   with `numpy`_ data, raises an error. Uncertainties keep their library
+   but are not checked either. If, for example, a master bias was read as
+   `numpy`_ arrays, read it again with the same ``array_package`` as the
+   other images.
 
 2. Use `ccdproc`_ functions to read/write data in addition to
    using `ccdproc`_ functions to process the data. For example, if you want to
