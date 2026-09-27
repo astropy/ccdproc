@@ -76,7 +76,10 @@ New Features
   ``AstropyUserWarning``); NumPy input is neither copied nor warned about.
   ``combine(output_file=...)`` does not warn either: it copies the
   combined image to NumPy only to write the FITS file, and the image it
-  returns stays in the input's array namespace. [#930, #933, #935, #1011]
+  returns stays in the input's array namespace. On NumPy, ``float32`` data
+  cleaned by ``cosmicray_lacosmic`` with a NumPy ``float64`` ``pssl`` (such
+  as ``np.median`` of ``float64`` data) now stays ``float32``, as it already
+  did for every other type of ``pssl``. [#930, #933, #935, #1011]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -2649,7 +2649,7 @@ def cosmicray_lacosmic(
     )
 
     # This is for handling the transition in astroscrappy versions
-    data_offset = 0
+    data_offset = 0.0
 
     # Handle setting up the keyword arguments for both interfaces
     if old_astroscrappy_interface:  # pragma: no cover
@@ -2677,8 +2677,11 @@ def cosmicray_lacosmic(
 
             # The old version of astroscrappy added the bkg back in
             # if pssl was provided. The new one does not, so set an offset
-            # here that we later add in then take out.
-            data_offset = pssl
+            # here that we later add in then take out. A Python float, so
+            # that adding it to integer data promotes to floating point
+            # instead of wrapping, and so that a NumPy scalar pssl is not
+            # used as an operand in a strict array-API namespace.
+            data_offset = float(pssl)
 
     if isinstance(ccd, CCDData):
         # Start with a check for a special case: ccd is in electron, and
@@ -2841,11 +2844,14 @@ def _lacosmic_on_host(
 
     # pssl is added on the host: an integer array plus a float pssl is
     # refused by some namespaces (array-api-strict), and adding it on the
-    # device would make a throwaway full-size copy there. Keep the addition
-    # even when the offset is 0: _to_numpy returns NumPy input as is, so
-    # this is also the copy that protects the caller's data.
+    # device would make a throwaway full-size copy there. There is no need
+    # to add a zero offset just to copy the data: astroscrappy only reads
+    # its input and works on a copy of its own.
+    host_data = _to_numpy(data)
+    if data_offset != 0:
+        host_data = host_data + data_offset
     crmask, cleanarr = detect_cosmics(
-        _to_numpy(data) + data_offset,
+        host_data,
         inmask=None if mask is None else _to_numpy(mask),
         gain=gain,
         **detect_kwargs,
@@ -2854,7 +2860,9 @@ def _lacosmic_on_host(
 
     # Back to the caller's namespace and device before any arithmetic, so
     # that everything below runs natively.
-    cleanarr = _from_numpy(cleanarr, like=data, xp=xp) - data_offset
+    cleanarr = _from_numpy(cleanarr, like=data, xp=xp)
+    if data_offset != 0:
+        cleanarr = cleanarr - data_offset
     crmask = _from_numpy(crmask, like=data, xp=xp)
     return cleanarr, crmask
 

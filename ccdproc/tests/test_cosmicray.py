@@ -718,6 +718,106 @@ def test_cosmicray_lacosmic_float_pssl_on_integer_data(monkeypatch, array_input)
     assert_allclose(_to_numpy(cleaned), frame)
 
 
+@pytest.mark.parametrize("array_input", [True, False])
+def test_cosmicray_lacosmic_integer_pssl_on_uint16_data(monkeypatch, array_input):
+    """
+    An integer ``pssl`` added to unsigned 16-bit data near the top of its
+    range gives the right sum instead of wrapping around.
+
+    Notes
+    -----
+    Raw frames are often ``uint16``, and a sky level is naturally given as
+    an integer number of ADU. Under NumPy's promotion rules a ``uint16``
+    array plus a Python int stays ``uint16``, so a pixel at 65530 plus a
+    ``pssl`` of 100 used to reach astroscrappy as 94. The offset is now
+    converted to a Python float first, which promotes the data to floating
+    point.
+    """
+    handed_to_astroscrappy = []
+
+    def no_cosmics(data, **_kwargs):
+        handed_to_astroscrappy.append(data)
+        return np.zeros_like(data, dtype=bool), data
+
+    monkeypatch.setattr("astroscrappy.detect_cosmics", no_cosmics)
+
+    frame = default_rng(seed=1).integers(
+        65400, 65535, size=(20, 20), dtype=np.uint16, endpoint=True
+    )
+    data = xp.asarray(frame, device=xp_device)
+    ccd = data if array_input else CCDData(data, unit=u.adu)
+
+    with pytest.warns(AstropyDeprecationWarning):
+        result = cosmicray_lacosmic(ccd, pssl=100)
+
+    cleaned = result[0] if array_input else result.data
+    assert_allclose(handed_to_astroscrappy[0], frame.astype(np.float64) + 100)
+    assert_allclose(_to_numpy(cleaned), frame)
+
+
+@pytest.mark.parametrize("array_input", [True, False])
+def test_cosmicray_lacosmic_integer_pssl_on_uint16_data_real_astroscrappy(
+    array_input,
+):
+    """
+    An integer ``pssl`` on ``uint16`` data near the top of its range flags
+    nothing in a smooth frame with no cosmic rays, and leaves the data
+    unchanged.
+
+    Notes
+    -----
+    This is the end-to-end companion of
+    ``test_cosmicray_lacosmic_integer_pssl_on_uint16_data``, which checks
+    exactly what reaches ``detect_cosmics`` through a stand-in. Here the
+    real astroscrappy runs, to show what the wrap-around did to a user:
+    pixels that wrapped from near 65535 to near 0 looked like sharp
+    features, so a frame with no cosmic rays came back with pixels flagged
+    and "cleaned" to values tens of thousands of ADU away from the input.
+    """
+    y, x = np.mgrid[0:50, 0:50]
+    frame = np.round(65400 + 135 * (x + y) / 98).astype(np.uint16)
+    data = xp.asarray(frame, device=xp_device)
+    ccd = data if array_input else CCDData(data, unit=u.adu)
+
+    with pytest.warns(AstropyDeprecationWarning):
+        result = cosmicray_lacosmic(ccd, pssl=100)
+
+    cleaned, crmask = result if array_input else (result.data, result.mask)
+    assert count_true(crmask) == 0
+    assert_allclose(_to_numpy(cleaned), frame)
+
+
+@pytest.mark.parametrize("array_input", [True, False])
+def test_cosmicray_lacosmic_numpy_scalar_pssl(monkeypatch, array_input):
+    """
+    A NumPy scalar ``pssl`` works on every array library, for both a
+    ``CCDData`` and a bare array.
+
+    Notes
+    -----
+    A sky level computed from a ``float32`` frame, for instance with
+    ``np.median``, is a ``np.float32`` scalar. array-api-strict refuses a
+    NumPy scalar as an operand, so taking the offset back out of the
+    cleaned data used to raise a ``TypeError``, after astroscrappy had
+    already run.
+    """
+
+    def no_cosmics(data, **_kwargs):
+        return np.zeros_like(data, dtype=bool), data
+
+    monkeypatch.setattr("astroscrappy.detect_cosmics", no_cosmics)
+
+    frame = default_rng(seed=1).normal(100, 5, size=(20, 20)).astype(np.float32)
+    data = xp.asarray(frame, device=xp_device)
+    ccd = data if array_input else CCDData(data, unit=u.adu)
+
+    with pytest.warns(AstropyDeprecationWarning):
+        result = cosmicray_lacosmic(ccd, pssl=np.float32(12.5))
+
+    cleaned = result[0] if array_input else result.data
+    assert_allclose(_to_numpy(cleaned), frame, rtol=1e-6)
+
+
 def test_cosmicray_median_mask_shape_mismatch():
     # CCDData and MaskedArray validate the mask shape themselves, so exercise
     # the shared helper directly.
