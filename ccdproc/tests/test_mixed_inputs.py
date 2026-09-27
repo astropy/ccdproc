@@ -5,10 +5,10 @@ Tests for the check that the array inputs of one call agree (#1025).
 
 The functions that take more than one image -- ``subtract_overscan``,
 ``subtract_bias``, ``subtract_dark``, ``flat_correct``, ``ccd_process``,
-``cosmicray_median`` with an array ``error_image`` and ``Combiner`` -- take
-their array namespace from the data, so data from two array libraries, or on
-two devices, cannot both be honoured. They raise instead, naming the
-arguments that disagree.
+``cosmicray_median`` with an array ``error_image``, ``Combiner`` and
+``combine`` -- take their array namespace from the data, so data from two
+array libraries, or on two devices, cannot both be honoured. They raise
+instead, naming the arguments that disagree.
 """
 
 import re
@@ -22,6 +22,7 @@ from astropy.nddata import CCDData
 from ccdproc import (
     Combiner,
     ccd_process,
+    combine,
     cosmicray_median,
     flat_correct,
     subtract_bias,
@@ -74,6 +75,10 @@ def _call_combiner(ccd, other):
     return Combiner([ccd, other])
 
 
+def _call_combine(ccd, other):
+    return combine([ccd, other])
+
+
 def _call_ccd_process_oscan(ccd, other):
     return ccd_process(ccd, oscan=other[:, 8:])
 
@@ -99,6 +104,7 @@ _CALL_SITES = [
         _call_cosmicray_median_array, "error_image", "ccd", id="cosmicray_median-array"
     ),
     pytest.param(_call_combiner, "ccd_iter[1]", "ccd_iter[0]", id="Combiner"),
+    pytest.param(_call_combine, "img_list[1]", "img_list[0]", id="combine"),
     pytest.param(_call_ccd_process_oscan, "oscan", "ccd", id="ccd_process-oscan"),
     pytest.param(
         _call_ccd_process_master_bias,

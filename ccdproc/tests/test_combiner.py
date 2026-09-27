@@ -39,8 +39,12 @@ from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import _namespace_dtype, _native_numpy, _to_numpy
 from ccdproc.image_collection import ImageFileCollection
+from ccdproc.tests.pytest_fixtures import (
+    assert_same_namespace_and_device,
+    numpy_ccddata,
+    to_xp,
+)
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
-from ccdproc.tests.pytest_fixtures import numpy_ccddata
 
 # Several tests have many more NaNs in them than real data. numpy generates
 # lots of warnings in those cases and it makes more sense to suppress them
@@ -908,8 +912,8 @@ def test_combine_image_file_collection_input(tmp_path):
 def test_combine_average_ccddata():
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
-    # ``combine`` ignores ``array_package`` for CCDData input, so convert
-    # the data to the namespace ourselves.
+    # ``combine`` takes the namespace of CCDData input from its data, so
+    # convert the data to the namespace ourselves.
     ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 3
     c = Combiner(ccd_list)
@@ -1629,6 +1633,56 @@ def test_combine_array_package_dask_module(tmp_path):
 
     result = combine(files, array_package=dask, unit="adu")
     assert array_api_compat.is_dask_array(result.data)
+
+
+@pytest.mark.parametrize("file_first", [True, False], ids=["file-first", "ccd-first"])
+def test_combine_mixed_file_and_ccddata_follows_the_ccddata(tmp_path, file_first):
+    """
+    A list mixing a file name and an image in memory, with no
+    ``array_package``, combines in the array library and on the device of
+    the image in memory, whichever comes first.
+
+    Files always read as NumPy; unless ``combine`` reads them into the
+    namespace of the images in memory, each tile's ``Combiner`` sees two
+    array libraries and raises. Before the mixed-input check (#1025)
+    ``Combiner`` converted everything to the first image's library, so this
+    call worked and must keep working.
+    """
+    image = np.arange(1.0, 10.0).reshape(3, 3)
+    path = tmp_path / "on-disk.fits"
+    CCDData(image, unit=u.adu).write(path)
+    in_memory = CCDData(to_xp(3 * image), unit=u.adu)
+    img_list = [str(path), in_memory] if file_first else [in_memory, str(path)]
+
+    result = combine(img_list)
+
+    assert_same_namespace_and_device(result.data, in_memory.data)
+    assert_allclose(_to_numpy(result.data), 2 * image)
+
+
+def test_combine_array_package_disagreeing_with_ccddata_raises(tmp_path):
+    """
+    An ``array_package`` other than the array library of an image in memory
+    raises ``TypeError`` naming that ``img_list`` entry and
+    ``array_package``.
+
+    ``array_package`` is the library to read files into; an image already
+    in memory in another library is a mismatch the caller should resolve,
+    e.g. a master read without ``array_package``. Converting it instead
+    could be a silent copy through the host.
+    """
+    if array_api_compat.is_numpy_namespace(xp):
+        requested = pytest.importorskip("dask.array")
+    else:
+        requested = xp
+    path = tmp_path / "on-disk.fits"
+    CCDData(np.ones((3, 3)), unit=u.adu).write(path)
+    numpy_image = CCDData(np.ones((3, 3)), unit=u.adu)
+
+    with pytest.raises(
+        TypeError, match=r"img_list\[1\] comes from numpy but array_package is"
+    ):
+        combine([str(path), numpy_image], array_package=requested)
 
 
 # Sigma clipping off numpy: Combiner.sigma_clipping hands numpy data to
