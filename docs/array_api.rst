@@ -308,9 +308,11 @@ There are two ways to use the array API in `ccdproc`_:
    ``cosmicray_median`` (with an array ``error_image``), `ccdproc.Combiner`
    or `ccdproc.combine` must all come from the same array library and be on
    the same device; these functions raise ``TypeError`` or ``ValueError``
-   otherwise. Masks and uncertainties are not checked, because
-   `~astropy.nddata.CCDData` often stores them as `numpy`_ arrays whatever
-   its data. If, for example, a master bias was read as `numpy`_ arrays,
+   otherwise. Masks and uncertainties are not checked. Astropy's
+   `~astropy.nddata.CCDData` converts any mask it is given to `numpy`_
+   whatever the library of its data, so checking masks would reject
+   ordinary input; uncertainties keep their library but are not checked
+   either. If, for example, a master bias was read as `numpy`_ arrays,
    read it again with the same ``array_package`` as the other images.
 
 2. Use `ccdproc`_ functions to read/write data in addition to
