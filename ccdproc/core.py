@@ -276,16 +276,24 @@ def _ccddata_from_numpy(ccd, like=None, *, xp=None):
     -----
     Arrays read from a FITS file may be big-endian, which only NumPy
     accepts, so each is put in native byte order with `_native_numpy`
-    before `_from_numpy` converts it.
+    before it is converted.
+
+    The conversion does not go through `_from_numpy`, whose floating dtype
+    rule is for results computed from ``like`` (#1023). A file is not such
+    a result, so its arrays keep the dtype they were read with: a
+    ``float64`` file combined with a ``float32`` image in memory must not
+    lose precision before ``combine`` casts it to its ``dtype``.
 
     The mask is left in NumPy: astropy's `~astropy.nddata.CCDData` mask
     setter converts any mask to NumPy, so a caller that needs the mask in
     ``xp`` moves it there itself.
     """
-    ccd.data = _from_numpy(_native_numpy(ccd.data), like=like, xp=xp)
+    xp = xp or array_api_compat.array_namespace(like)
+    device = None if like is None else array_api_compat.device(like)
+    ccd.data = xp.asarray(_native_numpy(ccd.data), device=device)
     if ccd.uncertainty is not None:
-        ccd.uncertainty.array = _from_numpy(
-            _native_numpy(ccd.uncertainty.array), like=like, xp=xp
+        ccd.uncertainty.array = xp.asarray(
+            _native_numpy(ccd.uncertainty.array), device=device
         )
     return ccd
 

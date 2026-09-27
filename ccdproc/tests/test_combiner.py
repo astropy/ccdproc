@@ -1803,6 +1803,32 @@ def test_combine_mixed_list_with_masked_file(tmp_path, file_first):
     assert not np.any(_to_numpy(result.mask))
 
 
+@pytest.mark.parametrize("file_first", [True, False], ids=["file-first", "ccd-first"])
+def test_combine_mixed_list_keeps_float64_file_precision(tmp_path, file_first):
+    """
+    A ``float64`` file combined with a ``float32`` image in memory keeps
+    its ``float64`` values until ``combine`` casts it to its ``dtype``.
+
+    Notes
+    -----
+    Guards the interaction of #1023 with #1025. ``combine`` reads files onto
+    the device of the image in memory with ``_ccddata_from_numpy``. If that
+    applied ``_from_numpy``'s floating dtype rule, meant for results
+    computed from an input, the file would first be cast to the ``float32``
+    of the image in memory, rounding ``1 + 2**-30`` to ``1``.
+    """
+    value = 1 + 2**-30
+    path = tmp_path / "float64.fits"
+    CCDData(np.full((3, 3), value), unit=u.adu).write(path)
+    in_memory = CCDData(to_xp(np.zeros((3, 3), dtype=np.float32)), unit=u.adu)
+    img_list = [str(path), in_memory] if file_first else [in_memory, str(path)]
+
+    result = combine(img_list)
+
+    assert result.data.dtype == xp.float64
+    np.testing.assert_array_equal(_to_numpy(result.data), np.full((3, 3), value / 2))
+
+
 def test_combine_files_keeps_uncertainty_dtype(tmp_path):
     """
     ``combine`` of files with a float32 uncertainty into ``array_package``
