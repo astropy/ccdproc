@@ -15,23 +15,58 @@ from astropy.nddata.compat import NDDataArray
 from astropy.units import UnitsError
 
 
+def _set_mask(nddata, value):
+    """
+    Set the mask of ``nddata`` in the namespace and on the device of its data.
+
+    Parameters
+    ----------
+    nddata : `~astropy.nddata.NDDataArray`
+        The object whose mask is set, typically a
+        `~astropy.nddata.CCDData`.
+    value : array-like or None
+        The new mask. ``None`` or ``numpy.ma.nomask`` removes the mask.
+
+    Raises
+    ------
+    ValueError
+        If the shape of ``value`` does not match the shape of the data.
+
+    Notes
+    -----
+    This is the mask setter of `~astropy.nddata.NDDataArray` with
+    ``np.asarray`` replaced by ``xp.asarray`` on the data's device. Astropy's
+    setter always makes a NumPy mask, which on a non-NumPy backend leaves the
+    mask in a different namespace from the data, and fails outright for a
+    mask on a device NumPy cannot read. Call this, or assign ``mask`` on a
+    ``_CCDDataWrapperForArrayAPI``, instead of setting the private ``_mask``
+    attribute so that the shape check is not skipped.
+
+    A mask that cannot be moved to the data's namespace and device, such as
+    an array-api-strict mask on a non-default device with NumPy data, raises
+    whatever error the conversion raises.
+    """
+    # Check that value is not either type of null mask.
+    if (value is not None) and (value is not np.ma.nomask):
+        xp = array_api_compat.array_namespace(nddata.data)
+        mask = xp.asarray(
+            value, dtype=xp.bool, device=array_api_compat.device(nddata.data)
+        )
+        if mask.shape != nddata.data.shape:
+            raise ValueError(
+                f"dimensions of mask {mask.shape} and data "
+                f"{nddata.data.shape} do not match"
+            )
+        nddata._mask = mask
+    else:
+        # internal representation should be one numpy understands
+        nddata._mask = np.ma.nomask
+
+
 class _NDDataArray(NDDataArray):
     @NDDataArray.mask.setter
     def mask(self, value):
-        xp = array_api_compat.array_namespace(self.data)
-        # Check that value is not either type of null mask.
-        if (value is not None) and (value is not np.ma.nomask):
-            mask = xp.asarray(value, dtype=xp.bool)
-            if mask.shape != self.data.shape:
-                raise ValueError(
-                    f"dimensions of mask {mask.shape} and data "
-                    f"{self.data.shape} do not match"
-                )
-            else:
-                self._mask = mask
-        else:
-            # internal representation should be one numpy understands
-            self._mask = np.ma.nomask
+        _set_mask(self, value)
 
 
 class _CCDDataWrapperForArrayAPI(CCDData):
@@ -85,15 +120,11 @@ class _CCDDataWrapperForArrayAPI(CCDData):
         if hasattr(operand, "uncertainty") and operand.uncertainty is not None:
             operand.uncertainty._unit = operand_unit
 
-        # We need to handle the mask separately if we want to return a
-        # genuine CCDDatta object and CCDData does not understand the
-        # array API.
-        result_mask = None
-        if _result.mask is not None:
-            result_mask = _result._mask
-            _result._mask = None
-        result = CCDData(_result, unit=result_unit)
-        result._mask = result_mask
+        # Build the result through the wrapper so that its mask setter keeps
+        # the mask in the data's namespace and on its device; CCDData's own
+        # setter would convert it to NumPy. Then return a genuine CCDData.
+        result = _CCDDataWrapperForArrayAPI(_result, unit=result_unit)
+        result.__class__ = CCDData
         return result
 
     def subtract(self, operand, xp=None, **kwargs):
@@ -160,20 +191,7 @@ class _CCDDataWrapperForArrayAPI(CCDData):
 
     @NDDataArray.mask.setter
     def mask(self, value):
-        xp = array_api_compat.array_namespace(self.data)
-        # Check that value is not either type of null mask.
-        if (value is not None) and (value is not np.ma.nomask):
-            mask = xp.asarray(value, dtype=xp.bool)
-            if mask.shape != self.data.shape:
-                raise ValueError(
-                    f"dimensions of mask {mask.shape} and data "
-                    f"{self.data.shape} do not match"
-                )
-            else:
-                self._mask = mask
-        else:
-            # internal representation should be one numpy understands
-            self._mask = np.ma.nomask
+        _set_mask(self, value)
 
 
 class _CupyOperationNamesMixin:
