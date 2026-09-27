@@ -27,7 +27,6 @@ from ccdproc import (
     flat_correct,
     subtract_bias,
     subtract_dark,
-    subtract_overscan,
 )
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import _namespace_of
@@ -45,10 +44,6 @@ def _foreign_namespace():
         dask_array = pytest.importorskip("dask.array")
         return array_api_compat.array_namespace(dask_array.zeros(1))
     return array_api_compat.numpy
-
-
-def _call_subtract_overscan(ccd, other):
-    return subtract_overscan(ccd, overscan=other[:, 8:])
 
 
 def _call_subtract_bias(ccd, other):
@@ -79,10 +74,6 @@ def _call_combine(ccd, other):
     return combine([ccd, other])
 
 
-def _call_ccd_process_oscan(ccd, other):
-    return ccd_process(ccd, oscan=other[:, 8:])
-
-
 def _call_ccd_process_master_bias(ccd, other):
     return ccd_process(ccd, master_bias=other)
 
@@ -98,9 +89,10 @@ def _call_ccd_process_master_flat(ccd, other):
 
 
 # Each call site, with the names its error message gives the second input
-# and the first.
+# and the first. subtract_overscan and ccd_process's oscan are checked too,
+# but not tested here: an overscan is a slice of its image, so the two
+# cannot come from different array libraries or devices in real use.
 _CALL_SITES = [
-    pytest.param(_call_subtract_overscan, "overscan", "ccd", id="subtract_overscan"),
     pytest.param(_call_subtract_bias, "master", "ccd", id="subtract_bias"),
     pytest.param(_call_subtract_dark, "master", "ccd", id="subtract_dark"),
     pytest.param(_call_flat_correct, "flat", "ccd", id="flat_correct"),
@@ -115,7 +107,6 @@ _CALL_SITES = [
     ),
     pytest.param(_call_combiner, "ccd_iter[1]", "ccd_iter[0]", id="Combiner"),
     pytest.param(_call_combine, "img_list[1]", "img_list[0]", id="combine"),
-    pytest.param(_call_ccd_process_oscan, "oscan", "ccd", id="ccd_process-oscan"),
     pytest.param(
         _call_ccd_process_master_bias,
         "master_bias",
