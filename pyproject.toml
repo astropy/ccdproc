@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Astropy affiliated package"
 readme = "README.rst"
 license = { text = "BSD-3-Clause" }
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 authors = [
     { name = "Steve Crawford", email = "ccdproc@gmail.com" },
     { name = "Matt Craig" },
@@ -17,11 +17,11 @@ authors = [
 dependencies = [
     "array_api_compat>=1.12.0",
     "array_api_extra>=0.7.0",
-    "astropy>=6.1",
+    "astropy>=7.0",
     "astroscrappy>=1.2",
-    "numpy>=2.0",
+    "numpy>=2.2",
     "reproject>=0.14",
-    "scipy",
+    "scipy>=1.15",
 ]
 
 [project.optional-dependencies]
@@ -65,7 +65,7 @@ artifacts = [
 
 [tool.black]
 line-length = 88
-target-version = ['py311', 'py312', 'py313']
+target-version = ['py312', 'py313']
 include = '\.pyi?$|\.ipynb$'
 # 'extend-exclude' excludes files or directories in addition to the defaults
 extend-exclude = '''

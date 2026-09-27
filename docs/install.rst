@@ -5,14 +5,21 @@ Installation
 Requirements
 ============
 
-Ccdproc has the following requirements:
+Ccdproc requires Python 3.12 or later and the following packages:
 
-- `Astropy`_ v2.0 or later
-- `NumPy <http://www.numpy.org/>`_
-- `SciPy <https://www.scipy.org/>`_
-- `scikit-image <http://scikit-image.org/>`_
-- `astroscrappy <https://github.com/astropy/astroscrappy>`_
-- `reproject  <https://github.com/astrofrog/reproject>`_
+- `Astropy`_ v7.0 or later
+- `NumPy <https://numpy.org/>`_ v2.2 or later
+- `SciPy <https://scipy.org/>`_ v1.15 or later
+- `array-api-compat <https://data-apis.org/array-api-compat/>`_ v1.12 or later
+- `array-api-extra <https://data-apis.org/array-api-extra/>`_ v0.7 or later
+- `astroscrappy <https://github.com/astropy/astroscrappy>`_ v1.2 or later
+- `reproject <https://github.com/astropy/reproject>`_ v0.14 or later
+
+The minimum supported versions of Python, NumPy and SciPy follow
+`SPEC 0 <https://scientific-python.org/specs/spec-0000/>`_: support for a
+Python version is dropped three years after its release, and support for a
+release of a core package two years after its release. Ccdproc applies the
+same two-year window to Astropy.
 
 One easy way to get these dependencies is to install a python distribution
 like `anaconda`_.

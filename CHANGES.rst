@@ -111,6 +111,11 @@ Other Changes and Additions
   imported from its numpy 2 location with no 1.26 fallback), which raises
   the minimum astropy to 6.1, reproject to 0.14 and astroscrappy to 1.2,
   the oldest releases that work with numpy 2. [#1000]
+- The minimum supported versions now follow SPEC 0: Python 3.12, numpy 2.2,
+  scipy 1.15 and, applying the same two-year window, astropy 7.0. The
+  ``oldestdeps`` and oldest-numpy tox environments now constrain the package
+  install to their pins; previously the oldest-numpy environment was upgraded
+  to the newest numpy by a test dependency (jax). [#1031]
 
 Bug Fixes
 ^^^^^^^^^
