@@ -32,6 +32,7 @@ from scipy import ndimage
 
 from . import _blocks
 from ._ccddata_wrapper_for_array_api import (
+    _copy_ccddata,
     _set_mask,
     _unwrap_ccddata_for_array_api,
     _wrap_ccddata_for_array_api,
@@ -3154,16 +3155,13 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
             ccd.data, ccd.mask, error_image, thresh, mbox, gbox, rbox, xp
         )
 
-        # create the new ccd data object. Wrapping moves any existing mask,
+        # create the new ccd data object. The copy moves any existing mask,
         # typically NumPy, to the data's namespace and device, so that it
         # can be combined with ``crarr``.
-        nccd = _wrap_ccddata_for_array_api(ccd).copy()
+        nccd = _copy_ccddata(ccd)
         nccd.data = data
-        if nccd.mask is None:
-            nccd.mask = crarr
-        else:
-            nccd.mask = nccd.mask | crarr
-        return _unwrap_ccddata_for_array_api(nccd)
+        _set_mask(nccd, crarr if nccd.mask is None else nccd.mask | crarr)
+        return nccd
 
     else:
         raise TypeError("ccd is not an numpy.ndarray or a CCDData object.")

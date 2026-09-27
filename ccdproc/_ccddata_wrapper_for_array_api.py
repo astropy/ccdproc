@@ -194,6 +194,35 @@ class _CCDDataWrapperForArrayAPI(CCDData):
         _set_mask(self, value)
 
 
+def _copy_ccddata(ccd):
+    """
+    Copy ``ccd``, keeping its mask in the namespace and on the device of its
+    data.
+
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`
+        The image to copy.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData`
+        A deep copy of ``ccd``, of the same class as ``ccd``.
+
+    Notes
+    -----
+    Use this instead of ``ccd.copy()``. That runs astropy's mask setter,
+    which converts the mask to NumPy, and fails for a mask on a device NumPy
+    cannot read, such as the mask of an image ccdproc returned for data on
+    such a device. The copy is made through the wrapper, whose mask setter is
+    `_set_mask`, and then given the class of ``ccd`` back. The uncertainty is
+    copied as it is, not wrapped, so any uncertainty type and unit is kept.
+    """
+    nccd = _CCDDataWrapperForArrayAPI(ccd, copy=True)
+    nccd.__class__ = type(ccd)
+    return nccd
+
+
 class _CupyOperationNamesMixin:
     # Override the method below solely to allow CuPy operation names
     def propagate(self, operation, other_nddata, result_data, correlation, axis=None):

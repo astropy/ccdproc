@@ -12,6 +12,7 @@ from astropy.nddata import (
     CCDData,
     InverseVariance,
     StdDevUncertainty,
+    UnknownUncertainty,
     VarianceUncertainty,
 )
 from astropy.utils.exceptions import AstropyDeprecationWarning
@@ -430,6 +431,84 @@ def test_cosmicray_median_ccddata():
 
     # check the number of cosmic rays detected
     assert count_true(nccd.mask) == NCRAYS
+
+
+def _data_with_cosmic_rays():
+    """
+    Image data with ``NCRAYS`` cosmic rays that ``cosmicray_median`` finds
+    with ``thresh=5, mbox=11`` and an error of ``DATA_SCALE``.
+    """
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    add_cosmicrays(ccd_data, DATA_SCALE, 5, ncrays=NCRAYS)
+    return ccd_data.data
+
+
+def test_cosmicray_median_keeps_unknown_uncertainty():
+    """
+    ``cosmicray_median`` accepts an image with an ``UnknownUncertainty`` and
+    returns it unchanged.
+
+    Notes
+    -----
+    Only the uncertainty's array is used, as the error image, so its type
+    does not matter. Copying the image through the array-API wrapper, which
+    only knows the three variance-like uncertainty types, raised
+    ``TypeError: Unsupported uncertainty type`` here.
+    """
+    data = _data_with_cosmic_rays()
+    noise = DATA_SCALE * xp.ones_like(data)
+    ccd = CCDData(data, unit=u.adu, uncertainty=UnknownUncertainty(noise))
+
+    nccd = cosmicray_median(ccd, thresh=5, mbox=11)
+
+    assert isinstance(nccd.uncertainty, UnknownUncertainty)
+    assert count_true(nccd.mask) == NCRAYS
+
+
+def test_cosmicray_median_keeps_uncertainty_unit():
+    """
+    The uncertainty of the result keeps its own unit when that differs from
+    the data's.
+
+    Notes
+    -----
+    Rebuilding the uncertainty from its array, as unwrapping the array-API
+    wrapper does, gives it the unit of the data, so mJy data with an
+    uncertainty of 1 Jy came back with an uncertainty of 1 mJy, a thousand
+    times too small.
+    """
+    data = _data_with_cosmic_rays()
+    noise = DATA_SCALE * xp.ones_like(data)
+    ccd = CCDData(data, unit=u.mJy, uncertainty=StdDevUncertainty(noise, unit=u.Jy))
+
+    nccd = cosmicray_median(ccd, thresh=5, mbox=11)
+
+    assert nccd.uncertainty.unit == u.Jy
+    np.testing.assert_array_equal(_to_numpy(nccd.uncertainty.array), _to_numpy(noise))
+
+
+class _MyCCDData(CCDData):
+    """
+    A user's subclass of ``CCDData``, for checking that it is kept.
+    """
+
+
+def test_cosmicray_median_keeps_ccddata_subclass():
+    """
+    ``cosmicray_median`` returns an image of the same class as its input.
+
+    Notes
+    -----
+    ``ccd.copy()``, which this used to use, keeps the class; unwrapping the
+    array-API wrapper returns a plain ``CCDData`` instead.
+    """
+    data = _data_with_cosmic_rays()
+    noise = DATA_SCALE * xp.ones_like(data)
+    ccd = _MyCCDData(data, unit=u.adu, uncertainty=StdDevUncertainty(noise))
+
+    nccd = cosmicray_median(ccd, thresh=5, mbox=11)
+
+    assert type(nccd) is _MyCCDData
 
 
 @pytest.mark.parametrize("masked", ["none", "some", "all"])
