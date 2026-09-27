@@ -25,6 +25,7 @@ from astropy.utils import deprecated_renamed_argument
 
 from ._nanfuncs import _setup, nanmad, nanmean, nanmedian, nanstd, nansum
 from .core import (
+    _from_numpy,
     _library_name,
     _namespace_dtype,
     _namespace_from_module,
@@ -1405,7 +1406,8 @@ def combine(
         raise ValueError(f"unrecognised combine method : {method}.")
 
     # Settle the array namespace and device before reading any file; see
-    # Notes in the docstring.
+    # Notes in the docstring. Files are read onto the device of
+    # ``reference``, or onto the default device if it is None.
     in_memory = {
         f"img_list[{i}]": image.data
         for i, image in enumerate(img_list)
@@ -1413,9 +1415,9 @@ def combine(
     }
     if in_memory:
         xp = _namespace_of(**in_memory)
-        device = array_api_compat.device(next(iter(in_memory.values())))
+        reference = next(iter(in_memory.values()))
     else:
-        xp = device = None
+        xp = reference = None
     if array_package is not None:
         requested_xp = _namespace_from_module(array_package)
         if xp is not None and xp is not requested_xp:
@@ -1434,35 +1436,24 @@ def combine(
     else:
         dtype = _namespace_dtype(dtype, xp)
 
-    # CCDData always reads files as NumPy. Convert them into ``xp`` unless
-    # NumPy is only the default (no array_package, and no images in memory
-    # from another library): combine has always used those files as read.
-    convert_files = (
-        array_package is not None or not array_api_compat.is_numpy_namespace(xp)
-    )
-
-    def read_image(file_name):
-        """Read ``file_name`` into a CCDData whose data is in ``xp``."""
-        imgccd = CCDData.read(file_name, **ccdkwargs)
-        if not convert_files:
-            return imgccd
-        # The arrays were just read from a FITS file, so they may be in
-        # big-endian byte order. Convert to native byte order before handing
-        # them to a non-NumPy namespace: some namespaces reject non-native
-        # dtypes outright, and array_api_strict warns (which becomes an
-        # error under this project's warning filters) when a NumPy dtype
-        # object is compared against one of its own.
-        imgccd.data = xp.asarray(_native_numpy(imgccd.data), dtype=dtype, device=device)
-        # The uncertainty keeps its dtype: Combiner does not use the
-        # uncertainties of its inputs, and the template's uncertainty
-        # dtype is the dtype of the result's uncertainty.
+    def into_xp(imgccd):
+        """Move the data and uncertainty of a CCDData read from a file into ``xp``."""
+        # CCDData reads FITS data as NumPy, possibly in big-endian byte
+        # order, which only NumPy accepts; see _native_numpy. The data are
+        # cast to ``dtype``, as Combiner casts them, so a callable ``scale``
+        # sees the same data here as in Combiner. The uncertainty keeps its
+        # dtype: the template's uncertainty dtype is the result's.
+        imgccd.data = xp.astype(
+            _from_numpy(_native_numpy(imgccd.data), like=reference, xp=xp),
+            dtype,
+            copy=False,
+        )
         if imgccd.uncertainty is not None:
-            imgccd.uncertainty.array = xp.asarray(
-                _native_numpy(imgccd.uncertainty.array), device=device
+            imgccd.uncertainty.array = _from_numpy(
+                _native_numpy(imgccd.uncertainty.array), like=reference, xp=xp
             )
-        # The mask stays NumPy: slicing a CCDData runs the mask setter, which
-        # converts to NumPy and fails for arrays on a non-CPU device. Combiner,
-        # and the template coercion below, move masks onto the data's device.
+        # The mask is left as read, in NumPy: the template coercion below and
+        # Combiner move masks to the data's namespace and device.
         return imgccd
 
     # First we create a CCDObject from first image for storing output
@@ -1470,7 +1461,7 @@ def combine(
         ccd = img_list[0].copy()
     else:
         # User has provided fits filenames to read from
-        ccd = read_image(img_list[0])
+        ccd = into_xp(CCDData.read(img_list[0], **ccdkwargs))
 
     if sigma_clip_func is None:
         sigma_clip_func = xp.mean
@@ -1545,15 +1536,15 @@ def combine(
                 if isinstance(image, CCDData):
                     imgccd = image
                 else:
-                    imgccd = read_image(image)
+                    imgccd = into_xp(CCDData.read(image, **ccdkwargs))
 
                 scalevalues.append(scale(imgccd.data))
 
             # See Combiner.scaling: stack per-element conversions so that a
             # callable returning 0-d backend arrays works on array-api-strict.
-            scale_device = array_api_compat.device(ccd.data)
+            device = array_api_compat.device(ccd.data)
             to_set_in_combiner["scaling"] = xp.stack(
-                [xp.asarray(value, device=scale_device) for value in scalevalues]
+                [xp.asarray(value, device=device) for value in scalevalues]
             )
         else:
             to_set_in_combiner["scaling"] = scale
@@ -1585,14 +1576,18 @@ def combine(
                 if isinstance(image, CCDData):
                     imgccd = image
                 else:
-                    imgccd = read_image(image)
+                    imgccd = CCDData.read(image, **ccdkwargs)
 
                 # Trim image and copy
                 # The copy is *essential* to avoid having a bunch
                 # of unused file references around if the files
                 # are memory-mapped. See this PR for details
                 # https://github.com/astropy/ccdproc/pull/630
-                ccd_list.append(deepcopy(imgccd[x:xend, y:yend]))
+                tile = deepcopy(imgccd[x:xend, y:yend])
+                if not isinstance(image, CCDData):
+                    # Convert only the tile, not the whole file once per tile.
+                    tile = into_xp(tile)
+                ccd_list.append(tile)
 
             # Create Combiner for tile
             tile_combiner = Combiner(ccd_list, dtype=dtype)
