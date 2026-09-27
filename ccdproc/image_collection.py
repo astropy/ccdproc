@@ -14,6 +14,7 @@ import numpy.ma as ma
 from astropy.table import MaskedColumn, Table
 from astropy.utils.exceptions import AstropyUserWarning
 
+from ._ccddata_wrapper_for_array_api import _set_mask
 from .ccddata import _recognized_fits_file_extensions, fits_ccddata_reader
 from .core import _ccddata_from_numpy, _namespace_from_module, _native_numpy
 
@@ -967,15 +968,10 @@ class ImageFileCollection:
                 if xp is not None:
                     _ccddata_from_numpy(return_thing, xp=xp)
                     if return_thing.mask is not None:
-                        # Set the private _mask attribute directly: the
-                        # public mask setter (CCDData -> NDDataArray)
+                        # The public mask setter (CCDData -> NDDataArray)
                         # always converts its value to a NumPy array, which
                         # would silently undo the namespace conversion here.
-                        # TODO: remove this workaround when CCDData supports
-                        # array namespaces.
-                        return_thing._mask = xp.asarray(
-                            return_thing.mask, dtype=xp.bool
-                        )
+                        _set_mask(return_thing, return_thing.mask)
 
             elif return_type == "hdu":
                 with fits.open(full_path, **add_kwargs) as hdulist:
