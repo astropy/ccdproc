@@ -2,6 +2,9 @@
 # in astropy.nddata to adopt the array API. This does not cover all
 # of the changes that will be needed, but it is a start.
 
+from contextlib import contextmanager
+from copy import deepcopy
+
 import array_api_compat
 import numpy as np
 from astropy import units as u
@@ -196,8 +199,7 @@ class _CCDDataWrapperForArrayAPI(CCDData):
 
 def _copy_ccddata(ccd):
     """
-    Copy ``ccd``, keeping its mask in the namespace and on the device of its
-    data.
+    Copy ``ccd``, keeping its mask in its data's namespace and on its device.
 
     Parameters
     ----------
@@ -214,19 +216,21 @@ def _copy_ccddata(ccd):
     Use this instead of ``ccd.copy()``. That runs astropy's mask setter,
     which converts the mask to NumPy, and fails for a mask on a device NumPy
     cannot read, such as the mask of an image ccdproc returned for data on
-    such a device. The copy is made through the wrapper, whose mask setter is
-    `_set_mask`, and then given the class of ``ccd`` back. The uncertainty is
-    copied as it is, not wrapped, so any uncertainty type and unit is kept.
+    such a device. The mask is hidden from ``ccd`` while ``ccd.copy()`` runs
+    and a deep copy of it is then set with `_set_mask`. Everything else is
+    exactly what ``ccd.copy()`` makes, including the state a subclass of
+    `~astropy.nddata.CCDData` sets in its ``__init__``.
     """
-    nccd = _CCDDataWrapperForArrayAPI(ccd, copy=True)
-    nccd.__class__ = type(ccd)
+    mask = ccd.mask
+    with _mask_hidden(ccd):
+        nccd = ccd.copy()
+    _set_mask(nccd, deepcopy(mask))
     return nccd
 
 
 def _slice_ccddata(ccd, item):
     """
-    Slice ``ccd``, keeping its mask in the namespace and on the device of its
-    data.
+    Slice ``ccd``, keeping its mask in its data's namespace and on its device.
 
     Parameters
     ----------
@@ -243,12 +247,28 @@ def _slice_ccddata(ccd, item):
     Notes
     -----
     Use this instead of ``ccd[item]``, for the reason given in
-    `_copy_ccddata`. Like ``ccd[item]``, the result shares memory with
-    ``ccd`` where the array library slices by view.
+    `_copy_ccddata`, which also describes how the mask is handled. Like
+    ``ccd[item]``, the result shares memory with ``ccd`` where the array
+    library slices by view.
     """
-    sliced = _CCDDataWrapperForArrayAPI(ccd)[item]
-    sliced.__class__ = type(ccd)
+    mask = ccd.mask
+    with _mask_hidden(ccd):
+        sliced = ccd[item]
+    _set_mask(sliced, None if mask is None else mask[item])
     return sliced
+
+
+@contextmanager
+def _mask_hidden(ccd):
+    """
+    Remove the mask of ``ccd`` for the duration of the ``with`` block.
+    """
+    mask = ccd._mask
+    ccd._mask = np.ma.nomask
+    try:
+        yield
+    finally:
+        ccd._mask = mask
 
 
 class _CupyOperationNamesMixin:
