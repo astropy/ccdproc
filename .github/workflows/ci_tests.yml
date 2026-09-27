@@ -27,11 +27,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: 'ubuntu-py311-oldestdeps'
+          - name: 'ubuntu-py312-oldestdeps'
             os: ubuntu-latest
-            python: '3.11'
+            python: '3.12'
             # Test the oldest supported dependencies on the oldest supported Python
-            tox_env: 'py311-test-oldestdeps'
+            tox_env: 'py312-test-oldestdeps'
 
           # Do not include bottleneck in this coverage test. By not including
           # it we get a better measure of how we are covered when using the
@@ -56,7 +56,7 @@ jobs:
           - name: 'ubuntu-py312-bottleneck'
             os: ubuntu-latest
             python: '3.12'
-            tox_env: 'py312-test-alldeps-numpy200-bottleneck'
+            tox_env: 'py312-test-alldeps-numpy220-bottleneck'
 
           - name: 'macos-py312-dask'
             os: macos-latest
