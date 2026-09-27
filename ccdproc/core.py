@@ -239,9 +239,8 @@ def _ccddata_from_numpy(ccd, like=None, *, xp=None):
         just read from a FITS file. It is changed in place.
     like : array or None, optional
         As for `_from_numpy`.
-    xp : array namespace or module, optional
-        As for `_from_numpy`; a plain module such as ``dask.array`` is
-        accepted too.
+    xp : array namespace, optional
+        As for `_from_numpy`.
 
     Returns
     -------
@@ -259,8 +258,6 @@ def _ccddata_from_numpy(ccd, like=None, *, xp=None):
     setter converts any mask to NumPy, so a caller that needs the mask in
     ``xp`` moves it there itself.
     """
-    if xp is not None:
-        xp = _namespace_from_module(xp)
     ccd.data = _from_numpy(_native_numpy(ccd.data), like=like, xp=xp)
     if ccd.uncertainty is not None:
         ccd.uncertainty.array = _from_numpy(
