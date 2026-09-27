@@ -76,43 +76,37 @@ def _ccd_with_numpy_mask():
     return ccd
 
 
-def _call_subtract_bias(ccd):
-    bias = CCDData(to_xp(np.zeros((SIZE, SIZE))), unit=u.adu)
-    return subtract_bias(ccd, bias)
-
-
-def _call_ccd_process(ccd):
-    # Here the NumPy mask comes in as the bad-pixel mask rather than on ccd.
-    ccd = CCDData(ccd.data, unit=ccd.unit)
-    return ccd_process(ccd, bad_pixel_mask=_bad_pixel_mask())
-
-
-def _call_cosmicray_median(ccd):
-    return cosmicray_median(ccd, mbox=5)
-
-
-def _call_cosmicray_lacosmic(ccd):
-    return cosmicray_lacosmic(ccd)
-
-
-def _call_combine(ccd):
-    return combine([ccd, ccd.copy()])
-
-
-def _call_combiner(ccd):
-    return Combiner([ccd, ccd.copy()]).average_combine()
+def _zero_bias():
+    """
+    A bias image of zeros in the namespace under test, without a mask.
+    """
+    return CCDData(to_xp(np.zeros((SIZE, SIZE))), unit=u.adu)
 
 
 @pytest.mark.skipif(IS_NUMPY, reason="a NumPy mask is already in the data's namespace")
 @pytest.mark.parametrize(
     ("call", "flags_cosmic_ray"),
     [
-        (_call_subtract_bias, False),
-        (_call_ccd_process, False),
-        (_call_cosmicray_median, True),
-        (_call_cosmicray_lacosmic, True),
-        (_call_combine, False),
-        (_call_combiner, False),
+        (lambda ccd: subtract_bias(ccd, _zero_bias()), False),
+        # Here the NumPy mask comes in as the bad-pixel mask rather than on ccd.
+        (
+            lambda ccd: ccd_process(
+                CCDData(ccd.data, unit=ccd.unit), bad_pixel_mask=_bad_pixel_mask()
+            ),
+            False,
+        ),
+        (lambda ccd: cosmicray_median(ccd, mbox=5), True),
+        (lambda ccd: cosmicray_lacosmic(ccd), True),
+        (lambda ccd: combine([ccd, ccd.copy()]), False),
+        (lambda ccd: Combiner([ccd, ccd.copy()]).average_combine(), False),
+    ],
+    ids=[
+        "subtract_bias",
+        "ccd_process",
+        "cosmicray_median",
+        "cosmicray_lacosmic",
+        "combine",
+        "Combiner",
     ],
 )
 def test_numpy_mask_follows_the_data(call, flags_cosmic_ray):
