@@ -775,6 +775,15 @@ def test_combine_bad_input():
 
 # test combiner convenience function reads fits file and combine as expected
 def test_combine_average_fitsimages():
+    """
+    Averaging a list of FITS file names with ``combine`` gives the same
+    result as ``Combiner`` on the images read from those files.
+
+    ``combine`` reads each file into ``array_package`` itself, so the
+    ``Combiner`` reference gets the same conversion by hand: comparing
+    against NumPy data would be a mixed-namespace input, which
+    ``Combiner`` rejects.
+    """
     fitsfile = get_pkg_data_filename("data/a8280271.fits", package="ccdproc.tests")
     ccd = CCDData.read(fitsfile, unit=u.adu)
     # ``combine(array_package=xp)`` below reads the files into ``xp`` this
@@ -947,6 +956,18 @@ def test_calculate_size_of_image(dtype, element_size):
 # test combiner convenience function reads fits file and
 # and combine as expected when asked to run in limited memory
 def test_combine_limitedmem_fitsimages():
+    """
+    ``combine`` of FITS file names under a ``mem_limit`` small enough to
+    split the images into tiles matches ``Combiner`` on the whole images.
+
+    The tiles are read and combined separately, so this pins that they are
+    stitched back together correctly.
+
+    ``combine`` reads each file into ``array_package`` itself, so the
+    ``Combiner`` reference gets the same conversion by hand: comparing
+    against NumPy data would be a mixed-namespace input, which
+    ``Combiner`` rejects.
+    """
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
     # ``combine(array_package=xp)`` below reads the files into ``xp`` this
@@ -972,6 +993,18 @@ def test_combine_limitedmem_fitsimages():
 # test combiner convenience function reads fits file and
 # and combine as expected when asked to run in limited memory with scaling
 def test_combine_limitedmem_scale_fitsimages():
+    """
+    ``combine`` of FITS file names with a callable ``scale`` under a
+    tiling ``mem_limit`` matches ``Combiner`` with the same scaling.
+
+    The scale factors must come from the whole images, not from each tile,
+    or tiles would be scaled differently.
+
+    ``combine`` reads each file into ``array_package`` itself, so the
+    ``Combiner`` reference gets the same conversion by hand: comparing
+    against NumPy data would be a mixed-namespace input, which
+    ``Combiner`` rejects.
+    """
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
     # scale each array to the mean of the first image
@@ -1591,8 +1624,7 @@ def test_user_supplied_combine_func_that_relies_on_masks(comb_func):
 # does not provide.
 def test_combine_array_package_raw_module(tmp_path):
     """A raw array module passed as ``array_package`` should be normalised
-    to its array-api-compat namespace, the same way ``Combiner`` normalises
-    its ``xp`` argument.
+    to its array-api-compat namespace.
     """
     ccd = CCDData(np.arange(9, dtype=float).reshape(3, 3), unit=u.adu)
     files = []

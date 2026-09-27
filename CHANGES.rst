@@ -106,10 +106,12 @@ Other Changes and Additions
   when they are on different devices, naming the arguments that disagree.
   Previously some of these combinations silently converted one image to the
   other's library, possibly through a copy to the host, and others failed
-  with an unrelated error. Masks and uncertainties are not checked.
-  ``combine`` reads the files in its list into the array library and onto
-  the device of the ``CCDData`` images in it, and raises if ``array_package``
-  names a different library. [#1025]
+  with an unrelated error; images on different devices were moved silently
+  onto the first image's device by ``Combiner`` and made the other functions
+  fail with the array library's own device error. Masks and uncertainties
+  are not checked. ``combine`` reads the files in its list into the array
+  library and onto the device of the ``CCDData`` images in it, and raises if
+  ``array_package`` names a different library. [#1025]
 - The minimum supported numpy is now 2.0 (``normalize_axis_tuple`` is
   imported from its numpy 2 location with no 1.26 fallback), which raises
   the minimum astropy to 6.1, reproject to 0.14 and astroscrappy to 1.2,

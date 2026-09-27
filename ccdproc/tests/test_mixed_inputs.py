@@ -218,8 +218,10 @@ def test_mixed_devices_raise(call, other_name, first_name):
 
     This is the CuPy multi-GPU case, stood in for by array-api-strict's
     two devices; its arrays are built directly so this runs whenever it is
-    installed. Without the check the arithmetic would fail inside
-    array-api-strict (or CuPy) with a message that names neither argument.
+    installed. Before the check, ``Combiner`` (and so ``combine``) silently
+    moved every image onto the first image's device, and the other
+    functions failed inside array-api-strict (or CuPy) with a message that
+    names neither argument.
     """
     strict = pytest.importorskip("array_api_strict")
     ccd = CCDData(

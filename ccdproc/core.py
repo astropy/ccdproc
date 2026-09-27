@@ -431,9 +431,8 @@ def _namespace_of(**arrays):
 
     A scalar broadcasts against an array of any namespace, so it is not
     checked. Scalars are Python numbers, NumPy scalars and 0-d NumPy arrays,
-    including a scalar `~astropy.units.Quantity`: all of them are what
-    NumPy gives back for a single value, e.g. from ``np.std`` of a NumPy
-    array.
+    including a scalar `~astropy.units.Quantity`: each holds a single value,
+    such as ``np.std`` of a NumPy array returns.
 
     Only the data arrays are meant to be passed in: masks and uncertainties
     of a `~astropy.nddata.CCDData` are often NumPy whatever its data, and
