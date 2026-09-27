@@ -168,6 +168,21 @@ def test_from_numpy_passes_none_through():
     assert _from_numpy(None, like=like) is None
 
 
+def test_from_numpy_without_like_uses_the_default_device():
+    """
+    With no ``like`` array, ``_from_numpy`` converts into the given ``xp``
+    on its default device. ``combine`` relies on this to read files into
+    ``array_package`` when ``img_list`` holds no images in memory to take a
+    device from.
+    """
+    result = _from_numpy(np.ones((3, 3)), xp=xp)
+
+    assert array_api_compat.array_namespace(result) is array_api_compat.array_namespace(
+        xp.asarray(0)
+    )
+    assert array_api_compat.device(result) == array_api_compat.device(xp.asarray(0))
+
+
 @pytest.mark.skipif(IS_NUMPY, reason="All-NumPy input is never copied to the host")
 @pytest.mark.parametrize(("call", "function_name"), CPU_ONLY_CALLS)
 def test_cpu_only_function_warns_once(call, function_name):

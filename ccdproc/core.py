@@ -189,7 +189,7 @@ class HostCopyWarning(AstropyUserWarning):
     """
 
 
-def _from_numpy(arr, like, *, xp=None):
+def _from_numpy(arr, like=None, *, xp=None):
     """
     Return ``arr`` in the array namespace and on the device of ``like``.
 
@@ -198,8 +198,10 @@ def _from_numpy(arr, like, *, xp=None):
     arr : `numpy.ndarray` or None
         The NumPy array to convert. `None` is passed through unchanged, so
         that an absent mask needs no special case at the call site.
-    like : array
-        The array whose namespace and device the result should have.
+    like : array or None, optional
+        The array whose namespace and device the result should have. If
+        `None`, the result is on the default device of ``xp``, which must
+        then be given.
     xp : array namespace, optional
         Array namespace to convert into. If not provided, the namespace is
         determined from ``like``.
@@ -222,7 +224,8 @@ def _from_numpy(arr, like, *, xp=None):
     if arr is None:
         return None
     xp = xp or array_api_compat.array_namespace(like)
-    return xp.asarray(arr, device=array_api_compat.device(like))
+    device = None if like is None else array_api_compat.device(like)
+    return xp.asarray(arr, device=device)
 
 
 def _is_internal_frame(frame):
