@@ -434,9 +434,10 @@ def _namespace_of(**arrays):
     including a scalar `~astropy.units.Quantity`: each holds a single value,
     such as ``np.std`` of a NumPy array returns.
 
-    Only the data arrays are meant to be passed in: masks and uncertainties
-    of a `~astropy.nddata.CCDData` are often NumPy whatever its data, and
-    ccdproc converts them itself.
+    Only the data arrays are meant to be passed in. astropy's
+    `~astropy.nddata.CCDData` converts any mask it is given to NumPy
+    whatever the library of its data, so checking masks would reject
+    ordinary input; uncertainties are not checked either.
     """
     present = {
         name: arr
