@@ -1250,6 +1250,11 @@ def subtract_overscan(
     it is subtracted. The median and mean paths stay in the input's array
     namespace.
 
+    The result has the same dtype with or without a ``model``, even though
+    ``astropy.modeling`` fits in float64: the fitted overscan is converted
+    to the dtype of the mean or median of the overscan. Floating data
+    therefore keeps its dtype.
+
     Examples
     --------
     Creating a 100x100 array containing ones just for demonstration purposes::
@@ -1309,7 +1314,12 @@ def subtract_overscan(
         of = fitting.LinearLSQFitter()
         yarr = np.arange(oscan_np.shape[0])
         fitted = of(model, yarr, oscan_np)
-        oscan = _from_numpy(fitted(yarr), like=ccd.data, xp=xp)
+        # Convert like the reduced overscan rather than like ccd.data: it is
+        # always floating, so the fit comes back in the dtype the median and
+        # mean paths subtract, including for integer data, where that dtype
+        # depends on the array library (for example float64 for uint16 on
+        # NumPy, float32 on JAX).
+        oscan = _from_numpy(fitted(yarr), like=oscan, xp=xp)
         if overscan_axis == 1:
             oscan = xp.reshape(oscan, (oscan.size, 1))
         else:

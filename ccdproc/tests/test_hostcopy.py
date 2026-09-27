@@ -482,6 +482,50 @@ def _ccd_of_dtype(dtype):
     return ccd
 
 
+_NO_INTEGER_OVERSCAN_ON_STRICT = pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="array-api-strict allows the mean only of floating data, so "
+    "subtract_overscan cannot reduce an integer overscan there yet "
+    "(https://github.com/astropy/ccdproc/issues/971)",
+)
+
+
+@pytest.mark.parametrize(
+    "dtype",
+    [
+        "float32",
+        "float64",
+        pytest.param("uint16", marks=_NO_INTEGER_OVERSCAN_ON_STRICT),
+        pytest.param("int32", marks=_NO_INTEGER_OVERSCAN_ON_STRICT),
+    ],
+)
+def test_subtract_overscan_model_keeps_dtype_of_plain_path(dtype):
+    """
+    Fitting a ``model`` to the overscan gives the same dtype as subtracting
+    its plain mean, so floating data keeps its dtype (#1023).
+
+    Notes
+    -----
+    ``astropy.modeling`` always fits in float64, and the fitted overscan
+    used to come back as float64, so float32 data became float64 only when
+    a ``model`` was given. Integer data gets whatever floating dtype the
+    mean of the overscan has, which for uint16 and int32 is float64 on NumPy
+    but float32 on JAX, so the two paths are compared with each other rather
+    than with a fixed dtype.
+    """
+    ccd = _ccd_of_dtype(dtype)
+    overscan = ccd[:, :5]
+
+    plain = subtract_overscan(ccd, overscan=overscan, overscan_axis=1)
+    fitted = subtract_overscan(
+        ccd, overscan=overscan, overscan_axis=1, model=models.Polynomial1D(1)
+    )
+
+    assert fitted.data.dtype == plain.data.dtype
+    if xp.isdtype(ccd.data.dtype, "real floating"):
+        assert fitted.data.dtype == ccd.data.dtype
+
+
 @pytest.mark.parametrize(
     ("dtype", "expected_dtype"),
     [
