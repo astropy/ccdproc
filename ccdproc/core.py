@@ -228,7 +228,7 @@ def _from_numpy(arr, like=None, *, xp=None):
     return xp.asarray(arr, device=device)
 
 
-def _ccddata_from_numpy(ccd, like=None, *, xp=None, dtype=None):
+def _ccddata_from_numpy(ccd, like=None, *, xp=None):
     """
     Convert the data and uncertainty of a NumPy-backed CCDData into ``xp``.
 
@@ -242,15 +242,12 @@ def _ccddata_from_numpy(ccd, like=None, *, xp=None, dtype=None):
     xp : array namespace or module, optional
         As for `_from_numpy`; a plain module such as ``dask.array`` is
         accepted too.
-    dtype : dtype, optional
-        A dtype of ``xp`` to cast the data to. If `None`, the data keep
-        their dtype. The uncertainty always keeps its dtype.
 
     Returns
     -------
     `~astropy.nddata.CCDData`
         ``ccd``, its data and uncertainty now arrays of ``xp`` on the device
-        of ``like``.
+        of ``like``, each with the dtype it had.
 
     Notes
     -----
@@ -265,10 +262,6 @@ def _ccddata_from_numpy(ccd, like=None, *, xp=None, dtype=None):
     if xp is not None:
         xp = _namespace_from_module(xp)
     ccd.data = _from_numpy(_native_numpy(ccd.data), like=like, xp=xp)
-    if dtype is not None:
-        ccd.data = array_api_compat.array_namespace(ccd.data).astype(
-            ccd.data, dtype, copy=False
-        )
     if ccd.uncertainty is not None:
         ccd.uncertainty.array = _from_numpy(
             _native_numpy(ccd.uncertainty.array), like=like, xp=xp

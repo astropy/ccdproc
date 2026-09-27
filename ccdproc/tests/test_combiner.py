@@ -1653,6 +1653,37 @@ def test_combine_array_package_dask_module(tmp_path):
 
 
 @pytest.mark.parametrize("file_first", [True, False], ids=["file-first", "ccd-first"])
+def test_combine_callable_scale_sees_dtype_data(tmp_path, file_first):
+    """
+    A callable ``scale`` in ``combine`` gets every image cast to ``dtype``,
+    whether it was read from a file or passed in memory, as ``Combiner``
+    casts its data before applying one.
+
+    Notes
+    -----
+    Raw frames are usually integers. A scale such as ``1 / xp.mean(data)``
+    fails on array-api-strict for integer data, so an image that reached the
+    callable uncast broke a mixed list there while the same images worked
+    in ``Combiner``. Casting only the files, and not the images in memory,
+    is the mistake this pins.
+    """
+    raw = np.arange(1, 13, dtype=np.int16).reshape(3, 4)
+    path = tmp_path / "raw.fits"
+    CCDData(raw, unit=u.adu).write(path)
+    in_memory = CCDData(to_xp(2 * raw), unit=u.adu)
+    img_list = [str(path), in_memory] if file_first else [in_memory, str(path)]
+    seen_dtypes = []
+
+    def inverse_mean(data):
+        seen_dtypes.append(data.dtype)
+        return 1 / xp.mean(data)
+
+    combine(img_list, scale=inverse_mean)
+
+    assert seen_dtypes == [xp.float64, xp.float64]
+
+
+@pytest.mark.parametrize("file_first", [True, False], ids=["file-first", "ccd-first"])
 def test_combine_mixed_file_and_ccddata_follows_the_ccddata(tmp_path, file_first):
     """
     A list mixing a file name and an image in memory, with no

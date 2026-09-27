@@ -168,18 +168,16 @@ def test_from_numpy_passes_none_through():
     assert _from_numpy(None, like=like) is None
 
 
-@pytest.mark.parametrize("dtype", [None, "float64"])
-def test_ccddata_from_numpy_converts_data_and_uncertainty(dtype):
+def test_ccddata_from_numpy_converts_data_and_uncertainty():
     """
     ``_ccddata_from_numpy`` is the one conversion that ``combine`` and
     ``ImageFileCollection`` use for an image read from a FITS file. It
     moves the data and uncertainty into the namespace and onto the device
     of ``like``, accepting the big-endian arrays that FITS gives and that
-    other namespaces reject. The data are cast only when ``dtype`` is given
-    (``combine`` casts, ``ImageFileCollection`` does not); the uncertainty
-    keeps its dtype, since ``combine`` takes the result's uncertainty dtype
-    from it; and the mask stays NumPy, as astropy's mask setter would make
-    it anyway.
+    other namespaces reject. Data and uncertainty keep their dtype:
+    ``ImageFileCollection`` hands the file's dtype to the user, and
+    ``combine`` takes the result's uncertainty dtype from the template. The
+    mask stays NumPy, as astropy's mask setter would make it anyway.
     """
     like = xp.asarray(np.zeros((3, 4)), device=xp_device)
     ccd = CCDData(
@@ -188,9 +186,7 @@ def test_ccddata_from_numpy_converts_data_and_uncertainty(dtype):
         uncertainty=np.ones((3, 4), dtype=">f4"),
         mask=np.zeros((3, 4), dtype=bool),
     )
-    target_dtype = None if dtype is None else getattr(xp, dtype)
-
-    result = _ccddata_from_numpy(ccd, like=like, xp=xp, dtype=target_dtype)
+    result = _ccddata_from_numpy(ccd, like=like, xp=xp)
 
     assert result is ccd
     for arr in (ccd.data, ccd.uncertainty.array):
@@ -198,7 +194,7 @@ def test_ccddata_from_numpy_converts_data_and_uncertainty(dtype):
             arr
         ) is array_api_compat.array_namespace(like)
         assert array_api_compat.device(arr) == array_api_compat.device(like)
-    assert ccd.data.dtype == (xp.int16 if dtype is None else xp.float64)
+    assert ccd.data.dtype == xp.int16
     assert ccd.uncertainty.array.dtype == xp.float32
     assert isinstance(ccd.mask, np.ndarray)
 

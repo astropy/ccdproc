@@ -1471,13 +1471,12 @@ def combine(
         ccd = img_list[0].copy()
     else:
         # User has provided fits filenames to read from. Here and below, the
-        # data of a file are cast to ``dtype``, as Combiner casts them, so a
-        # callable ``scale`` sees the same data as in Combiner; the
-        # uncertainty keeps its dtype, since the template's uncertainty dtype
-        # is the result's. The mask stays NumPy: the template coercion below
-        # and Combiner move masks to the data's namespace and device.
+        # uncertainty of a file keeps its dtype, since the template's
+        # uncertainty dtype is the result's. The mask stays NumPy: the
+        # template coercion below and Combiner move masks to the data's
+        # namespace and device.
         ccd = _ccddata_from_numpy(
-            CCDData.read(img_list[0], **ccdkwargs), like=reference, xp=xp, dtype=dtype
+            CCDData.read(img_list[0], **ccdkwargs), like=reference, xp=xp
         )
 
     if sigma_clip_func is None:
@@ -1554,13 +1553,12 @@ def combine(
                     imgccd = image
                 else:
                     imgccd = _ccddata_from_numpy(
-                        CCDData.read(image, **ccdkwargs),
-                        like=reference,
-                        xp=xp,
-                        dtype=dtype,
+                        CCDData.read(image, **ccdkwargs), like=reference, xp=xp
                     )
 
-                scalevalues.append(scale(imgccd.data))
+                # Cast to ``dtype``, as Combiner does before it applies a
+                # callable scale, so the scale sees the same data either way.
+                scalevalues.append(scale(xp.astype(imgccd.data, dtype, copy=False)))
 
             # See Combiner.scaling: stack per-element conversions so that a
             # callable returning 0-d backend arrays works on array-api-strict.
@@ -1608,7 +1606,7 @@ def combine(
                 tile = deepcopy(imgccd[x:xend, y:yend])
                 if not isinstance(image, CCDData):
                     # Convert only the tile, not the whole file once per tile.
-                    tile = _ccddata_from_numpy(tile, like=reference, xp=xp, dtype=dtype)
+                    tile = _ccddata_from_numpy(tile, like=reference, xp=xp)
                 ccd_list.append(tile)
 
             # Create Combiner for tile
