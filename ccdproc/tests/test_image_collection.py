@@ -487,6 +487,35 @@ class TestImageFileCollection:
         data = next(collection.data())
         assert array_api_compat.array_namespace(data) is xp
 
+    def test_generators_accept_the_plain_dask_module(self, tmp_path):
+        """
+        ``array_package=dask.array``, the plain module rather than its
+        array-api-compat namespace, works for the ``ccds``, ``data`` and
+        ``hdus`` generators, mask included.
+
+        The plain module's ``asarray`` rejects the ``device`` keyword that
+        the conversion of a ``CCDData`` passes, raising ``TypeError:
+        from_array() got an unexpected keyword argument 'device'``, so
+        ``ImageFileCollection`` must normalise it to the compat namespace.
+        This is the collection's counterpart of
+        ``test_combine_array_package_dask_module`` (#982).
+        """
+        dask_array = pytest.importorskip("dask.array")
+        fitsfile = get_pkg_data_filename("data/a8280271.fits", package="ccdproc.tests")
+        ccd_data = CCDData.read(fitsfile, unit="adu")
+        ccd_data.mask = np.zeros(ccd_data.shape, dtype=bool)
+        ccd_data.uncertainty = StdDevUncertainty(np.ones(ccd_data.shape))
+        ccd_data.write(tmp_path / "with_mask_and_uncertainty.fits")
+
+        collection = ImageFileCollection(location=tmp_path, array_package=dask_array)
+
+        ccd = next(collection.ccds(ccd_kwargs={"unit": "adu"}))
+        assert array_api_compat.is_dask_array(ccd.data)
+        assert array_api_compat.is_dask_array(ccd.uncertainty.array)
+        assert array_api_compat.is_dask_array(ccd.mask)
+        assert array_api_compat.is_dask_array(next(collection.data()))
+        assert array_api_compat.is_dask_array(next(collection.hdus()).data)
+
     def test_consecutive_fiilters(self, triage_setup):
         collection = ImageFileCollection(
             location=triage_setup.test_dir, keywords=["imagetyp", "filter", "object"]

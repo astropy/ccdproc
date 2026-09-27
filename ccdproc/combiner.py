@@ -17,6 +17,7 @@ else:  # pragma: no cover
 
 import array_api_compat
 import array_api_extra as xpx
+import numpy as np
 from astropy import log
 from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import sigma_clip
@@ -24,9 +25,11 @@ from astropy.utils import deprecated_renamed_argument
 
 from ._nanfuncs import _setup, nanmad, nanmean, nanmedian, nanstd, nansum
 from .core import (
+    _ccddata_from_numpy,
+    _library_name,
     _namespace_dtype,
     _namespace_from_module,
-    _native_numpy,
+    _namespace_of,
     _to_numpy,
     sigma_func,
 )
@@ -368,18 +371,14 @@ class Combiner:
         (e.g. ``int``, ``"float32"``) are mapped to the namespace's dtype
         of the same name. Default is ``None``, i.e. ``float64``.
 
-    xp : array namespace, optional
-        The array namespace to use for the data. If `None` or not provided, it will
-        be inferred from the first `~astropy.nddata.CCDData` object in
-        ``ccd_iter``. A plain module (e.g. ``numpy``) is accepted and is
-        converted to its array-API-compatible namespace.
-        Default is `None`.
-
     Raises
     ------
     TypeError
         If the ``ccd_iter`` are not `~astropy.nddata.CCDData` objects, have different
-        units, or are different shapes.
+        units, are different shapes, or have data from different array libraries.
+
+    ValueError
+        If the data of the ``ccd_iter`` are on different devices.
 
     Examples
     --------
@@ -402,7 +401,7 @@ class Combiner:
                  [ 0.66666667,  0.66666667,  0.66666667,  0.66666667]]...)
     """
 
-    def __init__(self, ccd_iter, dtype=None, xp=None):
+    def __init__(self, ccd_iter, dtype=None):
         if ccd_iter is None:
             raise TypeError(
                 "ccd_iter should be a list or a generator of CCDData objects."
@@ -432,12 +431,10 @@ class Combiner:
                 if not (default_unit == ccd.unit):
                     raise TypeError("CCDData objects don't have the same unit.")
 
-        # Set array namespace, normalising whatever the caller passed (see
-        # ``_namespace_from_module``).
-        if xp is None:
-            xp = array_api_compat.array_namespace(ccd_list[0].data)
-        else:
-            xp = _namespace_from_module(xp)
+        # Set array namespace
+        xp = _namespace_of(
+            **{f"ccd_iter[{i}]": ccd.data for i, ccd in enumerate(ccd_list)}
+        )
         self._xp = xp
         if dtype is None:
             dtype = xp.float64
@@ -452,12 +449,8 @@ class Combiner:
         # new_shape = (len(ccd_list),) + default_shape
         # Stack the individual images rather than passing a nested list to
         # xp.asarray: the array API does not allow nested sequences of arrays.
-        # Keep the stack on the device of the input data, but only when the
-        # data already belong to ``xp``; a device object from a different
-        # namespace (e.g. numpy's 'cpu' for a jax namespace) is meaningless
-        # to ``xp``, so let ``xp`` use its default device instead.
-        data_xp = array_api_compat.array_namespace(ccd_list[0].data)
-        device = array_api_compat.device(ccd_list[0].data) if data_xp is xp else None
+        # Keep the stack on the device of the input data.
+        device = array_api_compat.device(ccd_list[0].data)
         self._data_arr = xp.stack(
             [xp.asarray(ccd.data, dtype=dtype, device=device) for ccd in ccd_list]
         )
@@ -1216,6 +1209,59 @@ def _calculate_size_of_image(ccd):
     return size_of_an_img
 
 
+def _combine_namespace(img_list, array_package):
+    """
+    Return the array namespace ``combine`` works in and an array on its device.
+
+    Parameters
+    ----------
+    img_list : list
+        The file names and `~astropy.nddata.CCDData` objects to combine.
+    array_package : array namespace, module or None
+        The ``array_package`` argument of `combine`.
+
+    Returns
+    -------
+    xp : array namespace
+        The array namespace of the `~astropy.nddata.CCDData` objects in
+        ``img_list``, or ``array_package`` if there are none, or NumPy if
+        neither is given.
+    reference : array or None
+        The data of the first `~astropy.nddata.CCDData` in ``img_list``,
+        whose device the files are read onto, or `None` if there is no
+        `~astropy.nddata.CCDData`, in which case they are read onto the
+        default device of ``xp``.
+
+    Raises
+    ------
+    TypeError
+        If the `~astropy.nddata.CCDData` objects come from different array
+        libraries, or from a different one than ``array_package``.
+    ValueError
+        If the `~astropy.nddata.CCDData` objects are on different devices.
+    """
+    in_memory = {
+        f"img_list[{i}]": image.data
+        for i, image in enumerate(img_list)
+        if isinstance(image, CCDData)
+    }
+    if not in_memory:
+        # Only file names, which CCDData reads as NumPy.
+        module = np if array_package is None else array_package
+        return _namespace_from_module(module), None
+
+    xp = _namespace_of(**in_memory)
+    if array_package is not None:
+        requested_xp = _namespace_from_module(array_package)
+        if xp is not requested_xp:
+            raise TypeError(
+                f"{next(iter(in_memory))} comes from {_library_name(xp)} but "
+                f"array_package is {_library_name(requested_xp)}; images "
+                "passed as CCDData must come from array_package."
+            )
+    return xp, next(iter(in_memory.values()))
+
+
 def combine(
     img_list,
     output_file=None,
@@ -1246,9 +1292,9 @@ def combine(
     Parameters
     ----------
     img_list : `numpy.ndarray`, list or str
-        A list of fits filenames or `~astropy.nddata.CCDData` objects that will be
-        combined together. Or a string of fits filenames separated by comma
-        ",".
+        A list of fits filenames or `~astropy.nddata.CCDData` objects, or a
+        mix of the two, that will be combined together. Or a string of fits
+        filenames separated by comma ",".
 
     output_file : str or None, optional
         Optional output fits file-name to which the final output can be
@@ -1343,12 +1389,11 @@ def combine(
         Default is ``False``.
 
     array_package : array namespace or module, optional
-        The array package to use for data read in from files; ignored if
-        ``ccd_list`` is already a list of `~astropy.nddata.CCDData` objects.
-        Either an array namespace or a plain module that follows the array
-        API standard (e.g. ``numpy`` or ``dask.array``); it is normalised to
-        its array-api-compat namespace the same way `~ccdproc.Combiner`
-        handles ``xp``. Default is NumPy.
+        The array package to read files into. Either an array namespace or a
+        plain module that follows the array API standard (e.g. ``numpy`` or
+        ``dask.array``); it is normalised to its array-api-compat namespace.
+        Default is the array package of the `~astropy.nddata.CCDData`
+        objects in ``img_list``, or NumPy if there are none; see Notes.
 
     ccdkwargs : Other keyword arguments for `astropy.nddata.fits_ccddata_reader`.
 
@@ -1356,6 +1401,26 @@ def combine(
     -------
     combined_image : `~astropy.nddata.CCDData`
         CCDData object based on the combined input of CCDData objects.
+
+    Raises
+    ------
+    TypeError
+        If the data of the `~astropy.nddata.CCDData` objects in ``img_list``
+        come from different array libraries, or from a different one than
+        ``array_package``.
+
+    ValueError
+        If the data of the `~astropy.nddata.CCDData` objects in ``img_list``
+        are on different devices.
+
+    Notes
+    -----
+    Files in ``img_list`` are read into the array package, and onto the
+    device, of the `~astropy.nddata.CCDData` objects in it, so a list that
+    mixes file names and images in memory combines in the array package of
+    the images in memory. An ``array_package`` that disagrees with an image
+    in memory raises rather than converting the image, since the conversion
+    could be a silent copy through host memory.
     """
     # Handle case where the input is an array of file names first
     if not isinstance(img_list, list):
@@ -1392,36 +1457,27 @@ def combine(
     else:
         raise ValueError(f"unrecognised combine method : {method}.")
 
-    # First we create a CCDObject from first image for storing output
-    if isinstance(img_list[0], CCDData):
-        ccd = img_list[0].copy()
-    else:
-        # User has provided fits filenames to read from
-        ccd = CCDData.read(img_list[0], **ccdkwargs)
-        # The ccd object will always read as numpy, so convert it to the
-        # requested namespace if there is one.
-        if array_package is not None:
-            xp = _namespace_from_module(array_package)
+    # Settle the array namespace and device before reading any file; see
+    # Notes in the docstring.
+    xp, reference = _combine_namespace(img_list, array_package)
 
-            # ccd.data (and its uncertainty, if any) were just read from a
-            # FITS file, so they are NumPy arrays, possibly in big-endian
-            # byte order. Convert to native byte order before handing them
-            # to a non-NumPy namespace: some namespaces reject non-native
-            # dtypes outright, and array_api_strict warns (which becomes an
-            # error under this project's warning filters) when a NumPy
-            # dtype object is compared against one of its own.
-            ccd.data = xp.asarray(_native_numpy(ccd.data))
-            if ccd.uncertainty is not None:
-                ccd.uncertainty.array = xp.asarray(_native_numpy(ccd.uncertainty.array))
-            # The mask is converted below, once the namespace is known.
-
-    # Get the array namespace; if array_package was not None and files were read in,
-    # then xp the ccd.data will be the same as the array_package.
-    xp = array_api_compat.array_namespace(ccd.data)
     if dtype is None:
         dtype = xp.float64
     else:
         dtype = _namespace_dtype(dtype, xp)
+
+    # First we create a CCDObject from first image for storing output
+    if isinstance(img_list[0], CCDData):
+        ccd = img_list[0].copy()
+    else:
+        # User has provided fits filenames to read from. Here and below, the
+        # uncertainty of a file keeps its dtype, since the template's
+        # uncertainty dtype is the result's. The mask stays NumPy: the
+        # template coercion below and Combiner move masks to the data's
+        # namespace and device.
+        ccd = _ccddata_from_numpy(
+            CCDData.read(img_list[0], **ccdkwargs), like=reference, xp=xp
+        )
 
     if sigma_clip_func is None:
         sigma_clip_func = xp.mean
@@ -1496,17 +1552,13 @@ def combine(
                 if isinstance(image, CCDData):
                     imgccd = image
                 else:
-                    imgccd = CCDData.read(image, **ccdkwargs)
-                    if array_package is not None:
-                        imgccd.data = xp.asarray(imgccd.data, dtype=dtype)
-                        if imgccd.uncertainty is not None:
-                            imgccd.uncertainty.array = xp.asarray(
-                                imgccd.uncertainty.array, dtype=dtype
-                            )
-                        if imgccd.mask is not None:
-                            imgccd._mask = xp.asarray(imgccd.mask, dtype=xp.bool)
+                    imgccd = _ccddata_from_numpy(
+                        CCDData.read(image, **ccdkwargs), like=reference, xp=xp
+                    )
 
-                scalevalues.append(scale(imgccd.data))
+                # Cast to ``dtype``, as Combiner does before it applies a
+                # callable scale, so the scale sees the same data either way.
+                scalevalues.append(scale(xp.astype(imgccd.data, dtype, copy=False)))
 
             # See Combiner.scaling: stack per-element conversions so that a
             # callable returning 0-d backend arrays works on array-api-strict.
@@ -1545,21 +1597,17 @@ def combine(
                     imgccd = image
                 else:
                     imgccd = CCDData.read(image, **ccdkwargs)
-                    if array_package is not None:
-                        imgccd.data = xp.asarray(imgccd.data, dtype=dtype)
-                        if imgccd.uncertainty is not None:
-                            imgccd.uncertainty.array = xp.asarray(
-                                imgccd.uncertainty.array, dtype=dtype
-                            )
-                        if imgccd.mask is not None:
-                            imgccd._mask = xp.asarray(imgccd.mask, dtype=xp.bool)
 
                 # Trim image and copy
                 # The copy is *essential* to avoid having a bunch
                 # of unused file references around if the files
                 # are memory-mapped. See this PR for details
                 # https://github.com/astropy/ccdproc/pull/630
-                ccd_list.append(deepcopy(imgccd[x:xend, y:yend]))
+                tile = deepcopy(imgccd[x:xend, y:yend])
+                if not isinstance(image, CCDData):
+                    # Convert only the tile, not the whole file once per tile.
+                    tile = _ccddata_from_numpy(tile, like=reference, xp=xp)
+                ccd_list.append(tile)
 
             # Create Combiner for tile
             tile_combiner = Combiner(ccd_list, dtype=dtype)
@@ -1590,10 +1638,13 @@ def combine(
                 )
 
             if ccd.uncertainty is not None:
-                # Handle immutable arrays with array_api_extra
+                # Handle immutable arrays with array_api_extra. Cast to the
+                # template's uncertainty dtype, which may differ from the
+                # data's: array_api_strict does not cast on assignment.
+                uncertainty_dtype = _namespace_dtype(ccd.uncertainty.array.dtype, xp)
                 ccd.uncertainty.array = xpx.at(ccd.uncertainty.array)[
                     x:xend, y:yend
-                ].set(xp.astype(comb_tile.uncertainty.array, ccd.dtype))
+                ].set(xp.astype(comb_tile.uncertainty.array, uncertainty_dtype))
             # Free up memory to try to stay under user's limit
             del comb_tile
             del tile_combiner

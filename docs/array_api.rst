@@ -303,6 +303,18 @@ There are two ways to use the array API in `ccdproc`_:
        ccd = CCDData(data, unit='adu')
        ccd = ccdproc.trim_image(ccd[:900, :900])
 
+   The images passed to one call of ``subtract_overscan``,
+   ``subtract_bias``, ``subtract_dark``, ``flat_correct``, ``ccd_process``,
+   ``cosmicray_median`` (with an array ``error_image``), `ccdproc.Combiner`
+   or `ccdproc.combine` must all come from the same array library and be on
+   the same device; these functions raise ``TypeError`` or ``ValueError``
+   otherwise. Masks and uncertainties are not checked. Astropy's
+   `~astropy.nddata.CCDData` converts any mask it is given to `numpy`_
+   whatever the library of its data, so checking masks would reject
+   ordinary input; uncertainties keep their library but are not checked
+   either. If, for example, a master bias was read as `numpy`_ arrays,
+   read it again with the same ``array_package`` as the other images.
+
 2. Use `ccdproc`_ functions to read/write data in addition to
    using `ccdproc`_ functions to process the data. For example, if you want to
    use `dask`_ arrays to process a set of images, you can do this:
@@ -311,10 +323,8 @@ There are two ways to use the array API in `ccdproc`_:
 
        import dask.array as da
        import ccdproc
-       from astropy.nddata import CCDData
 
-       images = ccdproc.ImageFileCollection('path/to/images/*.fits',
-                                            array_package=da)
+       images = ccdproc.ImageFileCollection('path/to/images', array_package=da)
        for ccd in images.ccds():
            ccd = ccdproc.trim_image(ccd[:900, :900])
            # Do more processing with ccdproc functions
@@ -323,22 +333,20 @@ There are two ways to use the array API in `ccdproc`_:
    If you do this, image combination will also be done using the array library
    you specified.
 
-   To do image combination with the array library of your choice without doing
-   any other processing, you can either create a `ccdproc.Combiner` object with a
-   list of file names and the ``array_package`` argument set to the array library
-   you want to use, or use the `ccdproc.combine` function a list of file names and
-   the ``array_package`` argument set to the array library you want to use. For
-   example, to combine images using `dask`_ arrays, you can do this:
+   To combine images with the array library of your choice without doing any
+   other processing, pass a list of file names to `ccdproc.combine` with the
+   ``array_package`` argument set to that library. For example, to combine
+   images using `dask`_ arrays, you can do this:
 
    .. code-block:: python
 
        import dask.array as da
        import ccdproc
-       from astropy.nddata import CCDData
 
-       images = ccdproc.ImageFileCollection('path/to/images/*.fits',
-                                            array_package=da)
-       combined = ccdproc.combine_images(images.ccds(), method='median')
+       file_list = ccdproc.ImageFileCollection('path/to/images').files_filtered(
+           include_path=True
+       )
+       combined = ccdproc.combine(file_list, method='median', array_package=da)
 
 .. _array API: https://data-apis.org/array-api/latest/index.html
 .. _array-api-compat: https://data-apis.org/array-api-compat

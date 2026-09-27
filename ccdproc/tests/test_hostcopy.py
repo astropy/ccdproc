@@ -37,7 +37,7 @@ from ccdproc import (
 # Set up the array library to be used in tests
 from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
-from ccdproc.core import _from_numpy, _to_numpy
+from ccdproc.core import _ccddata_from_numpy, _from_numpy, _to_numpy
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
 from ccdproc.tests.pytest_fixtures import numpy_ccddata, wcs_for_testing
 
@@ -166,6 +166,52 @@ def test_from_numpy_passes_none_through():
     """
     like = xp.asarray(np.zeros((3, 3)), device=xp_device)
     assert _from_numpy(None, like=like) is None
+
+
+def test_ccddata_from_numpy_converts_data_and_uncertainty():
+    """
+    ``_ccddata_from_numpy`` is the one conversion that ``combine`` and
+    ``ImageFileCollection`` use for an image read from a FITS file. It
+    moves the data and uncertainty into the namespace and onto the device
+    of ``like``, accepting the big-endian arrays that FITS gives and that
+    other namespaces reject. Data and uncertainty keep their dtype:
+    ``ImageFileCollection`` hands the file's dtype to the user, and
+    ``combine`` takes the result's uncertainty dtype from the template. The
+    mask stays NumPy, as astropy's mask setter would make it anyway.
+    """
+    like = xp.asarray(np.zeros((3, 4)), device=xp_device)
+    ccd = CCDData(
+        np.arange(12, dtype=">i2").reshape(3, 4),
+        unit=u.adu,
+        uncertainty=np.ones((3, 4), dtype=">f4"),
+        mask=np.zeros((3, 4), dtype=bool),
+    )
+    result = _ccddata_from_numpy(ccd, like=like, xp=xp)
+
+    assert result is ccd
+    for arr in (ccd.data, ccd.uncertainty.array):
+        assert array_api_compat.array_namespace(
+            arr
+        ) is array_api_compat.array_namespace(like)
+        assert array_api_compat.device(arr) == array_api_compat.device(like)
+    assert ccd.data.dtype == xp.int16
+    assert ccd.uncertainty.array.dtype == xp.float32
+    assert isinstance(ccd.mask, np.ndarray)
+
+
+def test_from_numpy_without_like_uses_the_default_device():
+    """
+    With no ``like`` array, ``_from_numpy`` converts into the given ``xp``
+    on its default device. ``combine`` relies on this to read files into
+    ``array_package`` when ``img_list`` holds no images in memory to take a
+    device from.
+    """
+    result = _from_numpy(np.ones((3, 3)), xp=xp)
+
+    assert array_api_compat.array_namespace(result) is array_api_compat.array_namespace(
+        xp.asarray(0)
+    )
+    assert array_api_compat.device(result) == array_api_compat.device(xp.asarray(0))
 
 
 @pytest.mark.skipif(IS_NUMPY, reason="All-NumPy input is never copied to the host")
@@ -317,59 +363,6 @@ def test_cosmicray_lacosmic_warns_once_for_non_numpy_inbkg():
     assert array_api_compat.is_numpy_namespace(
         array_api_compat.array_namespace(result.data)
     )
-
-
-def _wcs_project_with_numpy_xp(ccd):
-    """Call ``wcs_project`` on ``ccd`` with an explicit ``xp=np``."""
-    target_wcs = wcs_for_testing(ccd.shape)
-    target_wcs.wcs.crpix += [1, 1]
-    return wcs_project(ccd, target_wcs, xp=np)
-
-
-def _subtract_overscan_with_numpy_xp(ccd):
-    """Call ``subtract_overscan``'s model path with an explicit ``xp=np``."""
-    return subtract_overscan(
-        ccd,
-        overscan=ccd[:, :5],
-        overscan_axis=1,
-        model=models.Polynomial1D(1),
-        xp=np,
-    )
-
-
-@pytest.mark.skipif(
-    not array_api_compat.is_dask_namespace(xp),
-    reason="only dask data is handled by numpy functions without an error",
-)
-@pytest.mark.parametrize(
-    "call",
-    [
-        pytest.param(_wcs_project_with_numpy_xp, id="wcs_project"),
-        pytest.param(_subtract_overscan_with_numpy_xp, id="subtract_overscan"),
-    ],
-)
-def test_numpy_xp_with_dask_data_warns_once(call):
-    """
-    Dask data with an explicit ``xp=np`` still emits exactly one
-    ``HostCopyWarning``.
-
-    Notes
-    -----
-    The dask array is computed and copied to the host whatever ``xp`` says,
-    so the warning is decided from the data rather than from ``xp``, which
-    used to silence it. Whether an ``xp`` that disagrees with the data
-    should be accepted at all is a separate question, for every public
-    function; only dask is tested because the other backends fail in
-    their own ways when handed to NumPy functions.
-    """
-    ccd = ccd_data_func(data_size=DATA_SIZE)
-    ccd.wcs = wcs_for_testing(ccd.shape)
-
-    with pytest.warns(HostCopyWarning) as record:
-        call(ccd)
-
-    host_copies = [w for w in record if issubclass(w.category, HostCopyWarning)]
-    assert len(host_copies) == 1
 
 
 def test_cosmicray_lacosmic_unit_mismatch_does_not_convert_inbkg(monkeypatch):

@@ -30,8 +30,7 @@ New Features
   slice's finite values unmasked. [#1009]
 - ``block_reduce``, ``block_average`` and ``block_replicate`` keep non-NumPy
   input in its own array library and on its own device instead of coercing
-  it to NumPy through ``astropy.nddata``; ``block_replicate`` gained the
-  ``xp`` keyword the other two already had. ``block_reduce`` with an
+  it to NumPy through ``astropy.nddata``. ``block_reduce`` with an
   explicit ``func=xp.mean`` promotes integer and boolean input to a floating
   dtype, as ``block_average`` does, so that it gives NumPy's result on every
   backend. [#1009]
@@ -61,10 +60,8 @@ New Features
 - ``cosmicray_median`` now returns a floating result for integer input on
   every array library. Previously NumPy kept the input integer dtype, dask
   returned a float and ``array-api-strict`` raised. [#1010]
-- ``background_deviation_filter`` gained an ``xp`` argument, matching
-  ``background_deviation_box``, and ``background_deviation_box`` now
-  accepts a plain array-like such as a nested list, as its docstring has
-  always promised. [#1010]
+- ``background_deviation_box`` now accepts a plain array-like such as a
+  nested list, as its docstring has always promised. [#1010]
 - The three operations that depend on a NumPy-only library --
   ``wcs_project`` (reproject), ``subtract_overscan`` with a ``model``
   (``astropy.modeling``) and ``cosmicray_lacosmic`` (astroscrappy) -- now
@@ -101,7 +98,15 @@ Other Changes and Additions
   suite locally: ``tox -e strict`` reproduces the CI ``py313-strict`` job
   without having to name the interpreter. [#986]
 - ``combine`` no longer accepts an array as its ``array_package`` argument;
-  pass the array namespace or module instead, as for ``Combiner``. [#997]
+  pass the array namespace or module instead. [#997]
+- ``subtract_overscan``, ``subtract_bias``, ``subtract_dark``,
+  ``flat_correct``, ``ccd_process``, ``cosmicray_median``, ``Combiner`` and
+  ``combine`` now raise ``TypeError`` when their images come from different
+  array libraries and ``ValueError`` when they are on different devices.
+  Previously some of these calls silently converted one of the images.
+  ``combine`` given a mix of file names and ``CCDData`` images in memory
+  reads the files into the array library of the images in memory.
+  [#1025, #1028]
 - The minimum supported numpy is now 2.0 (``normalize_axis_tuple`` is
   imported from its numpy 2 location with no 1.26 fallback), which raises
   the minimum astropy to 6.1, reproject to 0.14 and astroscrappy to 1.2,
@@ -198,8 +203,7 @@ Bug Fixes
   of scattering into the mask through per-pixel integer indices, which the
   array API standard does not support. [#994]
 - Accept a plain module such as ``numpy`` or ``dask.array`` as ``array_package``
-  in ``combine``, normalising it to its array-api-compat namespace the way
-  ``Combiner`` already does. [#997]
+  in ``combine``, normalising it to its array-api-compat namespace. [#997]
 - Keep the uncertainty propagation for correlated addition and subtraction
   through ``_CCDDataWrapperForArrayAPI`` in the array namespace instead of
   falling back to NumPy. [#997]
@@ -225,6 +229,8 @@ Bug Fixes
 - Correct the ``Combiner.sigma_clipping`` docstring, which said the
   default ``func`` was ``'median'``; the runtime default has always been
   ``'mean'``. [#1001]
+- ``combine`` on array-api-strict no longer raises ``mismatched dtypes``
+  when the first image's uncertainty dtype differs from ``dtype``. [#1028]
 
 2.5.1 (2025-07-05)
 ------------------

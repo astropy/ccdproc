@@ -905,13 +905,23 @@ def test_flat_correct_norm_value():
 
 
 def test_flat_correct_norm_value_bad_value():
+    """
+    ``flat_correct`` raises ``ValueError`` for a ``norm_value`` that is not
+    positive.
+
+    Dividing by a zero or negative normalisation would give a meaningless
+    flat-corrected image, so it must be rejected rather than applied. The
+    flat is built in the image's array library and on its device, as a real
+    flat would be: otherwise the mixed-input check would raise first and
+    the ``norm_value`` check would go untested.
+    """
     ccd_data = ccd_data_func()
-    # Test that flat_correct raises the appropriate error if
-    # it is given a bad norm_value. Bad means <=0.
 
     # Create the flat, with some scatter
     data = RNG().normal(loc=1.0, scale=0.05, size=ccd_data.shape)
-    flat = CCDData(data, meta=fits.Header(), unit=ccd_data.unit)
+    flat = CCDData(
+        xp.asarray(data, device=xp_device), meta=fits.Header(), unit=ccd_data.unit
+    )
     with pytest.raises(ValueError) as e:
         flat_correct(ccd_data, flat, add_keyword=None, norm_value=-7)
     assert "norm_value must be" in str(e.value)

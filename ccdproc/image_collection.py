@@ -15,7 +15,7 @@ from astropy.table import MaskedColumn, Table
 from astropy.utils.exceptions import AstropyUserWarning
 
 from .ccddata import _recognized_fits_file_extensions, fits_ccddata_reader
-from .core import _native_numpy
+from .core import _ccddata_from_numpy, _namespace_from_module, _native_numpy
 
 # ==> numpy comment <==
 # numpy is used internally to keep track of masking in the summary
@@ -156,9 +156,11 @@ class ImageFileCollection:
                 # Maybe we got passed an array...
                 xp = array_api_compat.array_namespace(array_package)
             except TypeError:
-                # Nope, got a type error, so assume we got passed
-                # an array namespace.
-                xp = array_package
+                # Nope, got a type error, so assume we got passed an array
+                # namespace or a module. Normalise a plain module such as
+                # ``dask.array``, which lacks array-API features used when
+                # reading (the ``device`` keyword), to its compat namespace.
+                xp = _namespace_from_module(array_package)
         self._xp = xp
 
         if keywords:
@@ -963,13 +965,7 @@ class ImageFileCollection:
             elif return_type == "ccd":
                 return_thing = fits_ccddata_reader(full_path, hdu=ccd_hdu, **ccd_kwargs)
                 if xp is not None:
-                    # As above: convert to native byte order before handing
-                    # the FITS-derived data to a non-NumPy namespace.
-                    return_thing.data = xp.asarray(_native_numpy(return_thing.data))
-                    if return_thing.uncertainty is not None:
-                        return_thing.uncertainty.array = xp.asarray(
-                            _native_numpy(return_thing.uncertainty.array)
-                        )
+                    _ccddata_from_numpy(return_thing, xp=xp)
                     if return_thing.mask is not None:
                         # Set the private _mask attribute directly: the
                         # public mask setter (CCDData -> NDDataArray)

@@ -10,7 +10,7 @@ import astropy
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.nddata import CCDData
+from astropy.nddata import CCDData, StdDevUncertainty
 from astropy.stats import median_absolute_deviation as mad
 from astropy.stats import sigma_clip
 from astropy.utils import minversion
@@ -39,8 +39,12 @@ from ccdproc.conftest import testing_array_device as xp_device
 from ccdproc.conftest import testing_array_library as xp
 from ccdproc.core import _namespace_dtype, _native_numpy, _to_numpy
 from ccdproc.image_collection import ImageFileCollection
+from ccdproc.tests.pytest_fixtures import (
+    assert_same_namespace_and_device,
+    numpy_ccddata,
+    to_xp,
+)
 from ccdproc.tests.pytest_fixtures import ccd_data as ccd_data_func
-from ccdproc.tests.pytest_fixtures import numpy_ccddata
 
 # Several tests have many more NaNs in them than real data. numpy generates
 # lots of warnings in those cases and it makes more sense to suppress them
@@ -335,41 +339,6 @@ def test_combine_scale_callable_returning_backend_scalar():
     ]
     result = combine(ccds, method="average", scale=lambda arr: 1 / xp.mean(arr))
     assert_allclose(np.asarray(result.data), 1.0)
-
-
-def test_combiner_explicit_namespace_differs_from_data():
-    # Regression test for the review of #976: when the caller passes an ``xp``
-    # that is not the namespace of the input data, the device of the inputs
-    # must not be forced onto ``xp`` (numpy's 'cpu' means nothing to jax or
-    # array-api-strict). The data is converted into ``xp`` on its default
-    # device instead.
-    #
-    # Only array-api-strict actually rejects a foreign device: on numpy the
-    # data namespace *is* ``xp`` so the device is legitimately reused, and
-    # dask accepts ``device='cpu'`` regardless, so this test can fail only in
-    # the array-api-strict job.
-    np_ccds = [CCDData(np.ones((3, 3)) * i, unit=u.adu) for i in range(1, 3)]
-    np_ccds[0].mask = np.zeros((3, 3), dtype=bool)
-    c = Combiner(np_ccds, xp=xp)
-    assert array_api_compat.array_namespace(c.data) is array_api_compat.array_namespace(
-        xp.zeros(1)
-    )
-    assert c.data.shape == (2, 3, 3)
-    assert c.data.dtype == xp.float64
-    assert c.mask.dtype == xp.bool
-    assert float(xp.sum(c.data)) == 27.0
-
-
-def test_combiner_accepts_raw_module_as_namespace():
-    # A plain module (numpy here) passed as ``xp`` is normalised to its
-    # array-api-compat namespace, so array-API-only features such as
-    # ``xp.bool`` and ``device=`` are available to the Combiner.
-    np_ccds = [CCDData(np.ones((2, 2)) * i, unit=u.adu) for i in range(1, 3)]
-    c = Combiner(np_ccds, xp=np)
-    assert c._xp is array_api_compat.array_namespace(np.zeros(1))
-    assert c.data.shape == (2, 2, 2)
-    c.scaling = [1, 2]
-    assert float(np.sum(c.average_combine().data)) == 10.0
 
 
 def test_weights():
@@ -806,10 +775,17 @@ def test_combine_bad_input():
 
 # test combiner convenience function reads fits file and combine as expected
 def test_combine_average_fitsimages():
+    """
+    Averaging a list of FITS file names with ``combine`` gives the same
+    result as ``Combiner`` on the images read from those files.
+    """
     fitsfile = get_pkg_data_filename("data/a8280271.fits", package="ccdproc.tests")
     ccd = CCDData.read(fitsfile, unit=u.adu)
+    # Combiner takes its namespace from its data, so read the reference
+    # into ``xp`` like ``combine`` does to compare like with like.
+    ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 3
-    c = Combiner(ccd_list, xp=xp)
+    c = Combiner(ccd_list)
     ccd_by_combiner = c.average_combine()
 
     fitsfilename_list = [fitsfile] * 3
@@ -832,8 +808,11 @@ def test_combine_numpyndarray():
     """
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
+    # Combiner takes its namespace from its data, so read the reference
+    # into ``xp`` like ``combine`` does to compare like with like.
+    ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 3
-    c = Combiner(ccd_list, xp=xp)
+    c = Combiner(ccd_list)
     ccd_by_combiner = c.average_combine()
 
     fitsfilename_list = [fitsfile] * 3
@@ -937,8 +916,8 @@ def test_combine_image_file_collection_input(tmp_path):
 def test_combine_average_ccddata():
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
-    # ``combine`` ignores ``array_package`` for CCDData input, so convert
-    # the data to the namespace ourselves.
+    # ``combine`` takes the namespace of CCDData input from its data, so
+    # convert the data to the namespace ourselves.
     ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 3
     c = Combiner(ccd_list)
@@ -972,10 +951,20 @@ def test_calculate_size_of_image(dtype, element_size):
 # test combiner convenience function reads fits file and
 # and combine as expected when asked to run in limited memory
 def test_combine_limitedmem_fitsimages():
+    """
+    ``combine`` of FITS file names under a ``mem_limit`` small enough to
+    split the images into tiles matches ``Combiner`` on the whole images.
+
+    The tiles are read and combined separately, so this pins that they are
+    stitched back together correctly.
+    """
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
+    # Combiner takes its namespace from its data, so read the reference
+    # into ``xp`` like ``combine`` does to compare like with like.
+    ccd.data = xp.asarray(_native_numpy(ccd.data))
     ccd_list = [ccd] * 5
-    c = Combiner(ccd_list, xp=xp)
+    c = Combiner(ccd_list)
     ccd_by_combiner = c.average_combine()
 
     fitsfilename_list = [fitsfile] * 5
@@ -994,12 +983,22 @@ def test_combine_limitedmem_fitsimages():
 # test combiner convenience function reads fits file and
 # and combine as expected when asked to run in limited memory with scaling
 def test_combine_limitedmem_scale_fitsimages():
+    """
+    ``combine`` of FITS file names with a callable ``scale`` under a
+    tiling ``mem_limit`` matches ``Combiner`` with the same scaling.
+
+    The scale factors must come from the whole images, not from each tile,
+    or tiles would be scaled differently.
+    """
     fitsfile = get_pkg_data_filename("data/a8280271.fits")
     ccd = CCDData.read(fitsfile, unit=u.adu)
-    ccd_list = [ccd] * 5
-    c = Combiner(ccd_list, xp=xp)
     # scale each array to the mean of the first image
     scale_by_mean = _make_mean_scaler(ccd)
+    # Combiner takes its namespace from its data, so read the reference
+    # into ``xp`` like ``combine`` does to compare like with like.
+    ccd.data = xp.asarray(_native_numpy(ccd.data))
+    ccd_list = [ccd] * 5
+    c = Combiner(ccd_list)
     c.scaling = scale_by_mean
     ccd_by_combiner = c.average_combine()
 
@@ -1610,8 +1609,7 @@ def test_user_supplied_combine_func_that_relies_on_masks(comb_func):
 # does not provide.
 def test_combine_array_package_raw_module(tmp_path):
     """A raw array module passed as ``array_package`` should be normalised
-    to its array-api-compat namespace, the same way ``Combiner`` normalises
-    its ``xp`` argument.
+    to its array-api-compat namespace.
     """
     ccd = CCDData(np.arange(9, dtype=float).reshape(3, 3), unit=u.adu)
     files = []
@@ -1652,6 +1650,196 @@ def test_combine_array_package_dask_module(tmp_path):
 
     result = combine(files, array_package=dask, unit="adu")
     assert array_api_compat.is_dask_array(result.data)
+
+
+def test_combine_tiled_converts_only_tiles_of_files(tmp_path, monkeypatch):
+    """
+    When ``mem_limit`` splits the images into tiles, ``combine`` converts
+    only each tile of a file into the array namespace, never the whole file
+    again for every tile.
+
+    Notes
+    -----
+    Files are read whole for every tile. Converting the whole file before
+    slicing out the tile made a full copy of every file for every tile,
+    because FITS data are big-endian and each conversion copies: for three
+    200 x 200 images and ``mem_limit=2e5``, 3.5 million converted values
+    where the tiles need 160 thousand.
+    The result is the same either way, so only the shapes of the converted
+    images show the difference. The template, the first file, is the one
+    whole image converted.
+    """
+    rng = np.random.default_rng(1028)
+    files = []
+    for i in range(3):
+        path = tmp_path / f"flat-{i}.fits"
+        CCDData(rng.normal(1000, 10, (100, 100)).astype(np.float32), unit=u.adu).write(
+            path
+        )
+        files.append(str(path))
+
+    converted_shapes = []
+    convert = combiner_module._ccddata_from_numpy
+
+    def recording_convert(ccd, *args, **kwargs):
+        converted_shapes.append(ccd.shape)
+        return convert(ccd, *args, **kwargs)
+
+    monkeypatch.setattr(combiner_module, "_ccddata_from_numpy", recording_convert)
+
+    combine(files, array_package=xp, mem_limit=2e5)
+
+    template_shape, *tile_shapes = converted_shapes
+    assert template_shape == (100, 100)
+    # Tiling happened, so there are more conversions than files ...
+    assert len(tile_shapes) > len(files)
+    # ... and each of them is a tile, not a whole image.
+    assert all(shape != (100, 100) for shape in tile_shapes)
+
+
+@pytest.mark.parametrize("file_first", [True, False], ids=["file-first", "ccd-first"])
+def test_combine_callable_scale_sees_dtype_data(tmp_path, file_first):
+    """
+    A callable ``scale`` in ``combine`` gets every image cast to ``dtype``,
+    whether it was read from a file or passed in memory, as ``Combiner``
+    casts its data before applying one.
+
+    Notes
+    -----
+    Raw frames are usually integers. A scale such as ``1 / xp.mean(data)``
+    fails on array-api-strict for integer data, so an image that reached the
+    callable uncast broke a mixed list there while the same images worked
+    in ``Combiner``. Casting only the files, and not the images in memory,
+    is the mistake this pins.
+    """
+    raw = np.arange(1, 13, dtype=np.int16).reshape(3, 4)
+    path = tmp_path / "raw.fits"
+    CCDData(raw, unit=u.adu).write(path)
+    in_memory = CCDData(to_xp(2 * raw), unit=u.adu)
+    img_list = [str(path), in_memory] if file_first else [in_memory, str(path)]
+    seen_dtypes = []
+
+    def inverse_mean(data):
+        seen_dtypes.append(data.dtype)
+        return 1 / xp.mean(data)
+
+    combine(img_list, scale=inverse_mean)
+
+    assert seen_dtypes == [xp.float64, xp.float64]
+
+
+@pytest.mark.parametrize("file_first", [True, False], ids=["file-first", "ccd-first"])
+def test_combine_mixed_file_and_ccddata_follows_the_ccddata(tmp_path, file_first):
+    """
+    A list mixing a file name and an image in memory, with no
+    ``array_package``, combines in the array library and on the device of
+    the image in memory, whichever comes first.
+
+    Notes
+    -----
+    Files always read as NumPy; unless ``combine`` reads them into the
+    namespace of the images in memory, each tile's ``Combiner`` sees two
+    array libraries and raises (#1025). Before #1025 the result depended on
+    the order and the library: with the file first it was NumPy, or an
+    error on array-api-strict, and with the image first jax failed under
+    this suite's warning filters.
+    """
+    image = np.arange(1.0, 10.0).reshape(3, 3)
+    path = tmp_path / "on-disk.fits"
+    CCDData(image, unit=u.adu).write(path)
+    in_memory = CCDData(to_xp(3 * image), unit=u.adu)
+    img_list = [str(path), in_memory] if file_first else [in_memory, str(path)]
+
+    result = combine(img_list)
+
+    assert_same_namespace_and_device(result.data, in_memory.data)
+    assert_allclose(_to_numpy(result.data), 2 * image)
+
+
+@pytest.mark.parametrize("file_first", [True, False], ids=["file-first", "ccd-first"])
+def test_combine_mixed_list_with_masked_file(tmp_path, file_first):
+    """
+    A masked file combined with an image in memory uses the file's mask,
+    on the device of the image in memory, whichever comes first.
+
+    Notes
+    -----
+    Regression test from the review of #1025: ``combine`` moved the file's
+    mask onto the device of the image in memory, and slicing the file's
+    CCDData into tiles runs the ``CCDData.mask`` setter, which converts to
+    NumPy and so fails for a mask on a non-CPU device. Only the
+    array-api-strict run, whose arrays are on a non-default device, could
+    catch it.
+    """
+    image = np.arange(1.0, 10.0).reshape(3, 3)
+    mask = np.zeros((3, 3), dtype=bool)
+    mask[1, 1] = True
+    path = tmp_path / "masked.fits"
+    CCDData(image, unit=u.adu, mask=mask).write(path)
+    in_memory = CCDData(to_xp(3 * image), unit=u.adu)
+    img_list = [str(path), in_memory] if file_first else [in_memory, str(path)]
+
+    result = combine(img_list)
+
+    assert_same_namespace_and_device(result.data, in_memory.data)
+    # The masked pixel is the in-memory value alone; the rest average.
+    expected = 2 * image
+    expected[1, 1] = 3 * image[1, 1]
+    assert_allclose(_to_numpy(result.data), expected)
+    assert not np.any(_to_numpy(result.mask))
+
+
+def test_combine_files_keeps_uncertainty_dtype(tmp_path):
+    """
+    ``combine`` of files with a float32 uncertainty into ``array_package``
+    returns a float32 uncertainty, as it does for NumPy.
+
+    Notes
+    -----
+    The result's uncertainty is the first file's, with each combined tile
+    written into it. array-api-strict does not cast on assignment, so
+    writing the float64 tiles into it raised ``TypeError: mismatched
+    dtypes`` before #1025; the other libraries cast to float32.
+    """
+    ccd = CCDData(
+        np.ones((3, 3)),
+        unit=u.adu,
+        uncertainty=StdDevUncertainty(np.ones((3, 3), dtype=np.float32)),
+    )
+    files = []
+    for i in range(2):
+        path = tmp_path / f"uncertainty-{i}.fits"
+        ccd.write(path)
+        files.append(str(path))
+
+    result = combine(files, array_package=xp)
+
+    assert result.uncertainty.array.dtype == xp.float32
+
+
+def test_combine_array_package_disagreeing_with_ccddata_raises(tmp_path):
+    """
+    An ``array_package`` other than the array library of an image in memory
+    raises ``TypeError`` naming that ``img_list`` entry and
+    ``array_package``.
+
+    ``array_package`` is the library to read files into; an image already
+    in memory in another library is a mismatch the caller should resolve,
+    e.g. a master read without ``array_package``. Converting it instead
+    could be a silent copy through the host.
+    """
+    if array_api_compat.is_numpy_namespace(xp):
+        requested = pytest.importorskip("dask.array")
+    else:
+        requested = xp
+    path = tmp_path / "on-disk.fits"
+    CCDData(np.ones((3, 3)), unit=u.adu).write(path)
+    numpy_image = CCDData(np.ones((3, 3)), unit=u.adu)
+
+    with pytest.raises(
+        TypeError, match=r"img_list\[1\] comes from numpy but array_package is"
+    ):
+        combine([str(path), numpy_image], array_package=requested)
 
 
 # Sigma clipping off numpy: Combiner.sigma_clipping hands numpy data to

@@ -80,7 +80,7 @@ def _ccdmask_in_active_namespace(data, **kwargs):
     ratio = CCDData(xp.asarray(data, device=xp_device), unit="adu")
     data_before = xp.asarray(data, device=xp_device, copy=True)
 
-    result = ccdmask(ratio, xp=xp, **kwargs)
+    result = ccdmask(ratio, **kwargs)
 
     assert xp.all(ratio.data == data_before)
     return result

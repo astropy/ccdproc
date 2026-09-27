@@ -189,17 +189,20 @@ class HostCopyWarning(AstropyUserWarning):
     """
 
 
-def _from_numpy(arr, like, *, xp=None):
+def _from_numpy(arr, like=None, *, xp=None):
     """
-    Return ``arr`` in the array namespace and on the device of ``like``.
+    Return ``arr`` in the array namespace and on the device of ``like``, or
+    on the default device of ``xp`` if there is no ``like``.
 
     Parameters
     ----------
     arr : `numpy.ndarray` or None
         The NumPy array to convert. `None` is passed through unchanged, so
         that an absent mask needs no special case at the call site.
-    like : array
-        The array whose namespace and device the result should have.
+    like : array or None, optional
+        The array whose namespace and device the result should have. If
+        `None`, the result is on the default device of ``xp``, which must
+        then be given.
     xp : array namespace, optional
         Array namespace to convert into. If not provided, the namespace is
         determined from ``like``.
@@ -207,8 +210,9 @@ def _from_numpy(arr, like, *, xp=None):
     Returns
     -------
     array or None
-        ``arr`` as an array of ``xp`` on the device of ``like``, or `None`
-        if ``arr`` is `None`. The result has the dtype of ``arr``, not of
+        ``arr`` as an array of ``xp`` on the device of ``like`` (on the
+        default device of ``xp`` if ``like`` is `None`), or `None` if
+        ``arr`` is `None`. The result has the dtype of ``arr``, not of
         ``like``, unless ``xp`` cannot represent it: JAX without 64-bit
         mode silently converts float64 to float32.
 
@@ -222,7 +226,47 @@ def _from_numpy(arr, like, *, xp=None):
     if arr is None:
         return None
     xp = xp or array_api_compat.array_namespace(like)
-    return xp.asarray(arr, device=array_api_compat.device(like))
+    device = None if like is None else array_api_compat.device(like)
+    return xp.asarray(arr, device=device)
+
+
+def _ccddata_from_numpy(ccd, like=None, *, xp=None):
+    """
+    Convert the data and uncertainty of a NumPy-backed CCDData into ``xp``.
+
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`
+        An image whose data and uncertainty are NumPy arrays, such as one
+        just read from a FITS file. It is changed in place.
+    like : array or None, optional
+        As for `_from_numpy`.
+    xp : array namespace, optional
+        As for `_from_numpy`.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData`
+        ``ccd``, its data and uncertainty now arrays of ``xp`` on the device
+        of ``like`` (on the default device of ``xp`` if ``like`` is `None`),
+        each with the dtype it had.
+
+    Notes
+    -----
+    Arrays read from a FITS file may be big-endian, which only NumPy
+    accepts, so each is put in native byte order with `_native_numpy`
+    before `_from_numpy` converts it.
+
+    The mask is left in NumPy: astropy's `~astropy.nddata.CCDData` mask
+    setter converts any mask to NumPy, so a caller that needs the mask in
+    ``xp`` moves it there itself.
+    """
+    ccd.data = _from_numpy(_native_numpy(ccd.data), like=like, xp=xp)
+    if ccd.uncertainty is not None:
+        ccd.uncertainty.array = _from_numpy(
+            _native_numpy(ccd.uncertainty.array), like=like, xp=xp
+        )
+    return ccd
 
 
 def _is_internal_frame(frame):
@@ -304,9 +348,8 @@ def _warn_host_copy(function_name, *arrays):
     calls from the same place in the user's code.
 
     The decision is made from the arrays that actually cross, not from the
-    namespace of the main input or from an ``xp`` argument, because those
-    can differ: a NumPy ``ccd`` can come with a non-NumPy ``inbkg`` or
-    ``invar``, and ``xp=np`` can be passed with non-NumPy data.
+    namespace of the main input, because those can differ: a NumPy ``ccd``
+    can come with a non-NumPy ``inbkg`` or ``invar``.
 
     The ``stacklevel`` is computed by `_caller_stacklevel` rather than
     passed in as a constant, because the right value depends on how the
@@ -390,6 +433,85 @@ def _namespace_from_module(module):
     that is already a compat one comes back unchanged.
     """
     return array_api_compat.array_namespace(module.asarray(0))
+
+
+def _library_name(xp):
+    """Return the name of the array library behind the array namespace ``xp``."""
+    return xp.__name__.removeprefix("array_api_compat.")
+
+
+def _namespace_of(**arrays):
+    """
+    Return the array namespace shared by ``arrays``, checking that they agree.
+
+    Parameters
+    ----------
+    **arrays : array, scalar or None
+        The array inputs of one call, keyed by the argument names to use in
+        an error message. `None` and scalars are skipped; see Notes. At
+        least one must be an array.
+
+    Returns
+    -------
+    array namespace
+        The array namespace of the arrays.
+
+    Raises
+    ------
+    TypeError
+        If the arrays belong to different array namespaces, or if none of
+        ``arrays`` is an array.
+    ValueError
+        If the arrays are on different devices.
+
+    Notes
+    -----
+    Depending on the pair of libraries, an array operation mixing two
+    namespaces or devices silently converts one array to the other's
+    library, possibly through NumPy on the host, keeps whichever library
+    happens to be on the left, or fails with an error that names neither
+    argument. Checking up front replaces all of those with one error that
+    names the arguments.
+
+    A scalar broadcasts against an array of any namespace, so it is not
+    checked. Scalars are Python numbers, NumPy scalars and 0-d NumPy arrays,
+    including a scalar `~astropy.units.Quantity`: each holds a single value,
+    such as ``np.std`` of a NumPy array returns.
+
+    Only the data arrays are meant to be passed in. astropy's
+    `~astropy.nddata.CCDData` converts any mask it is given to NumPy
+    whatever the library of its data, so checking masks would reject
+    ordinary input; uncertainties are not checked either.
+    """
+    present = {
+        name: arr
+        for name, arr in arrays.items()
+        if _is_array(arr)
+        and not (isinstance(arr, np.generic | np.ndarray) and np.ndim(arr) == 0)
+    }
+    if not present:
+        raise TypeError(
+            f"none of {', '.join(arrays)} is an array; at least one must be."
+        )
+    names = list(present)
+    first = names[0]
+    xp = array_api_compat.array_namespace(present[first])
+    device = array_api_compat.device(present[first])
+    for name in names[1:]:
+        other_xp = array_api_compat.array_namespace(present[name])
+        if other_xp is not xp:
+            raise TypeError(
+                f"{name} comes from {_library_name(other_xp)} but {first} comes "
+                f"from {_library_name(xp)}; all array inputs must come from the "
+                "same array library."
+            )
+        other_device = array_api_compat.device(present[name])
+        if other_device != device:
+            raise ValueError(
+                f"{name} is on device {other_device} but {first} is on device "
+                f"{device}; all array inputs must be on the same device."
+            )
+    return xp
 
 
 def _percentile_fallback(array, percentiles, xp=None):
@@ -791,6 +913,16 @@ def ccd_process(
         If True, the ``master_bias``, ``master_flat``, and ``dark_frame``
         have already been gain corrected.  Default is ``True``.
 
+    Raises
+    ------
+    TypeError
+        If ``ccd`` is not a `~astropy.nddata.CCDData`, or if the data of the
+        images given as ``ccd``, ``oscan``, ``master_bias``, ``dark_frame``
+        and ``master_flat`` come from different array libraries.
+
+    ValueError
+        If the data of those images are on different devices.
+
     Returns
     -------
     occd : `~astropy.nddata.CCDData`
@@ -809,20 +941,35 @@ def ccd_process(
         ...                    trim='[10:100, 1:100]', error=False,
         ...                    gain=2.0*u.electron/u.adu)
     """
+    if not isinstance(ccd, CCDData):
+        raise TypeError("ccd is not a CCDData object.")
+
     # make a copy of the object
     nccd = ccd.copy()
 
-    # Set array namespace
-    xp = array_api_compat.array_namespace(nccd.data)
+    # Check the images here, rather than leaving it to the step functions,
+    # so that an error names the arguments of ccd_process.
+    xp = _namespace_of(
+        **{
+            name: image.data if isinstance(image, CCDData) else None
+            for name, image in [
+                ("ccd", nccd),
+                ("oscan", oscan),
+                ("master_bias", master_bias),
+                ("dark_frame", dark_frame),
+                ("master_flat", master_flat),
+            ]
+        }
+    )
 
     # apply the overscan correction
     if isinstance(oscan, CCDData):
         nccd = subtract_overscan(
-            nccd, overscan=oscan, median=oscan_median, model=oscan_model, xp=xp
+            nccd, overscan=oscan, median=oscan_median, model=oscan_model
         )
     elif isinstance(oscan, str):
         nccd = subtract_overscan(
-            nccd, fits_section=oscan, median=oscan_median, model=oscan_model, xp=xp
+            nccd, fits_section=oscan, median=oscan_median, model=oscan_model
         )
     elif oscan is None:
         pass
@@ -831,7 +978,6 @@ def ccd_process(
 
     # apply the trim correction
     if isinstance(trim, str):
-        # No xp=... here because slicing can be done without knowing the array namespace
         nccd = trim_image(nccd, fits_section=trim)
     elif trim is None:
         pass
@@ -840,7 +986,7 @@ def ccd_process(
 
     # create the error frame
     if error and gain is not None and readnoise is not None:
-        nccd = create_deviation(nccd, gain=gain, readnoise=readnoise, xp=xp)
+        nccd = create_deviation(nccd, gain=gain, readnoise=readnoise)
     elif error and (gain is None or readnoise is None):
         raise ValueError("gain and readnoise must be specified to create error frame.")
 
@@ -861,12 +1007,10 @@ def ccd_process(
         raise TypeError("gain is not None or astropy.units.Quantity.")
 
     if gain is not None and gain_corrected:
-        # No need for xp here because gain_correct does not need the namespace
-        nccd = gain_correct(nccd, gain, xp=xp)
+        nccd = gain_correct(nccd, gain)
 
     # subtracting the master bias
     if isinstance(master_bias, CCDData):
-        # No need for xp here because subtract_bias does not need the namespace
         nccd = subtract_bias(nccd, master_bias)
     elif master_bias is None:
         pass
@@ -875,7 +1019,6 @@ def ccd_process(
 
     # subtract the dark frame
     if isinstance(dark_frame, CCDData):
-        # No need for xp here because subtract_dark does not need the namespace
         nccd = subtract_dark(
             nccd,
             dark_frame,
@@ -892,7 +1035,7 @@ def ccd_process(
 
     # test dividing the master flat
     if isinstance(master_flat, CCDData):
-        nccd = flat_correct(nccd, master_flat, min_value=min_value, xp=xp)
+        nccd = flat_correct(nccd, master_flat, min_value=min_value)
     elif master_flat is None:
         pass
     else:
@@ -900,14 +1043,13 @@ def ccd_process(
 
     # apply the gain correction only at the end if gain_corrected is False
     if gain is not None and not gain_corrected:
-        # No need for xp here because gain_correct does not need the namespace
         nccd = gain_correct(nccd, gain)
 
     return nccd
 
 
 @log_to_metadata
-def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False, xp=None):
+def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False):
     """
     Create a uncertainty frame. The function will update the uncertainty
     plane which gives the standard deviation for the data. Gain is used in
@@ -934,10 +1076,6 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False, x
         If ``True``, any value of nan in the output array will be replaced by
         the readnoise.
 
-    xp : array namespace, optional
-        Array namespace to use for calculations. If not provided, the
-        namespace will be determined from the array.
-
     {log}
 
     Raises
@@ -954,7 +1092,7 @@ def create_deviation(ccd_data, gain=None, readnoise=None, disregard_nan=False, x
 
     """
     # Get array namespace
-    xp = xp or array_api_compat.array_namespace(ccd_data.data)
+    xp = array_api_compat.array_namespace(ccd_data.data)
     if gain is not None and not isinstance(gain, Quantity):
         raise TypeError("gain must be a astropy.units.Quantity.")
 
@@ -1015,7 +1153,6 @@ def subtract_overscan(
     fits_section=None,
     median=False,
     model=None,
-    xp=None,
 ):
     """
     Subtract the overscan region from an image.
@@ -1055,17 +1192,17 @@ def subtract_overscan(
         by the median or the mean.
         Default is ``None``.
 
-    xp : array namespace, optional
-        Array namespace to use for calculations. If not provided, the
-        namespace will be determined from the array.
-
     {log}
 
     Raises
     ------
     TypeError
         A TypeError is raised if either ``ccd`` or ``overscan`` are not the
-        correct objects.
+        correct objects, or if their data are arrays from different array
+        libraries.
+
+    ValueError
+        If the data of ``ccd`` and ``overscan`` are on different devices.
 
     Returns
     -------
@@ -1120,9 +1257,6 @@ def subtract_overscan(
     if not isinstance(ccd, CCDData):
         raise TypeError("ccddata is not a CCDData object.")
 
-    # Set array namespace
-    xp = xp or array_api_compat.array_namespace(ccd.data)
-
     if (overscan is not None and fits_section is not None) or (
         overscan is None and fits_section is None
     ):
@@ -1137,6 +1271,8 @@ def subtract_overscan(
     if fits_section is not None:
         overscan = ccd[slice_from_string(fits_section, fits_convention=True)]
 
+    xp = _namespace_of(ccd=ccd.data, overscan=overscan.data)
+
     if overscan_axis is None:
         overscan_axis = 0 if overscan.shape[1] > overscan.shape[0] else 1
 
@@ -1147,8 +1283,7 @@ def subtract_overscan(
 
     if model is not None:
         # astropy.modeling is numpy-only, so the copy to the host is made
-        # explicitly here and the fitted overscan converted back below. The
-        # warning is decided from oscan, the array that crosses, not from xp.
+        # explicitly here and the fitted overscan converted back below.
         _warn_host_copy("subtract_overscan", oscan)
         oscan_np = _to_numpy(oscan)
         of = fitting.LinearLSQFitter()
@@ -1235,7 +1370,7 @@ def trim_image(ccd, fits_section=None):
 
 
 @log_to_metadata
-def subtract_bias(ccd, master, xp=None):
+def subtract_bias(ccd, master):
     """
     Subtract master bias from image.
 
@@ -1249,14 +1384,25 @@ def subtract_bias(ccd, master, xp=None):
 
     {log}
 
+    Raises
+    ------
+    TypeError
+        If the data of ``ccd`` and ``master`` are arrays from different
+        array libraries.
+
+    ValueError
+        If the data of ``ccd`` and ``master`` are on different devices.
+
     Returns
     -------
     result : `~astropy.nddata.CCDData`
         CCDData object with bias subtracted.
     """
-    xp = xp or array_api_compat.array_namespace(ccd.data)
     _ccd = _wrap_ccddata_for_array_api(ccd)
     _master = _wrap_ccddata_for_array_api(master)
+    # Check after wrapping so that a bare array gets the wrapper's error
+    # about its missing unit rather than an AttributeError here.
+    xp = _namespace_of(ccd=_ccd.data, master=_master.data)
     try:
         _result = _ccd.subtract(_master, handle_mask=xp.logical_or)
     except ValueError as err:
@@ -1282,7 +1428,6 @@ def subtract_dark(
     exposure_time=None,
     exposure_unit=None,
     scale=False,
-    xp=None,
 ):
     """
     Subtract dark current from an image.
@@ -1320,6 +1465,15 @@ def subtract_dark(
 
     {log}
 
+    Raises
+    ------
+    TypeError
+        If the data of ``ccd`` and ``master`` are arrays from different
+        array libraries.
+
+    ValueError
+        If the data of ``ccd`` and ``master`` are on different devices.
+
     Returns
     -------
     result : `~astropy.nddata.CCDData`
@@ -1336,7 +1490,7 @@ def subtract_dark(
         raise TypeError("ccd and master must both be CCDData objects.")
 
     # Do this after the type check above
-    xp = xp or array_api_compat.array_namespace(ccd.data)
+    xp = _namespace_of(ccd=ccd.data, master=master.data)
 
     _ccd = _wrap_ccddata_for_array_api(ccd)
     _master = _wrap_ccddata_for_array_api(master)
@@ -1411,7 +1565,7 @@ def subtract_dark(
 
 
 @log_to_metadata
-def gain_correct(ccd, gain, gain_unit=None, xp=None):
+def gain_correct(ccd, gain, gain_unit=None):
     """Correct the gain in the image.
 
     Parameters
@@ -1436,7 +1590,7 @@ def gain_correct(ccd, gain, gain_unit=None, xp=None):
     """
     _ccd = _wrap_ccddata_for_array_api(ccd)
 
-    xp = xp or array_api_compat.array_namespace(_ccd.data)
+    xp = array_api_compat.array_namespace(_ccd.data)
     if isinstance(gain, Keyword):
         gain_value = gain.value_from(_ccd.header)
     elif isinstance(gain, numbers.Number) and gain_unit is not None:
@@ -1472,7 +1626,7 @@ def gain_correct(ccd, gain, gain_unit=None, xp=None):
 
 
 @log_to_metadata
-def flat_correct(ccd, flat, min_value=None, norm_value=None, xp=None):
+def flat_correct(ccd, flat, min_value=None, norm_value=None):
     """Correct the image for flat fielding.
 
     The flat field image is normalized by its mean or a user-supplied value
@@ -1498,11 +1652,16 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None, xp=None):
         have the same scale. If this value is negative or 0, a ``ValueError``
         is raised. Default is ``None``.
 
-    xp : array namespace, optional
-        Array namespace to use for calculations. If not provided, the
-        namespace will be determined from the array.
-
     {log}
+
+    Raises
+    ------
+    TypeError
+        If the data of ``ccd`` and ``flat`` are arrays from different
+        array libraries.
+
+    ValueError
+        If the data of ``ccd`` and ``flat`` are on different devices.
 
     Returns
     -------
@@ -1513,7 +1672,7 @@ def flat_correct(ccd, flat, min_value=None, norm_value=None, xp=None):
     _ccd = _wrap_ccddata_for_array_api(ccd)
     _flat = _wrap_ccddata_for_array_api(flat)
     # Get the array namespace
-    xp = xp or array_api_compat.array_namespace(_ccd.data)
+    xp = _namespace_of(ccd=_ccd.data, flat=_flat.data)
 
     # Use the min_value to replace any values in the flat
     _use_flat = _flat
@@ -1666,7 +1825,7 @@ def transform_image(ccd, transform_func, **kwargs):
 
 
 @log_to_metadata
-def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
+def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear"):
     """
     Given a CCDData image with WCS, project it onto a target WCS and
     return the reprojected data as a new CCDData image.
@@ -1698,10 +1857,6 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
 
         Default is ``'bilinear'``.
 
-    xp : array namespace, optional
-        Array namespace to use for calculations. If not provided, the
-        namespace will be determined from the array.
-
     {log}
 
     Returns
@@ -1721,7 +1876,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear", xp=None):
     from reproject import reproject_interp
 
     # Set array namespace
-    xp = xp or array_api_compat.array_namespace(ccd.data)
+    xp = array_api_compat.array_namespace(ccd.data)
 
     if not (ccd.wcs.is_celestial and target_wcs.is_celestial):
         raise ValueError("one or both WCS is not celestial.")
@@ -1917,7 +2072,7 @@ def setbox(x, y, mbox, xmax, ymax):
     return x1, x2, y1, y2
 
 
-def background_deviation_box(data, bbox, xp=None):
+def background_deviation_box(data, bbox):
     """
     Determine the background deviation with a box size of bbox. The algorithm
     steps through the image and calculates the deviation within each box.
@@ -1931,10 +2086,6 @@ def background_deviation_box(data, bbox, xp=None):
 
     bbox : int
         Box size for calculating background deviation.
-
-    xp : array namespace, optional
-        Array namespace to use for calculations. If not provided, the
-        namespace will be determined from the array.
 
     Raises
     ------
@@ -1951,12 +2102,11 @@ def background_deviation_box(data, bbox, xp=None):
     if bbox < 1:
         raise ValueError("bbox must be greater than 1.")
 
-    if xp is None:
-        xp = _namespace_or_numpy(data)
-        if array_api_compat.is_numpy_namespace(xp):
-            # A nested list or tuple, which the arithmetic below cannot use
-            # as it stands; the docstring promises to take one.
-            data = np.asarray(data)
+    xp = _namespace_or_numpy(data)
+    if array_api_compat.is_numpy_namespace(xp):
+        # A nested list or tuple, which the arithmetic below cannot use
+        # as it stands; the docstring promises to take one.
+        data = np.asarray(data)
     # make the background image
     barr = data * 0.0 + xp.std(data)
     ylen, xlen = data.shape
@@ -1968,7 +2118,7 @@ def background_deviation_box(data, bbox, xp=None):
     return barr
 
 
-def background_deviation_filter(data, bbox, xp=None):
+def background_deviation_filter(data, bbox):
     """
     Determine the background deviation for each pixel from a box with size of
     bbox.
@@ -1980,10 +2130,6 @@ def background_deviation_filter(data, bbox, xp=None):
 
     bbox : int
         Box size for calculating background deviation.
-
-    xp : array namespace, optional
-        Array namespace to use for calculations. If not provided, the
-        namespace will be determined from the array.
 
     Raises
     ------
@@ -2008,8 +2154,7 @@ def background_deviation_filter(data, bbox, xp=None):
     if bbox < 1:
         raise ValueError("bbox must be greater than 1.")
 
-    if xp is None:
-        xp = _namespace_or_numpy(data)
+    xp = _namespace_or_numpy(data)
 
     return _dispatch_generic_filter(data, sigma_func, (bbox, bbox), xp=xp)
 
@@ -2123,7 +2268,7 @@ def rebin(ccd, newshape):
         return result
 
 
-def _block_dispatch(ccd, xp, astropy_func, native_func, *args):
+def _block_dispatch(ccd, astropy_func, native_func, *args):
     """
     Apply one ``block_*`` operation, choosing astropy or the native version.
 
@@ -2132,10 +2277,6 @@ def _block_dispatch(ccd, xp, astropy_func, native_func, *args):
     ccd : `~astropy.nddata.CCDData` or array-like
         The data to resample. A `~astropy.nddata.CCDData` comes back as a
         `~astropy.nddata.CCDData`; anything else comes back as an array.
-    xp : array namespace or None
-        The namespace the data belong to, or `None` to infer it from
-        ``ccd``. An explicit namespace must be that of the data in ``ccd``;
-        this is not checked.
     astropy_func : callable
         The `astropy.nddata` function to call for a numpy namespace, as
         ``astropy_func(ccd, *args)``.
@@ -2159,10 +2300,7 @@ def _block_dispatch(ccd, xp, astropy_func, native_func, *args):
     array-API aware, this function and `ccdproc._blocks` are what gets
     deleted.
     """
-    if xp is None:
-        xp = _namespace_or_numpy(ccd.data if isinstance(ccd, NDData) else ccd)
-    else:
-        xp = _namespace_from_module(xp)
+    xp = _namespace_or_numpy(ccd.data if isinstance(ccd, NDData) else ccd)
     if array_api_compat.is_numpy_namespace(xp):
         data = astropy_func(ccd, *args)
     else:
@@ -2174,7 +2312,7 @@ def _block_dispatch(ccd, xp, astropy_func, native_func, *args):
     return data
 
 
-def block_reduce(ccd, block_size, func=None, xp=None):
+def block_reduce(ccd, block_size, func=None):
     """
     Downsample data by applying a function to local blocks.
 
@@ -2190,9 +2328,6 @@ def block_reduce(ccd, block_size, func=None, xp=None):
         Reduction applied to each block, called as
         ``func(blocks, axis=axis)``. Default is the sum in the array
         namespace of ``ccd``.
-    xp : array namespace or module, optional
-        Namespace of the data in ``ccd``; inferred from the data when
-        `None`.
 
     Returns
     -------
@@ -2211,10 +2346,10 @@ def block_reduce(ccd, block_size, func=None, xp=None):
     # astropy's ``numpy.sum``, and ``xp.sum`` in the native version, which
     # promotes boolean input the way ``numpy.sum`` does.
     args = (block_size,) if func is None else (block_size, func)
-    return _block_dispatch(ccd, xp, nddata.block_reduce, _blocks.block_reduce, *args)
+    return _block_dispatch(ccd, nddata.block_reduce, _blocks.block_reduce, *args)
 
 
-def block_average(ccd, block_size, xp=None):
+def block_average(ccd, block_size):
     """
     Downsample data by averaging local blocks.
 
@@ -2226,9 +2361,6 @@ def block_average(ccd, block_size, xp=None):
         and no ``mask``, ``uncertainty`` or ``wcs``.
     block_size : int or sequence of int
         The block size along each axis. A scalar applies to every axis.
-    xp : array namespace or module, optional
-        Namespace of the data in ``ccd``; inferred from the data when
-        `None`.
 
     Returns
     -------
@@ -2247,14 +2379,13 @@ def block_average(ccd, block_size, xp=None):
     """
     return _block_dispatch(
         ccd,
-        xp,
         partial(nddata.block_reduce, func=np.mean),
         _blocks.block_average,
         block_size,
     )
 
 
-def block_replicate(ccd, block_size, conserve_sum=True, xp=None):
+def block_replicate(ccd, block_size, conserve_sum=True):
     """
     Upsample data by block replication.
 
@@ -2269,9 +2400,6 @@ def block_replicate(ccd, block_size, conserve_sum=True, xp=None):
     conserve_sum : bool, optional
         If `True` (the default), the sum of the block-replicated data
         equals the sum of the input data.
-    xp : array namespace or module, optional
-        Namespace of the data in ``ccd``; inferred from the data when
-        `None`.
 
     Returns
     -------
@@ -2290,7 +2418,6 @@ def block_replicate(ccd, block_size, conserve_sum=True, xp=None):
     """
     return _block_dispatch(
         ccd,
-        xp,
         nddata.block_replicate,
         _blocks.block_replicate,
         block_size,
@@ -2907,7 +3034,7 @@ def _astroscrappy_gain_apply_helper(cleaned_data, gain, gain_apply, old_interfac
     return cleaned_data
 
 
-def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0, xp=None):
+def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0):
     """
     Identify cosmic rays through median technique. The median technique
     identifies cosmic rays by identifying pixels by subtracting a median image
@@ -2943,9 +3070,15 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0, x
         be replaced.
         Default is ``0``.
 
-    xp : array namespace, optional
-        The array namespace to use for the calculations. If not provided, the
-        array namespace of the input data will be used.
+    Raises
+    ------
+    TypeError
+        If ``error_image`` is an array from a different array library than
+        the data of ``ccd``.
+
+    ValueError
+        If ``error_image`` is an array on a different device than the data
+        of ``ccd``.
 
     Notes
     -----
@@ -2998,7 +3131,7 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0, x
        updated with the detected cosmic rays.
     """
     if _is_array(ccd):
-        xp = xp or array_api_compat.array_namespace(ccd)
+        xp = _namespace_of(ccd=ccd, error_image=error_image)
 
         # Masked arrays are not part of the array API, so split the input
         # into a plain data array and a boolean mask (if any). Note that
@@ -3015,7 +3148,9 @@ def cosmicray_median(ccd, error_image=None, thresh=5, mbox=11, gbox=0, rbox=0, x
             data, in_mask, error_image, thresh, mbox, gbox, rbox, xp
         )
     elif isinstance(ccd, CCDData):
-        xp = xp or array_api_compat.array_namespace(ccd.data)
+        # Checked before error_image falls back to the uncertainty, which
+        # like the mask may legitimately be NumPy whatever the data are.
+        xp = _namespace_of(ccd=ccd.data, error_image=error_image)
 
         # set up the error image
         if error_image is None and ccd.uncertainty is not None:
@@ -3136,7 +3271,6 @@ def ccdmask(
     lsigma=9,
     hsigma=9,
     ngood=5,
-    xp=None,
 ):
     """
     Uses method based on the IRAF ccdmask task to generate a mask based on the
@@ -3192,10 +3326,6 @@ def ccdmask(
         than this amount are also flagged as bad pixels, if they are between
         pixels masked in that column.
         Default is ``5``.
-
-    xp : array namespace, optional
-        The array namespace to use for the calculations. If not provided, the
-        array namespace of the input data will be used.
 
     Returns
     -------
@@ -3254,7 +3384,7 @@ def ccdmask(
         raise ValueError('"ratio" should be a "CCDData".') from err
 
     # Get array namespace
-    xp = xp or array_api_compat.array_namespace(ratio.data)
+    xp = array_api_compat.array_namespace(ratio.data)
 
     def _sigma_mask(baseline, one_sigma_value, lower_sigma, upper_sigma):
         """Helper function to mask values outside of the specified sigma range."""
