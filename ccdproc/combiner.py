@@ -25,12 +25,11 @@ from astropy.utils import deprecated_renamed_argument
 
 from ._nanfuncs import _setup, nanmad, nanmean, nanmedian, nanstd, nansum
 from .core import (
-    _from_numpy,
+    _ccddata_from_numpy,
     _library_name,
     _namespace_dtype,
     _namespace_from_module,
     _namespace_of,
-    _native_numpy,
     _to_numpy,
     sigma_func,
 )
@@ -1467,32 +1466,19 @@ def combine(
     else:
         dtype = _namespace_dtype(dtype, xp)
 
-    def into_xp(imgccd):
-        """Move the data and uncertainty of a CCDData read from a file into ``xp``."""
-        # CCDData reads FITS data as NumPy, possibly in big-endian byte
-        # order, which only NumPy accepts; see _native_numpy. The data are
-        # cast to ``dtype``, as Combiner casts them, so a callable ``scale``
-        # sees the same data here as in Combiner. The uncertainty keeps its
-        # dtype: the template's uncertainty dtype is the result's.
-        imgccd.data = xp.astype(
-            _from_numpy(_native_numpy(imgccd.data), like=reference, xp=xp),
-            dtype,
-            copy=False,
-        )
-        if imgccd.uncertainty is not None:
-            imgccd.uncertainty.array = _from_numpy(
-                _native_numpy(imgccd.uncertainty.array), like=reference, xp=xp
-            )
-        # The mask is left as read, in NumPy: the template coercion below and
-        # Combiner move masks to the data's namespace and device.
-        return imgccd
-
     # First we create a CCDObject from first image for storing output
     if isinstance(img_list[0], CCDData):
         ccd = img_list[0].copy()
     else:
-        # User has provided fits filenames to read from
-        ccd = into_xp(CCDData.read(img_list[0], **ccdkwargs))
+        # User has provided fits filenames to read from. Here and below, the
+        # data of a file are cast to ``dtype``, as Combiner casts them, so a
+        # callable ``scale`` sees the same data as in Combiner; the
+        # uncertainty keeps its dtype, since the template's uncertainty dtype
+        # is the result's. The mask stays NumPy: the template coercion below
+        # and Combiner move masks to the data's namespace and device.
+        ccd = _ccddata_from_numpy(
+            CCDData.read(img_list[0], **ccdkwargs), like=reference, xp=xp, dtype=dtype
+        )
 
     if sigma_clip_func is None:
         sigma_clip_func = xp.mean
@@ -1567,7 +1553,12 @@ def combine(
                 if isinstance(image, CCDData):
                     imgccd = image
                 else:
-                    imgccd = into_xp(CCDData.read(image, **ccdkwargs))
+                    imgccd = _ccddata_from_numpy(
+                        CCDData.read(image, **ccdkwargs),
+                        like=reference,
+                        xp=xp,
+                        dtype=dtype,
+                    )
 
                 scalevalues.append(scale(imgccd.data))
 
@@ -1617,7 +1608,7 @@ def combine(
                 tile = deepcopy(imgccd[x:xend, y:yend])
                 if not isinstance(image, CCDData):
                     # Convert only the tile, not the whole file once per tile.
-                    tile = into_xp(tile)
+                    tile = _ccddata_from_numpy(tile, like=reference, xp=xp, dtype=dtype)
                 ccd_list.append(tile)
 
             # Create Combiner for tile

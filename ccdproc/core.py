@@ -228,6 +228,54 @@ def _from_numpy(arr, like=None, *, xp=None):
     return xp.asarray(arr, device=device)
 
 
+def _ccddata_from_numpy(ccd, like=None, *, xp=None, dtype=None):
+    """
+    Convert the data and uncertainty of a NumPy-backed CCDData into ``xp``.
+
+    Parameters
+    ----------
+    ccd : `~astropy.nddata.CCDData`
+        An image whose data and uncertainty are NumPy arrays, such as one
+        just read from a FITS file. It is changed in place.
+    like : array or None, optional
+        As for `_from_numpy`.
+    xp : array namespace or module, optional
+        As for `_from_numpy`; a plain module such as ``dask.array`` is
+        accepted too.
+    dtype : dtype, optional
+        A dtype of ``xp`` to cast the data to. If `None`, the data keep
+        their dtype. The uncertainty always keeps its dtype.
+
+    Returns
+    -------
+    `~astropy.nddata.CCDData`
+        ``ccd``, its data and uncertainty now arrays of ``xp`` on the device
+        of ``like``.
+
+    Notes
+    -----
+    Arrays read from a FITS file may be big-endian, which only NumPy
+    accepts, so each is put in native byte order with `_native_numpy`
+    before `_from_numpy` converts it.
+
+    The mask is left in NumPy: astropy's `~astropy.nddata.CCDData` mask
+    setter converts any mask to NumPy, so a caller that needs the mask in
+    ``xp`` moves it there itself.
+    """
+    if xp is not None:
+        xp = _namespace_from_module(xp)
+    ccd.data = _from_numpy(_native_numpy(ccd.data), like=like, xp=xp)
+    if dtype is not None:
+        ccd.data = array_api_compat.array_namespace(ccd.data).astype(
+            ccd.data, dtype, copy=False
+        )
+    if ccd.uncertainty is not None:
+        ccd.uncertainty.array = _from_numpy(
+            _native_numpy(ccd.uncertainty.array), like=like, xp=xp
+        )
+    return ccd
+
+
 def _is_internal_frame(frame):
     """
     Return `True` if ``frame`` belongs to ccdproc's own internal machinery.
