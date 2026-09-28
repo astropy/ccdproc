@@ -133,13 +133,8 @@ Bug Fixes
   input: the reprojected data and mask are converted back to the array
   namespace and device of the input image. [#930, #1011]
 - ``wcs_project``, ``subtract_overscan`` with a ``model`` and
-  ``cosmicray_lacosmic`` now return floating data in its own dtype rather
-  than in the dtype of the NumPy-only library that does the work:
-  ``float32`` data no longer becomes ``float64`` in the first two, and
-  ``float64`` data no longer becomes ``float32`` in ``cosmicray_lacosmic``.
-  Integer data still gives a floating result: ``float32`` from
-  ``cosmicray_lacosmic``, ``float64`` from ``wcs_project``, and from
-  ``subtract_overscan`` the same dtype with or without a ``model``. [#1023]
+  ``cosmicray_lacosmic`` now return floating data in its input dtype rather
+  than in the dtype of the NumPy-only library that does the work. [#1023]
 - ``flat_correct`` now checks the flat's mask with ``xp.any`` instead of the
   ``mask.any()`` method, which arrays of spec-only array-API namespaces do
   not have. [#1005]
