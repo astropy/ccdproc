@@ -215,9 +215,11 @@ def _from_numpy(arr, like=None, *, xp=None):
     array or None
         ``arr`` as an array of ``xp`` on the device of ``like`` (on the
         default device of ``xp`` if ``like`` is `None`), or `None` if
-        ``arr`` is `None`. The result has the dtype of ``arr``, not of
-        ``like``, unless ``xp`` cannot represent it: JAX without 64-bit
-        mode silently converts float64 to float32.
+        ``arr`` is `None`. If ``arr`` and ``like`` both have a real
+        floating dtype, the result has the dtype of ``like``; otherwise,
+        including when there is no ``like``, it has the dtype of ``arr``,
+        unless ``xp`` cannot represent it: JAX without 64-bit mode
+        silently converts float64 to float32.
 
     Notes
     -----
@@ -225,12 +227,28 @@ def _from_numpy(arr, like=None, *, xp=None):
     NumPy-only operation to the caller's array namespace and device, so
     that the caller never receives a NumPy array in place of what it
     passed in.
+
+    The NumPy-only libraries decide the dtype of their own output:
+    ``reproject`` and ``astropy.modeling`` always return float64 and
+    astroscrappy always returns float32. Floating input keeps its dtype
+    instead (#1023), so a floating result is cast to the floating dtype of
+    ``like``. A boolean result, such as a mask, and the result for integer
+    input keep their own dtype: casting a floating result back to an
+    integer dtype would wrap negative values and could not hold the NaN
+    that ``wcs_project`` needs.
     """
     if arr is None:
         return None
     xp = xp or array_api_compat.array_namespace(like)
-    device = None if like is None else array_api_compat.device(like)
-    return xp.asarray(arr, device=device)
+    device = None
+    dtype = None
+    if like is not None:
+        device = array_api_compat.device(like)
+        if np.isdtype(arr.dtype, "real floating") and xp.isdtype(
+            like.dtype, "real floating"
+        ):
+            dtype = like.dtype
+    return xp.asarray(arr, dtype=dtype, device=device)
 
 
 def _ccddata_from_numpy(ccd, like=None, *, xp=None):
@@ -258,16 +276,24 @@ def _ccddata_from_numpy(ccd, like=None, *, xp=None):
     -----
     Arrays read from a FITS file may be big-endian, which only NumPy
     accepts, so each is put in native byte order with `_native_numpy`
-    before `_from_numpy` converts it.
+    before it is converted.
+
+    The conversion does not go through `_from_numpy`, whose floating dtype
+    rule is for results computed from ``like`` (#1023). A file is not such
+    a result, so its arrays keep the dtype they were read with: a
+    ``float64`` file combined with a ``float32`` image in memory must not
+    lose precision before ``combine`` casts it to its ``dtype``.
 
     The mask is left in NumPy: astropy's `~astropy.nddata.CCDData` mask
     setter converts any mask to NumPy, so a caller that needs the mask in
     ``xp`` moves it there itself.
     """
-    ccd.data = _from_numpy(_native_numpy(ccd.data), like=like, xp=xp)
+    xp = xp or array_api_compat.array_namespace(like)
+    device = None if like is None else array_api_compat.device(like)
+    ccd.data = xp.asarray(_native_numpy(ccd.data), device=device)
     if ccd.uncertainty is not None:
-        ccd.uncertainty.array = _from_numpy(
-            _native_numpy(ccd.uncertainty.array), like=like, xp=xp
+        ccd.uncertainty.array = xp.asarray(
+            _native_numpy(ccd.uncertainty.array), device=device
         )
     return ccd
 
@@ -1291,7 +1317,12 @@ def subtract_overscan(
         of = fitting.LinearLSQFitter()
         yarr = np.arange(oscan_np.shape[0])
         fitted = of(model, yarr, oscan_np)
-        oscan = _from_numpy(fitted(yarr), like=ccd.data, xp=xp)
+        # Convert like the reduced overscan rather than like ccd.data: it is
+        # always floating, so the fit comes back in the dtype the median and
+        # mean paths subtract, including for integer data, where that dtype
+        # depends on the array library (for example float64 for uint16 on
+        # NumPy, float32 on JAX).
+        oscan = _from_numpy(fitted(yarr), like=oscan, xp=xp)
         if overscan_axis == 1:
             oscan = xp.reshape(oscan, (oscan.size, 1))
         else:
@@ -1873,6 +1904,9 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear"):
     data and mask are copied to the host, and the reprojected data and mask
     are copied back to the array namespace and device of the input; the
     copy is announced with a `HostCopyWarning`.
+
+    Floating data keeps its dtype, even though ``reproject`` works in
+    float64.
     """
     from astropy.nddata.ccddata import _generate_wcs_and_update_header
     from reproject import reproject_interp
@@ -2863,8 +2897,12 @@ def cosmicray_lacosmic(
 
         if gain_apply:
             if nccd.uncertainty is not None:
+                # Give the gain the uncertainty's dtype so that multiplying
+                # by it does not change that dtype.
                 gain_value = xp.asarray(
-                    float(gain.value), device=array_api_compat.device(_ccd.data)
+                    float(gain.value),
+                    dtype=xp.result_type(nccd.uncertainty.array.dtype, xp.float32),
+                    device=array_api_compat.device(_ccd.data),
                 )
                 gain_corrected = _ccd.multiply(
                     gain_value, xp=xp, handle_mask=xp.logical_or
@@ -2965,6 +3003,12 @@ def _lacosmic_on_host(
         for name, value in (("inbkg", inbkg), ("invar", invar))
         if value is not None
     }
+    # astroscrappy copies inbkg to float32 but not invar, and its cleaning
+    # routines only accept float32, so a float64 invar would make it raise.
+    if _is_array(invar):
+        background_kwargs["invar"] = background_kwargs["invar"].astype(
+            np.float32, copy=False
+        )
 
     # pssl is added on the host: an integer array plus a float pssl is
     # refused by some namespaces (array-api-strict), and adding it on the

@@ -80,9 +80,10 @@ New Features
   cleaned by ``cosmicray_lacosmic`` with a NumPy ``float64`` ``pssl`` (such
   as ``np.median`` of ``float64`` data) now stays ``float32``, as it already
   did for every other type of ``pssl``. Likewise, ``cosmicray_lacosmic`` with
-  ``gain_apply=True`` now returns astroscrappy's ``float32`` data for any
-  gain, as it already did for a gain of 1; previously any other gain
-  promoted the data to ``float64``. [#930, #933, #935, #1011]
+  ``gain_apply=True`` now returns ``float32`` data for integer and
+  ``float32`` input whatever the gain, as it already did for a gain of 1;
+  previously any other gain promoted the data to ``float64``.
+  [#930, #933, #935, #1011, #1023]
 
 Other Changes and Additions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -131,6 +132,12 @@ Bug Fixes
 - ``wcs_project`` no longer returns a NumPy-backed ``CCDData`` for non-NumPy
   input: the reprojected data and mask are converted back to the array
   namespace and device of the input image. [#930, #1011]
+- ``wcs_project``, ``subtract_overscan`` with a ``model`` and
+  ``cosmicray_lacosmic`` now return floating data in its input dtype rather
+  than in the dtype of the NumPy-only library that does the work. [#1023]
+- ``cosmicray_lacosmic`` now accepts a ``float64`` ``invar``, which it
+  passes to astroscrappy as ``float32`` instead of letting astroscrappy
+  raise ``ValueError``. [#1032]
 - ``flat_correct`` now checks the flat's mask with ``xp.any`` instead of the
   ``mask.any()`` method, which arrays of spec-only array-API namespaces do
   not have. [#1005]

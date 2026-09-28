@@ -404,6 +404,28 @@ def test_cosmicray_lacosmic_invar_inbkg(new_args):
         cosmicray_lacosmic(ccd_data, sigclip=5.9, **new_args)
 
 
+def test_cosmicray_lacosmic_float64_invar():
+    """
+    A float64 ``invar`` finds the cosmic rays instead of making astroscrappy
+    raise.
+
+    Notes
+    -----
+    A variance image built with NumPy defaults is float64. astroscrappy
+    works in float32 and does not convert ``invar`` itself, so it raised a
+    ``ValueError`` about the item size of the buffer.
+    """
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold=10, ncrays=NCRAYS)
+    # The data are near zero, so their variance is the read noise squared.
+    readnoise = 6.5
+    invar = xp.full(ccd_data.shape, readnoise**2, dtype=xp.float64, device=xp_device)
+
+    result = cosmicray_lacosmic(ccd_data, sigclip=5.9, readnoise=readnoise, invar=invar)
+
+    assert count_true(result.mask) == NCRAYS
+
+
 def test_cosmicray_median_check_data():
     with pytest.raises(TypeError):
         ndata, crarr = cosmicray_median(10, thresh=5, mbox=11, error_image=DATA_SCALE)
@@ -927,6 +949,95 @@ def test_cosmicray_lacosmic_numpy_scalar_pssl(monkeypatch, array_input):
 
     cleaned = result[0] if array_input else result.data
     assert_allclose(_to_numpy(cleaned), frame, rtol=1e-6)
+
+
+@pytest.mark.parametrize("array_input", [True, False])
+@pytest.mark.parametrize("dtype", ["float32", "float64"])
+def test_cosmicray_lacosmic_keeps_floating_dtype(dtype, array_input):
+    """
+    Floating data comes back from ``cosmicray_lacosmic`` in its own dtype,
+    for both a ``CCDData`` and a bare array (#1023).
+
+    Notes
+    -----
+    astroscrappy always returns float32, and its result used to be returned
+    as it was, so float64 data came back as float32.
+    """
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE, data_mean=1000.0, dtype=dtype)
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold=10, ncrays=NCRAYS)
+    ccd = ccd_data.data if array_input else ccd_data
+
+    result = cosmicray_lacosmic(ccd, sigclip=5.9, gain=2.0)
+
+    cleaned = result[0] if array_input else result.data
+    assert cleaned.dtype == getattr(xp, dtype)
+
+
+@pytest.mark.parametrize("gain", [1.0, 2.0])
+@pytest.mark.parametrize("dtype", ["uint16", "int32"])
+def test_cosmicray_lacosmic_integer_input_gives_float32(dtype, gain):
+    """
+    Integer data comes back from ``cosmicray_lacosmic`` as float32, whatever
+    the integer type and whatever the gain.
+
+    Notes
+    -----
+    float32 is the only dtype astroscrappy provides. This was settled in
+    #1023: floating input keeps its dtype, but integer input is not
+    promoted to float64 just to match other ccdproc functions. The integer
+    types are the ones NumPy promotes differently with float32 (uint16
+    gives float32, int32 gives float64), so a result left to type promotion
+    would differ between them. In 2.5.1 a gain other than 1 promoted the
+    result to float64 by accident, through a NumPy float64 scalar; the
+    ``gain`` parametrization pins that it no longer does.
+    """
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE, data_mean=1000.0, dtype=dtype)
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold=10, ncrays=NCRAYS)
+
+    result = cosmicray_lacosmic(ccd_data, sigclip=5.9, gain=gain)
+
+    assert result.data.dtype == xp.float32
+
+
+@pytest.mark.parametrize(
+    "dtype",
+    [
+        "float32",
+        "float64",
+        pytest.param(
+            "uint16",
+            marks=pytest.mark.backend_xfail(
+                "array-api-strict",
+                reason="array-api-strict does not promote integer data with a "
+                "floating scalar, so the gain cannot be applied to it "
+                "(https://github.com/astropy/ccdproc/issues/1034)",
+            ),
+        ),
+    ],
+)
+def test_cosmicray_lacosmic_gain_apply_keeps_uncertainty_dtype(dtype):
+    """
+    With ``gain_apply=True`` the uncertainty keeps its own dtype, whatever
+    the dtype of the data (#1023).
+
+    Notes
+    -----
+    The uncertainty is multiplied by the gain, which used to be made a
+    float64 array, so a float32 uncertainty came back as float64 on every
+    backend except JAX. The gain now has the uncertainty's dtype.
+    """
+    ccd_data = ccd_data_func(
+        data_size=40, data_scale=DATA_SCALE, data_mean=1000.0, dtype=dtype
+    )
+    ccd_data.uncertainty = StdDevUncertainty(
+        xp.full(ccd_data.shape, DATA_SCALE, dtype=xp.float32, device=xp_device)
+    )
+
+    result = cosmicray_lacosmic(
+        ccd_data, gain=2.0 * u.electron / u.adu, gain_apply=True
+    )
+
+    assert result.uncertainty.array.dtype == xp.float32
 
 
 def test_cosmicray_median_mask_shape_mismatch():

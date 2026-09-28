@@ -138,17 +138,48 @@ def test_host_copy_warning_is_public_and_an_astropy_warning():
     assert issubclass(HostCopyWarning, AstropyUserWarning)
 
 
-@pytest.mark.parametrize("dtype", ["float64", "bool"])
-def test_from_numpy_restores_namespace_device_and_dtype(dtype):
+# Each case is a result one of the NumPy-only libraries hands back, for an
+# input of the dtype of ``like``: reproject and astropy.modeling return
+# float64, astroscrappy returns float32, and a mask comes back as bool.
+@pytest.mark.parametrize(
+    ("result_dtype", "like_dtype", "expected_dtype"),
+    [
+        # Floating input keeps its dtype (#1023), in both directions.
+        ("float64", "float32", "float32"),
+        ("float32", "float64", "float64"),
+        ("float64", "float64", "float64"),
+        # A mask stays a mask.
+        ("bool", "float32", "bool"),
+        # Integer input keeps the library's floating result.
+        ("float64", "uint16", "float64"),
+        ("float32", "int32", "float32"),
+    ],
+)
+def test_from_numpy_restores_namespace_device_and_dtype(
+    result_dtype, like_dtype, expected_dtype
+):
     """
     ``_from_numpy`` is the inverse of ``_to_numpy``: it puts a NumPy result
     back in the namespace *and* on the device of the array it came from,
-    keeping its dtype. The device half only bites on a backend with more
-    than one device (array-api-strict on its non-default device), which is
-    exactly the case that motivated the helper.
+    and a floating result back in the floating dtype of that array.
+
+    Notes
+    -----
+    The device half only bites on a backend with more than one device
+    (array-api-strict on its non-default device), which is exactly the case
+    that motivated the helper.
+
+    The dtype half is #1023: without it, the dtype of the output of
+    ``wcs_project``, ``subtract_overscan(model=...)`` and
+    ``cosmicray_lacosmic`` was set by the NumPy-only library doing the
+    work, so ``float32`` input came back as ``float64`` from the first two
+    and ``float64`` input as ``float32`` from the third. Only floating
+    input is matched: a floating result for integer input must not be cast
+    back to an integer dtype, where negative values would wrap and NaN
+    cannot be stored, and a boolean mask must stay boolean.
     """
-    like = xp.asarray(np.zeros((3, 3)), device=xp_device)
-    np_array = np.ones((3, 3), dtype=dtype)
+    like = xp.asarray(np.zeros((3, 3), dtype=like_dtype), device=xp_device)
+    np_array = np.ones((3, 3), dtype=result_dtype)
 
     result = _from_numpy(np_array, like=like)
 
@@ -156,7 +187,7 @@ def test_from_numpy_restores_namespace_device_and_dtype(dtype):
         like
     )
     assert array_api_compat.device(result) == array_api_compat.device(like)
-    assert result.dtype == getattr(xp, dtype)
+    assert result.dtype == getattr(xp, expected_dtype)
 
 
 def test_from_numpy_passes_none_through():
@@ -437,3 +468,84 @@ def test_scalar_quantity_gain_keeps_namespace_and_device():
     cleaned = cosmicray_lacosmic(ccd, gain=gain, gain_apply=True)
     assert array_api_compat.array_namespace(cleaned.data) is input_namespace
     assert array_api_compat.device(cleaned.data) == array_api_compat.device(ccd.data)
+
+
+_NO_INTEGER_OVERSCAN_ON_STRICT = pytest.mark.backend_xfail(
+    "array-api-strict",
+    reason="array-api-strict allows the mean only of floating data, so "
+    "subtract_overscan cannot reduce an integer overscan there yet "
+    "(https://github.com/astropy/ccdproc/issues/1034)",
+)
+
+
+@pytest.mark.parametrize(
+    "dtype",
+    [
+        "float32",
+        "float64",
+        pytest.param("uint16", marks=_NO_INTEGER_OVERSCAN_ON_STRICT),
+        pytest.param("int32", marks=_NO_INTEGER_OVERSCAN_ON_STRICT),
+    ],
+)
+def test_subtract_overscan_model_keeps_dtype_of_plain_path(dtype):
+    """
+    Fitting a ``model`` to the overscan gives the same dtype as subtracting
+    its plain mean, so floating data keeps its dtype (#1023).
+
+    Notes
+    -----
+    ``astropy.modeling`` always fits in float64, and the fitted overscan
+    used to come back as float64, so float32 data became float64 only when
+    a ``model`` was given. Integer data gets whatever floating dtype the
+    mean of the overscan has, which for uint16 and int32 is float64 on NumPy
+    but float32 on JAX, so the two paths are compared with each other rather
+    than with a fixed dtype.
+    """
+    ccd = ccd_data_func(
+        data_size=DATA_SIZE, data_mean=1000.0, data_scale=10.0, dtype=dtype
+    )
+    overscan = ccd[:, :5]
+
+    plain = subtract_overscan(ccd, overscan=overscan, overscan_axis=1)
+    fitted = subtract_overscan(
+        ccd, overscan=overscan, overscan_axis=1, model=models.Polynomial1D(1)
+    )
+
+    assert fitted.data.dtype == plain.data.dtype
+    if xp.isdtype(ccd.data.dtype, "real floating"):
+        assert fitted.data.dtype == ccd.data.dtype
+
+
+@pytest.mark.parametrize(
+    ("dtype", "expected_dtype"),
+    [
+        ("float32", "float32"),
+        ("float64", "float64"),
+        ("uint16", "float64"),
+        ("int32", "float64"),
+    ],
+)
+def test_wcs_project_keeps_floating_dtype(dtype, expected_dtype):
+    """
+    ``wcs_project`` returns floating data in its own dtype, and integer data
+    as reproject's float64 (#1023).
+
+    Notes
+    -----
+    ``reproject`` always works in float64, and its result used to be
+    returned as it was, so float32 data came back as float64. Integer data
+    is not cast back to its own dtype: pixels that fall outside the input
+    image are NaN, which an integer dtype cannot hold. The shifted target
+    WCS makes sure there are such pixels.
+    """
+    ccd = ccd_data_func(
+        data_size=DATA_SIZE, data_mean=1000.0, data_scale=10.0, dtype=dtype
+    )
+    ccd.wcs = wcs_for_testing(ccd.shape)
+    target_wcs = wcs_for_testing(ccd.shape)
+    target_wcs.wcs.crpix += [1, 1]
+
+    result = wcs_project(ccd, target_wcs)
+
+    assert result.data.dtype == getattr(xp, expected_dtype)
+    assert bool(xp.any(xp.isnan(result.data)))

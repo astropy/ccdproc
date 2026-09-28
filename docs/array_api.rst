@@ -241,6 +241,9 @@ These functions copy their input to host memory, run there, and copy every
 array they return -- the data and the mask -- back to the array namespace
 and the device of the array you passed in. You never get a `numpy`_ array
 back in place of what you handed over, whatever array library you use.
+Floating data also keeps its dtype, whatever dtype the library works in
+(``float64`` for `reproject`_ and `astropy.modeling`, ``float32`` for
+`astroscrappy`_); integer data comes back in a floating dtype.
 
 This copy does not work for `CuPy`_ arrays yet: `CuPy`_ refuses the implicit
 conversion to `numpy`_ that it relies on, so these three functions, and

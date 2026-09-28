@@ -35,6 +35,7 @@ def ccd_data(
     data_scale=DEFAULT_DATA_SCALE,
     data_mean=DEFAULT_DATA_MEAN,
     rng_seed=DEFAULT_SEED,
+    dtype=None,
 ):
     """
     Return a CCDData object with units of ADU.
@@ -51,6 +52,10 @@ def ccd_data(
 
     The mean can be changed with the marker @pytest.marker.scale(m) on the
     test function, where m is the desired mean.
+
+    If ``dtype``, the name of a dtype of the array library under test such
+    as ``"float32"`` or ``"uint16"``, is given, the random values are cast
+    to it.
     """
     # Need the import here to avoid circular import issues
     from ..conftest import testing_array_device as xp_device
@@ -65,8 +70,12 @@ def ccd_data(
 
     data = rng.normal(loc=mean, size=[size, size], scale=scale)
 
+    data = xp.asarray(data, device=xp_device)
+    if dtype is not None:
+        data = xp.astype(data, getattr(xp, dtype))
+
     fake_meta = {"my_key": 42, "your_key": "not 42"}
-    ccd = CCDData(xp.asarray(data, device=xp_device), unit=u.adu)
+    ccd = CCDData(data, unit=u.adu)
     ccd.header = fake_meta
     return ccd
 
