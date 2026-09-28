@@ -2899,12 +2899,9 @@ def cosmicray_lacosmic(
             if nccd.uncertainty is not None:
                 # Give the gain the uncertainty's dtype so that multiplying
                 # by it does not change that dtype.
-                unc_dtype = nccd.uncertainty.array.dtype
-                if not xp.isdtype(unc_dtype, "real floating"):
-                    unc_dtype = cleanarr.dtype
                 gain_value = xp.asarray(
                     float(gain.value),
-                    dtype=unc_dtype,
+                    dtype=xp.result_type(nccd.uncertainty.array.dtype, xp.float32),
                     device=array_api_compat.device(_ccd.data),
                 )
                 gain_corrected = _ccd.multiply(
