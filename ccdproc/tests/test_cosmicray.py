@@ -404,6 +404,28 @@ def test_cosmicray_lacosmic_invar_inbkg(new_args):
         cosmicray_lacosmic(ccd_data, sigclip=5.9, **new_args)
 
 
+def test_cosmicray_lacosmic_float64_invar():
+    """
+    A float64 ``invar`` finds the cosmic rays instead of making astroscrappy
+    raise.
+
+    Notes
+    -----
+    A variance image built with NumPy defaults is float64. astroscrappy
+    works in float32 and does not convert ``invar`` itself, so it raised a
+    ``ValueError`` about the item size of the buffer.
+    """
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE)
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold=10, ncrays=NCRAYS)
+    # The data are near zero, so their variance is the read noise squared.
+    readnoise = 6.5
+    invar = xp.full(ccd_data.shape, readnoise**2, dtype=xp.float64, device=xp_device)
+
+    result = cosmicray_lacosmic(ccd_data, sigclip=5.9, readnoise=readnoise, invar=invar)
+
+    assert count_true(result.mask) == NCRAYS
+
+
 def test_cosmicray_median_check_data():
     with pytest.raises(TypeError):
         ndata, crarr = cosmicray_median(10, thresh=5, mbox=11, error_image=DATA_SCALE)

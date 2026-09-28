@@ -3003,6 +3003,12 @@ def _lacosmic_on_host(
         for name, value in (("inbkg", inbkg), ("invar", invar))
         if value is not None
     }
+    # astroscrappy copies inbkg to float32 but not invar, and its cleaning
+    # routines only accept float32, so a float64 invar would make it raise.
+    if _is_array(invar):
+        background_kwargs["invar"] = background_kwargs["invar"].astype(
+            np.float32, copy=False
+        )
 
     # pssl is added on the host: an integer array plus a float pssl is
     # refused by some namespaces (array-api-strict), and adding it on the

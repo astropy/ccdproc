@@ -135,6 +135,9 @@ Bug Fixes
 - ``wcs_project``, ``subtract_overscan`` with a ``model`` and
   ``cosmicray_lacosmic`` now return floating data in its input dtype rather
   than in the dtype of the NumPy-only library that does the work. [#1023]
+- ``cosmicray_lacosmic`` now accepts a ``float64`` ``invar``, which it
+  passes to astroscrappy as ``float32`` instead of letting astroscrappy
+  raise ``ValueError``. [#1032]
 - ``flat_correct`` now checks the flat's mask with ``xp.any`` instead of the
   ``mask.any()`` method, which arrays of spec-only array-API namespaces do
   not have. [#1005]
