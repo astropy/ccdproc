@@ -1258,11 +1258,6 @@ def subtract_overscan(
     it is subtracted. The median and mean paths stay in the input's array
     namespace.
 
-    The result has the same dtype with or without a ``model``, even though
-    ``astropy.modeling`` fits in float64: the fitted overscan is converted
-    to the dtype of the mean or median of the overscan. Floating data
-    therefore keeps its dtype.
-
     Examples
     --------
     Creating a 100x100 array containing ones just for demonstration purposes::
@@ -1911,9 +1906,7 @@ def wcs_project(ccd, target_wcs, target_shape=None, order="bilinear"):
     copy is announced with a `HostCopyWarning`.
 
     Floating data keeps its dtype, even though ``reproject`` works in
-    float64. Integer data gives reproject's float64 result, which is not
-    cast back to an integer dtype because pixels that fall outside the
-    input image are NaN.
+    float64.
     """
     from astropy.nddata.ccddata import _generate_wcs_and_update_header
     from reproject import reproject_interp
