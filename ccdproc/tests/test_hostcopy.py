@@ -474,7 +474,7 @@ _NO_INTEGER_OVERSCAN_ON_STRICT = pytest.mark.backend_xfail(
     "array-api-strict",
     reason="array-api-strict allows the mean only of floating data, so "
     "subtract_overscan cannot reduce an integer overscan there yet "
-    "(https://github.com/astropy/ccdproc/issues/971)",
+    "(https://github.com/astropy/ccdproc/issues/1034)",
 )
 
 

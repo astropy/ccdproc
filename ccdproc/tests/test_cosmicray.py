@@ -988,7 +988,7 @@ def test_cosmicray_lacosmic_integer_input_gives_float32(dtype, gain):
                 "array-api-strict",
                 reason="array-api-strict does not promote integer data with a "
                 "floating scalar, so the gain cannot be applied to it "
-                "(https://github.com/astropy/ccdproc/issues/1013)",
+                "(https://github.com/astropy/ccdproc/issues/1034)",
             ),
         ),
     ],
