@@ -977,6 +977,47 @@ def test_cosmicray_lacosmic_integer_input_gives_float32(dtype, gain):
     assert result.data.dtype == xp.float32
 
 
+@pytest.mark.parametrize(
+    "dtype",
+    [
+        "float32",
+        "float64",
+        pytest.param(
+            "uint16",
+            marks=pytest.mark.backend_xfail(
+                "array-api-strict",
+                reason="array-api-strict does not promote integer data with a "
+                "floating scalar, so the gain cannot be applied to it "
+                "(https://github.com/astropy/ccdproc/issues/1013)",
+            ),
+        ),
+    ],
+)
+def test_cosmicray_lacosmic_gain_apply_keeps_uncertainty_dtype(dtype):
+    """
+    With ``gain_apply=True`` the uncertainty keeps its own dtype, whatever
+    the dtype of the data (#1023).
+
+    Notes
+    -----
+    The uncertainty is multiplied by the gain, which used to be made a
+    float64 array, so a float32 uncertainty came back as float64 on every
+    backend except JAX. The gain now has the uncertainty's dtype.
+    """
+    ccd_data = ccd_data_func(
+        data_size=40, data_scale=DATA_SCALE, data_mean=1000.0, dtype=dtype
+    )
+    ccd_data.uncertainty = StdDevUncertainty(
+        xp.full(ccd_data.shape, DATA_SCALE, dtype=xp.float32, device=xp_device)
+    )
+
+    result = cosmicray_lacosmic(
+        ccd_data, gain=2.0 * u.electron / u.adu, gain_apply=True
+    )
+
+    assert result.uncertainty.array.dtype == xp.float32
+
+
 def test_cosmicray_median_mask_shape_mismatch():
     # CCDData and MaskedArray validate the mask shape themselves, so exercise
     # the shared helper directly.
