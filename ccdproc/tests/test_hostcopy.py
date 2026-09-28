@@ -470,18 +470,6 @@ def test_scalar_quantity_gain_keeps_namespace_and_device():
     assert array_api_compat.device(cleaned.data) == array_api_compat.device(ccd.data)
 
 
-def _ccd_of_dtype(dtype):
-    """
-    A ``DATA_SIZE`` square image around 1000 ADU, in ``dtype``.
-
-    The level is that of a raw frame, so that the same values make sense
-    as floating and as unsigned integer data.
-    """
-    ccd = ccd_data_func(data_size=DATA_SIZE, data_mean=1000.0, data_scale=10.0)
-    ccd.data = xp.astype(ccd.data, getattr(xp, dtype))
-    return ccd
-
-
 _NO_INTEGER_OVERSCAN_ON_STRICT = pytest.mark.backend_xfail(
     "array-api-strict",
     reason="array-api-strict allows the mean only of floating data, so "
@@ -513,7 +501,9 @@ def test_subtract_overscan_model_keeps_dtype_of_plain_path(dtype):
     but float32 on JAX, so the two paths are compared with each other rather
     than with a fixed dtype.
     """
-    ccd = _ccd_of_dtype(dtype)
+    ccd = ccd_data_func(
+        data_size=DATA_SIZE, data_mean=1000.0, data_scale=10.0, dtype=dtype
+    )
     overscan = ccd[:, :5]
 
     plain = subtract_overscan(ccd, overscan=overscan, overscan_axis=1)
@@ -548,7 +538,9 @@ def test_wcs_project_keeps_floating_dtype(dtype, expected_dtype):
     image are NaN, which an integer dtype cannot hold. The shifted target
     WCS makes sure there are such pixels.
     """
-    ccd = _ccd_of_dtype(dtype)
+    ccd = ccd_data_func(
+        data_size=DATA_SIZE, data_mean=1000.0, data_scale=10.0, dtype=dtype
+    )
     ccd.wcs = wcs_for_testing(ccd.shape)
     target_wcs = wcs_for_testing(ccd.shape)
     target_wcs.wcs.crpix += [1, 1]

@@ -929,18 +929,6 @@ def test_cosmicray_lacosmic_numpy_scalar_pssl(monkeypatch, array_input):
     assert_allclose(_to_numpy(cleaned), frame, rtol=1e-6)
 
 
-def _lacosmic_frame(dtype):
-    """
-    A raw-looking frame around 1000 ADU in ``dtype``, with cosmic rays.
-
-    Returns the frame as a ``CCDData`` on the test backend.
-    """
-    ccd_data = ccd_data_func(data_scale=DATA_SCALE, data_mean=1000.0)
-    add_cosmicrays(ccd_data, DATA_SCALE, threshold=10, ncrays=NCRAYS)
-    ccd_data.data = xp.astype(ccd_data.data, getattr(xp, dtype))
-    return ccd_data
-
-
 @pytest.mark.parametrize("array_input", [True, False])
 @pytest.mark.parametrize("dtype", ["float32", "float64"])
 def test_cosmicray_lacosmic_keeps_floating_dtype(dtype, array_input):
@@ -953,7 +941,8 @@ def test_cosmicray_lacosmic_keeps_floating_dtype(dtype, array_input):
     astroscrappy always returns float32, and its result used to be returned
     as it was, so float64 data came back as float32.
     """
-    ccd_data = _lacosmic_frame(dtype)
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE, data_mean=1000.0, dtype=dtype)
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold=10, ncrays=NCRAYS)
     ccd = ccd_data.data if array_input else ccd_data
 
     result = cosmicray_lacosmic(ccd, sigclip=5.9, gain=2.0)
@@ -980,7 +969,8 @@ def test_cosmicray_lacosmic_integer_input_gives_float32(dtype, gain):
     result to float64 by accident, through a NumPy float64 scalar; the
     ``gain`` parametrization pins that it no longer does.
     """
-    ccd_data = _lacosmic_frame(dtype)
+    ccd_data = ccd_data_func(data_scale=DATA_SCALE, data_mean=1000.0, dtype=dtype)
+    add_cosmicrays(ccd_data, DATA_SCALE, threshold=10, ncrays=NCRAYS)
 
     result = cosmicray_lacosmic(ccd_data, sigclip=5.9, gain=gain)
 
