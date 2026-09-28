@@ -137,9 +137,6 @@ Bug Fixes
   than in the dtype of the NumPy-only library that does the work:
   ``float32`` data no longer becomes ``float64`` in the first two, and
   ``float64`` data no longer becomes ``float32`` in ``cosmicray_lacosmic``.
-  ``cosmicray_lacosmic`` also returns the pixels it does not flag as cosmic
-  rays exactly as they were (multiplied by the gain when ``gain_apply`` is
-  set); previously they came back rounded to ``float32`` by astroscrappy.
   Integer data still gives a floating result: ``float32`` from
   ``cosmicray_lacosmic``, ``float64`` from ``wcs_project``, and from
   ``subtract_overscan`` the same dtype with or without a ``model``. [#1023]
