@@ -21,10 +21,6 @@ import os
 import traceback
 from collections import defaultdict
 
-import pytest
-
-from .config import INI_PACKAGE
-
 #: Key used when no frame at all could be identified.
 UNKNOWN_LOCATION = "<unknown location>"
 
@@ -240,22 +236,3 @@ class FailureTriage:
                 terminalreporter.write_line(
                     f"    ... and {len(test_ids) - self.example_limit} more"
                 )
-
-
-def require_classifier(classifier, reason):
-    """
-    Raise a `pytest.UsageError` if frames cannot be classified.
-
-    Parameters
-    ----------
-    classifier : `FrameClassifier`
-        The classifier built for this session.
-    reason : str
-        What the caller was trying to do, used in the error message.
-    """
-    if classifier.configured:
-        return
-    raise pytest.UsageError(
-        f"{reason} needs to know which stack frames belong to the package "
-        f"under test, but the ini option '{INI_PACKAGE}' is not set."
-    )
