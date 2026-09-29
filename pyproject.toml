@@ -55,15 +55,6 @@ include = [
     "/licenses",
 ]
 
-[tool.hatch.build.targets.wheel]
-# The array-API escape baseline is test data read at test time, so ship it in
-# the wheel (not just the sdist) alongside the tests that use it. The ratchet
-# itself resolves the file from the pytest rootdir, not from the installed
-# package, so an installed copy is never the one it enforces.
-artifacts = [
-    "ccdproc/tests/array_escape_baseline.txt",
-]
-
 [tool.black]
 line-length = 88
 target-version = ['py312', 'py313']
