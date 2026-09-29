@@ -28,6 +28,14 @@ from .config import INI_PACKAGE
 #: Key used when no frame at all could be identified.
 UNKNOWN_LOCATION = "<unknown location>"
 
+#: This plugin's own directory; its frames are never blamed for an escape.
+_PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep
+
+
+def _is_plugin_frame(filename):
+    """True if ``filename`` belongs to this plugin."""
+    return os.path.abspath(filename).startswith(_PLUGIN_DIR)
+
 
 class FrameClassifier:
     """
@@ -115,11 +123,12 @@ class FrameClassifier:
         Returns
         -------
         frame or None
-            None if ``frames`` is empty.
+            None if ``frames`` holds nothing but this plugin's own frames.
 
         Notes
         -----
-        Preference order:
+        This plugin's own frames are dropped first, then the preference
+        order is:
 
         1. The innermost frame inside the package that is not part of its
            test suite.
@@ -127,11 +136,14 @@ class FrameClassifier:
            will typically be a test-suite frame).
         3. Failing that, the innermost frame overall.
 
-        Frames belonging to this plugin are test frames (the plugin lives
-        under one of the configured test roots), so the depth at which this
-        is called never affects the result.
+        Dropping the plugin's frames is what makes the result independent of
+        the depth at which this is called. The escape logger calls it from
+        inside its NumPy wrapper, so the innermost frames of the live stack
+        are the plugin's own; while the plugin lives inside the package
+        they would win step 2, and once it lives outside it they would win
+        step 3.
         """
-        frames = list(frames)
+        frames = [f for f in frames if not _is_plugin_frame(f.filename)]
         if not frames:
             return None
 

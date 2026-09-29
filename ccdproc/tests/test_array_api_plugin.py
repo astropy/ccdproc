@@ -4,6 +4,7 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Lock, get_ident
+from traceback import FrameSummary
 
 import array_api_compat.numpy
 import pytest
@@ -387,6 +388,43 @@ def test_features_needing_frame_classification_refuse_to_run_unconfigured(tmp_pa
 # ---------------------------------------------------------------------------
 # Escape logger internals
 # ---------------------------------------------------------------------------
+
+
+def test_escape_site_never_blames_the_plugin_itself(tmp_path):
+    """
+    Pin that the plugin's own frames are skipped when blaming an escape.
+
+    Notes
+    -----
+    The escape logger locates the site from inside its NumPy wrapper, so the
+    innermost frames of the stack are always the plugin's. When no library
+    frame is on the stack (e.g. astropy coercing a foreign mask called
+    straight from a test body) the innermost *package* frame wins, and with
+    the plugin inside ``ccdproc/tests`` that was the plugin's
+    ``locate_site`` rather than the test. Once the plugin lives outside the
+    package the same stack would fall through to the innermost frame
+    overall, again the plugin's. Both layouts must blame the test.
+    """
+    plugin_dir = os.path.dirname(os.path.abspath(escape_logger.__file__))
+    test_file = os.path.join(CCDPROC_ROOT, "tests", "test_ccdproc.py")
+    test_frame = FrameSummary(test_file, 1103, "test_block_average")
+    stack = [
+        FrameSummary("/elsewhere/_pytest/python.py", 10, "pytest_pyfunc_call"),
+        test_frame,
+        FrameSummary("/elsewhere/astropy/nddata/compat.py", 171, "mask"),
+        FrameSummary(os.path.join(plugin_dir, "escape_logger.py"), 190, "wrapper"),
+        FrameSummary(os.path.join(plugin_dir, "escape_logger.py"), 153, "locate_site"),
+    ]
+
+    settings = build_settings(StubConfig(tmp_path, **{INI_PACKAGE: "ccdproc"}))
+    assert FrameClassifier(settings).locate_escape_site(stack) is test_frame
+
+    # Unconfigured, nothing is a package frame and step 3 picks the innermost
+    # frame overall, which must not be the plugin's.
+    unconfigured = FrameClassifier(unconfigured_settings())
+    assert unconfigured.locate_escape_site(stack) is stack[2]
+
+    assert unconfigured.locate_escape_site(stack[3:]) is None
 
 
 def test_escape_wrapper_guard_is_thread_local(monkeypatch):
