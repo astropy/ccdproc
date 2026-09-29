@@ -30,6 +30,13 @@ def register_markers(config, settings):
     """
     Declare the two markers so ``--strict-markers`` accepts them.
 
+    Parameters
+    ----------
+    config : pytest.Config
+        The pytest config object to register the markers on.
+    settings : `.config.Settings`
+        Supplies the environment-variable name quoted in the descriptions.
+
     Notes
     -----
     The descriptions name the environment variable that selects the backend,

@@ -30,13 +30,32 @@ SUPPORTED_BACKENDS = ("numpy", "jax", "dask", "cupy", "array-api-strict")
 
 
 def normalize_backend_name(name):
-    """Fold underscores and case so ``array_api_strict`` matches its spelling."""
+    """
+    Fold underscores and case so ``array_api_strict`` matches its spelling.
+
+    Parameters
+    ----------
+    name : str
+        A backend name as written in an environment variable or a marker.
+
+    Returns
+    -------
+    str
+        The name lower-cased, with underscores replaced by hyphens.
+    """
     return str(name).lower().replace("_", "-")
 
 
 def _add_header_module(label, module_name):
     """
     Add a module to the pytest-astropy-header banner, if it is installed.
+
+    Parameters
+    ----------
+    label : str
+        The name shown in the banner.
+    module_name : str
+        The import name whose version the banner reports.
 
     Notes
     -----

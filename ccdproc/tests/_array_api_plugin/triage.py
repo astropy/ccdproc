@@ -29,7 +29,19 @@ _PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep
 
 
 def _is_plugin_frame(filename):
-    """True if ``filename`` belongs to this plugin."""
+    """
+    True if ``filename`` belongs to this plugin.
+
+    Parameters
+    ----------
+    filename : str
+        Path of a frame's source file.
+
+    Returns
+    -------
+    bool
+        Whether the file lives in this plugin's directory.
+    """
     return os.path.abspath(filename).startswith(_PLUGIN_DIR)
 
 
@@ -52,6 +64,7 @@ class FrameClassifier:
     """
 
     def __init__(self, settings):
+        """Normalize the package and test roots from ``settings``."""
         self.settings = settings
         root = settings.package_root
         self.package_root = (root.rstrip(os.sep) + os.sep) if root else None
@@ -59,17 +72,49 @@ class FrameClassifier:
 
     @property
     def configured(self):
-        """True when a package directory is known and frames can be classified."""
+        """
+        True when a package directory is known and frames can be classified.
+
+        Returns
+        -------
+        bool
+            Whether a package root is configured.
+        """
         return self.package_root is not None
 
     def is_package_frame(self, filename):
-        """True if ``filename`` lives inside the package under test."""
+        """
+        True if ``filename`` lives inside the package under test.
+
+        Parameters
+        ----------
+        filename : str
+            Path of the frame's source file.
+
+        Returns
+        -------
+        bool
+            Whether the file is under the package root; always False when
+            unconfigured.
+        """
         if not self.configured:
             return False
         return os.path.abspath(filename).startswith(self.package_root)
 
     def is_test_frame(self, filename):
-        """True if ``filename`` is part of the package's test infrastructure."""
+        """
+        True if ``filename`` is part of the package's test infrastructure.
+
+        Parameters
+        ----------
+        filename : str
+            Path of the frame's source file.
+
+        Returns
+        -------
+        bool
+            Whether the file is, or is inside, one of the test roots.
+        """
         abspath = os.path.abspath(filename)
         for root in self.test_roots:
             if abspath == root or abspath.startswith(root.rstrip(os.sep) + os.sep):
@@ -77,11 +122,36 @@ class FrameClassifier:
         return False
 
     def is_library_frame(self, filename):
-        """True for real library code: in the package, outside the tests."""
+        """
+        True for real library code: in the package, outside the tests.
+
+        Parameters
+        ----------
+        filename : str
+            Path of the frame's source file.
+
+        Returns
+        -------
+        bool
+            Whether the file is a package frame but not a test frame.
+        """
         return self.is_package_frame(filename) and not self.is_test_frame(filename)
 
     def relpath(self, filename):
-        """Package-relative, forward-slash path, for stable baseline keys."""
+        """
+        Package-relative, forward-slash path, for stable baseline keys.
+
+        Parameters
+        ----------
+        filename : str
+            Path of the frame's source file.
+
+        Returns
+        -------
+        str
+            The path relative to the package root, or the absolute path when
+            unconfigured or on another drive, with ``/`` separators.
+        """
         if not self.configured:
             return os.path.abspath(filename).replace(os.sep, "/")
         try:
@@ -93,6 +163,16 @@ class FrameClassifier:
     def is_library_site(self, relfile):
         """
         True for escapes blamed on real library code.
+
+        Parameters
+        ----------
+        relfile : str
+            A tally key's file, as returned by `relpath`.
+
+        Returns
+        -------
+        bool
+            Whether the file is a library frame.
 
         Notes
         -----
@@ -119,7 +199,8 @@ class FrameClassifier:
         Returns
         -------
         frame or None
-            None if ``frames`` holds nothing but this plugin's own frames.
+            None if ``frames`` is empty or holds only this plugin's own
+            frames.
 
         Notes
         -----
@@ -154,7 +235,19 @@ class FrameClassifier:
         return frames[-1]
 
     def describe(self, frame):
-        """Short "file:line function" string for a log message."""
+        """
+        Short "file:line function" string for a log message.
+
+        Parameters
+        ----------
+        frame : traceback.FrameSummary or None
+            The frame to describe.
+
+        Returns
+        -------
+        str
+            The description, or `UNKNOWN_LOCATION` for None.
+        """
         if frame is None:
             return UNKNOWN_LOCATION
         return f"{frame.filename}:{frame.lineno} {frame.name}"
@@ -176,6 +269,7 @@ class FailureTriage:
     example_limit = 5
 
     def __init__(self, settings, classifier):
+        """Start with no failures recorded."""
         self.settings = settings
         self.classifier = classifier
         #: Maps a (filename, lineno, function) escape site to the node ids
@@ -184,12 +278,28 @@ class FailureTriage:
 
     @property
     def active(self):
-        """True when failure triage was requested for this session."""
+        """
+        True when failure triage was requested for this session.
+
+        Returns
+        -------
+        bool
+            Whether ``<PREFIX>_TRIAGE_ESCAPES`` is truthy.
+        """
         return self.settings.triage
 
     def record_report(self, item, call, report):
         """
         Record the escape site of one failing test report.
+
+        Parameters
+        ----------
+        item : pytest.Item
+            The test the report is for.
+        call : pytest.CallInfo
+            The result of the test phase, including any exception.
+        report : pytest.TestReport
+            The report built for that phase.
 
         Notes
         -----
@@ -207,6 +317,11 @@ class FailureTriage:
     def report(self, terminalreporter):
         """
         Print the failure-triage summary.
+
+        Parameters
+        ----------
+        terminalreporter : _pytest.terminal.TerminalReporter
+            The reporter to write to.
 
         Notes
         -----

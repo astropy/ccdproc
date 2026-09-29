@@ -32,6 +32,11 @@ def use_this_ccdproc_in_subprocess(monkeypatch):
     """
     Make a ``pytester`` subprocess import the ccdproc this session is testing.
 
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Used to set ``PYTHONPATH`` for the rest of the calling test.
+
     Notes
     -----
     The end-to-end tests load the plugin in a fresh pytest process by its
@@ -58,10 +63,25 @@ class StubHook:
     """
 
     def __init__(self, result):
+        """Remember the result to hand back."""
         self.result = result
+        #: The config the hook was last called with, or None.
         self.config = None
 
     def pytest_array_api_escapes_config(self, config):
+        """
+        Answer the hook the way pluggy's hook caller would.
+
+        Parameters
+        ----------
+        config : StubConfig
+            The config `build_settings` passes; recorded in ``self.config``.
+
+        Returns
+        -------
+        dict or None
+            The ``result`` given to the constructor.
+        """
         self.config = config
         return self.result
 
@@ -69,6 +89,17 @@ class StubHook:
 class StubConfig:
     """
     Minimal stand-in for pytest's ``Config`` for `build_settings`.
+
+    Parameters
+    ----------
+    rootpath : pathlib.Path
+        What ``config.rootpath`` returns.
+    hook_result : dict or None, optional
+        What the configuration hook returns.
+    inipath : pathlib.Path or None, optional
+        What ``config.inipath`` returns; None means no ini file was found.
+    **ini
+        Ini option values by option name; unset options read as empty.
 
     Notes
     -----
@@ -80,19 +111,41 @@ class StubConfig:
     """
 
     def __init__(self, rootpath, hook_result=None, inipath=None, **ini):
+        """Store the attributes `build_settings` reads."""
         self.rootpath = rootpath
         self.inipath = inipath
         self.hook = StubHook(hook_result)
         self._ini = ini
 
     def getini(self, name):
+        """
+        Return an ini option the way pytest does for an unset option.
+
+        Parameters
+        ----------
+        name : str
+            The option name.
+
+        Returns
+        -------
+        str or list
+            The configured value, or pytest's empty value for the option's
+            type (a list for `INI_TEST_PATHS`, ``""`` otherwise).
+        """
         if name == INI_TEST_PATHS:
             return self._ini.get(name, [])
         return self._ini.get(name, "")
 
 
 def unconfigured_settings():
-    """Settings for a session that set none of the plugin's ini options."""
+    """
+    Build settings for a session that configured nothing.
+
+    Returns
+    -------
+    Settings
+        Settings with no package, no baseline and an empty environment.
+    """
     return Settings(
         package_name="",
         package_root=None,
@@ -197,7 +250,18 @@ def test_package_conftest_is_always_a_test_frame(tmp_path):
 
 
 def test_env_prefix_defaults_to_the_package_name(tmp_path):
-    """Pin that an unset ``array_api_escapes_env_prefix`` follows the package name."""
+    """
+    Pin that an unset environment prefix and logger follow the package name.
+
+    Notes
+    -----
+    Deriving both from the package name is the zero-configuration path: a
+    package that configures nothing but its name gets
+    ``<PACKAGE>_ARRAY_LIBRARY`` and friends and a ``<package>.array_escape``
+    logger, with no chance of the prefix and the package disagreeing.
+    ccdproc names its prefix and logger explicitly in its conftest hook, so
+    its own test runs do not exercise this default; only this test does.
+    """
     settings = build_settings(StubConfig(tmp_path, **{INI_PACKAGE: "ccdproc"}))
     assert settings.env_name("ARRAY_LIBRARY") == "CCDPROC_ARRAY_LIBRARY"
     assert settings.logger_name == "ccdproc.array_escape"
@@ -450,6 +514,19 @@ def test_escape_wrapper_guard_is_thread_local(monkeypatch):
     original_calls = []
 
     def original(value):
+        """
+        Stand in for the real NumPy function, recording each call.
+
+        Parameters
+        ----------
+        value : object
+            The argument the wrapper passed on.
+
+        Returns
+        -------
+        object
+            ``value`` itself.
+        """
         original_calls.append(value)
         return value
 
@@ -458,6 +535,26 @@ def test_escape_wrapper_guard_is_thread_local(monkeypatch):
     nested_wrapper = escape_log.make_wrapper(original, "numpy.asanyarray", guard)
 
     def foreign_namespace(value):
+        """
+        Treat two marker strings as foreign arrays, parking the first one.
+
+        Parameters
+        ----------
+        value : object
+            The object the wrapper is inspecting.
+
+        Returns
+        -------
+        str or None
+            ``"foreign"`` for ``"first"`` and ``"second"``, None otherwise.
+
+        Notes
+        -----
+        For ``"first"`` it calls the nested wrapper (which must pass straight
+        through because this thread holds the guard), then blocks until the
+        test releases it, so the second thread goes through the wrapper
+        while the first is still inside.
+        """
         if not isinstance(value, str) or value not in ("first", "second"):
             return None
         inspected.append(value)
@@ -490,6 +587,107 @@ def test_escape_wrapper_guard_is_thread_local(monkeypatch):
     assert original_calls == ["nested", unrelated, "second", "first"]
 
 
+class TrackingLock:
+    """
+    A lock that remembers which thread holds it.
+
+    Notes
+    -----
+    Stands in for `EscapeLog.counts_lock` so that `GuardedCounts` can check
+    that the tally is only touched while the lock is held.
+    """
+
+    def __init__(self):
+        """Start unlocked and unowned."""
+        self.lock = Lock()
+        self.owner = None
+
+    def __enter__(self):
+        """
+        Acquire the lock and record the current thread as its owner.
+
+        Returns
+        -------
+        TrackingLock
+            This lock.
+        """
+        self.lock.acquire()
+        self.owner = get_ident()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Clear the owner and release the lock.
+
+        Parameters
+        ----------
+        exc_type, exc_value, traceback
+            The exception raised in the ``with`` block, if any; ignored, so
+            the exception propagates.
+        """
+        self.owner = None
+        self.lock.release()
+
+    def held_by_current_thread(self):
+        """
+        Say whether the calling thread holds the lock.
+
+        Returns
+        -------
+        bool
+            True if the calling thread acquired the lock and has not released
+            it.
+        """
+        return self.owner == get_ident()
+
+
+class GuardedCounts(dict):
+    """
+    A tally that asserts every read and write happens under its lock.
+
+    Parameters
+    ----------
+    lock : TrackingLock
+        The lock that must be held.
+    """
+
+    def __init__(self, lock):
+        """Start with an empty tally."""
+        super().__init__()
+        self.lock = lock
+
+    def __getitem__(self, key):
+        """
+        Read a count, asserting the lock is held.
+
+        Parameters
+        ----------
+        key : tuple
+            A tally key.
+
+        Returns
+        -------
+        int
+            The count, 0 for a key not seen yet (as for a ``defaultdict``).
+        """
+        assert self.lock.held_by_current_thread()
+        return self.get(key, 0)
+
+    def __setitem__(self, key, value):
+        """
+        Write a count, asserting the lock is held.
+
+        Parameters
+        ----------
+        key : tuple
+            A tally key.
+        value : int
+            The new count.
+        """
+        assert self.lock.held_by_current_thread()
+        super().__setitem__(key, value)
+
+
 def test_escape_log_tally_increment_is_serialized(monkeypatch):
     """
     Pin that every read and write of the escape tally holds the tally lock.
@@ -500,40 +698,6 @@ def test_escape_log_tally_increment_is_serialized(monkeypatch):
     read-modify-write of the per-site counter has to be serialized or counts
     are silently lost.
     """
-
-    class TrackingLock:
-        """Track which thread owns the lock used by the tally."""
-
-        def __init__(self):
-            self.lock = Lock()
-            self.owner = None
-
-        def __enter__(self):
-            self.lock.acquire()
-            self.owner = get_ident()
-            return self
-
-        def __exit__(self, exc_type, exc_value, traceback):
-            self.owner = None
-            self.lock.release()
-
-        def held_by_current_thread(self):
-            return self.owner == get_ident()
-
-    class GuardedCounts(dict):
-        """Assert every tally read and write happens while holding the lock."""
-
-        def __init__(self, lock):
-            super().__init__()
-            self.lock = lock
-
-        def __getitem__(self, key):
-            assert self.lock.held_by_current_thread()
-            return self.get(key, 0)
-
-        def __setitem__(self, key, value):
-            assert self.lock.held_by_current_thread()
-            super().__setitem__(key, value)
 
     settings = unconfigured_settings()
     escape_log = EscapeLog(settings, FrameClassifier(settings))

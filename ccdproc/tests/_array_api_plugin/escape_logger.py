@@ -51,6 +51,17 @@ def foreign_namespace(obj):
     """
     Return ``obj``'s array-API namespace if it is foreign, else None.
 
+    Parameters
+    ----------
+    obj : object
+        The first argument handed to a NumPy coercion function.
+
+    Returns
+    -------
+    module or None
+        The namespace of a non-NumPy array, or None for NumPy arrays,
+        non-arrays and objects whose namespace cannot be determined.
+
     Notes
     -----
     NumPy arrays, including ``numpy.ma`` masked arrays, are never foreign.
@@ -80,6 +91,7 @@ class ReentrancyGuard(threading.local):
     """Thread-local flag keeping the wrappers from recursing into themselves."""
 
     def __init__(self):
+        """Start with the guard released in every thread."""
         self.active = False
 
 
@@ -103,6 +115,7 @@ class EscapeLog:
     """
 
     def __init__(self, settings, classifier):
+        """Set up an empty tally and the logger named in ``settings``."""
         self.settings = settings
         self.classifier = classifier
         self.logger = logging.getLogger(settings.logger_name)
@@ -113,7 +126,14 @@ class EscapeLog:
 
     @property
     def active(self):
-        """True when the escape logger was requested for this session."""
+        """
+        True when the escape logger was requested for this session.
+
+        Returns
+        -------
+        bool
+            Whether ``<PREFIX>_LOG_ARRAY_ESCAPES`` is truthy.
+        """
         return self.settings.log_escapes
 
     def record(self, frame, funcname):
@@ -141,7 +161,15 @@ class EscapeLog:
             self.counts[key] += 1
 
     def observed_library_sites(self):
-        """Set of (relfile, function, coercion) for the library escapes seen."""
+        """
+        Set of (relfile, function, coercion) for the library escapes seen.
+
+        Returns
+        -------
+        set of tuple
+            One entry per library call site, whatever its line number; the
+            keys the baseline ratchet compares.
+        """
         return {
             (relfile, function, funcname)
             for (relfile, _lineno, function, funcname) in self.counts
@@ -149,7 +177,14 @@ class EscapeLog:
         }
 
     def locate_site(self):
-        """Innermost library frame of the live stack, or None."""
+        """
+        Frame of the live stack to blame for an escape.
+
+        Returns
+        -------
+        traceback.FrameSummary or None
+            The frame chosen by `.triage.FrameClassifier.locate_escape_site`.
+        """
         return self.classifier.locate_escape_site(traceback.extract_stack())
 
     def make_wrapper(self, original, funcname, guard):
@@ -167,6 +202,11 @@ class EscapeLog:
             Breaks recursion: namespace detection and stack extraction can
             themselves call the patched functions.
 
+        Returns
+        -------
+        callable
+            A function with ``original``'s signature, name and docstring.
+
         Notes
         -----
         The wrapper logs and tallies an escape whenever its first positional
@@ -175,6 +215,19 @@ class EscapeLog:
         """
 
         def wrapper(*args, **kwargs):
+            """
+            Log and tally a foreign-array coercion, then call ``original``.
+
+            Parameters
+            ----------
+            *args, **kwargs
+                Passed on to ``original`` unchanged.
+
+            Returns
+            -------
+            object
+                Whatever ``original`` returns.
+            """
             # Do nothing extra on re-entrant calls (guard held) or when
             # there is no positional argument to inspect.
             if not guard.active and args:
@@ -224,6 +277,7 @@ class EscapeLog:
             setattr(owner, attr, self.make_wrapper(original, funcname, guard))
 
         def restore():
+            """Put the original NumPy functions back."""
             for owner, attr, original in originals:
                 setattr(owner, attr, original)
 
@@ -232,6 +286,11 @@ class EscapeLog:
     def report(self, terminalreporter):
         """
         Print the live escape-log summary.
+
+        Parameters
+        ----------
+        terminalreporter : _pytest.terminal.TerminalReporter
+            The reporter to write to.
 
         Notes
         -----

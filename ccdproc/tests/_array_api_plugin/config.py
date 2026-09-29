@@ -59,13 +59,30 @@ FALLBACK_LOGGER = "array_api_escapes"
 
 
 def env_truthy(value):
-    """True for the strings the plugin accepts as "on"."""
+    """
+    True for the strings the plugin accepts as "on".
+
+    Parameters
+    ----------
+    value : object
+        An environment-variable value.
+
+    Returns
+    -------
+    bool
+        Whether ``value``, stripped and lower-cased, is one of `TRUTHY`.
+    """
     return str(value).strip().lower() in TRUTHY
 
 
 def add_ini_options(parser):
     """
     Declare the plugin's ini options on ``parser``.
+
+    Parameters
+    ----------
+    parser : pytest.Parser
+        The parser to add the options to.
 
     Notes
     -----
@@ -116,14 +133,40 @@ def add_ini_options(parser):
 
 
 def _as_str(value):
-    """Collapse an ini value that pytest may hand back as a list."""
+    """
+    Collapse an ini value that pytest may hand back as a list.
+
+    Parameters
+    ----------
+    value : str, list, tuple or None
+        The raw value.
+
+    Returns
+    -------
+    str
+        ``value`` itself, its first element, or ``""`` for None or an empty
+        sequence.
+    """
     if isinstance(value, (list, tuple)):
         return value[0] if value else ""
     return "" if value is None else str(value)
 
 
 def _default_env_prefix(package_name):
-    """Environment prefix implied by ``package_name`` (``ccdproc`` -> CCDPROC)."""
+    """
+    Environment prefix implied by ``package_name`` (``ccdproc`` -> CCDPROC).
+
+    Parameters
+    ----------
+    package_name : str
+        Dotted import name of the package, or ``""``.
+
+    Returns
+    -------
+    str
+        The name upper-cased with every non-alphanumeric character replaced
+        by an underscore, or `FALLBACK_ENV_PREFIX` when it is empty.
+    """
     if not package_name:
         return FALLBACK_ENV_PREFIX
     return "".join(c if c.isalnum() else "_" for c in package_name).upper()
@@ -132,6 +175,21 @@ def _default_env_prefix(package_name):
 def _resolve_package_root(package_name):
     """
     Absolute directory of ``package_name``, found by importing it.
+
+    Parameters
+    ----------
+    package_name : str
+        Dotted import name of the package under test.
+
+    Returns
+    -------
+    str
+        Absolute path of the directory holding the package's ``__init__``.
+
+    Raises
+    ------
+    pytest.UsageError
+        If the package cannot be imported or has no ``__file__``.
 
     Notes
     -----
@@ -161,6 +219,24 @@ def _resolve_package_root(package_name):
 def _resolve_test_root(entry, package_name, package_root):
     """
     Turn one ``array_api_escapes_test_paths`` entry into an absolute path.
+
+    Parameters
+    ----------
+    entry : str
+        The configured entry: an absolute path, a dotted name, or a
+        package-relative path.
+    package_name : str
+        Dotted import name of the package under test; a leading
+        ``<package_name>.`` or ``<package_name>/`` is stripped from
+        ``entry``.
+    package_root : str
+        Absolute directory of that package, which relative entries are
+        resolved against.
+
+    Returns
+    -------
+    str
+        The absolute path of the directory or file.
 
     Notes
     -----
@@ -228,6 +304,7 @@ class Settings:
         environ=None,
         docs_url=None,
     ):
+        """Store the values and snapshot the environment switches."""
         self.package_name = package_name
         self.package_root = package_root
         self.test_roots = tuple(test_roots)
@@ -246,30 +323,94 @@ class Settings:
 
     # -- environment -----------------------------------------------------
     def env_name(self, suffix):
-        """Full name of the environment variable with ``suffix``."""
+        """
+        Full name of the environment variable with ``suffix``.
+
+        Parameters
+        ----------
+        suffix : str
+            One of the ``ENV_*`` suffixes, e.g. `ENV_ARRAY_LIBRARY`.
+
+        Returns
+        -------
+        str
+            ``<env_prefix>_<suffix>``.
+        """
         return f"{self.env_prefix}_{suffix}"
 
     def env(self, suffix, default=""):
-        """Value of the environment variable with ``suffix``."""
+        """
+        Value of the environment variable with ``suffix``.
+
+        Parameters
+        ----------
+        suffix : str
+            One of the ``ENV_*`` suffixes, e.g. `ENV_ARRAY_LIBRARY`.
+        default : object, optional
+            Returned when the variable is not set.
+
+        Returns
+        -------
+        str or object
+            The variable's value, or ``default``.
+        """
         return self._environ.get(self.env_name(suffix), default)
 
     def env_flag(self, suffix):
-        """True when the environment variable with ``suffix`` is truthy."""
+        """
+        True when the environment variable with ``suffix`` is truthy.
+
+        Parameters
+        ----------
+        suffix : str
+            One of the ``ENV_*`` suffixes, e.g. `ENV_LOG_ESCAPES`.
+
+        Returns
+        -------
+        bool
+            Whether the variable is set to one of `TRUTHY`.
+        """
         return env_truthy(self.env(suffix, ""))
 
     # -- presentation ----------------------------------------------------
     @property
     def baseline_modes_active(self):
-        """True when either baseline mode was requested."""
+        """
+        True when either baseline mode was requested.
+
+        Returns
+        -------
+        bool
+            Whether enforce or write mode is on.
+        """
         return self.enforce_baseline or self.write_baseline
 
     @property
     def library_label(self):
-        """Human-readable name of the package under test."""
+        """
+        Human-readable name of the package under test.
+
+        Returns
+        -------
+        str
+            The package name, or a generic phrase when none is configured.
+        """
         return self.package_name or "the package under test"
 
     def section(self, title):
-        """Terminal-summary section title, qualified by the package name."""
+        """
+        Terminal-summary section title, qualified by the package name.
+
+        Parameters
+        ----------
+        title : str
+            The section's own title.
+
+        Returns
+        -------
+        str
+            ``title`` prefixed with the package name, if one is configured.
+        """
         return f"{self.package_name} {title}".strip()
 
 
@@ -343,6 +484,25 @@ def _setting(config, ini_name, defaults, key):
 def build_settings(config, environ=None):
     """
     Build the `Settings` for this session from ``config``.
+
+    Parameters
+    ----------
+    config : pytest.Config
+        The pytest config object of this session, or anything with the same
+        ``getini``, ``hook``, ``inipath`` and ``rootpath``.
+    environ : mapping, optional
+        Environment to read, defaulting to ``os.environ``.
+
+    Returns
+    -------
+    Settings
+        The resolved configuration.
+
+    Raises
+    ------
+    pytest.UsageError
+        If the configuration hook returns something unusable, or the
+        configured package cannot be imported.
 
     Notes
     -----

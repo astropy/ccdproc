@@ -98,6 +98,7 @@ class ArrayApiEscapePlugin:
     """
 
     def __init__(self, settings):
+        """Build the per-session state from ``settings``."""
         self.settings = settings
         self.classifier = FrameClassifier(settings)
         self.escape_log = EscapeLog(settings, self.classifier)
@@ -109,6 +110,16 @@ class ArrayApiEscapePlugin:
 def get_plugin(config):
     """
     Return the `ArrayApiEscapePlugin` built for ``config``, or None.
+
+    Parameters
+    ----------
+    config : pytest.Config
+        The pytest config object of this session.
+
+    Returns
+    -------
+    ArrayApiEscapePlugin or None
+        The session's plugin state, or None if it was never built.
 
     Notes
     -----
@@ -125,33 +136,71 @@ def get_plugin(config):
 
 
 def pytest_addhooks(pluginmanager):
-    """Register the plugin's configuration hook."""
+    """
+    Register the plugin's configuration hook.
+
+    Parameters
+    ----------
+    pluginmanager : pytest.PytestPluginManager
+        The plugin manager to add `~.hooks.pytest_array_api_escapes_config`
+        to.
+    """
     from . import hooks
 
     pluginmanager.add_hookspecs(hooks)
 
 
 def pytest_addoption(parser):
-    """Declare the plugin's ini options."""
+    """
+    Declare the plugin's ini options.
+
+    Parameters
+    ----------
+    parser : pytest.Parser
+        The parser to add the options to.
+    """
     add_ini_options(parser)
 
 
 def pytest_configure(config):
-    """Build the session runtime and register the two backend markers."""
+    """
+    Build the session runtime and register the two backend markers.
+
+    Parameters
+    ----------
+    config : pytest.Config
+        The pytest config object of this session.
+    """
     settings = build_settings(config)
     config.stash[PLUGIN_KEY] = ArrayApiEscapePlugin(settings)
     register_markers(config, settings)
 
 
 def pytest_sessionstart(session):
-    """Reject unusable combinations of environment variables and ini options."""
+    """
+    Reject unusable combinations of environment variables and settings.
+
+    Parameters
+    ----------
+    session : pytest.Session
+        The session about to run.
+    """
     plugin = get_plugin(session.config)
     if plugin is not None:
         _baseline.check_usage(session.config, plugin.settings, plugin.classifier)
 
 
 def pytest_collection_modifyitems(config, items):
-    """Apply ``backend_skip`` / ``backend_xfail`` for the active backend."""
+    """
+    Apply ``backend_skip`` / ``backend_xfail`` for the active backend.
+
+    Parameters
+    ----------
+    config : pytest.Config
+        The pytest config object of this session.
+    items : list of pytest.Item
+        The collected test items, modified in place.
+    """
     plugin = get_plugin(config)
     if plugin is not None:
         apply_backend_markers(items, plugin.active_backend)
@@ -161,6 +210,24 @@ def pytest_collection_modifyitems(config, items):
 def pytest_runtest_makereport(item, call):
     """
     Record the escape site of every failing test.
+
+    Parameters
+    ----------
+    item : pytest.Item
+        The test the report is for.
+    call : pytest.CallInfo
+        The result of the test phase, including any exception.
+
+    Yields
+    ------
+    None
+        Control passes to the inner implementations of the hook, and the
+        ``TestReport`` they build is sent back in.
+
+    Returns
+    -------
+    pytest.TestReport
+        The report, unchanged.
 
     Notes
     -----
@@ -176,7 +243,14 @@ def pytest_runtest_makereport(item, call):
 
 
 def pytest_terminal_summary(terminalreporter):
-    """Print the triage, escape-log and baseline summaries."""
+    """
+    Print the triage, escape-log and baseline summaries.
+
+    Parameters
+    ----------
+    terminalreporter : _pytest.terminal.TerminalReporter
+        The reporter to write the summary sections to.
+    """
     plugin = get_plugin(terminalreporter.config)
     if plugin is None:
         return
@@ -188,6 +262,13 @@ def pytest_terminal_summary(terminalreporter):
 def pytest_sessionfinish(session, exitstatus):
     """
     Regenerate or enforce the baseline ratchet.
+
+    Parameters
+    ----------
+    session : pytest.Session
+        The finished session; its ``exitstatus`` may be set to 1.
+    exitstatus : int or pytest.ExitCode
+        The exit status the session would otherwise end with.
 
     Notes
     -----
@@ -218,13 +299,37 @@ def pytest_sessionfinish(session, exitstatus):
 
 @pytest.fixture(scope="session")
 def xp(pytestconfig):
-    """The array-API namespace selected for this test run."""
+    """
+    Provide the array-API namespace selected for this test run.
+
+    Parameters
+    ----------
+    pytestconfig : pytest.Config
+        The pytest config object of this session.
+
+    Returns
+    -------
+    module
+        The namespace to build test arrays with.
+    """
     return get_plugin(pytestconfig).namespace
 
 
 @pytest.fixture(scope="session")
 def xp_device(pytestconfig):
-    """The device to create test arrays on, or None for the library default."""
+    """
+    Provide the device to create test arrays on.
+
+    Parameters
+    ----------
+    pytestconfig : pytest.Config
+        The pytest config object of this session.
+
+    Returns
+    -------
+    object or None
+        The device to pass as ``device=``, or None for the library default.
+    """
     return get_plugin(pytestconfig).device
 
 
@@ -232,6 +337,16 @@ def xp_device(pytestconfig):
 def _log_array_escapes(pytestconfig):
     """
     Monkeypatch NumPy's coercion entry points for the whole session.
+
+    Parameters
+    ----------
+    pytestconfig : pytest.Config
+        The pytest config object of this session.
+
+    Yields
+    ------
+    None
+        The session runs while the wrappers are installed.
 
     Notes
     -----

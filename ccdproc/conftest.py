@@ -108,6 +108,24 @@ def __getattr__(name):
     """
     Provide the ``testing_array_library`` / ``testing_array_device`` attributes.
 
+    Parameters
+    ----------
+    name : str
+        The attribute being looked up.
+
+    Returns
+    -------
+    module or object or None
+        The array namespace for ``testing_array_library``; the device, or
+        None for the library default, for ``testing_array_device``.
+
+    Raises
+    ------
+    AttributeError
+        For any other name.
+    RuntimeError
+        If no pytest session has configured the array-API escape plugin.
+
     Notes
     -----
     The array library and device for this run are also available as the

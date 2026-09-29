@@ -55,6 +55,7 @@ class Baseline:
     """
 
     def __init__(self, settings, classifier, escape_log):
+        """Hold the collaborators; nothing is read until asked for."""
         self.settings = settings
         self.classifier = classifier
         self.escape_log = escape_log
@@ -65,12 +66,26 @@ class Baseline:
 
     @property
     def path(self):
-        """Absolute path of the baseline file, or None if unconfigured."""
+        """
+        Absolute path of the baseline file, or None if unconfigured.
+
+        Returns
+        -------
+        str or None
+            The configured path.
+        """
         return self.settings.baseline_path
 
     def load(self):
         """
         Parse the baseline file into ``{(relfile, function, coercion): reason}``.
+
+        Returns
+        -------
+        dict
+            Maps each ``(relfile, function, coercion)`` entry to its free-text
+            reason, ``""`` if it has none. Empty when no baseline is
+            configured or the file does not exist.
 
         Notes
         -----
@@ -99,14 +114,37 @@ class Baseline:
         return baseline
 
     def new_escapes(self):
-        """Library escapes observed this run that are absent from the baseline."""
+        """
+        Library escapes observed this run that are absent from the baseline.
+
+        Returns
+        -------
+        list of tuple
+            Sorted ``(relfile, function, coercion)`` entries.
+        """
         return sorted(self.escape_log.observed_library_sites() - set(self.load()))
 
     def stale_entries(self):
-        """Baseline entries not hit this run (candidates for deletion)."""
+        """
+        Baseline entries not hit this run (candidates for deletion).
+
+        Returns
+        -------
+        list of tuple
+            Sorted ``(relfile, function, coercion)`` entries.
+        """
         return sorted(set(self.load()) - self.escape_log.observed_library_sites())
 
     def _header(self):
+        """
+        Comment lines written at the top of a regenerated baseline file.
+
+        Returns
+        -------
+        list of str
+            The lines, without newlines, naming the configured environment
+            variables.
+        """
         env = self.settings.env_name
         return [
             "# Array-API escape baseline for non-numpy backends (dask/jax).",
@@ -129,6 +167,12 @@ class Baseline:
     def write(self):
         """
         Rewrite the baseline file from the escapes observed this run.
+
+        Raises
+        ------
+        pytest.UsageError
+            If no baseline file is configured, or no library escape was
+            observed.
 
         Notes
         -----
@@ -175,17 +219,36 @@ class Baseline:
             f.write("\n".join(self._header() + body) + "\n")
 
     def _display_path(self):
-        """Baseline path relative to the package, for messages."""
+        """
+        Baseline path relative to the package, for messages.
+
+        Returns
+        -------
+        str
+            The relative path, or ``"<unset>"`` when none is configured.
+        """
         return self.classifier.relpath(self.path) if self.path else "<unset>"
 
     def report(self, terminalreporter):
-        """Print the ratchet result and, after a rewrite, what it dropped."""
+        """
+        Print the ratchet result and, after a rewrite, what it dropped.
+
+        Parameters
+        ----------
+        terminalreporter : _pytest.terminal.TerminalReporter
+            The reporter to write to.
+        """
         self._report_enforcement(terminalreporter)
         self._report_dropped(terminalreporter)
 
     def _report_enforcement(self, terminalreporter):
         """
         Print any new library escapes and any baseline entries not hit.
+
+        Parameters
+        ----------
+        terminalreporter : _pytest.terminal.TerminalReporter
+            The reporter to write to.
 
         Notes
         -----
@@ -234,6 +297,11 @@ class Baseline:
         """
         Warn loudly about entries a rewrite dropped.
 
+        Parameters
+        ----------
+        terminalreporter : _pytest.terminal.TerminalReporter
+            The reporter to write to.
+
         Notes
         -----
         On a full-suite run dropping stale entries is the point of a refresh,
@@ -266,6 +334,16 @@ def xdist_active(config):
     """
     True when pytest-xdist is about to run the tests in worker processes.
 
+    Parameters
+    ----------
+    config : pytest.Config
+        The pytest config object of this session.
+
+    Returns
+    -------
+    bool
+        Whether ``-n`` asked for worker processes.
+
     Notes
     -----
     The escape tally is a per-process object: under ``pytest -n`` the workers
@@ -285,6 +363,22 @@ def xdist_active(config):
 def check_usage(config, settings, classifier):
     """
     Fail fast on unusable configurations, before any test runs.
+
+    Parameters
+    ----------
+    config : pytest.Config
+        The pytest config object of this session; only consulted in the
+        baseline modes.
+    settings : `.config.Settings`
+        The resolved configuration.
+    classifier : `.triage.FrameClassifier`
+        The session's classifier, which says whether frames can be
+        classified at all.
+
+    Raises
+    ------
+    pytest.UsageError
+        If the requested features cannot work with this configuration.
 
     Notes
     -----
