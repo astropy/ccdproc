@@ -91,32 +91,59 @@ stand-alone plugin that any package adopting the `array API`_ can install,
 so please keep the package name out of it and add anything ccdproc-specific
 to the configuration instead.
 
-The configuration lives in ``[tool.pytest.ini_options]`` in
-``pyproject.toml``:
+It is configured in that same file, by implementing the plugin's
+``pytest_array_api_escapes_config`` hook::
+
+    def pytest_array_api_escapes_config(config):
+        return {
+            "package": "ccdproc",
+            "test_paths": ["ccdproc.tests"],
+            "baseline": "ccdproc/tests/array_escape_baseline.txt",
+            "env_prefix": "CCDPROC",
+            "logger": "ccdproc.array_escape",
+            "docs_url": "https://ccdproc.readthedocs.io/en/latest/array_api.html",
+        }
+
+The configuration lives in ``conftest.py`` rather than in ``pyproject.toml``
+because the conftest ships with the tests: it applies however the tests are
+run, including ``pytest --pyargs ccdproc`` against an installed copy from a
+directory that has no ini file. Each key except ``docs_url`` can also be set
+by an ini option (for example in ``[tool.pytest.ini_options]``), which then
+takes precedence over the hook's value:
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 20 30 50
 
-   * - ini option
+   * - hook key
+     - ini option
      - what it sets
-   * - ``array_api_escapes_package``
+   * - ``package``
+     - ``array_api_escapes_package``
      - Dotted name of the package whose stack frames count as *library*
        frames (``ccdproc``). The directory is found by importing the
        package, so frames are classified correctly whether the tests run
        from the source tree or against an installed copy.
-   * - ``array_api_escapes_test_paths``
+   * - ``test_paths``
+     - ``array_api_escapes_test_paths``
      - Modules or directories whose frames count as *test* frames and are
        never blamed for an escape (``ccdproc.tests``). ``ccdproc/conftest.py``
        always counts as a test frame as well.
-   * - ``array_api_escapes_baseline``
-     - Path of the baseline file, relative to the directory holding the ini
-       file (``ccdproc/tests/array_escape_baseline.txt``).
-   * - ``array_api_escapes_env_prefix``
+   * - ``baseline``
+     - ``array_api_escapes_baseline``
+     - Path of the baseline file, relative to the pytest rootdir
+       (``ccdproc/tests/array_escape_baseline.txt``).
+   * - ``env_prefix``
+     - ``array_api_escapes_env_prefix``
      - Prefix of the environment variables above (``CCDPROC``), so
        ``CCDPROC_ARRAY_LIBRARY`` and the rest keep their names.
-   * - ``array_api_escapes_logger``
+   * - ``logger``
+     - ``array_api_escapes_logger``
      - Logger the escape logger writes to (``ccdproc.array_escape``).
+   * - ``docs_url``
+     - (none)
+     - Documentation linked from the error raised for an unsupported
+       ``CCDPROC_ARRAY_LIBRARY`` (this page).
 
 Each environment variable documented above is that prefix followed by
 ``_ARRAY_LIBRARY``, ``_ARRAY_DEVICE``, ``_LOG_ARRAY_ESCAPES``,

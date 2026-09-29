@@ -17,38 +17,49 @@ The plugin gives a test suite five things:
   ``<PREFIX>_WRITE_ESCAPE_BASELINE``).
 
 Nothing here is specific to the package being tested. Everything the plugin
-needs comes from the ini options declared in `.config` -- which package's
-frames are library frames, which are test frames, where the baseline lives,
-what the environment-variable prefix is, and which logger to write to -- so
-this directory can be lifted into a stand-alone distribution (working name
+needs comes from the package's configuration -- which package's frames are
+library frames, which are test frames, where the baseline lives, what the
+environment-variable prefix is, and which logger to write to -- so this
+directory can be lifted into a stand-alone distribution (working name
 ``pytest-array-api-escapes``, provisional) without edits.
 
-Load it from the package's own ``conftest.py``::
+Load it from the package's own ``conftest.py`` and configure it there, by
+implementing the `~.hooks.pytest_array_api_escapes_config` hook::
 
     pytest_plugins = ["mypackage.tests._array_api_plugin"]
 
-and configure it in ``pyproject.toml``::
 
-    [tool.pytest.ini_options]
-    array_api_escapes_package = "mypackage"
-    array_api_escapes_test_paths = ["mypackage.tests"]
-    array_api_escapes_baseline = "mypackage/tests/array_escape_baseline.txt"
-    array_api_escapes_env_prefix = "MYPACKAGE"
-    array_api_escapes_logger = "mypackage.array_escape"
+    def pytest_array_api_escapes_config(config):
+        return {
+            "package": "mypackage",
+            "test_paths": ["mypackage.tests"],
+            "baseline": "mypackage/tests/array_escape_baseline.txt",
+            "env_prefix": "MYPACKAGE",
+            "logger": "mypackage.array_escape",
+            "docs_url": "https://mypackage.example.org/array_api.html",
+        }
+
+Each of the first five values can also be set, or overridden, by the ini
+option of the same name with an ``array_api_escapes_`` prefix, e.g.
+``array_api_escapes_package`` in ``[tool.pytest.ini_options]``.
 
 Notes
 -----
-A session that sets none of those options still runs: the markers and the
-``xp`` fixtures work (defaulting to NumPy), and the features that need to
-classify stack frames refuse to start, with a message naming the missing
-option, rather than blaming the wrong frames.
+The hook is the primary route because the ``conftest.py`` travels with the
+tests: it configures the plugin even when the tests run against an installed
+copy of the package from a directory with no ini file.
+
+A session that configures nothing still runs: the markers and the ``xp``
+fixtures work (defaulting to NumPy), and the features that need to classify
+stack frames refuse to start, with a message naming the missing setting,
+rather than blaming the wrong frames.
 """
 
 import pytest
 
 from . import baseline as _baseline
 from .backend import normalize_backend_name, select_backend
-from .config import ENV_ARRAY_LIBRARY, add_ini_options, build_settings, env_truthy
+from .config import add_ini_options, build_settings, env_truthy
 from .escape_logger import EscapeLog, foreign_namespace
 from .markers import apply_backend_markers, register_markers
 from .triage import FailureTriage, FrameClassifier
@@ -92,12 +103,7 @@ class ArrayApiEscapePlugin:
         self.escape_log = EscapeLog(settings, self.classifier)
         self.triage = FailureTriage(settings, self.classifier)
         self.baseline = _baseline.Baseline(settings, self.classifier, self.escape_log)
-        namespace, device = select_backend(settings.env_prefix)
-        self.namespace = namespace
-        self.device = device
-        self.active_backend = normalize_backend_name(
-            settings.env(ENV_ARRAY_LIBRARY, "numpy")
-        )
+        self.active_backend, self.namespace, self.device = select_backend(settings)
 
 
 def get_plugin(config):
@@ -116,6 +122,13 @@ def get_plugin(config):
 # ---------------------------------------------------------------------------
 # Hooks
 # ---------------------------------------------------------------------------
+
+
+def pytest_addhooks(pluginmanager):
+    """Register the plugin's configuration hook."""
+    from . import hooks
+
+    pluginmanager.add_hookspecs(hooks)
 
 
 def pytest_addoption(parser):

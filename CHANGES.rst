@@ -99,8 +99,9 @@ Other Changes and Additions
   ``backend_xfail`` markers, the escape logger, the failure triage and the
   escape-baseline ratchet) moved out of ``ccdproc/conftest.py`` and
   ``ccdproc/tests/_escape_triage.py`` into a self-contained, configurable
-  pytest plugin at ``ccdproc/tests/_array_api_plugin``, configured through
-  ``array_api_escapes_*`` ini options in ``pyproject.toml``. New ``xp`` and
+  pytest plugin at ``ccdproc/tests/_array_api_plugin``, configured by a
+  ``pytest_array_api_escapes_config`` hook in ``ccdproc/conftest.py`` (or,
+  as an override, by ``array_api_escapes_*`` ini options). New ``xp`` and
   ``xp_device`` fixtures provide the array namespace and device. The
   ``CCDPROC_*`` environment variables, the baseline file and its format, the
   tox factors and the CI jobs are unchanged, as is

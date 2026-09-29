@@ -13,8 +13,8 @@ from .tests.pytest_fixtures import (
 #: ``ccdproc.tests._array_api_plugin`` is the array-API test tooling: backend
 #: selection, the ``backend_skip``/``backend_xfail`` markers, the escape
 #: logger, failure triage and the escape-baseline ratchet. It is configured
-#: entirely through the ``array_api_escapes_*`` ini options in
-#: ``pyproject.toml`` and the ``CCDPROC_*`` environment variables those name.
+#: by `pytest_array_api_escapes_config` below and driven by the ``CCDPROC_*``
+#: environment variables that configuration names.
 #:
 #: ``pytester`` supplies the fixture of the same name, used by
 #: ``ccdproc/tests/test_array_api_plugin.py`` to run the plugin end to end
@@ -33,10 +33,9 @@ try:
     # When the pytest_astropy_header package is installed
     from pytest_astropy_header.display import PYTEST_HEADER_MODULES, TESTED_VERSIONS
 
-    def pytest_configure(config):
-        config.option.astropy_header = True
-
+    _HAVE_ASTROPY_HEADER = True
 except ImportError:
+    _HAVE_ASTROPY_HEADER = False
     PYTEST_HEADER_MODULES = {}
     TESTED_VERSIONS = {}
 
@@ -55,30 +54,54 @@ PYTEST_HEADER_MODULES["astroscrappy"] = "astroscrappy"
 PYTEST_HEADER_MODULES["reproject"] = "reproject"
 PYTEST_HEADER_MODULES.pop("h5py", None)
 
-
-#: Documentation for the supported array libraries, quoted in the error
-#: raised for an unknown ``CCDPROC_ARRAY_LIBRARY``.
-_ARRAY_API_DOCS = "https://ccdproc.readthedocs.io/en/latest/array_api.html"
-
-_ARRAY_BACKEND = None
+#: The config of the running session, kept for `__getattr__`.
+_CONFIG = None
 
 
-def _array_backend():
+def pytest_configure(config):
     """
-    Return the ``(namespace, device)`` pair selected for this test run.
+    Remember the session config and switch on the astropy test header.
+
+    Parameters
+    ----------
+    config : pytest.Config
+        The pytest config object of this session.
+    """
+    global _CONFIG
+    _CONFIG = config
+    if _HAVE_ASTROPY_HEADER:
+        config.option.astropy_header = True
+
+
+def pytest_array_api_escapes_config():
+    """
+    Configure the array-API escape plugin for ccdproc.
+
+    Returns
+    -------
+    dict
+        ccdproc's settings for the plugin.
 
     Notes
     -----
-    The selection is memoized inside the plugin, so this call and the
-    plugin's own call in ``pytest_configure`` resolve to the same objects no
-    matter which of them runs first.
-    """
-    global _ARRAY_BACKEND
-    if _ARRAY_BACKEND is None:
-        from .tests._array_api_plugin.backend import select_backend
+    These live here rather than in ``pyproject.toml`` because this file
+    ships with the tests: the settings then apply however the tests are run,
+    including ``pytest --pyargs ccdproc`` against an installed copy from a
+    directory with no ini file. The baseline path is relative to the pytest
+    rootdir, so an installed copy of the baseline is never the one the
+    ratchet enforces.
 
-        _ARRAY_BACKEND = select_backend("CCDPROC", docs_url=_ARRAY_API_DOCS)
-    return _ARRAY_BACKEND
+    The hookspec passes ``config``; this implementation does not need it,
+    and pluggy lets an implementation accept a subset of the arguments.
+    """
+    return {
+        "package": "ccdproc",
+        "test_paths": ["ccdproc.tests"],
+        "baseline": "ccdproc/tests/array_escape_baseline.txt",
+        "env_prefix": "CCDPROC",
+        "logger": "ccdproc.array_escape",
+        "docs_url": "https://ccdproc.readthedocs.io/en/latest/array_api.html",
+    }
 
 
 def __getattr__(name):
@@ -94,12 +117,23 @@ def __getattr__(name):
     ``from ccdproc.conftest import testing_array_library as xp`` at import
     time; migrating those to the fixtures is a separate change.
 
-    Resolving them lazily, through the module ``__getattr__`` of :pep:`562`,
-    keeps the plugin package out of ``sys.modules`` until pytest has
-    registered it -- see the note on ``pytest_plugins`` above.
+    Both are read from the plugin's own selection, so the environment
+    variables are parsed in one place. Resolving them lazily, through the
+    module ``__getattr__`` of :pep:`562`, keeps the plugin package out of
+    ``sys.modules`` until pytest has registered it -- see the note on
+    ``pytest_plugins`` above -- and works whichever of this module's and the
+    plugin's ``pytest_configure`` ran first: in the ``test`` tox factor this
+    conftest is registered during collection, when pytest configures it
+    before the plugins it names.
     """
-    if name == "testing_array_library":
-        return _array_backend()[0]
-    if name == "testing_array_device":
-        return _array_backend()[1]
+    if name in ("testing_array_library", "testing_array_device"):
+        from .tests._array_api_plugin import get_plugin
+
+        plugin = get_plugin(_CONFIG) if _CONFIG is not None else None
+        if plugin is None:
+            raise RuntimeError(
+                f"ccdproc.conftest.{name} is only available in a pytest "
+                "session that has loaded the array-API escape plugin."
+            )
+        return plugin.namespace if name == "testing_array_library" else plugin.device
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -4,21 +4,25 @@ Configuration surface of the array-API escape plugin.
 
 Everything the rest of the plugin needs to know about the package under test
 is gathered here into a single `Settings` object, built once in
-``pytest_configure`` from pytest ini options (declared by
-`add_ini_options`) with environment-variable overrides.
+``pytest_configure`` from the package's
+`~.hooks.pytest_array_api_escapes_config` hook and the pytest ini options
+declared by `add_ini_options`, with environment-variable overrides.
 
 Notes
 -----
 The plugin deliberately contains no hard-coded package name: section titles,
 log messages, error text, the baseline path and the environment-variable
-names are all derived from the ini options below, so this package can be
-lifted out of ``ccdproc`` into a stand-alone distribution without changes.
+names are all derived from that configuration, so this package can be lifted
+out of ``ccdproc`` into a stand-alone distribution without changes.
 """
 
 import importlib
 import os
+from collections.abc import Mapping
 
 import pytest
+
+from .hooks import CONFIG_KEYS
 
 #: Values (case-insensitively) accepted as "true" in the plugin's own
 #: environment variables.
@@ -69,6 +73,9 @@ def add_ini_options(parser):
     historic hook, this still runs when the plugin is registered late (from
     a conftest deep inside a package), which is what lets ``--strict-config``
     accept the options below when they are set in ``pyproject.toml``.
+
+    Each option overrides the matching key of the package's
+    `~.hooks.pytest_array_api_escapes_config` hook; see `build_settings`.
     """
     parser.addini(
         INI_PACKAGE,
@@ -137,14 +144,15 @@ def _resolve_package_root(package_name):
         module = importlib.import_module(package_name)
     except ImportError as exc:
         raise pytest.UsageError(
-            f"{INI_PACKAGE} = {package_name!r} could not be imported: {exc}"
+            f"The array-API escape plugin's package {package_name!r} could "
+            f"not be imported: {exc}"
         ) from exc
     filename = getattr(module, "__file__", None)
     if not filename:
         raise pytest.UsageError(
-            f"{INI_PACKAGE} = {package_name!r} has no __file__ (a namespace "
-            "package?), so its directory cannot be used to classify stack "
-            "frames."
+            f"The array-API escape plugin's package {package_name!r} has no "
+            "__file__ (a namespace package?), so its directory cannot be used "
+            "to classify stack frames."
         )
     return os.path.dirname(os.path.abspath(filename))
 
@@ -196,6 +204,9 @@ class Settings:
         Logger the escape logger writes to.
     environ : mapping, optional
         Environment to read, defaulting to ``os.environ``.
+    docs_url : str, optional
+        Documentation link quoted in the error for an unsupported array
+        library.
     """
 
     def __init__(
@@ -207,6 +218,7 @@ class Settings:
         env_prefix,
         logger_name,
         environ=None,
+        docs_url=None,
     ):
         self.package_name = package_name
         self.package_root = package_root
@@ -214,6 +226,7 @@ class Settings:
         self.baseline_path = baseline_path
         self.env_prefix = env_prefix
         self.logger_name = logger_name
+        self.docs_url = docs_url
         self._environ = os.environ if environ is None else environ
 
         # Snapshot the switches once so that code mutating the environment
@@ -252,21 +265,92 @@ class Settings:
         return f"{self.package_name} {title}".strip()
 
 
+def _hook_defaults(config):
+    """
+    Collect the package's settings from its configuration hook.
+
+    Parameters
+    ----------
+    config : pytest.Config
+        The pytest config object of this session.
+
+    Returns
+    -------
+    dict
+        The hook's result, or an empty dict when no implementation returned
+        one.
+
+    Raises
+    ------
+    pytest.UsageError
+        If the hook returned something other than a mapping, or a mapping
+        with keys the plugin does not know.
+    """
+    defaults = config.hook.pytest_array_api_escapes_config(config=config)
+    if defaults is None:
+        return {}
+    if not isinstance(defaults, Mapping):
+        raise pytest.UsageError(
+            "pytest_array_api_escapes_config must return a dict or None, not "
+            f"{type(defaults).__name__}."
+        )
+    unknown = set(defaults) - CONFIG_KEYS
+    if unknown:
+        raise pytest.UsageError(
+            "pytest_array_api_escapes_config returned unknown key(s) "
+            f"{sorted(unknown)}; expected any of {sorted(CONFIG_KEYS)}."
+        )
+    return dict(defaults)
+
+
+def _setting(config, ini_name, defaults, key):
+    """
+    Resolve one setting: the ini option if set, else the hook's value.
+
+    Parameters
+    ----------
+    config : pytest.Config
+        The pytest config object of this session.
+    ini_name : str
+        Name of the ini option.
+    defaults : dict
+        The configuration hook's result.
+    key : str
+        Key of the same setting in ``defaults``.
+
+    Returns
+    -------
+    str or list of str
+        A list for `INI_TEST_PATHS`, a stripped string otherwise; empty when
+        neither source sets it.
+    """
+    value = config.getini(ini_name)
+    if ini_name == INI_TEST_PATHS:
+        return [str(entry) for entry in value] or [
+            str(entry) for entry in defaults.get(key, ())
+        ]
+    return _as_str(value).strip() or _as_str(defaults.get(key)).strip()
+
+
 def build_settings(config, environ=None):
     """
     Build the `Settings` for this session from ``config``.
 
     Notes
     -----
-    A session that sets none of the ini options still starts: the settings
-    simply carry no package, and the features that need to classify stack
-    frames refuse to run (see `.baseline.check_usage`) rather than silently
-    blaming the wrong frames.
+    Each value comes from the ini option when that is set, otherwise from the
+    package's `~.hooks.pytest_array_api_escapes_config` hook, otherwise from
+    the plugin's default. A session that configures nothing still starts:
+    the settings simply carry no package, and the features that need to
+    classify stack frames refuse to run (see `.baseline.check_usage`) rather
+    than silently blaming the wrong frames.
     """
-    package_name = _as_str(config.getini(INI_PACKAGE)).strip()
+    defaults = _hook_defaults(config)
+
+    package_name = _setting(config, INI_PACKAGE, defaults, "package")
     package_root = _resolve_package_root(package_name) if package_name else None
 
-    entries = [str(entry) for entry in config.getini(INI_TEST_PATHS)]
+    entries = _setting(config, INI_TEST_PATHS, defaults, "test_paths")
     if not entries and package_name:
         entries = [f"{package_name}.tests"]
     test_roots = []
@@ -279,18 +363,18 @@ def build_settings(config, environ=None):
         # escape site.
         test_roots.append(os.path.join(package_root, "conftest.py"))
 
-    baseline = _as_str(config.getini(INI_BASELINE)).strip()
+    baseline = _setting(config, INI_BASELINE, defaults, "baseline")
     baseline_path = (
         os.path.abspath(os.path.join(str(config.rootpath), baseline))
         if baseline
         else None
     )
 
-    env_prefix = _as_str(config.getini(INI_ENV_PREFIX)).strip()
+    env_prefix = _setting(config, INI_ENV_PREFIX, defaults, "env_prefix")
     if not env_prefix:
         env_prefix = _default_env_prefix(package_name)
 
-    logger_name = _as_str(config.getini(INI_LOGGER)).strip()
+    logger_name = _setting(config, INI_LOGGER, defaults, "logger")
     if not logger_name:
         if package_name:
             logger_name = f"{package_name}.{DEFAULT_LOGGER_SUFFIX}"
@@ -305,4 +389,5 @@ def build_settings(config, environ=None):
         env_prefix=env_prefix,
         logger_name=logger_name,
         environ=environ,
+        docs_url=_as_str(defaults.get("docs_url")).strip() or None,
     )

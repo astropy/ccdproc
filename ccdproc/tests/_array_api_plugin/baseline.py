@@ -138,7 +138,8 @@ class Baseline:
         env = self.settings.env_name
         if self.path is None:
             raise pytest.UsageError(
-                f"{env(ENV_WRITE)}=1: no baseline file is configured; set the "
+                f"{env(ENV_WRITE)}=1: no baseline file is configured; return "
+                "'baseline' from pytest_array_api_escapes_config or set the "
                 f"'{INI_BASELINE}' ini option."
             )
         sites = sorted(self.escape_log.observed_library_sites())
@@ -328,8 +329,10 @@ def check_usage(config, settings, classifier):
             if requested:
                 raise pytest.UsageError(
                     f"{name}=1 needs to know which stack frames belong to the "
-                    f"package under test, but the ini option '{INI_PACKAGE}' "
-                    "is not set."
+                    "package under test, but no package is configured: return "
+                    "'package' from pytest_array_api_escapes_config in the "
+                    f"package's conftest.py, or set the ini option "
+                    f"'{INI_PACKAGE}'."
                 )
 
     if not settings.baseline_modes_active:
@@ -337,7 +340,8 @@ def check_usage(config, settings, classifier):
 
     if settings.baseline_path is None:
         raise pytest.UsageError(
-            f"{env(ENV_WRITE)} / {env(ENV_ENFORCE)} need a baseline file; set "
+            f"{env(ENV_WRITE)} / {env(ENV_ENFORCE)} need a baseline file; "
+            "return 'baseline' from pytest_array_api_escapes_config or set "
             f"the ini option '{INI_BASELINE}' to its path, relative to the "
             "directory holding the ini file."
         )

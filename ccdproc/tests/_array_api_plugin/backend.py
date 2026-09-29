@@ -4,8 +4,8 @@ Backend selection: one array-API namespace per test run.
 
 `select_backend` turns the ``<PREFIX>_ARRAY_LIBRARY`` and
 ``<PREFIX>_ARRAY_DEVICE`` environment variables into a
-``(namespace_module, device)`` pair, which the `xp` and `xp_device` fixtures
-hand to tests.
+``(name, namespace_module, device)`` triple, from which the `xp` and
+`xp_device` fixtures hand the namespace and device to tests.
 
 Notes
 -----
@@ -14,19 +14,19 @@ fixture that parametrizes every backend in a single session. That keeps a
 test run's output attributable to one library and lets CI give each backend
 its own job; a parametrized mode would be a compatible later addition.
 
-The selection is memoized on the requested library and device so that a
-package's ``conftest.py`` can call this at import time -- to expose the
-namespace as a module attribute -- and the plugin can call it again in
-``pytest_configure`` without importing anything twice or registering the
-same header module twice.
+The plugin selects the backend once, when it builds its per-session state in
+``pytest_configure``. Anything else that needs the selection -- such as a
+package ``conftest.py`` exposing the namespace as a module attribute --
+reads it from the plugin rather than selecting again, so there is a single
+place where the environment variables are parsed.
 """
 
-import os
+import pytest
+
+from .config import ENV_ARRAY_DEVICE, ENV_ARRAY_LIBRARY
 
 #: Backend names accepted for ``<PREFIX>_ARRAY_LIBRARY``, normalized.
 SUPPORTED_BACKENDS = ("numpy", "jax", "dask", "cupy", "array-api-strict")
-
-_SELECTION_CACHE = {}
 
 
 def normalize_backend_name(name):
@@ -50,27 +50,30 @@ def _add_header_module(label, module_name):
     PYTEST_HEADER_MODULES[label] = module_name
 
 
-def select_backend(env_prefix, environ=None, docs_url=None):
+def select_backend(settings):
     """
-    Resolve the array namespace and device for this test run.
+    Resolve the array library, namespace and device for this test run.
 
     Parameters
     ----------
-    env_prefix : str
-        Prefix of the environment variables to read, e.g. ``"CCDPROC"``.
-    environ : mapping, optional
-        Environment to read, defaulting to ``os.environ``.
-    docs_url : str, optional
-        Documentation link appended to the error raised for an unsupported
-        backend name.
+    settings : `.config.Settings`
+        Supplies the environment to read, the variable prefix, and the
+        documentation link quoted in the error for an unsupported library.
 
     Returns
     -------
+    name : str
+        Normalized name of the selected library, one of `SUPPORTED_BACKENDS`.
     namespace : module
         The array-API namespace to build test arrays with.
     device : object or None
         Device to pass as ``device=`` when creating arrays, or None for the
         library's usual device.
+
+    Raises
+    ------
+    pytest.UsageError
+        If ``<PREFIX>_ARRAY_LIBRARY`` names an unsupported library.
 
     Notes
     -----
@@ -83,17 +86,13 @@ def select_backend(env_prefix, environ=None, docs_url=None):
     array resident on a GPU, which makes it a CPU-only proxy for catching
     silent conversions to NumPy.
     """
-    environ = os.environ if environ is None else environ
-    library = environ.get(f"{env_prefix}_ARRAY_LIBRARY", "numpy").lower()
-    device_name = environ.get(f"{env_prefix}_ARRAY_DEVICE")
-
-    cache_key = (library, device_name)
-    if cache_key in _SELECTION_CACHE:
-        return _SELECTION_CACHE[cache_key]
+    library = settings.env(ENV_ARRAY_LIBRARY, "numpy")
+    device_name = settings.env(ENV_ARRAY_DEVICE, None)
+    name = normalize_backend_name(library)
 
     device = None
 
-    match normalize_backend_name(library):
+    match name:
         case "numpy":
             import array_api_compat.numpy as namespace
 
@@ -117,23 +116,23 @@ def select_backend(env_prefix, environ=None, docs_url=None):
 
             _add_header_module("array_api_strict", "array_api_strict")
 
-            name = device_name if device_name is not None else "device1"
-            if name.lower() == "default":
+            requested = device_name if device_name is not None else "device1"
+            if requested.lower() == "default":
                 # The library's normal CPU device, on which numpy.asarray()
                 # succeeds.
                 device = namespace.Device("CPU_DEVICE")
             else:
-                device = namespace.Device(name)
+                device = namespace.Device(requested)
 
         case _:
             supported = ", ".join(SUPPORTED_BACKENDS)
             message = (
                 f"Unsupported array library: {library}. "
-                f"Set {env_prefix}_ARRAY_LIBRARY to one of: {supported}."
+                f"Set {settings.env_name(ENV_ARRAY_LIBRARY)} to one of: "
+                f"{supported}."
             )
-            if docs_url:
-                message += f" See {docs_url}."
-            raise ValueError(message)
+            if settings.docs_url:
+                message += f" See {settings.docs_url}."
+            raise pytest.UsageError(message)
 
-    _SELECTION_CACHE[cache_key] = (namespace, device)
-    return namespace, device
+    return name, namespace, device

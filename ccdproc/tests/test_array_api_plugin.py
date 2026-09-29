@@ -5,10 +5,12 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Lock, get_ident
 
+import array_api_compat.numpy
 import pytest
 
 import ccdproc
 from ccdproc.tests._array_api_plugin import escape_logger
+from ccdproc.tests._array_api_plugin.backend import select_backend
 from ccdproc.tests._array_api_plugin.baseline import check_usage
 from ccdproc.tests._array_api_plugin.config import (
     INI_BASELINE,
@@ -44,20 +46,40 @@ def use_this_ccdproc_in_subprocess(monkeypatch):
     )
 
 
+class StubHook:
+    """
+    Stand-in for ``config.hook``, answering the plugin's configuration hook.
+
+    Parameters
+    ----------
+    result : dict or None
+        What ``pytest_array_api_escapes_config`` returns.
+    """
+
+    def __init__(self, result):
+        self.result = result
+        self.config = None
+
+    def pytest_array_api_escapes_config(self, config):
+        self.config = config
+        return self.result
+
+
 class StubConfig:
     """
     Minimal stand-in for pytest's ``Config`` for `build_settings`.
 
     Notes
     -----
-    `build_settings` only needs ``getini`` and ``rootpath``. Using a stub
-    instead of a real config keeps these tests independent of how the ini
-    values reach pytest; the end-to-end ``pytester`` test below covers the
-    real ini-file path.
+    `build_settings` only needs ``getini``, ``hook`` and ``rootpath``. Using
+    a stub instead of a real config keeps these tests independent of how the
+    ini values and the hook result reach pytest; the end-to-end ``pytester``
+    tests below cover the real ini-file and conftest-hook paths.
     """
 
-    def __init__(self, rootpath, **ini):
+    def __init__(self, rootpath, hook_result=None, **ini):
         self.rootpath = rootpath
+        self.hook = StubHook(hook_result)
         self._ini = ini
 
     def getini(self, name):
@@ -223,6 +245,102 @@ def test_baseline_path_is_resolved_against_the_rootdir(tmp_path):
     assert settings.baseline_path == str(
         tmp_path / "ccdproc" / "tests" / "baseline.txt"
     )
+
+
+def test_hook_configures_the_plugin_and_ini_options_override_it(tmp_path):
+    """
+    Pin the precedence of the two configuration sources: ini, then hook.
+
+    Notes
+    -----
+    A package configures the plugin through the conftest hook, because its
+    ``conftest.py`` ships with the tests and its ini file does not. The ini
+    options must still win, value by value, so a project (or a one-off
+    ``-o`` on the command line) can override a single setting without
+    restating the rest.
+    """
+    hook_result = {
+        "package": "ccdproc",
+        "env_prefix": "HOOKED",
+        "logger": "hooked.escapes",
+        "docs_url": "https://example.org/docs",
+    }
+    config = StubConfig(tmp_path, hook_result=hook_result)
+    settings = build_settings(config)
+    assert config.hook.config is config
+    assert settings.package_root == CCDPROC_ROOT
+    assert settings.env_prefix == "HOOKED"
+    assert settings.logger_name == "hooked.escapes"
+    assert settings.docs_url == "https://example.org/docs"
+
+    settings = build_settings(
+        StubConfig(tmp_path, hook_result=hook_result, **{INI_ENV_PREFIX: "INI"})
+    )
+    assert settings.env_prefix == "INI"
+    assert settings.logger_name == "hooked.escapes"
+
+
+def test_hook_result_with_an_unknown_key_is_rejected(tmp_path):
+    """
+    Pin that a misspelled key in the hook's result is an error, not ignored.
+
+    Notes
+    -----
+    An ignored key would silently fall back to the default, e.g. a
+    ``"basline"`` typo would leave the ratchet with no baseline file and a
+    ``"prefix"`` typo would switch every environment variable's name.
+    """
+    config = StubConfig(tmp_path, hook_result={"package": "ccdproc", "prefix": "X"})
+    with pytest.raises(pytest.UsageError, match="prefix"):
+        build_settings(config)
+
+
+def test_backend_selection_reads_the_settings_environment():
+    """
+    Pin that the backend is chosen from the settings' environment and prefix.
+
+    Notes
+    -----
+    The markers use the backend name and the fixtures use the namespace, so
+    both must come from one reading of the same variable. Reading
+    ``os.environ`` or a hard-coded prefix for either one splits them: the
+    markers then act for one backend while the tests run on another.
+    """
+    settings = Settings(
+        "", None, (), None, "X", "x", environ={"X_ARRAY_LIBRARY": "NumPy"}
+    )
+    name, namespace, device = select_backend(settings)
+    assert name == "numpy"
+    assert namespace is array_api_compat.numpy
+    assert device is None
+
+
+def test_unsupported_backend_is_a_usage_error_naming_the_docs():
+    """
+    Pin that an unknown array library ends the session with a clean error.
+
+    Notes
+    -----
+    The selection runs in ``pytest_configure``, where any exception other
+    than `pytest.UsageError` is reported as an ``INTERNALERROR`` traceback.
+    The message must name the variable to fix and link the documentation
+    that lists the supported libraries.
+    """
+    settings = Settings(
+        "",
+        None,
+        (),
+        None,
+        "X",
+        "x",
+        environ={"X_ARRAY_LIBRARY": "foo"},
+        docs_url="https://example.org/docs",
+    )
+    with pytest.raises(pytest.UsageError) as excinfo:
+        select_backend(settings)
+    message = str(excinfo.value)
+    assert "X_ARRAY_LIBRARY" in message
+    assert "https://example.org/docs" in message
 
 
 def test_features_needing_frame_classification_refuse_to_run_unconfigured(tmp_path):
@@ -461,6 +579,48 @@ def test_plugin_is_not_wired_to_ccdproc(pytester, monkeypatch):
     assert "lib.py  coerce  numpy.asarray" in written
     # The escape is blamed on library code, not on the test that triggered it.
     assert "test_escape.py" not in written
+
+
+def test_conftest_hook_configures_a_package_without_an_ini_file(pytester, monkeypatch):
+    """
+    Pin end to end that a package's conftest hook alone configures the plugin.
+
+    Notes
+    -----
+    This is the case the hook exists for: the tests of an installed package
+    run from a directory with no ini file, so only the package's
+    ``conftest.py`` can say which frames are library frames and what the
+    environment-variable prefix is. The throwaway package here has no ini
+    file anywhere above it, sets its prefix only through the hook, and
+    switches on the escape logger through that prefix; the summary must be
+    titled after it and blame its library module.
+    """
+    use_this_ccdproc_in_subprocess(monkeypatch)
+    files = dict(FAKE_PACKAGE_FILES)
+    files["otherpkg/conftest.py"] = (
+        'pytest_plugins = ["ccdproc.tests._array_api_plugin"]\n'
+        "\n"
+        "\n"
+        "def pytest_array_api_escapes_config(config):\n"
+        '    return {"package": "otherpkg", "test_paths": ["otherpkg.checks"],\n'
+        '            "env_prefix": "HOOKPKG"}\n'
+    )
+    for path, content in files.items():
+        target = pytester.path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+    monkeypatch.setenv("HOOKPKG_LOG_ARRAY_ESCAPES", "1")
+
+    result = pytester.runpytest_subprocess("otherpkg", "-p", "no:cacheprovider")
+    result.assert_outcomes(passed=1)
+    # pytest names the ini file it found in the header; there must be none.
+    assert "configfile:" not in result.stdout.str()
+    result.stdout.fnmatch_lines(
+        [
+            "*otherpkg array-API escape log summary*",
+            "*numpy.asarray()  lib.py:* coerce",
+        ]
+    )
 
 
 def test_session_without_ini_options_still_runs(pytester, monkeypatch):
