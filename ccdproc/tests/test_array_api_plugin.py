@@ -845,6 +845,52 @@ def test_conftest_hook_configures_a_package_without_an_ini_file(pytester, monkey
     )
 
 
+def test_usage_is_checked_when_the_plugin_is_registered_late(pytester, monkeypatch):
+    """
+    Pin that a conftest loaded during collection still gets its usage checks.
+
+    Notes
+    -----
+    In a ``--pyargs`` run from a directory that does not contain the
+    package, the package's ``conftest.py`` (and with it the plugin) is only
+    registered during collection, after ``pytest_sessionstart`` has fired.
+    That is how the ``test``-factor tox envs load ccdproc's conftest. The
+    usage checks must run there too; otherwise enforce mode without the
+    escape logger passes without checking anything.
+    """
+    use_this_ccdproc_in_subprocess(monkeypatch)
+    files = dict(FAKE_PACKAGE_FILES)
+    files["otherpkg/conftest.py"] = (
+        'pytest_plugins = ["ccdproc.tests._array_api_plugin"]\n'
+        "\n"
+        "\n"
+        "def pytest_array_api_escapes_config(config):\n"
+        '    return {"package": "otherpkg", "test_paths": ["otherpkg.checks"],\n'
+        '            "env_prefix": "HOOKPKG"}\n'
+    )
+    site = pytester.path / "site"
+    for path, content in files.items():
+        target = site / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+    monkeypatch.setenv(
+        "PYTHONPATH", os.pathsep.join([str(site), os.environ["PYTHONPATH"]])
+    )
+    monkeypatch.setenv("HOOKPKG_ENFORCE_ESCAPE_BASELINE", "1")
+
+    # otherpkg is not below the working directory, so "otherpkg" is not a
+    # path and its conftest is not an initial conftest.
+    result = pytester.runpytest_subprocess(
+        "--pyargs", "otherpkg", "-p", "no:cacheprovider"
+    )
+    # Registered during collection, the plugin's UsageError is reported as a
+    # collection error of the package, and no test runs.
+    result.assert_outcomes(errors=1)
+    result.stdout.fnmatch_lines(
+        ["*HOOKPKG_ENFORCE_ESCAPE_BASELINE=1 requires the escape logger*"]
+    )
+
+
 def test_session_without_ini_options_still_runs(pytester, monkeypatch):
     """
     Pin that loading the plugin without configuring it does not break a session.

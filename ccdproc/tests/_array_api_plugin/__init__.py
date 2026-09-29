@@ -164,30 +164,33 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     """
-    Build the session runtime and register the two backend markers.
+    Build the session runtime, check its usage and register the markers.
 
     Parameters
     ----------
     config : pytest.Config
         The pytest config object of this session.
+
+    Raises
+    ------
+    pytest.UsageError
+        If the environment variables and settings cannot work together (see
+        `.baseline.check_usage`).
+
+    Notes
+    -----
+    The usage checks run here rather than in ``pytest_sessionstart`` because
+    ``pytest_configure`` is a historic hook: pytest also calls it for a plugin
+    registered after the session has started. That happens when the conftest
+    that loads this plugin is found only during collection, as in a
+    ``--pyargs`` run from outside the source tree, and the checks must not be
+    skipped there.
     """
     settings = build_settings(config)
-    config.stash[PLUGIN_KEY] = ArrayApiEscapePlugin(settings)
+    plugin = ArrayApiEscapePlugin(settings)
+    _baseline.check_usage(config, settings, plugin.classifier)
+    config.stash[PLUGIN_KEY] = plugin
     register_markers(config, settings)
-
-
-def pytest_sessionstart(session):
-    """
-    Reject unusable combinations of environment variables and settings.
-
-    Parameters
-    ----------
-    session : pytest.Session
-        The session about to run.
-    """
-    plugin = get_plugin(session.config)
-    if plugin is not None:
-        _baseline.check_usage(session.config, plugin.settings, plugin.classifier)
 
 
 def pytest_collection_modifyitems(config, items):
