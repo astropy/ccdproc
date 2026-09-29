@@ -164,10 +164,13 @@ def _resolve_test_root(entry, package_name, package_root):
 
     Notes
     -----
-    Entries may be dotted module names (``mypkg.tests``, or just ``tests``)
-    or package-relative paths (``tests``, ``tests/helpers.py``). Both are
-    resolved against the package directory rather than imported, so listing a
-    test package costs nothing and has no import side effects.
+    Entries may be dotted names of packages or modules (``mypkg.tests``,
+    just ``tests``, or ``mypkg.tests.helpers``) or package-relative paths
+    (``tests``, ``tests/helpers.py``). A dotted name resolves to the package
+    directory of that name if there is one, and otherwise to the module file.
+    Both forms are resolved against the package directory on disk rather
+    than imported, so listing a test package costs nothing and has no import
+    side effects.
     """
     entry = entry.strip()
     if os.path.isabs(entry):
@@ -180,7 +183,11 @@ def _resolve_test_root(entry, package_name, package_root):
                 entry = entry[len(prefix) :]
                 break
     if "/" not in entry and not entry.endswith(".py"):
-        entry = entry.replace(".", "/")
+        path = os.path.join(package_root, *entry.split("."))
+        # A dotted name may be a module rather than a package.
+        if not os.path.isdir(path) and os.path.isfile(path + ".py"):
+            path += ".py"
+        return os.path.abspath(path)
     return os.path.abspath(os.path.join(package_root, *entry.split("/")))
 
 

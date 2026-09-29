@@ -138,7 +138,15 @@ def test_test_paths_default_to_the_packages_tests_subpackage(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "entry", ["ccdproc.utils", "utils", "ccdproc/utils", "utils/sample_directory.py"]
+    "entry",
+    [
+        "ccdproc.utils",
+        "utils",
+        "ccdproc/utils",
+        "utils/sample_directory.py",
+        "ccdproc.utils.sample_directory",
+        "utils.sample_directory",
+    ],
 )
 def test_custom_test_paths_are_honoured(tmp_path, entry):
     """
@@ -148,7 +156,8 @@ def test_custom_test_paths_are_honoured(tmp_path, entry):
     -----
     Both spellings must work because a stand-alone plugin cannot know
     whether a project thinks of its test helpers as importable modules or as
-    directories. ``ccdproc.utils`` is used here only as a directory that is
+    directories, and a dotted name must work for a single module as well as
+    for a package. ``ccdproc.utils`` is used here only as a directory that is
     definitely not the default ``ccdproc.tests``.
     """
     settings = build_settings(
