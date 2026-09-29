@@ -87,9 +87,9 @@ def pytest_array_api_escapes_config():
     These live here rather than in ``pyproject.toml`` because this file
     ships with the tests: the settings then apply however the tests are run,
     including ``pytest --pyargs ccdproc`` against an installed copy from a
-    directory with no ini file. The baseline path is relative to the pytest
-    rootdir, so an installed copy of the baseline is never the one the
-    ratchet enforces.
+    directory with no ini file. The baseline path is relative to the
+    directory of the ini file, or to the rootdir when there is none, so an
+    installed copy of the baseline is never the one the ratchet enforces.
 
     The hookspec passes ``config``; this implementation does not need it,
     and pluggy lets an implementation accept a subset of the arguments.

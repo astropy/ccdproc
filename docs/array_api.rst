@@ -131,7 +131,8 @@ takes precedence over the hook's value:
        always counts as a test frame as well.
    * - ``baseline``
      - ``array_api_escapes_baseline``
-     - Path of the baseline file, relative to the pytest rootdir
+     - Path of the baseline file, relative to the directory holding the ini
+       file, or to the pytest rootdir when there is no ini file
        (``ccdproc/tests/array_escape_baseline.txt``).
    * - ``env_prefix``
      - ``array_api_escapes_env_prefix``

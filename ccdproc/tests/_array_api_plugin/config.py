@@ -96,7 +96,8 @@ def add_ini_options(parser):
     parser.addini(
         INI_BASELINE,
         "Path to the checked-in escape baseline file, relative to the "
-        "directory holding the ini file (the pytest rootdir).",
+        "directory holding the ini file, or to the rootdir when there is no "
+        "ini file.",
         default="",
     )
     parser.addini(
@@ -364,10 +365,11 @@ def build_settings(config, environ=None):
         test_roots.append(os.path.join(package_root, "conftest.py"))
 
     baseline = _setting(config, INI_BASELINE, defaults, "baseline")
+    # Anchored like pytest's own path-valued ini options: on the ini file's
+    # directory, which --rootdir does not move.
+    anchor = config.inipath.parent if config.inipath is not None else config.rootpath
     baseline_path = (
-        os.path.abspath(os.path.join(str(config.rootpath), baseline))
-        if baseline
-        else None
+        os.path.abspath(os.path.join(str(anchor), baseline)) if baseline else None
     )
 
     env_prefix = _setting(config, INI_ENV_PREFIX, defaults, "env_prefix")

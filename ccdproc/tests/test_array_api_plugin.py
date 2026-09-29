@@ -71,14 +71,16 @@ class StubConfig:
 
     Notes
     -----
-    `build_settings` only needs ``getini``, ``hook`` and ``rootpath``. Using
-    a stub instead of a real config keeps these tests independent of how the
-    ini values and the hook result reach pytest; the end-to-end ``pytester``
-    tests below cover the real ini-file and conftest-hook paths.
+    `build_settings` only needs ``getini``, ``hook``, ``inipath`` and
+    ``rootpath``. Using a stub instead of a real config keeps these tests
+    independent of how the ini values and the hook result reach pytest; the
+    end-to-end ``pytester`` tests below cover the real ini-file and
+    conftest-hook paths.
     """
 
-    def __init__(self, rootpath, hook_result=None, **ini):
+    def __init__(self, rootpath, hook_result=None, inipath=None, **ini):
         self.rootpath = rootpath
+        self.inipath = inipath
         self.hook = StubHook(hook_result)
         self._ini = ini
 
@@ -225,25 +227,34 @@ def test_env_prefix_override_renames_every_environment_variable(tmp_path):
     assert not settings.log_escapes
 
 
-def test_baseline_path_is_resolved_against_the_rootdir(tmp_path):
+def test_baseline_path_is_resolved_against_the_ini_file_directory(tmp_path):
     """
-    Pin that the baseline path is rootdir-relative, not ``__file__``-anchored.
+    Pin that the baseline path is relative to the ini file's directory.
 
     Notes
     -----
     Anchoring on the plugin's own location pointed the ratchet at whichever
-    copy of the package was imported; relative to the rootdir it always names
-    the checked-in file, including when the tests run against an installed
-    copy from a temporary directory.
+    copy of the package was imported; relative to the ini file it always
+    names the checked-in file, including when the tests run against an
+    installed copy from a temporary directory. The anchor is the ini file's
+    directory rather than the rootdir because ``--rootdir`` moves the latter
+    but not the former, and the documentation (like pytest's own
+    path-valued ini options) promises the ini file's directory. Only when
+    there is no ini file at all, as for a package configured solely by its
+    conftest hook, does the rootdir stand in.
     """
+    project = tmp_path / "project"
+    elsewhere = tmp_path / "elsewhere"
+    ini = {INI_PACKAGE: "ccdproc", INI_BASELINE: "ccdproc/tests/baseline.txt"}
+
     settings = build_settings(
-        StubConfig(
-            tmp_path,
-            **{INI_PACKAGE: "ccdproc", INI_BASELINE: "ccdproc/tests/baseline.txt"},
-        )
+        StubConfig(elsewhere, inipath=project / "pyproject.toml", **ini)
     )
+    assert settings.baseline_path == str(project / "ccdproc" / "tests" / "baseline.txt")
+
+    settings = build_settings(StubConfig(elsewhere, **ini))
     assert settings.baseline_path == str(
-        tmp_path / "ccdproc" / "tests" / "baseline.txt"
+        elsewhere / "ccdproc" / "tests" / "baseline.txt"
     )
 
 

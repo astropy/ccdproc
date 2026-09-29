@@ -343,7 +343,7 @@ def check_usage(config, settings, classifier):
             f"{env(ENV_WRITE)} / {env(ENV_ENFORCE)} need a baseline file; "
             "return 'baseline' from pytest_array_api_escapes_config or set "
             f"the ini option '{INI_BASELINE}' to its path, relative to the "
-            "directory holding the ini file."
+            "directory holding the ini file (or the rootdir without one)."
         )
 
     # Only checked in the baseline modes: outside them the path is never
@@ -359,7 +359,8 @@ def check_usage(config, settings, classifier):
     if settings.enforce_baseline and not os.path.isfile(settings.baseline_path):
         raise pytest.UsageError(
             f"{env(ENV_ENFORCE)}=1: no baseline file at "
-            f"{settings.baseline_path!r}. The '{INI_BASELINE}' ini option is "
-            "resolved against the directory holding the ini file, so check "
-            "that pytest picked the rootdir you expect."
+            f"{settings.baseline_path!r}. The baseline path is resolved "
+            "against the directory holding the ini file (or the rootdir "
+            "without one), so check that pytest picked the ini file you "
+            "expect."
         )
