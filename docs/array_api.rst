@@ -188,8 +188,9 @@ non-numpy backend set -- write mode errors out if any of them is missing::
         CCDPROC_WRITE_ESCAPE_BASELINE=1 pytest
 
 The file is rewritten from the escapes actually observed during the run, so
-a partial run (a subset of the tests) silently drops the entries for code
-that was not exercised -- always regenerate over the whole suite.
+a partial run (a subset of the tests) drops the entries for code that was
+not exercised (they are listed in the terminal summary) -- always regenerate
+over the whole suite.
 Hand-written reasons on entries that are still observed are preserved.
 
 If the enforce CI job (e.g. ``py312-alldeps-dask-enforce``) fails on your

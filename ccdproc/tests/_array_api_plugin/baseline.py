@@ -17,8 +17,12 @@ The file format is one entry per line: three whitespace-separated tokens
 (``<file> <function> <coercion>``) followed by an optional free-text
 reason/tag that the ratchet ignores. Blank lines and ``#`` comments are
 skipped. The ratchet is one-directional by convention: entries are deleted by
-hand as call sites are migrated, and write mode refuses to run when nothing
-was observed, so a numpy-backend or subset run cannot truncate the file.
+hand as call sites are migrated. Write mode refuses to run when no library
+escape was observed (a NumPy backend, or a subset run that exercises no
+escape site). A subset run that does observe escapes still rewrites the file
+from those alone and drops every entry it did not reach; the terminal
+summary lists the dropped entries, so always regenerate from a full-suite
+run.
 """
 
 import os
