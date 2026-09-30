@@ -76,7 +76,8 @@ A few more developer tools help triage failures on non-numpy backends:
   jax-marked test passes on macOS but still fails on Linux CI).
 + Setting ``CCDPROC_ENFORCE_ESCAPE_BASELINE=1`` fails the test session if a
   new library escape site appears that is not in the checked-in baseline,
-  and setting ``CCDPROC_WRITE_ESCAPE_BASELINE=1`` regenerates that baseline.
+  and setting ``CCDPROC_WRITE_ESCAPE_BASELINE=1`` adds newly observed sites
+  to that baseline.
   Both are described in "The escape-baseline ratchet" below.
 
 Where the tooling lives
@@ -178,20 +179,19 @@ with a backend factor, e.g.::
 
     tox -e py312-alldeps-dask-enforce
 
-To regenerate the baseline, run the *full* test suite from the source tree
-(not under tox, which runs the tests against an installed copy of the
-package from a temporary directory) with all three of
+To add newly observed escapes to the baseline, run the tests from the
+source tree (not under tox, which runs the tests against an installed copy
+of the package from a temporary directory) with all three of
 ``CCDPROC_WRITE_ESCAPE_BASELINE=1``, ``CCDPROC_LOG_ARRAY_ESCAPES=1`` and a
 non-numpy backend set -- write mode errors out if any of them is missing::
 
     CCDPROC_ARRAY_LIBRARY=dask CCDPROC_LOG_ARRAY_ESCAPES=1 \
         CCDPROC_WRITE_ESCAPE_BASELINE=1 pytest
 
-The file is rewritten from the escapes actually observed during the run, so
-a partial run (a subset of the tests) drops the entries for code that was
-not exercised (they are listed in the terminal summary) -- always regenerate
-over the whole suite.
-Hand-written reasons on entries that are still observed are preserved.
+New sites are added with the tag ``TODO``. Existing entries and their
+reasons are always kept, even when the run did not hit them, since that may
+only mean their tests did not run; the terminal summary lists them, and
+after a full-suite run you delete by hand the ones whose escape is gone.
 
 If the enforce CI job (e.g. ``py312-alldeps-dask-enforce``) fails on your
 pull request, look for the "NEW escapes" list in the ``ccdproc array-API

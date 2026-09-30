@@ -12,7 +12,7 @@ The plugin gives a test suite five things:
   coercions of foreign array-API arrays back to NumPy;
 * failure triage (``<PREFIX>_TRIAGE_ESCAPES``) grouping test failures by the
   in-package call site that caused them;
-* a checked-in baseline of known coercion sites that may only shrink
+* a checked-in baseline of known coercion sites that new code may not add to
   (``<PREFIX>_ENFORCE_ESCAPE_BASELINE`` /
   ``<PREFIX>_WRITE_ESCAPE_BASELINE``).
 
@@ -275,8 +275,8 @@ def pytest_sessionfinish(session, exitstatus):
 
     Notes
     -----
-    In write mode the baseline file is rewritten from the escapes observed
-    this run, refusing to truncate it if nothing was observed. In enforce
+    In write mode the escapes observed this run that are not yet in the
+    baseline file are added to it; existing entries are kept. In enforce
     mode the session exit status is forced nonzero when a new library escape
     appeared, so CI fails on a regression; a pre-existing nonzero status
     (real test failures) is left untouched.

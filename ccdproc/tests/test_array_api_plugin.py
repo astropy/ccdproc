@@ -803,6 +803,61 @@ def test_plugin_is_not_wired_to_ccdproc(pytester, monkeypatch):
     assert "test_escape.py" not in written
 
 
+def test_write_mode_keeps_entries_the_run_did_not_hit(pytester, monkeypatch):
+    """
+    Pin that write mode adds new escapes and never drops an existing entry.
+
+    Notes
+    -----
+    An entry a run does not hit may only mean its tests did not run (a
+    subset run, a skipped test), so dropping it would silently loosen the
+    ratchet. The baseline here starts with one hand-tagged entry the
+    throwaway package never reaches; after a write-mode run it must still be
+    there with its tag, next to the newly observed site tagged ``TODO``, and
+    the terminal summary must list both.
+    """
+    use_this_ccdproc_in_subprocess(monkeypatch)
+    for path, content in FAKE_PACKAGE_FILES.items():
+        target = pytester.path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+    baseline = pytester.path / "otherpkg" / "escapes.txt"
+    baseline.write_text(
+        "# old header\nold.py  gone  numpy.asarray  BOUNDARY: hand tag\n",
+        encoding="utf-8",
+    )
+    pytester.makeini("""
+        [pytest]
+        array_api_escapes_package = otherpkg
+        array_api_escapes_test_paths = otherpkg.checks
+        array_api_escapes_baseline = otherpkg/escapes.txt
+        array_api_escapes_env_prefix = OTHERPKG
+        """)
+    monkeypatch.setenv("OTHERPKG_LOG_ARRAY_ESCAPES", "1")
+    monkeypatch.setenv("OTHERPKG_WRITE_ESCAPE_BASELINE", "1")
+
+    result = pytester.runpytest_subprocess("otherpkg", "-p", "no:cacheprovider")
+    result.assert_outcomes(passed=1)
+    result.stdout.fnmatch_lines(
+        [
+            "*Added 1 new entry to*",
+            "*+ lib.py  coerce  numpy.asarray",
+            "*Entries kept but not hit this run (1)*",
+            "*- old.py  gone  numpy.asarray",
+        ]
+    )
+
+    entries = [
+        line.split()
+        for line in baseline.read_text(encoding="utf-8").splitlines()
+        if line and not line.startswith("#")
+    ]
+    assert entries == [
+        ["lib.py", "coerce", "numpy.asarray", "TODO"],
+        ["old.py", "gone", "numpy.asarray", "BOUNDARY:", "hand", "tag"],
+    ]
+
+
 def test_conftest_hook_configures_a_package_without_an_ini_file(pytester, monkeypatch):
     """
     Pin end to end that a package's conftest hook alone configures the plugin.

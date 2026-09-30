@@ -7,22 +7,18 @@ array-API array is still silently coerced to NumPy. In enforce mode
 (``<PREFIX>_ENFORCE_ESCAPE_BASELINE``) any observed library escape that is
 not in that file fails the session, so new escapes cannot creep in while the
 known ones are migrated; in write mode
-(``<PREFIX>_WRITE_ESCAPE_BASELINE``) the file is regenerated from the
-escapes observed during the run, preserving the hand-written tags of sites
-that are still seen.
+(``<PREFIX>_WRITE_ESCAPE_BASELINE``) the escapes observed during the run
+that are not yet listed are added to the file.
 
 Notes
 -----
 The file format is one entry per line: three whitespace-separated tokens
 (``<file> <function> <coercion>``) followed by an optional free-text
 reason/tag that the ratchet ignores. Blank lines and ``#`` comments are
-skipped. The ratchet is one-directional by convention: entries are deleted by
-hand as call sites are migrated. Write mode refuses to run when no library
-escape was observed (a NumPy backend, or a subset run that exercises no
-escape site). A subset run that does observe escapes still rewrites the file
-from those alone and drops every entry it did not reach; the terminal
-summary lists the dropped entries, so always regenerate from a full-suite
-run.
+skipped. Entries are only ever deleted by hand, as call sites are migrated:
+write mode keeps every existing entry and its reason, because an entry a run
+did not hit may only mean its tests did not run (a subset run, a skipped
+test). The terminal summary lists those entries as candidates for deletion.
 """
 
 import os
@@ -59,10 +55,8 @@ class Baseline:
         self.settings = settings
         self.classifier = classifier
         self.escape_log = escape_log
-        #: Entries dropped by the last `write` call: present in the old file
-        #: but not observed this run. Stashed so the terminal summary can
-        #: make the shrink visible.
-        self.dropped = []
+        #: Entries added by the last `write` call, for the terminal summary.
+        self.added = []
 
     @property
     def path(self):
@@ -152,11 +146,11 @@ class Baseline:
             "#",
             f"# The ratchet ({env(ENV_ENFORCE)}=1) fails the session",
             "# if a library escape appears that is not listed here. Delete an",
-            "# entry as you migrate that call site; this file only shrinks.",
-            f"# Regenerate with {env(ENV_WRITE)}=1 (preserves tags);",
-            f"# that requires {env(ENV_LOG_ESCAPES)}=1, a non-numpy",
-            f"# {env('ARRAY_LIBRARY')} (e.g. dask), and a *full* test-suite run --",
-            "# a subset run drops the entries its tests never exercise.",
+            "# entry by hand as you migrate that call site.",
+            f"# Add newly observed escapes with {env(ENV_WRITE)}=1, which",
+            f"# requires {env(ENV_LOG_ESCAPES)}=1 and a non-numpy",
+            f"# {env('ARRAY_LIBRARY')} (e.g. dask); existing entries and tags",
+            "# are kept, even for sites the run did not hit.",
             "#",
             "# Tags are for humans, not the ratchet: TODO = still to migrate,",
             "# BOUNDARY = a numpy-only dependency (scipy/astroscrappy/reproject)",
@@ -166,22 +160,19 @@ class Baseline:
 
     def write(self):
         """
-        Rewrite the baseline file from the escapes observed this run.
+        Add the library escapes observed this run to the baseline file.
 
         Raises
         ------
         pytest.UsageError
-            If no baseline file is configured, or no library escape was
-            observed.
+            If no baseline file is configured.
 
         Notes
         -----
-        Reasons and tags already in the file are preserved for sites that are
-        still observed, so hand annotations survive a refresh. Writing is
-        refused, with a `pytest.UsageError`, when no library escape was
-        observed at all: that means the run could not have exercised the
-        escapes (a NumPy backend, or a subset run that hits none) and writing
-        would truncate the baseline.
+        Every existing entry is kept with its reason; new sites are tagged
+        ``TODO``. An entry this run did not hit is not dropped, because that
+        may only mean its tests did not run. The file is left untouched when
+        nothing new was observed.
         """
         env = self.settings.env_name
         if self.path is None:
@@ -190,20 +181,14 @@ class Baseline:
                 "'baseline' from pytest_array_api_escapes_config or set the "
                 f"'{INI_BASELINE}' ini option."
             )
-        sites = sorted(self.escape_log.observed_library_sites())
-        if not sites:
-            raise pytest.UsageError(
-                f"{env(ENV_WRITE)}=1: no library escapes were observed this "
-                f"run, refusing to truncate {self._display_path()}. Regenerate "
-                f"the baseline with {env(ENV_LOG_ESCAPES)}=1, a non-numpy "
-                f"{env('ARRAY_LIBRARY')} (e.g. dask), and a full-suite run."
-            )
         existing = self.load()
-        self.dropped[:] = sorted(set(existing) - set(sites))
+        self.added[:] = self.new_escapes()
+        if not self.added:
+            return
+        sites = sorted(set(existing) | set(self.added))
 
-        # Per-column widths for aligned output; sites is non-empty here (the
-        # empty-observation case raised above), so max() cannot see an empty
-        # sequence.
+        # Per-column widths for aligned output; sites holds at least the
+        # added entries, so max() cannot see an empty sequence.
         w_file, w_func, w_co = (
             max(len(s) for s in col) for col in zip(*sites, strict=True)
         )
@@ -231,7 +216,7 @@ class Baseline:
 
     def report(self, terminalreporter):
         """
-        Print the ratchet result and, after a rewrite, what it dropped.
+        Print the ratchet result and, in write mode, what was added.
 
         Parameters
         ----------
@@ -239,7 +224,7 @@ class Baseline:
             The reporter to write to.
         """
         self._report_enforcement(terminalreporter)
-        self._report_dropped(terminalreporter)
+        self._report_written(terminalreporter)
 
     def _report_enforcement(self, terminalreporter):
         """
@@ -293,9 +278,9 @@ class Baseline:
             for relfile, function, coercion in stale:
                 terminalreporter.write_line(f"    - {relfile}  {function}  {coercion}")
 
-    def _report_dropped(self, terminalreporter):
+    def _report_written(self, terminalreporter):
         """
-        Warn loudly about entries a rewrite dropped.
+        Say what write mode added and which entries it did not hit.
 
         Parameters
         ----------
@@ -304,30 +289,42 @@ class Baseline:
 
         Notes
         -----
-        On a full-suite run dropping stale entries is the point of a refresh,
-        but on a subset run the drop only means those tests never ran --
-        either way it must be visible, not a silent shrink of the ratchet.
+        The entries not hit are kept in the file; listing them lets someone
+        who ran the full suite delete the ones whose escape is gone.
         """
-        if not self.settings.write_baseline or not self.dropped:
+        if not self.settings.write_baseline:
             return
 
         terminalreporter.section(
-            self.settings.section("array-API escape baseline (rewritten)")
+            self.settings.section("array-API escape baseline (write mode)")
         )
-        plural = "y" if len(self.dropped) == 1 else "ies"
-        terminalreporter.write_line(
-            f"WARNING: rewrite DROPPED {len(self.dropped)} entr{plural} present "
-            "in the old baseline but not observed this run:",
-            red=True,
-            bold=True,
-        )
-        for relfile, function, coercion in self.dropped:
-            terminalreporter.write_line(f"    - {relfile}  {function}  {coercion}")
-        terminalreporter.write_line(
-            "If this was not a full-suite run these entries were dropped only "
-            "because their tests never ran -- restore the file (git checkout) "
-            "and regenerate from a full run."
-        )
+        if not self.escape_log.observed_library_sites():
+            terminalreporter.write_line(
+                "Observed no library escapes (numpy backend, or a subset run "
+                f"exercising no escape site); {self._display_path()} unchanged."
+            )
+            return
+        if self.added:
+            terminalreporter.write_line(
+                f"Added {len(self.added)} new entr"
+                f"{'y' if len(self.added) == 1 else 'ies'} to "
+                f"{self._display_path()} (tagged TODO):"
+            )
+            for relfile, function, coercion in self.added:
+                terminalreporter.write_line(f"    + {relfile}  {function}  {coercion}")
+        else:
+            terminalreporter.write_line(
+                f"No new escapes; {self._display_path()} unchanged."
+            )
+        stale = self.stale_entries()
+        if stale:
+            terminalreporter.write_line("")
+            terminalreporter.write_line(
+                f"Entries kept but not hit this run ({len(stale)}) -- after a "
+                "full-suite run, delete the ones the migration removed:"
+            )
+            for relfile, function, coercion in stale:
+                terminalreporter.write_line(f"    - {relfile}  {function}  {coercion}")
 
 
 def xdist_active(config):
@@ -348,8 +345,8 @@ def xdist_active(config):
     -----
     The escape tally is a per-process object: under ``pytest -n`` the workers
     do the tallying and the controller process, where ``pytest_sessionfinish``
-    runs, sees an empty tally. Write mode would then truncate the baseline and
-    enforce mode would pass without checking anything.
+    runs, sees an empty tally. Write mode would then add nothing and enforce
+    mode would pass without checking anything.
     """
     if not config.pluginmanager.hasplugin("xdist"):
         return False
@@ -384,7 +381,7 @@ def check_usage(config, settings, classifier):
     -----
     Both baseline modes read the sites tallied by the live escape logger, so
     neither can do anything meaningful without it: write mode would observe
-    nothing and truncate the baseline, and enforce mode would pass vacuously.
+    nothing and add nothing, and enforce mode would pass vacuously.
     The same failure modes occur under pytest-xdist (see `xdist_active`), so
     both modes are rejected there too. Anything that has to classify stack
     frames also needs a configured package.
@@ -395,17 +392,16 @@ def check_usage(config, settings, classifier):
         raise pytest.UsageError(
             f"{env(ENV_WRITE)} / {env(ENV_ENFORCE)} cannot run under "
             "pytest-xdist: escape tallies live in each worker process and "
-            "never reach the controller, so the baseline would be truncated "
-            "or enforcement would pass vacuously. Re-run without -n (or with "
+            "never reach the controller, so write mode would add nothing "
+            "and enforcement would pass vacuously. Re-run without -n (or with "
             "-n0)."
         )
     if settings.write_baseline and not settings.log_escapes:
         raise pytest.UsageError(
             f"{env(ENV_WRITE)}=1 requires the escape logger: without "
-            f"{env(ENV_LOG_ESCAPES)}=1 no escapes are observed and the "
-            f"baseline would be wiped. Set {env(ENV_LOG_ESCAPES)}=1 and a "
-            f"non-numpy {env('ARRAY_LIBRARY')} (e.g. dask) and run the full "
-            "test suite."
+            f"{env(ENV_LOG_ESCAPES)}=1 no escapes are observed and nothing "
+            f"would be added. Set {env(ENV_LOG_ESCAPES)}=1 and a non-numpy "
+            f"{env('ARRAY_LIBRARY')} (e.g. dask)."
         )
     if settings.enforce_baseline and not settings.log_escapes:
         raise pytest.UsageError(
