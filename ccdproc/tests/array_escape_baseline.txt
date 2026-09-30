@@ -3,11 +3,11 @@
 #
 # The ratchet (CCDPROC_ENFORCE_ESCAPE_BASELINE=1) fails the session
 # if a library escape appears that is not listed here. Delete an
-# entry as you migrate that call site; this file only shrinks.
-# Regenerate with CCDPROC_WRITE_ESCAPE_BASELINE=1 (preserves tags);
-# that requires CCDPROC_LOG_ARRAY_ESCAPES=1, a non-numpy
-# CCDPROC_ARRAY_LIBRARY (e.g. dask), and a *full* test-suite run --
-# a subset run drops the entries its tests never exercise.
+# entry by hand as you migrate that call site.
+# Add newly observed escapes with CCDPROC_WRITE_ESCAPE_BASELINE=1, which
+# requires CCDPROC_LOG_ARRAY_ESCAPES=1 and a non-numpy
+# CCDPROC_ARRAY_LIBRARY (e.g. dask); existing entries and tags
+# are kept, even for sites the run did not hit.
 #
 # Tags are for humans, not the ratchet: TODO = still to migrate,
 # BOUNDARY = a numpy-only dependency (scipy/astroscrappy/reproject)
