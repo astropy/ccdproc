@@ -42,7 +42,8 @@ __all__ = ["median", "nanmad", "nanmean", "nanmedian", "nanstd", "nansum"]
 _COMMON_PARAMS = """\
 x : array
     Input array. Integer and boolean inputs are promoted to the
-    namespace's default real floating dtype.
+    namespace's default real floating dtype; complex input raises
+    ``TypeError``.
 axis : int, tuple of int, list of int or None, optional
     Axis or axes along which {action}. Default is 0. ``None`` reduces
     over every axis; a tuple or list over all the listed axes at once.
@@ -89,9 +90,19 @@ def _promote_to_real(x, xp, device):
     -------
     array
         ``x``, promoted if necessary.
+
+    Raises
+    ------
+    TypeError
+        For complex input. Casting it to a real dtype would drop the
+        imaginary part (jax, dask, and numpy with a ``ComplexWarning``) or
+        raise from inside ``astype`` (array-api-strict), and the median and
+        MAD have no meaningful ranking for complex values anyway.
     """
     if xp.isdtype(x.dtype, "real floating"):
         return x
+    if xp.isdtype(x.dtype, "complex floating"):
+        raise TypeError("complex input is not supported")
     # Promote to the namespace's default real dtype rather than hardcoding
     # float64: jax without JAX_ENABLE_X64 has no float64 and warns when one
     # is requested, which pytest's filterwarnings turns into an error.

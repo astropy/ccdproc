@@ -121,6 +121,9 @@ Other Changes and Additions
 Bug Fixes
 ^^^^^^^^^
 
+- The NaN-aware reductions in ``ccdproc._nanfuncs``, and ``sigma_func`` on a
+  masked ``CCDData``, now raise ``TypeError`` for complex input instead of
+  silently dropping its imaginary part. [#1016]
 - Masks set by ``ccdproc`` functions, except the deprecated ``rebin``, now
   follow the array library and device of the data, with their shape checked;
   a mask that cannot, such as a CuPy mask with NumPy data, raises. For masked

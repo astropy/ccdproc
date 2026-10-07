@@ -200,6 +200,18 @@ def test_bad_axis(func, axis, error, match):
         func(xp.asarray(np.ones((2, 2)), device=xp_device), axis=axis)
 
 
+@pytest.mark.parametrize("func", [nansum, nanmean, nanstd, nanmedian, median, nanmad])
+def test_complex_input_raises(func):
+    """
+    Complex input is rejected rather than cast to a real dtype, which drops
+    the imaginary part on jax and dask and raises inside ``astype`` on
+    array-api-strict (#1016).
+    """
+    data = xp.asarray(np.array([[1 + 2j, 3 + 4j], [5 + 6j, 7 + 8j]]), device=xp_device)
+    with pytest.raises(TypeError, match="complex input is not supported"):
+        func(data, axis=0)
+
+
 def _rank_reference(data, percentile, axis):
     """
     Reference order statistic: the element at rank

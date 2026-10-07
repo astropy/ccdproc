@@ -548,6 +548,21 @@ def test_sigma_func_ccddata_mask_is_honored(axis, ignore_nan, all_masked):
         assert bool(xp.isnan(result))
 
 
+def test_sigma_func_masked_complex_raises():
+    # The mask branch promotes the data before handing it to astropy, so on
+    # numpy too a complex masked image used to give the MAD of its real part
+    # only (#1016).
+    data = xp.asarray(
+        np_array([[1 + 2j, 3 + 4j], [5 + 6j, 7 + 8j], [2 + 9j, 4 - 3j]]),
+        device=xp_device,
+    )
+    ccd = CCDData(data, unit="adu")
+    # TODO: Set .mask instead of ._mask when CCDData is array-api compliant
+    ccd._mask = xp.zeros(data.shape, dtype=xp.bool, device=xp_device)
+    with pytest.raises(TypeError, match="complex input is not supported"):
+        sigma_func(ccd)
+
+
 def test_trim_image_fits_section_requires_string():
     ccd_data = ccd_data_func()
     with pytest.raises(TypeError):
