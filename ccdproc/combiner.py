@@ -42,12 +42,12 @@ from .core import (
 __all__ = ["Combiner", "combine"]
 
 
-
 def _has_safe_median(xp):
     if xp is None:
         return False
-    name = getattr(xp, '__name__', '')
-    return name in ('numpy', 'numpy.array_api', 'dask.array', 'jax.numpy', 'cupy')
+    name = getattr(xp, "__name__", "")
+    return name in ("numpy", "numpy.array_api", "dask.array", "jax.numpy", "cupy")
+
 
 def _default_median(xp=None):
     if HAS_BOTTLENECK and (xp is None or array_api_compat.is_numpy_namespace(xp)):

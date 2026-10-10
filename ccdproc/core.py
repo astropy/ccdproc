@@ -598,12 +598,12 @@ def _percentile_fallback(array, percentiles, xp=None):
     return sorted_array[indexes]
 
 
-
 def _has_safe_median(xp):
     if xp is None:
         return False
-    name = getattr(xp, '__name__', '')
-    return name in ('numpy', 'numpy.array_api', 'dask.array', 'jax.numpy', 'cupy')
+    name = getattr(xp, "__name__", "")
+    return name in ("numpy", "numpy.array_api", "dask.array", "jax.numpy", "cupy")
+
 
 def _median_fallback(array, axis, xp=None):
     """
