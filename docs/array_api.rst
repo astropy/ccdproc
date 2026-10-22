@@ -76,8 +76,86 @@ A few more developer tools help triage failures on non-numpy backends:
   jax-marked test passes on macOS but still fails on Linux CI).
 + Setting ``CCDPROC_ENFORCE_ESCAPE_BASELINE=1`` fails the test session if a
   new library escape site appears that is not in the checked-in baseline,
-  and setting ``CCDPROC_WRITE_ESCAPE_BASELINE=1`` regenerates that baseline.
+  and setting ``CCDPROC_WRITE_ESCAPE_BASELINE=1`` adds newly observed sites
+  to that baseline.
   Both are described in "The escape-baseline ratchet" below.
+
+Where the tooling lives
+~~~~~~~~~~~~~~~~~~~~~~~
+
+All of it -- backend selection, the ``xp``/``xp_device`` fixtures, the two
+markers, the escape logger, the failure triage and the baseline ratchet --
+is a self-contained pytest plugin in ``ccdproc/tests/_array_api_plugin``,
+loaded from ``ccdproc/conftest.py`` through ``pytest_plugins``. Nothing in
+it is specific to `ccdproc`_; the intent is to publish it eventually as a
+stand-alone plugin that any package adopting the `array API`_ can install,
+so please keep the package name out of it and add anything ccdproc-specific
+to the configuration instead.
+
+It is configured in that same file, by implementing the plugin's
+``pytest_array_api_escapes_config`` hook::
+
+    def pytest_array_api_escapes_config(config):
+        return {
+            "package": "ccdproc",
+            "test_paths": ["ccdproc.tests"],
+            "baseline": "ccdproc/tests/array_escape_baseline.txt",
+            "env_prefix": "CCDPROC",
+            "logger": "ccdproc.array_escape",
+            "docs_url": "https://ccdproc.readthedocs.io/en/latest/array_api.html",
+        }
+
+The configuration lives in ``conftest.py`` rather than in ``pyproject.toml``
+because the conftest ships with the tests: it applies however the tests are
+run, including ``pytest --pyargs ccdproc`` against an installed copy from a
+directory that has no ini file. Each key except ``docs_url`` can also be set
+by an ini option (for example in ``[tool.pytest.ini_options]``), which then
+takes precedence over the hook's value:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 30 50
+
+   * - hook key
+     - ini option
+     - what it sets
+   * - ``package``
+     - ``array_api_escapes_package``
+     - Dotted name of the package whose stack frames count as *library*
+       frames (``ccdproc``). The directory is found by importing the
+       package, so frames are classified correctly whether the tests run
+       from the source tree or against an installed copy.
+   * - ``test_paths``
+     - ``array_api_escapes_test_paths``
+     - Modules or directories whose frames count as *test* frames and are
+       never blamed for an escape (``ccdproc.tests``). ``ccdproc/conftest.py``
+       always counts as a test frame as well.
+   * - ``baseline``
+     - ``array_api_escapes_baseline``
+     - Path of the baseline file, relative to the directory holding the ini
+       file, or to the pytest rootdir when there is no ini file
+       (``ccdproc/tests/array_escape_baseline.txt``).
+   * - ``env_prefix``
+     - ``array_api_escapes_env_prefix``
+     - Prefix of the environment variables above (``CCDPROC``), so
+       ``CCDPROC_ARRAY_LIBRARY`` and the rest keep their names.
+   * - ``logger``
+     - ``array_api_escapes_logger``
+     - Logger the escape logger writes to (``ccdproc.array_escape``).
+   * - ``docs_url``
+     - (none)
+     - Documentation linked from the error raised for an unsupported
+       ``CCDPROC_ARRAY_LIBRARY`` (this page).
+
+Each environment variable documented above is that prefix followed by
+``_ARRAY_LIBRARY``, ``_ARRAY_DEVICE``, ``_LOG_ARRAY_ESCAPES``,
+``_TRIAGE_ESCAPES``, ``_ENFORCE_ESCAPE_BASELINE`` or
+``_WRITE_ESCAPE_BASELINE``.
+
+New tests should reach the array library through the session-scoped ``xp``
+and ``xp_device`` fixtures rather than importing ``testing_array_library``
+from ``ccdproc.conftest``; the module attributes still work, and the
+existing test modules still use them.
 
 The escape-baseline ratchet
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -101,19 +179,19 @@ with a backend factor, e.g.::
 
     tox -e py312-alldeps-dask-enforce
 
-To regenerate the baseline, run the *full* test suite from the source tree
-(not under tox, which runs the tests against an installed copy of the
-package from a temporary directory) with all three of
+To add newly observed escapes to the baseline, run the tests from the
+source tree (not under tox, which runs the tests against an installed copy
+of the package from a temporary directory) with all three of
 ``CCDPROC_WRITE_ESCAPE_BASELINE=1``, ``CCDPROC_LOG_ARRAY_ESCAPES=1`` and a
 non-numpy backend set -- write mode errors out if any of them is missing::
 
     CCDPROC_ARRAY_LIBRARY=dask CCDPROC_LOG_ARRAY_ESCAPES=1 \
         CCDPROC_WRITE_ESCAPE_BASELINE=1 pytest
 
-The file is rewritten from the escapes actually observed during the run, so
-a partial run (a subset of the tests) silently drops the entries for code
-that was not exercised -- always regenerate over the whole suite.
-Hand-written reasons on entries that are still observed are preserved.
+New sites are added with the tag ``TODO``. Existing entries and their
+reasons are always kept, even when the run did not hit them, since that may
+only mean their tests did not run; the terminal summary lists them, and
+after a full-suite run you delete by hand the ones whose escape is gone.
 
 If the enforce CI job (e.g. ``py312-alldeps-dask-enforce``) fails on your
 pull request, look for the "NEW escapes" list in the ``ccdproc array-API
