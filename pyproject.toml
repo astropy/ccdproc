@@ -55,14 +55,6 @@ include = [
     "/licenses",
 ]
 
-[tool.hatch.build.targets.wheel]
-# The array-API escape baseline is read at test time by ccdproc/tests, so it
-# must ship in the wheel (not just the sdist) for the CCDPROC_ENFORCE_ESCAPE_
-# BASELINE ratchet to find it when tox installs the built package.
-artifacts = [
-    "ccdproc/tests/array_escape_baseline.txt",
-]
-
 [tool.black]
 line-length = 88
 target-version = ['py312', 'py313']
@@ -174,6 +166,12 @@ markers = [
     "data_size(N): set dimension of square data array for ccd_data fixture",
     "data_scale(s): set the scale of the normal distribution used to generate data",
     "data_mean(m): set the center of the normal distribution used to generate data",
-    "backend_xfail(*backends, reason=...): mark test as an expected (non-strict) failure when the active CCDPROC_ARRAY_LIBRARY matches one of the named backends",
-    "backend_skip(*backends, reason=...): skip test when the active CCDPROC_ARRAY_LIBRARY matches one of the named backends",
+    # backend_xfail / backend_skip are registered by the array-API escape
+    # plugin (ccdproc/tests/_array_api_plugin), which builds their
+    # descriptions from the configured environment-variable prefix.
 ]
+# The array-API escape plugin (ccdproc/tests/_array_api_plugin) is configured
+# by the pytest_array_api_escapes_config hook in ccdproc/conftest.py, not
+# here: that file ships with the tests, so the configuration also applies to
+# "pytest --pyargs ccdproc" run against an installed copy from a directory
+# without this file. See docs/array_api.rst.
