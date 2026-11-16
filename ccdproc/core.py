@@ -1475,16 +1475,20 @@ def subtract_dark(
 
     dark_exposure : `~astropy.units.Quantity` or None, optional
         Exposure time of the dark image; if specified, must also provided
-        ``data_exposure``.
+        ``data_exposure``. Required if ``scale`` is True and ``exposure_time``
+        is not specified.
         Default is ``None``.
 
     data_exposure : `~astropy.units.Quantity` or None, optional
         Exposure time of the science image; if specified, must also provided
-        ``dark_exposure``.
+        ``dark_exposure``. Required if ``scale`` is True and ``exposure_time``
+        is not specified.
         Default is ``None``.
 
     exposure_time : str or `~ccdproc.Keyword` or None, optional
         Name of key in image metadata that contains exposure time.
+        Required if ``scale`` is True and explicit exposure times are not
+        provided.
         Default is ``None``.
 
     exposure_unit : `~astropy.units.Unit` or None, optional
@@ -1493,7 +1497,8 @@ def subtract_dark(
         Default is ``None``.
 
     scale: bool, optional
-        If True, scale the dark frame by the exposure times.
+        If True, scale the dark frame by the exposure times. Exposure-time
+        arguments are not required when False.
         Default is ``False``.
 
     {log}
@@ -1527,40 +1532,41 @@ def subtract_dark(
 
     _ccd = _wrap_ccddata_for_array_api(ccd)
     _master = _wrap_ccddata_for_array_api(master)
-    if (
-        data_exposure is not None
-        and dark_exposure is not None
-        and exposure_time is not None
-    ):
-        raise TypeError(
-            "specify either exposure_time or "
-            "(dark_exposure and data_exposure), not both."
-        )
-
-    if data_exposure is None and dark_exposure is None:
-        if exposure_time is None:
+    if scale:
+        if (
+            data_exposure is not None
+            and dark_exposure is not None
+            and exposure_time is not None
+        ):
             raise TypeError(
-                "must specify either exposure_time or both "
-                "dark_exposure and data_exposure."
+                "specify either exposure_time or "
+                "(dark_exposure and data_exposure), not both."
             )
-        if isinstance(exposure_time, Keyword):
-            data_exposure = exposure_time.value_from(ccd.header)
-            dark_exposure = exposure_time.value_from(master.header)
-        else:
-            data_exposure = ccd.header[exposure_time]
-            dark_exposure = master.header[exposure_time]
 
-    if not (
-        isinstance(dark_exposure, Quantity) and isinstance(data_exposure, Quantity)
-    ):
-        if exposure_time:
-            try:
-                data_exposure *= exposure_unit
-                dark_exposure *= exposure_unit
-            except TypeError as err:
-                raise TypeError("must provide unit for exposure time.") from err
-        else:
-            raise TypeError("exposure times must be astropy.units.Quantity objects.")
+        if data_exposure is None and dark_exposure is None:
+            if exposure_time is None:
+                raise TypeError(
+                    "must specify either exposure_time or both "
+                    "dark_exposure and data_exposure."
+                )
+            if isinstance(exposure_time, Keyword):
+                data_exposure = exposure_time.value_from(ccd.header)
+                dark_exposure = exposure_time.value_from(master.header)
+            else:
+                data_exposure = ccd.header[exposure_time]
+                dark_exposure = master.header[exposure_time]
+
+        if not (
+            isinstance(dark_exposure, Quantity) and isinstance(data_exposure, Quantity)
+        ):
+            if exposure_time:
+                try:
+                    data_exposure *= exposure_unit
+                    dark_exposure *= exposure_unit
+                except TypeError as err:
+                    raise TypeError("must provide unit for exposure time.") from err
+            else:
+                raise TypeError("exposure times must be astropy.units.Quantity objects.")
 
     try:
         if scale:
