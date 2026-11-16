@@ -1566,7 +1566,9 @@ def subtract_dark(
                 except TypeError as err:
                     raise TypeError("must provide unit for exposure time.") from err
             else:
-                raise TypeError("exposure times must be astropy.units.Quantity objects.")
+                raise TypeError(
+                    "exposure times must be astropy.units.Quantity objects."
+                )
 
     try:
         if scale:
