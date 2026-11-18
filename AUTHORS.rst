@@ -34,6 +34,7 @@ Alphabetical list of code contributors
 * Timothy P. Ellsworth-Bowers (@tbowers7)
 * Allison Eto (@altair-above)
 * Forrest Gasdia (@fgasdia)
+* Caden Gobat (@cgobat)
 * Carlos Gomez (@carlgogo)
 * Yash Gondhalekar (@Yash-10)
 * Hans Moritz Günther (@hamogu)

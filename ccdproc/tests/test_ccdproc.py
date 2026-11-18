@@ -684,6 +684,20 @@ def test_subtract_dark(explicit_times, scale, exposure_keyword):
     assert dark_sub.header is not ccd_data.header
 
 
+def test_subtract_dark_without_exposure_times():
+    ccd_data = ccd_data_func()
+    master = CCDData(xp.ones_like(ccd_data.data), unit=ccd_data.unit)
+
+    result = subtract_dark(ccd_data, master, add_keyword=None)
+    assert xp.all(xpx.isclose(result.data, ccd_data.data - master.data))
+
+    # Exposure metadata is not accessed when scaling is disabled.
+    result = subtract_dark(
+        ccd_data, master, exposure_time="missing", scale=False, add_keyword=None
+    )
+    assert xp.all(xpx.isclose(result.data, ccd_data.data - master.data))
+
+
 def test_subtract_dark_fails():
     ccd_data = ccd_data_func()
     # None of these tests check a result so the content of the master
@@ -693,9 +707,9 @@ def test_subtract_dark_fails():
 
     # Do we fail if we give one of dark_exposure, data_exposure but not both?
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data, master, dark_exposure=30 * u.second)
+        subtract_dark(ccd_data, master, dark_exposure=30 * u.second, scale=True)
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data, master, data_exposure=30 * u.second)
+        subtract_dark(ccd_data, master, data_exposure=30 * u.second, scale=True)
 
     # Do we fail if we supply dark_exposure and data_exposure and exposure_time
     with pytest.raises(TypeError):
@@ -705,15 +719,16 @@ def test_subtract_dark_fails():
             dark_exposure=10 * u.second,
             data_exposure=10 * u.second,
             exposure_time="exptime",
+            scale=True,
         )
 
     # Fail if we supply none of the exposure-related arguments?
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data, master)
+        subtract_dark(ccd_data, master, scale=True)
 
     # Fail if we supply exposure time but not a unit?
     with pytest.raises(TypeError):
-        subtract_dark(ccd_data, master, exposure_time="exptime")
+        subtract_dark(ccd_data, master, exposure_time="exptime", scale=True)
 
     # Fail if ccd_data or master are not CCDData objects?
     with pytest.raises(TypeError):

@@ -117,6 +117,10 @@ Other Changes and Additions
   ``oldestdeps`` and oldest-numpy tox environments now constrain the package
   install to their pins; previously the oldest-numpy environment was upgraded
   to the newest numpy by a test dependency (jax). [#1031]
+- ``subtract_dark``'s exposure time scaling arguments
+  (``exposure_time``+``exposure_unit`` and ``data_exposure``+``dark_exposure``)
+  are no longer required when they are not used (i.e., when ``scale=False``).
+  [#1045]
 
 Bug Fixes
 ^^^^^^^^^
