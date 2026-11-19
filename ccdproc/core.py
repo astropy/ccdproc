@@ -598,6 +598,13 @@ def _percentile_fallback(array, percentiles, xp=None):
     return sorted_array[indexes]
 
 
+def _has_safe_median(xp):
+    if xp is None:
+        return False
+    name = getattr(xp, "__name__", "")
+    return name in ("numpy", "numpy.array_api", "dask.array", "jax.numpy", "cupy")
+
+
 def _median_fallback(array, axis, xp=None):
     """
     Try calculating the median using the namespace, otherwise fall back to
@@ -622,13 +629,15 @@ def _median_fallback(array, axis, xp=None):
         Median of ``array`` along ``axis``.
     """
     xp = xp or array_api_compat.array_namespace(array)
-    try:
-        return xp.median(array, axis=axis)
-    except AttributeError:
-        # median is not part of the array API standard; fall back to an
-        # implementation built on nanmedian, which also matches
-        # numpy.median's NaN-propagating semantics.
-        return _nanfuncs_median(array, axis=axis, xp=xp)
+    if _has_safe_median(xp):
+        try:
+            return xp.median(array, axis=axis)
+        except AttributeError:
+            pass
+    # median is not part of the array API standard; fall back to an
+    # implementation built on nanmedian, which also matches
+    # numpy.median's NaN-propagating semantics.
+    return _nanfuncs_median(array, axis=axis, xp=xp)
 
 
 # ---------------------------------------------------------------------------
@@ -794,11 +803,13 @@ def _mad_fallback(data, axis, ignore_nan, xp=None):
     xp = xp or array_api_compat.array_namespace(data)
 
     def med(d, axis):
-        try:
-            return (xp.nanmedian if ignore_nan else xp.median)(d, axis=axis)
-        except AttributeError:
-            fallback = _nanfuncs_nanmedian if ignore_nan else _nanfuncs_median
-            return fallback(d, axis=axis, xp=xp)
+        if _has_safe_median(xp):
+            try:
+                return (xp.nanmedian if ignore_nan else xp.median)(d, axis=axis)
+            except AttributeError:
+                pass
+        fallback = _nanfuncs_nanmedian if ignore_nan else _nanfuncs_median
+        return fallback(d, axis=axis, xp=xp)
 
     # The deviation itself is _nanfuncs.nanmad, the same computation
     # Combiner._nanmadstd uses; only the median tier passed in differs.
